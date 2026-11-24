@@ -44,9 +44,7 @@ describe("DELETE /api/organizations/[orgId]/leave error handling", () => {
   });
 
   it("returns 503 when table is missing", async () => {
-    mockDbRead.getOrganizationById.mockRejectedValueOnce(
-      new Error("no such table: organizations"),
-    );
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table: organizations"));
 
     const req = new Request("http://localhost/api/organizations/org1/leave", {
       method: "DELETE",
@@ -61,9 +59,7 @@ describe("DELETE /api/organizations/[orgId]/leave error handling", () => {
 
   it("returns 500 for unexpected database failures", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockDbRead.getOrganizationById.mockRejectedValueOnce(
-      new Error("connection refused"),
-    );
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("connection refused"));
 
     const req = new Request("http://localhost/api/organizations/org1/leave", {
       method: "DELETE",

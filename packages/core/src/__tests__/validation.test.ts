@@ -53,10 +53,22 @@ describe("isValidSource", () => {
 describe("isRetiredSourceRecord", () => {
   it("ignores only exact retired identities, independent of obsolete payload shape", () => {
     for (const source of ["gemini-cli", "kosmos", "omp", "zcode", "pmstudio", "vscode-copilot"]) {
-      expect(isRetiredSourceRecord({ source, input_tokens: "bad", body: "must-not-upload" })).toBe(true);
+      expect(isRetiredSourceRecord({ source, input_tokens: "bad", body: "must-not-upload" })).toBe(
+        true,
+      );
     }
-    for (const value of [null, undefined, [], "gemini-cli", {}, { source: null }, { source: "pi" },
-      { source: "Gemini CLI" }, { source: "cursor" }, { source: "gemini-cli " }]) {
+    for (const value of [
+      null,
+      undefined,
+      [],
+      "gemini-cli",
+      {},
+      { source: null },
+      { source: "pi" },
+      { source: "Gemini CLI" },
+      { source: "cursor" },
+      { source: "gemini-cli " },
+    ]) {
       expect(isRetiredSourceRecord(value)).toBe(false);
     }
   });
@@ -233,7 +245,23 @@ describe("validateIngestRecord", () => {
   });
 
   it("should accept all 15 sources", () => {
-    for (const source of ["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "zcode"]) {
+    for (const source of [
+      "antigravity",
+      "claude-code",
+      "codex",
+      "copilot-cli",
+      "gemini-cli",
+      "grok",
+      "hermes",
+      "kosmos",
+      "omp",
+      "opencode",
+      "openclaw",
+      "pi",
+      "pmstudio",
+      "vscode-copilot",
+      "zcode",
+    ]) {
       const rec = { ...validTokenRecord(), source };
       expect(validateIngestRecord(rec, 0).valid).toBe(true);
     }
@@ -314,7 +342,9 @@ describe("validateIngestRecord", () => {
   });
 
   it("should reject Infinity/NaN token values", () => {
-    expect(validateIngestRecord({ ...validTokenRecord(), total_tokens: Infinity }, 0).valid).toBe(false);
+    expect(validateIngestRecord({ ...validTokenRecord(), total_tokens: Infinity }, 0).valid).toBe(
+      false,
+    );
     expect(validateIngestRecord({ ...validTokenRecord(), total_tokens: NaN }, 0).valid).toBe(false);
   });
 
@@ -399,11 +429,12 @@ describe("validateSessionIngestRecord", () => {
       validateSessionIngestRecord({ ...validSessionRecord(), started_at: "not-a-date" }, 0).valid,
     ).toBe(false);
     expect(
-      validateSessionIngestRecord({ ...validSessionRecord(), last_message_at: "2026-03-07" }, 0).valid,
+      validateSessionIngestRecord({ ...validSessionRecord(), last_message_at: "2026-03-07" }, 0)
+        .valid,
     ).toBe(false);
-    expect(
-      validateSessionIngestRecord({ ...validSessionRecord(), snapshot_at: "" }, 0).valid,
-    ).toBe(false);
+    expect(validateSessionIngestRecord({ ...validSessionRecord(), snapshot_at: "" }, 0).valid).toBe(
+      false,
+    );
   });
 
   it("should reject float integer fields (fixes original bug)", () => {
@@ -417,12 +448,12 @@ describe("validateSessionIngestRecord", () => {
   });
 
   it("should reject non-string/non-null for nullable fields", () => {
-    expect(
-      validateSessionIngestRecord({ ...validSessionRecord(), project_ref: 42 }, 0).valid,
-    ).toBe(false);
-    expect(
-      validateSessionIngestRecord({ ...validSessionRecord(), model: 42 }, 0).valid,
-    ).toBe(false);
+    expect(validateSessionIngestRecord({ ...validSessionRecord(), project_ref: 42 }, 0).valid).toBe(
+      false,
+    );
+    expect(validateSessionIngestRecord({ ...validSessionRecord(), model: 42 }, 0).valid).toBe(
+      false,
+    );
   });
 
   it("should reject overly long nullable strings", () => {
@@ -445,16 +476,18 @@ describe("validateSessionIngestRecord", () => {
   });
 });
 
-
 describe("ingest privacy projection", () => {
   it("forwards only token schema fields", () => {
     const record = validTokenRecord();
-    expect(validateIngestRecord({ ...record, prompt: "PRIVATE", arbitrary: { large: "value" } }, 0))
-      .toEqual({ valid: true, record });
+    expect(
+      validateIngestRecord({ ...record, prompt: "PRIVATE", arbitrary: { large: "value" } }, 0),
+    ).toEqual({ valid: true, record });
   });
   it("forwards only session schema fields", () => {
     const record = validSessionRecord();
-    expect(validateSessionIngestRecord({ ...record, transcript: "PRIVATE" }, 0))
-      .toEqual({ valid: true, record });
+    expect(validateSessionIngestRecord({ ...record, transcript: "PRIVATE" }, 0)).toEqual({
+      valid: true,
+      record,
+    });
   });
 });

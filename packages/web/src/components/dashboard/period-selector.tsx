@@ -14,7 +14,12 @@ interface PeriodSelectorProps {
 
 export function PeriodSelector({ value, onChange, options = PERIOD_OPTIONS }: PeriodSelectorProps) {
   return (
-    <div className={cn("items-center gap-1 rounded-lg bg-basalt-muted p-1", options.length > 3 ? "grid grid-cols-2 sm:flex" : "flex")}>
+    <div
+      className={cn(
+        "items-center gap-1 rounded-lg bg-basalt-muted p-1",
+        options.length > 3 ? "grid grid-cols-2 sm:flex" : "flex",
+      )}
+    >
       {options.map((opt) => (
         <button
           type="button"

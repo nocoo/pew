@@ -2,27 +2,13 @@
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useMemo } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
-import {
-  toDeviceTrendPoints,
-  buildDeviceLabelMap,
-} from "@/lib/device-helpers";
+import { toDeviceTrendPoints, buildDeviceLabelMap } from "@/lib/device-helpers";
 import type { DeviceAggregate, DeviceTimelinePoint } from "@pew/core";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,12 +85,7 @@ function DeviceAreaTooltip({
  * Stacked area chart showing daily token usage by device.
  * Used in Daily Usage page for monthly view.
  */
-export function DeviceAreaChart({
-  timeline,
-  devices,
-  padToDate,
-  className,
-}: DeviceAreaChartProps) {
+export function DeviceAreaChart({ timeline, devices, padToDate, className }: DeviceAreaChartProps) {
   const rawData = useMemo(() => toDeviceTrendPoints(timeline), [timeline]);
   const labelMap = useMemo(() => buildDeviceLabelMap(devices), [devices]);
 
@@ -144,7 +125,7 @@ export function DeviceAreaChart({
         for (const key of deviceKeys) {
           emptyPoint[key] = 0;
         }
-        result.push(emptyPoint as typeof rawData[number]);
+        result.push(emptyPoint as (typeof rawData)[number]);
       }
       cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
@@ -157,7 +138,7 @@ export function DeviceAreaChart({
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No device data yet
@@ -169,7 +150,7 @@ export function DeviceAreaChart({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -193,20 +174,10 @@ export function DeviceAreaChart({
 
       <div className="h-[200px]">
         <DashboardResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={chartData}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
               {deviceKeys.map((deviceId, i) => (
-                <linearGradient
-                  key={deviceId}
-                  id={gradId(deviceId)}
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
+                <linearGradient key={deviceId} id={gradId(deviceId)} x1="0" y1="0" x2="0" y2="1">
                   <stop
                     offset="0%"
                     stopColor={CHART_COLORS[i % CHART_COLORS.length]}

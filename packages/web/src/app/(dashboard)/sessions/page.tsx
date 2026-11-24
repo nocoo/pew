@@ -99,9 +99,7 @@ export default function SessionsPage() {
 
   const efficiency = useMemo(
     () =>
-      usageData
-        ? computeTokensPerHour(usageData.summary.total_tokens, sessionData.overview)
-        : null,
+      usageData ? computeTokensPerHour(usageData.summary.total_tokens, sessionData.overview) : null,
     [usageData, sessionData.overview],
   );
 
@@ -118,7 +116,10 @@ export default function SessionsPage() {
   );
 
   const peakHourly = useMemo(
-    () => (halfHourUsage ? aggregateHourlyTokens(halfHourUsage.records, tzOffset) : new Array<number>(24).fill(0)),
+    () =>
+      halfHourUsage
+        ? aggregateHourlyTokens(halfHourUsage.records, tzOffset)
+        : new Array<number>(24).fill(0),
     [halfHourUsage, tzOffset],
   );
 

@@ -9,8 +9,13 @@ const usage = { input: 100, output: 20, cacheRead: 30, cacheWrite: 5, reasoning:
 const header = { type: "session", id: "synthetic-session", timestamp };
 const model = { type: "model_change", modelId: "gemini-3.8-flash", provider: "google", timestamp };
 const compact = {
-  type: "compaction", id: "compact-1", timestamp, usage,
-  summary: "PRIVATE_FIXTURE_BODY", tokensBefore: 99999, firstKeptEntryId: "old-1",
+  type: "compaction",
+  id: "compact-1",
+  timestamp,
+  usage,
+  summary: "PRIVATE_FIXTURE_BODY",
+  tokensBefore: 99999,
+  firstKeptEntryId: "old-1",
 };
 
 describe("Pi compaction accounting", () => {
@@ -20,7 +25,9 @@ describe("Pi compaction accounting", () => {
     dir = await mkdtemp(join(tmpdir(), "pew-compaction-"));
     filePath = join(dir, "session.jsonl");
   });
-  afterEach(async () => { await rm(dir, { recursive: true, force: true }); });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
 
   async function fixture(rows: unknown[]) {
     await writeFile(filePath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
@@ -31,20 +38,43 @@ describe("Pi compaction accounting", () => {
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0]).toMatchObject({
-      source: "pi", model: "gemini-3.8-flash", timestamp,
-      tokens: { inputTokens: 105, cachedInputTokens: 30, outputTokens: 16, reasoningOutputTokens: 4 },
-      evidence: { callType: "compaction", granularity: "operation", timePrecision: "exact", snapshotSeq: 1 },
+      source: "pi",
+      model: "gemini-3.8-flash",
+      timestamp,
+      tokens: {
+        inputTokens: 105,
+        cachedInputTokens: 30,
+        outputTokens: 16,
+        reasoningOutputTokens: 4,
+      },
+      evidence: {
+        callType: "compaction",
+        granularity: "operation",
+        timePrecision: "exact",
+        snapshotSeq: 1,
+      },
     });
     expect(result.deltas[0].evidence?.eventId).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(result)).not.toContain("PRIVATE_FIXTURE_BODY");
   });
 
-  it.each(["stop", "error", "aborted"])("counts provider-confirmed %s usage and ignores zero usage", async (stopReason) => {
-    await fixture([header, model, { ...compact, stopReason }, {
-      ...compact, id: "zero", usage: { input: 0, output: 0 }, stopReason,
-    }]);
-    expect((await parsePiFile({ filePath, startOffset: 0 })).deltas).toHaveLength(1);
-  });
+  it.each(["stop", "error", "aborted"])(
+    "counts provider-confirmed %s usage and ignores zero usage",
+    async (stopReason) => {
+      await fixture([
+        header,
+        model,
+        { ...compact, stopReason },
+        {
+          ...compact,
+          id: "zero",
+          usage: { input: 0, output: 0 },
+          stopReason,
+        },
+      ]);
+      expect((await parsePiFile({ filePath, startOffset: 0 })).deltas).toHaveLength(1);
+    },
+  );
 
   it("deduplicates a replayed compaction by identity, never by equal token counts", async () => {
     await fixture([header, model, compact, compact, { ...compact, id: "compact-2" }]);
@@ -60,7 +90,10 @@ describe("Pi compaction accounting", () => {
     const incremental = await parsePiFile({ filePath, startOffset: first.endOffset });
     const replay = await parsePiFile({ filePath, startOffset: 0 });
     const rotatedPath = join(dir, "rotated.jsonl");
-    await writeFile(rotatedPath, `${[header, model, compact].map((r) => JSON.stringify(r)).join("\n")}\n`);
+    await writeFile(
+      rotatedPath,
+      `${[header, model, compact].map((r) => JSON.stringify(r)).join("\n")}\n`,
+    );
     const rotated = await parsePiFile({ filePath: rotatedPath, startOffset: 0 });
     expect(incremental.deltas).toHaveLength(1);
     expect(incremental.deltas).toEqual(replay.deltas);
@@ -68,34 +101,70 @@ describe("Pi compaction accounting", () => {
   });
 
   it("keeps assistant usage unchanged and ignores proxy/custom copies of the same request", async () => {
-    const assistant = { type: "message", id: "assistant-1", timestamp,
-      message: { role: "assistant", model: "gemini-3.8-flash", usage, content: "PRIVATE_FIXTURE_BODY" } };
-    await fixture([header, model, assistant, compact,
+    const assistant = {
+      type: "message",
+      id: "assistant-1",
+      timestamp,
+      message: {
+        role: "assistant",
+        model: "gemini-3.8-flash",
+        usage,
+        content: "PRIVATE_FIXTURE_BODY",
+      },
+    };
+    await fixture([
+      header,
+      model,
+      assistant,
+      compact,
       { type: "custom", customType: "raven_request", id: compact.id, usage, timestamp },
     ]);
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(2);
-    expect(result.deltas.filter((d) => !d.evidence)).toEqual([{
-      source: "pi", model: "gemini-3.8-flash", timestamp,
-      tokens: { inputTokens: 105, cachedInputTokens: 30, outputTokens: 16, reasoningOutputTokens: 4 },
-    }]);
+    expect(result.deltas.filter((d) => !d.evidence)).toEqual([
+      {
+        source: "pi",
+        model: "gemini-3.8-flash",
+        timestamp,
+        tokens: {
+          inputTokens: 105,
+          cachedInputTokens: 30,
+          outputTokens: 16,
+          reasoningOutputTokens: 4,
+        },
+      },
+    ]);
   });
 
   it("does not invent an event identity or timestamp when accounting evidence is incomplete", async () => {
-    await fixture([header, model, { ...compact, id: undefined }, { ...compact, timestamp: "invalid" }]);
+    await fixture([
+      header,
+      model,
+      { ...compact, id: undefined },
+      { ...compact, timestamp: "invalid" },
+    ]);
     expect((await parsePiFile({ filePath, startOffset: 0 })).deltas).toEqual([]);
   });
 
   it("recognizes inherited compactions after Pi forks history under a new session header", async () => {
     await fixture([header, model, compact]);
     const original = await parsePiFile({ filePath, startOffset: 0 });
-    await fixture([{ ...header, id: "forked-session", parentSession: "synthetic-parent.jsonl" }, model, compact]);
+    await fixture([
+      { ...header, id: "forked-session", parentSession: "synthetic-parent.jsonl" },
+      model,
+      compact,
+    ]);
     const fork = await parsePiFile({ filePath, startOffset: 0 });
     expect(fork.deltas).toEqual(original.deltas);
   });
 
   it("does not let a zero-usage interrupted record claim the eventual billed event identity", async () => {
-    await fixture([header, model, { ...compact, usage: { input: 0, output: 0 }, stopReason: "aborted" }, compact]);
+    await fixture([
+      header,
+      model,
+      { ...compact, usage: { input: 0, output: 0 }, stopReason: "aborted" },
+      compact,
+    ]);
     expect((await parsePiFile({ filePath, startOffset: 0 })).deltas).toHaveLength(1);
   });
 
@@ -107,6 +176,8 @@ describe("Pi compaction accounting", () => {
     expect(partial.deltas).toEqual([]);
     await appendFile(filePath, `${text.slice(30)}\n`);
     const complete = await parsePiFile({ filePath, startOffset: partial.endOffset });
-    expect(complete.deltas).toMatchObject([{ model: "unknown", evidence: { callType: "compaction" } }]);
+    expect(complete.deltas).toMatchObject([
+      { model: "unknown", evidence: { callType: "compaction" } },
+    ]);
   });
 });

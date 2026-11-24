@@ -9,7 +9,13 @@ export interface DashboardSegmentProps {
   className?: string;
 }
 
-export function DashboardSegment({ title, action, hint, children, className }: DashboardSegmentProps) {
+export function DashboardSegment({
+  title,
+  action,
+  hint,
+  children,
+  className,
+}: DashboardSegmentProps) {
   return (
     <SectionRule title={title} actions={action} hint={hint} className={className}>
       {children}

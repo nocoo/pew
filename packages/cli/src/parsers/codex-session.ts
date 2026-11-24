@@ -28,9 +28,7 @@ import { hashProjectRef } from "../utils/hash-project-ref.js";
  * Reads every line, extracts session metadata, counts messages,
  * and produces 0 or 1 SessionSnapshot.
  */
-export async function collectCodexSessions(
-  filePath: string,
-): Promise<SessionSnapshot[]> {
+export async function collectCodexSessions(filePath: string): Promise<SessionSnapshot[]> {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile() || st.size === 0) return [];
 
@@ -60,8 +58,7 @@ export async function collectCodexSessions(
       totalMessages++;
 
       const type = typeof obj.type === "string" ? obj.type : null;
-      const timestamp =
-        typeof obj.timestamp === "string" ? obj.timestamp : null;
+      const timestamp = typeof obj.timestamp === "string" ? obj.timestamp : null;
 
       // Track timestamps
       if (timestamp) {
@@ -100,8 +97,7 @@ export async function collectCodexSessions(
 
       // Count user/assistant messages from response_item
       if (type === "response_item" && payload) {
-        const role =
-          typeof payload.role === "string" ? payload.role : null;
+        const role = typeof payload.role === "string" ? payload.role : null;
         if (role === "user") {
           userMessages++;
         } else if (role === "assistant") {
@@ -119,18 +115,14 @@ export async function collectCodexSessions(
 
   const startedAt = minTimestamp;
   const lastMessageAt = maxTimestamp ?? minTimestamp;
-  const durationMs =
-    new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
+  const durationMs = new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
 
   // Session key: prefer native UUID from session_meta, fallback to sha256 of path
   let sessionKey: string;
   if (sessionId) {
     sessionKey = `codex:${sessionId}`;
   } else {
-    const hash = createHash("sha256")
-      .update(resolve(filePath))
-      .digest("hex")
-      .slice(0, 16);
+    const hash = createHash("sha256").update(resolve(filePath)).digest("hex").slice(0, 16);
     sessionKey = `codex:${hash}`;
   }
 

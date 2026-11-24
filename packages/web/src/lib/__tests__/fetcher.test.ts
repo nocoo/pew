@@ -14,11 +14,12 @@ describe("fetcher", () => {
     const payload = { id: "x", value: 42 };
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify(payload), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify(payload), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
       ),
     );
     const result = await fetcher<typeof payload>("/api/test");
@@ -28,11 +29,12 @@ describe("fetcher", () => {
   it("throws via throwApiError for a non-2xx response", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify({ message: "nope" }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        }),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ message: "nope" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }),
       ),
     );
     // throwApiError always throws — the exact error shape isn't part of the

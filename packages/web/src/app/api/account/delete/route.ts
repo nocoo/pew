@@ -46,10 +46,7 @@ export async function DELETE(request: Request) {
 
   const confirmEmail = body.confirm_email;
   if (typeof confirmEmail !== "string" || !confirmEmail.trim()) {
-    return NextResponse.json(
-      { error: "confirm_email is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "confirm_email is required" }, { status: 400 });
   }
 
   const dbRead = await getDbRead();
@@ -108,7 +105,10 @@ export async function DELETE(request: Request) {
       { sql: "DELETE FROM sessions WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM accounts WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM invite_codes WHERE created_by = ?", params: [userId] },
-      { sql: "UPDATE invite_codes SET used_by = 'deleted-user' WHERE used_by = ?", params: [userId] },
+      {
+        sql: "UPDATE invite_codes SET used_by = 'deleted-user' WHERE used_by = ?",
+        params: [userId],
+      },
       { sql: "DELETE FROM users WHERE id = ?", params: [userId] },
     ]);
 
@@ -116,14 +116,14 @@ export async function DELETE(request: Request) {
   } catch (err) {
     if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
       return NextResponse.json(
-        { error: "Account still owns shared resources. Transfer or remove them before deleting your account." },
+        {
+          error:
+            "Account still owns shared resources. Transfer or remove them before deleting your account.",
+        },
         { status: 409 },
       );
     }
     console.error("Failed to delete account:", err);
-    return NextResponse.json(
-      { error: "Failed to delete account" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
   }
 }

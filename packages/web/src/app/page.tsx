@@ -16,24 +16,14 @@ export default function LandingPage() {
 
       <div className="absolute top-4 right-4 z-50 flex items-center gap-1">
         <HeaderTooltip label="Privacy policy">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={chromeIconClassName}
-            asChild
-          >
+          <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
             <Link href="/privacy" aria-label="Privacy policy">
               <ShieldCheck strokeWidth={1.5} aria-hidden="true" />
             </Link>
           </Button>
         </HeaderTooltip>
         <HeaderTooltip label="GitHub repository">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={chromeIconClassName}
-            asChild
-          >
+          <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
             <a
               href="https://github.com/nocoo/pew"
               target="_blank"

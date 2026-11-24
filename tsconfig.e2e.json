@@ -10,5 +10,16 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["packages/web/e2e/**/*.ts", "scripts/local-e2e-bindings.ts", "scripts/serve-local-e2e.ts", "scripts/e2e-utils.ts", "scripts/run-e2e.ts", "scripts/run-e2e-ui.ts", "scripts/test-local-e2e.ts", "scripts/__tests__/local-e2e-bindings.test.ts", "scripts/__tests__/e2e-utils.test.ts", "scripts/__tests__/page-readiness.test.ts"]
+  "include": [
+    "packages/web/e2e/**/*.ts",
+    "scripts/local-e2e-bindings.ts",
+    "scripts/serve-local-e2e.ts",
+    "scripts/e2e-utils.ts",
+    "scripts/run-e2e.ts",
+    "scripts/run-e2e-ui.ts",
+    "scripts/test-local-e2e.ts",
+    "scripts/__tests__/local-e2e-bindings.test.ts",
+    "scripts/__tests__/e2e-utils.test.ts",
+    "scripts/__tests__/page-readiness.test.ts"
+  ]
 }

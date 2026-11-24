@@ -8,27 +8,27 @@ pew tracks AI coding tool usage statistics. It is designed to **never** collect 
 
 ### Token usage (aggregated)
 
-| Field | Description |
-|-------|-------------|
-| Source | Which AI tool (e.g. "claude-code", "gemini-cli") |
-| Model | Model name (e.g. "claude-sonnet-4-20250514") |
-| Token counts | Input, cached input, output, reasoning output |
-| Time bucket | 30-minute window (not exact request timestamps) |
-| Device ID | Random UUID generated once per CLI install |
+| Field        | Description                                      |
+| ------------ | ------------------------------------------------ |
+| Source       | Which AI tool (e.g. "claude-code", "gemini-cli") |
+| Model        | Model name (e.g. "claude-sonnet-4-20250514")     |
+| Token counts | Input, cached input, output, reasoning output    |
+| Time bucket  | 30-minute window (not exact request timestamps)  |
+| Device ID    | Random UUID generated once per CLI install       |
 
 Token data is **aggregated into 30-minute buckets** before leaving your machine. Individual request-level granularity is discarded.
 
 ### Session metadata
 
-| Field | Description |
-|-------|-------------|
-| Session key | Opaque identifier from the AI tool (e.g. "claude:abc123") |
-| Source | Which AI tool |
-| Timestamps | When the session started and when the last message was sent |
-| Duration | Wall-clock seconds |
-| Message counts | User messages, assistant messages, total |
-| Model | Last model used in the session |
-| Project reference | **SHA-256 hash** (see below) |
+| Field             | Description                                                 |
+| ----------------- | ----------------------------------------------------------- |
+| Session key       | Opaque identifier from the AI tool (e.g. "claude:abc123")   |
+| Source            | Which AI tool                                               |
+| Timestamps        | When the session started and when the last message was sent |
+| Duration          | Wall-clock seconds                                          |
+| Message counts    | User messages, assistant messages, total                    |
+| Model             | Last model used in the session                              |
+| Project reference | **SHA-256 hash** (see below)                                |
 
 ### Project references (hashed)
 
@@ -42,11 +42,11 @@ The server stores only the hash. Project management and project-based statistics
 
 ### Account information
 
-| Field | Source |
-|-------|--------|
-| Email | Google OAuth sign-in |
-| Display name | Google profile |
-| Profile photo URL | Google profile |
+| Field             | Source               |
+| ----------------- | -------------------- |
+| Email             | Google OAuth sign-in |
+| Display name      | Google profile       |
+| Profile photo URL | Google profile       |
 
 This is standard OAuth data required for authentication.
 
@@ -60,11 +60,11 @@ This is standard OAuth data required for authentication.
 
 ## What stays on your machine
 
-| Data | Location |
-|------|----------|
+| Data                                    | Location                     |
+| --------------------------------------- | ---------------------------- |
 | Cursor state (file paths, byte offsets) | `~/.config/pew/cursors.json` |
-| Upload queue | `~/.config/pew/queue.jsonl` |
-| API key | `~/.config/pew/config.json` |
+| Upload queue                            | `~/.config/pew/queue.jsonl`  |
+| API key                                 | `~/.config/pew/config.json`  |
 
 Cursor files contain absolute file paths (needed to track read progress), but this data **never leaves your device**.
 

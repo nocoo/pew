@@ -1,14 +1,7 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis, chartMuted } from "@/lib/palette";
@@ -53,9 +46,7 @@ function HourlyTooltip({
 }) {
   if (!active || !payload?.length) return null;
 
-  const hourRange = label !== undefined
-    ? `${fmtHour(label)} - ${fmtHour((label + 1) % 24)}`
-    : "";
+  const hourRange = label !== undefined ? `${fmtHour(label)} - ${fmtHour((label + 1) % 24)}` : "";
 
   return (
     <ChartTooltip title={hourRange}>
@@ -86,7 +77,7 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No hourly data yet
@@ -101,7 +92,7 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No hourly data yet
@@ -113,23 +104,18 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5 flex flex-col",
-        className
+        className,
       )}
     >
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
-          <p className="text-xs md:text-sm text-basalt-muted-foreground">
-            Hourly Usage
-          </p>
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">Hourly Usage</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ background: chart.violet }}
-            />
+            <div className="h-2 w-2 rounded-full" style={{ background: chart.violet }} />
             <span className="text-xs text-basalt-muted-foreground">Weekday</span>
           </div>
           <div className="flex items-center gap-1.5">

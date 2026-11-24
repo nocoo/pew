@@ -60,7 +60,13 @@ describe("leaderboard RPC handlers", () => {
     it("should return user leaderboard", async () => {
       const mockEntries = [
         { user_id: "u1", name: "alice", image: null, total_tokens: 1000000, rank: 1 },
-        { user_id: "u2", name: "bob", image: "https://example.com/bob.png", total_tokens: 800000, rank: 2 },
+        {
+          user_id: "u2",
+          name: "bob",
+          image: "https://example.com/bob.png",
+          total_tokens: 800000,
+          rank: 2,
+        },
       ];
       db.all.mockResolvedValue({ results: mockEntries });
 
@@ -108,7 +114,13 @@ describe("leaderboard RPC handlers", () => {
     it("should return team leaderboard", async () => {
       const mockEntries = [
         { team_id: "t1", team_name: "Alpha", logo_url: null, total_tokens: 5000000, rank: 1 },
-        { team_id: "t2", team_name: "Beta", logo_url: "https://example.com/beta.png", total_tokens: 4000000, rank: 2 },
+        {
+          team_id: "t2",
+          team_name: "Beta",
+          logo_url: "https://example.com/beta.png",
+          total_tokens: 4000000,
+          rank: 2,
+        },
       ];
       db.all.mockResolvedValue({ results: mockEntries });
 

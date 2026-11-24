@@ -30,9 +30,7 @@ interface UseDeviceDataResult {
  * Fetch per-device usage analytics from GET /api/usage/by-device.
  * Same pattern as useUsageData.
  */
-export function useDeviceData(
-  options: UseDeviceDataOptions = {}
-): UseDeviceDataResult {
+export function useDeviceData(options: UseDeviceDataOptions = {}): UseDeviceDataResult {
   const { from: fromDate, to: toDate, granularity } = options;
   const tzOffset = useTzOffset();
 
@@ -48,6 +46,9 @@ export function useDeviceData(
   }, [fromDate, toDate, granularity, tzOffset]);
 
   const result = useFetchData<ByDeviceResponse>(url);
-  const data = useMemo(() => result.data ? toDeviceDisplayData(result.data) : null, [result.data]);
+  const data = useMemo(
+    () => (result.data ? toDeviceDisplayData(result.data) : null),
+    [result.data],
+  );
   return { ...result, data };
 }

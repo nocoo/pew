@@ -54,10 +54,7 @@ describe("openClawTokenDriver", () => {
       await mkdir(sessionsDir, { recursive: true });
       await writeFile(join(sessionsDir, "session.jsonl"), `${openClawLine()}\n`);
 
-      const files = await openClawTokenDriver.discover(
-        { openclawDir: tempDir },
-        ctx,
-      );
+      const files = await openClawTokenDriver.discover({ openclawDir: tempDir }, ctx);
       expect(files).toHaveLength(1);
       expect(files[0]).toContain("session.jsonl");
     });

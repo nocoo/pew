@@ -30,10 +30,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ settings: [] });
     }
     console.error("Failed to load settings:", err);
-    return NextResponse.json(
-      { error: "Failed to load settings" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to load settings" }, { status: 500 });
   }
 }
 
@@ -56,16 +53,10 @@ export async function PUT(request: Request) {
 
   const { key, value } = body;
   if (typeof key !== "string" || key.length === 0) {
-    return NextResponse.json(
-      { error: "key is required (non-empty string)" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "key is required (non-empty string)" }, { status: 400 });
   }
   if (typeof value !== "string") {
-    return NextResponse.json(
-      { error: "value is required (string)" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "value is required (string)" }, { status: 400 });
   }
 
   // ---------------------------------------------------------------------------
@@ -110,9 +101,6 @@ export async function PUT(request: Request) {
       );
     }
     console.error("Failed to update setting:", err);
-    return NextResponse.json(
-      { error: "Failed to update setting" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to update setting" }, { status: 500 });
   }
 }

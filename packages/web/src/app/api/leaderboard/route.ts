@@ -89,10 +89,7 @@ export async function GET(request: Request) {
 
   // Validate source filter
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
-    return NextResponse.json(
-      { error: "Invalid source parameter" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid source parameter" }, { status: 400 });
   }
 
   if (modelFilter && modelFilter.length > MAX_STRING_LENGTH) {
@@ -113,11 +110,13 @@ export async function GET(request: Request) {
   let limit = DEFAULT_LIMIT;
   if (limitParam) {
     const parsed = Number(limitParam);
-    if (!/^\d+$/.test(limitParam) || !Number.isSafeInteger(parsed) || parsed < 1 || parsed > MAX_LIMIT) {
-      return NextResponse.json(
-        { error: `limit must be 1-${MAX_LIMIT}` },
-        { status: 400 },
-      );
+    if (
+      !/^\d+$/.test(limitParam) ||
+      !Number.isSafeInteger(parsed) ||
+      parsed < 1 ||
+      parsed > MAX_LIMIT
+    ) {
+      return NextResponse.json({ error: `limit must be 1-${MAX_LIMIT}` }, { status: 400 });
     }
     limit = parsed;
   }
@@ -127,10 +126,7 @@ export async function GET(request: Request) {
   if (offsetParam) {
     const parsed = Number(offsetParam);
     if (!/^\d+$/.test(offsetParam) || !Number.isSafeInteger(parsed) || parsed < 0) {
-      return NextResponse.json(
-        { error: "offset must be a non-negative integer" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "offset must be a non-negative integer" }, { status: 400 });
     }
     offset = parsed;
   }
@@ -150,7 +146,8 @@ export async function GET(request: Request) {
         const isAdmin = await isAdminUser(authResult);
 
         if (teamIdParam) {
-          const isMember = isAdmin || await db.checkTeamMembershipExists(teamIdParam, authResult.userId);
+          const isMember =
+            isAdmin || (await db.checkTeamMembershipExists(teamIdParam, authResult.userId));
           if (!isMember) {
             return NextResponse.json(
               { error: "Not a member of this team" },
@@ -160,7 +157,7 @@ export async function GET(request: Request) {
           teamId = teamIdParam;
         }
         if (orgIdParam) {
-          const isMember = isAdmin || await db.checkOrgMembership(orgIdParam, authResult.userId);
+          const isMember = isAdmin || (await db.checkOrgMembership(orgIdParam, authResult.userId));
           if (!isMember) {
             return NextResponse.json(
               { error: "Not a member of this organization" },
@@ -181,8 +178,10 @@ export async function GET(request: Request) {
       ...(modelFilter && { model: modelFilter }),
     });
 
-    if ((snapshotId !== null && snapshotId !== snapshot.id)
-      || (authorizedRevision !== undefined && authorizedRevision !== snapshot.revision)) {
+    if (
+      (snapshotId !== null && snapshotId !== snapshot.id) ||
+      (authorizedRevision !== undefined && authorizedRevision !== snapshot.revision)
+    ) {
       return NextResponse.json(
         { error: "Leaderboard changed. Restart pagination.", code: "LEADERBOARD_CHANGED" },
         { status: 409, headers: { "Cache-Control": "private, no-store" } },
@@ -217,8 +216,14 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       {
-        period, scope, ...(scopeId && { scopeId }), entries, hasMore,
-        snapshotId: snapshot.id, generatedAt: snapshot.generatedAt, expiresAt: snapshot.expiresAt,
+        period,
+        scope,
+        ...(scopeId && { scopeId }),
+        entries,
+        hasMore,
+        snapshotId: snapshot.id,
+        generatedAt: snapshot.generatedAt,
+        expiresAt: snapshot.expiresAt,
       },
       { headers: { "Cache-Control": "private, no-store" } },
     );

@@ -13,7 +13,9 @@ test.describe("Feature: Admin", () => {
     const seasonId = `test-season-${suffix}`;
     const seasons: Record<string, unknown>[] = [];
 
-    test("Given a route-mocked seasons API, When I create a season via the form, Then the new name and slug become visible", async ({ page }) => {
+    test("Given a route-mocked seasons API, When I create a season via the form, Then the new name and slug become visible", async ({
+      page,
+    }) => {
       // Given: route-mocked /api/admin/seasons with in-memory list
       await page.route("**/api/admin/seasons", async (route) => {
         if (route.request().method() === "GET") {
@@ -69,7 +71,9 @@ test.describe("Feature: Admin", () => {
       await expect(page.getByText(seasonSlug)).toBeVisible();
     });
 
-    test("Given the season created in the previous scenario, When I edit its name inline and save, Then the updated name becomes visible", async ({ page }) => {
+    test("Given the season created in the previous scenario, When I edit its name inline and save, Then the updated name becomes visible", async ({
+      page,
+    }) => {
       // Given: route-mocked GET + PATCH; the season from the previous scenario is
       // still in the shared in-memory `seasons` list (serial mode)
       await page.route("**/api/admin/seasons", async (route) => {

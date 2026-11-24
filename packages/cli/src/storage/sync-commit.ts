@@ -22,15 +22,31 @@ interface SyncCommit {
 export async function recoverSyncCommit(stateDir: string): Promise<void> {
   const path = join(stateDir, "sync-commit.json");
   let raw: string;
-  try { raw = await readFile(path, "utf8"); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
   let commit: SyncCommit;
   try {
     commit = JSON.parse(raw);
-    if (commit.version !== 1 || !commit.cursors || !Array.isArray(commit.accounting) || !Array.isArray(commit.evidence)) throw new Error();
-  } catch { throw new Error("Invalid pending sync commit; preserve Pew state for recovery"); }
+    if (
+      commit.version !== 1 ||
+      !commit.cursors ||
+      !Array.isArray(commit.accounting) ||
+      !Array.isArray(commit.evidence)
+    )
+      throw new Error();
+  } catch {
+    throw new Error("Invalid pending sync commit; preserve Pew state for recovery");
+  }
   await new EvidenceQueue(stateDir).merge(commit.evidence, commit.replay);
-  await new AccountingQueue(stateDir).merge(commit.accounting, commit.replay, commit.preserveAccountingSources);
+  await new AccountingQueue(stateDir).merge(
+    commit.accounting,
+    commit.replay,
+    commit.preserveAccountingSources,
+  );
   if (commit.records) {
     const queue = new LocalQueue(stateDir);
     await queue.saveDirtyKeys(commit.dirtyKeys ?? []);

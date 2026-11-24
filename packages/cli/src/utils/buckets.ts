@@ -31,11 +31,7 @@ export function toUtcHalfHourStart(ts: string | number): string | null {
  * Create a composite bucket key from source, model, and half-hour start.
  * Format: "source|model|hourStart"
  */
-export function bucketKey(
-  source: string,
-  model: string,
-  hourStart: string,
-): string {
+export function bucketKey(source: string, model: string, hourStart: string): string {
   return `${source}|${model}|${hourStart}`;
 }
 

@@ -13,7 +13,12 @@
  */
 
 import { cn } from "@/lib/utils";
-import { COL_RANK, COL_SESSIONS, COL_DURATION, COL_TOKENS } from "@/components/leaderboard/leaderboard-layout";
+import {
+  COL_RANK,
+  COL_SESSIONS,
+  COL_DURATION,
+  COL_TOKENS,
+} from "@/components/leaderboard/leaderboard-layout";
 
 export function TableHeader() {
   return (

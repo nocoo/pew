@@ -53,7 +53,7 @@ export interface SessionSyncOptions {
   multicaCodexDirs?: string[];
   /** Override: Copilot CLI logs directory (~/.copilot/logs) */
   copilotCliLogsDir?: string;
-    /** Override: OpenCode message directory (~/.local/share/opencode/storage/message) */
+  /** Override: OpenCode message directory (~/.local/share/opencode/storage/message) */
   openCodeMessageDir?: string;
   /** Override: OpenCode SQLite database path (~/.local/share/opencode/opencode.db) */
   openCodeDbPath?: string;
@@ -65,13 +65,13 @@ export interface SessionSyncOptions {
   } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
-    /** Override: Pi session directory (~/.pi/agent/sessions) */
+  /** Override: Pi session directory (~/.pi/agent/sessions) */
   piSessionsDir?: string;
-      /** Override: Grok CLI unified log path (~/.grok/logs/unified.jsonl) */
+  /** Override: Grok CLI unified log path (~/.grok/logs/unified.jsonl) */
   grokLogsPath?: string;
   /** Override: Grok CLI sessions directory (~/.grok/sessions) */
   grokSessionsDir?: string;
-      /** Progress callback */
+  /** Progress callback */
   onProgress?: (event: SessionProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
   onCorruptLine?: OnCorruptLine;
@@ -101,7 +101,6 @@ export interface SessionSyncResult {
     opencode: number;
     openclaw: number;
     pi: number;
-
   };
   /** Total files/directories scanned per source */
   filesScanned: {
@@ -115,13 +114,11 @@ export interface SessionSyncResult {
     opencode: number;
     openclaw: number;
     pi: number;
-
   };
   /** Total SQLite databases scanned per source */
   dbsScanned: {
     antigravity: number;
     opencode: number;
-
   };
 }
 
@@ -150,28 +147,56 @@ export async function executeSessionSync(opts: SessionSyncOptions): Promise<Sess
   return withStateLock(opts.stateDir, () => sessionSyncLocked(opts));
 }
 
-async function sessionSyncLocked(
-  opts: SessionSyncOptions,
-): Promise<SessionSyncResult> {
+async function sessionSyncLocked(opts: SessionSyncOptions): Promise<SessionSyncResult> {
   const { stateDir, onProgress } = opts;
 
   const cursorStore = new SessionCursorStore(stateDir);
   const queue = new SessionQueue(stateDir, opts.onCorruptLine);
-  const cursors = Object.fromEntries(Object.entries(await cursorStore.load()).filter(([key]) => key !== "zcodeSqlite")) as SessionCursorState;
-  const activePaths = [opts.claudeDir, opts.codexSessionsDir, ...(opts.multicaCodexDirs ?? []),
-    opts.openCodeMessageDir, opts.openclawDir, opts.piSessionsDir, opts.copilotCliLogsDir, opts.grokLogsPath, opts.grokSessionsDir];
-  cursors.files = Object.fromEntries(Object.entries(cursors.files).filter(([path]) => !isRetiredCursorPath(path, activePaths)));
+  const cursors = Object.fromEntries(
+    Object.entries(await cursorStore.load()).filter(([key]) => key !== "zcodeSqlite"),
+  ) as SessionCursorState;
+  const activePaths = [
+    opts.claudeDir,
+    opts.codexSessionsDir,
+    ...(opts.multicaCodexDirs ?? []),
+    opts.openCodeMessageDir,
+    opts.openclawDir,
+    opts.piSessionsDir,
+    opts.copilotCliLogsDir,
+    opts.grokLogsPath,
+    opts.grokSessionsDir,
+  ];
+  cursors.files = Object.fromEntries(
+    Object.entries(cursors.files).filter(([path]) => !isRetiredCursorPath(path, activePaths)),
+  );
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { antigravity: 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0,   opencode: 0, openclaw: 0, pi: 0, };
-  const filesScanned = { antigravity: 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0,   opencode: 0, openclaw: 0, pi: 0, };
+  const sourceCounts = {
+    antigravity: 0,
+    claude: 0,
+    codex: 0,
+    copilotCli: 0,
+    grok: 0,
+    opencode: 0,
+    openclaw: 0,
+    pi: 0,
+  };
+  const filesScanned = {
+    antigravity: 0,
+    claude: 0,
+    codex: 0,
+    copilotCli: 0,
+    grok: 0,
+    opencode: 0,
+    openclaw: 0,
+    pi: 0,
+  };
   const dbsScanned = { antigravity: 0, opencode: 0 };
 
   if (opts.antigravityDirs?.length) {
     try {
       const tokenAgy = (await new CursorStore(stateDir).load()).antigravity;
-      const cache =
-        tokenAgy?.cacheVersion === ANTIGRAVITY_CACHE_VERSION ? tokenAgy.dbs : undefined;
+      const cache = tokenAgy?.cacheVersion === ANTIGRAVITY_CACHE_VERSION ? tokenAgy.dbs : undefined;
       const snapshot = await readAntigravitySource(opts.antigravityDirs, {
         cache,
         allowSkipUncachedUnstable: true,
@@ -185,8 +210,11 @@ async function sessionSyncLocked(
       dbsScanned.antigravity = snapshot.dbCount;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        onProgress?.({ source: "antigravity", phase: "warn",
-          message: "Antigravity source unavailable or invalid; previous sessions are preserved" });
+        onProgress?.({
+          source: "antigravity",
+          phase: "warn",
+          message: "Antigravity source unavailable or invalid; previous sessions are preserved",
+        });
       }
     }
   }
@@ -260,16 +288,14 @@ async function sessionSyncLocked(
       }
 
       // Full-scan parse
-      const snapshots = await driver.parse(filePath).catch(
-        (err: unknown) => {
-          onProgress?.({
-            source: driver.source,
-            phase: "warn",
-            message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-          });
-          return [] as SessionSnapshot[];
-        },
-      );
+      const snapshots = await driver.parse(filePath).catch((err: unknown) => {
+        onProgress?.({
+          source: driver.source,
+          phase: "warn",
+          message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
+        });
+        return [] as SessionSnapshot[];
+      });
 
       // Build and persist cursor (cast narrows the registry's
       // SessionFileCursor | unknown union back to SessionFileCursor)
@@ -335,9 +361,7 @@ async function sessionSyncLocked(
     if (!key) continue;
 
     const isOpenCode = driver.source === "opencode";
-    const displayName = isOpenCode
-      ? "OpenCode SQLite"
-        : `${driver.source} SQLite`;
+    const displayName = isOpenCode ? "OpenCode SQLite" : `${driver.source} SQLite`;
     const displayTag = "opencode-sqlite";
 
     onProgress?.({
@@ -352,7 +376,6 @@ async function sessionSyncLocked(
     let prevCursor: unknown;
     if (isOpenCode) {
       prevCursor = cursors.openCodeSqlite;
-
     }
 
     let result: Awaited<ReturnType<typeof driver.run>>;
@@ -378,7 +401,6 @@ async function sessionSyncLocked(
 
     if (isOpenCode) {
       cursors.openCodeSqlite = result.cursor as OpenCodeSqliteSessionCursor;
-
     }
 
     allSnapshots.push(...result.snapshots);
@@ -387,9 +409,10 @@ async function sessionSyncLocked(
     onProgress?.({
       source: displayTag,
       phase: "parse",
-      message: result.snapshots.length > 0
-        ? `Collected ${result.snapshots.length} sessions from ${result.rowCount} SQLite session rows`
-        : `No new ${displayName} sessions found`,
+      message:
+        result.snapshots.length > 0
+          ? `Collected ${result.snapshots.length} sessions from ${result.rowCount} SQLite session rows`
+          : `No new ${displayName} sessions found`,
     });
   }
 

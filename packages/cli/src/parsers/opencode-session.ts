@@ -16,9 +16,7 @@ import { coerceEpochMs } from "../utils/time.js";
  * Reads all .json files in the directory, counts roles, tracks timestamps
  * and model. Returns 0 or 1 SessionSnapshot.
  */
-export async function collectOpenCodeSessions(
-  sessionDir: string,
-): Promise<SessionSnapshot[]> {
+export async function collectOpenCodeSessions(sessionDir: string): Promise<SessionSnapshot[]> {
   let entries: import("node:fs").Dirent[];
   try {
     entries = await readdir(sessionDir, { withFileTypes: true });
@@ -108,10 +106,7 @@ export async function collectOpenCodeSessions(
 
   const startedAt = new Date(minEpochMs).toISOString();
   const lastMessageAt = new Date(maxEpochMs ?? minEpochMs).toISOString();
-  const durationSeconds = Math.max(
-    0,
-    Math.floor(((maxEpochMs ?? minEpochMs) - minEpochMs) / 1000),
-  );
+  const durationSeconds = Math.max(0, Math.floor(((maxEpochMs ?? minEpochMs) - minEpochMs) / 1000));
 
   // Derive session key: prefer sessionID from messages, fallback to directory name
   const dirName = basename(sessionDir);

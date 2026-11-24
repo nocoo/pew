@@ -25,13 +25,13 @@ would require char-based estimation. **This was wrong.**
 
 Verified against 5 real session files (4 workspace + 1 empty-window):
 
-| Category | Count | % |
-|----------|-------|---|
-| Total requests | 31 | 100% |
-| With exact token fields | 25 | 80.6% |
-| Has `result` but no token fields | 3 | 9.7% |
-| Empty `result` (`{}`) | 2 | 6.5% |
-| No `result` line at all | 1 | 3.2% |
+| Category                         | Count | %     |
+| -------------------------------- | ----- | ----- |
+| Total requests                   | 31    | 100%  |
+| With exact token fields          | 25    | 80.6% |
+| Has `result` but no token fields | 3     | 9.7%  |
+| Empty `result` (`{}`)            | 2     | 6.5%  |
+| No `result` line at all          | 1     | 3.2%  |
 
 ### Requests Without Tokens Are NOT Necessarily Non-Billable
 
@@ -41,12 +41,12 @@ minutes elapsed). These consumed real API quota — the server simply did not
 report token counts in the metadata. They correlate with `modelState` values
 2 and 3 (vs. value 1 for all 25 exact-token requests).
 
-| `modelState` | Meaning (inferred) | Token fields? | Count |
-|-------------|-------------------|---------------|-------|
-| `1` | Normal completion | Always present | 25 |
-| `2` | Abnormal completion | Missing | 3 (1 no-tokens + 2 empty) |
-| `3` | Abnormal completion (different?) | Missing | 2 |
-| (none) | In-progress / abandoned | No result line | 1 |
+| `modelState` | Meaning (inferred)               | Token fields?  | Count                     |
+| ------------ | -------------------------------- | -------------- | ------------------------- |
+| `1`          | Normal completion                | Always present | 25                        |
+| `2`          | Abnormal completion              | Missing        | 3 (1 no-tokens + 2 empty) |
+| `3`          | Abnormal completion (different?) | Missing        | 2                         |
+| (none)       | In-progress / abandoned          | No result line | 1                         |
 
 **Implementation decision**: skip these requests — do not emit records. The parser
 logs a debug warning with the request index and `modelState` so users can audit
@@ -78,11 +78,11 @@ cost is unknown.
 
 Both stable and Insiders builds use the same structure under different directories:
 
-| Platform | Stable | Insiders |
-|----------|--------|----------|
-| macOS | `~/Library/Application Support/Code/User/` | `~/Library/Application Support/Code - Insiders/User/` |
-| Linux | `~/.config/Code/User/` | `~/.config/Code - Insiders/User/` |
-| Windows | `%APPDATA%/Code/User/` | `%APPDATA%/Code - Insiders/User/` |
+| Platform | Stable                                     | Insiders                                              |
+| -------- | ------------------------------------------ | ----------------------------------------------------- |
+| macOS    | `~/Library/Application Support/Code/User/` | `~/Library/Application Support/Code - Insiders/User/` |
+| Linux    | `~/.config/Code/User/`                     | `~/.config/Code - Insiders/User/`                     |
+| Windows  | `%APPDATA%/Code/User/`                     | `%APPDATA%/Code - Insiders/User/`                     |
 
 ### File Discovery
 
@@ -99,11 +99,11 @@ Both stable and Insiders builds use the same structure under different directori
 Each `.jsonl` file is a **CRDT-style append-only operation log**, not a simple array
 of messages. Three operation kinds:
 
-| kind | Name | Description |
-|------|------|-------------|
-| `0` | **Snapshot** | Full session state. First line of file. May have empty `requests[]` |
-| `1` | **Set** | Overwrite value at a JSON path, e.g. `['requests', 0, 'result']` |
-| `2` | **Append** | Append to array at path, e.g. `['requests']` or `['requests', N, 'response']` |
+| kind | Name         | Description                                                                   |
+| ---- | ------------ | ----------------------------------------------------------------------------- |
+| `0`  | **Snapshot** | Full session state. First line of file. May have empty `requests[]`           |
+| `1`  | **Set**      | Overwrite value at a JSON path, e.g. `['requests', 0, 'result']`              |
+| `2`  | **Append**   | Append to array at path, e.g. `['requests']` or `['requests', N, 'response']` |
 
 ### Reconstructing Session State
 
@@ -179,10 +179,12 @@ or `kind=2` append to `['requests']`):
 {
   "kind": 2,
   "k": ["requests"],
-  "v": [{
-    "modelId": "copilot/claude-opus-4.6",   // strip "copilot/" prefix
-    "timestamp": 1772780377684               // Unix ms
-  }]
+  "v": [
+    {
+      "modelId": "copilot/claude-opus-4.6", // strip "copilot/" prefix
+      "timestamp": 1772780377684 // Unix ms
+    }
+  ]
 }
 ```
 
@@ -190,11 +192,11 @@ or `kind=2` append to `['requests']`):
 
 The ~19% of requests lacking `promptTokens`/`outputTokens` fall into three categories:
 
-| Category | Count | Has partial output? | Billable? |
-|----------|-------|-------------------|-----------|
-| Has `result` with metadata, no token fields | 3 | Yes (up to 70 response items) | Likely yes |
-| Empty `result` (`{}`) | 2 | Check response items | Unknown |
-| No `result` line at all | 1 | Possibly in-progress | Unknown |
+| Category                                    | Count | Has partial output?           | Billable?  |
+| ------------------------------------------- | ----- | ----------------------------- | ---------- |
+| Has `result` with metadata, no token fields | 3     | Yes (up to 70 response items) | Likely yes |
+| Empty `result` (`{}`)                       | 2     | Check response items          | Unknown    |
+| No `result` line at all                     | 1     | Possibly in-progress          | Unknown    |
 
 These are NOT uniformly "incomplete/non-billable" — several had extensive tool-call
 rounds and elapsed times >10 minutes.
@@ -211,11 +213,11 @@ requests whose actual token cost is unknown anyway.
 
 ### char/4 Estimation Accuracy (measured against real data)
 
-| Method | Median Error |
-|--------|-------------|
-| Input: `message.text` + `variableData` chars / 4 | ~95.9% (useless) |
-| Input: above + `renderedUserMessage` + `toolCallResults` chars / 4 | ~82.8% (bad) |
-| Output: `response[].value` chars / 4 | ~49.5% (unreliable) |
+| Method                                                             | Median Error        |
+| ------------------------------------------------------------------ | ------------------- |
+| Input: `message.text` + `variableData` chars / 4                   | ~95.9% (useless)    |
+| Input: above + `renderedUserMessage` + `toolCallResults` chars / 4 | ~82.8% (bad)        |
+| Output: `response[].value` chars / 4                               | ~49.5% (unreliable) |
 
 **Conclusion**: char/4 estimation should only be used as a last resort. The exact
 fields are available for the vast majority of requests.
@@ -226,44 +228,44 @@ fields are available for the vast majority of requests.
 
 ### Token Data (from `result.metadata`)
 
-| Field | Description | Availability |
-|-------|-------------|-------------|
+| Field          | Description                       | Availability                      |
+| -------------- | --------------------------------- | --------------------------------- |
 | `promptTokens` | Exact input tokens (full context) | ~81% of requests (`modelState=1`) |
-| `outputTokens` | Exact output tokens | ~81% of requests (`modelState=1`) |
+| `outputTokens` | Exact output tokens               | ~81% of requests (`modelState=1`) |
 
 ### Request Metadata
 
-| Field | Path | Example |
-|-------|------|---------|
-| Model ID | `request.modelId` | `"copilot/claude-opus-4.6"`, `"copilot/claude-opus-4.6-1m"` |
-| Timestamp | `request.timestamp` | `1772780377684` (Unix ms) |
-| Request ID | `request.requestId` | `"request_29c78eba-..."` |
-| Extension version | `request.agent.extensionVersion` | `"0.38.0"` |
-| Total elapsed (ms) | `result.timings.totalElapsed` | `356743` |
-| First token (ms) | `result.timings.firstProgress` | `6613` |
-| Premium multiplier | `result.details` | `"Claude Opus 4.6 • 3x"` |
-| Max input tokens | `inputState.selectedModel.metadata.maxInputTokens` | `127805` |
-| Max output tokens | `inputState.selectedModel.metadata.maxOutputTokens` | `64000` |
-| Multiplier numeric | `inputState.selectedModel.metadata.multiplierNumeric` | `3` |
+| Field              | Path                                                  | Example                                                     |
+| ------------------ | ----------------------------------------------------- | ----------------------------------------------------------- |
+| Model ID           | `request.modelId`                                     | `"copilot/claude-opus-4.6"`, `"copilot/claude-opus-4.6-1m"` |
+| Timestamp          | `request.timestamp`                                   | `1772780377684` (Unix ms)                                   |
+| Request ID         | `request.requestId`                                   | `"request_29c78eba-..."`                                    |
+| Extension version  | `request.agent.extensionVersion`                      | `"0.38.0"`                                                  |
+| Total elapsed (ms) | `result.timings.totalElapsed`                         | `356743`                                                    |
+| First token (ms)   | `result.timings.firstProgress`                        | `6613`                                                      |
+| Premium multiplier | `result.details`                                      | `"Claude Opus 4.6 • 3x"`                                    |
+| Max input tokens   | `inputState.selectedModel.metadata.maxInputTokens`    | `127805`                                                    |
+| Max output tokens  | `inputState.selectedModel.metadata.maxOutputTokens`   | `64000`                                                     |
+| Multiplier numeric | `inputState.selectedModel.metadata.multiplierNumeric` | `3`                                                         |
 
 ### Model ID Normalization
 
-| Raw `modelId` | Normalized Model | Notes |
-|---------------|-----------------|-------|
-| `copilot/claude-opus-4.6` | `claude-opus-4.6` | Strip `copilot/` prefix |
+| Raw `modelId`                | Normalized Model     | Notes                             |
+| ---------------------------- | -------------------- | --------------------------------- |
+| `copilot/claude-opus-4.6`    | `claude-opus-4.6`    | Strip `copilot/` prefix           |
 | `copilot/claude-opus-4.6-1m` | `claude-opus-4.6-1m` | 1M context variant, 6x multiplier |
 
 ---
 
 ## Comparison with Existing Sources
 
-| Source | Input Tokens | Output Tokens | Data Quality |
-|--------|-------------|---------------|--------------|
-| Claude Code | Exact | Exact | API-reported per message |
-| Gemini CLI | Exact | Exact | Cumulative in session JSON |
-| OpenCode | Exact | Exact | Per-message in JSON/SQLite |
-| OpenClaw | Exact | Exact | API-reported per message |
-| **VSCode Copilot** | **Exact** | **Exact** | **Server-reported, ~81% coverage; ~19% missing (abnormal completions)** |
+| Source             | Input Tokens | Output Tokens | Data Quality                                                            |
+| ------------------ | ------------ | ------------- | ----------------------------------------------------------------------- |
+| Claude Code        | Exact        | Exact         | API-reported per message                                                |
+| Gemini CLI         | Exact        | Exact         | Cumulative in session JSON                                              |
+| OpenCode           | Exact        | Exact         | Per-message in JSON/SQLite                                              |
+| OpenClaw           | Exact        | Exact         | API-reported per message                                                |
+| **VSCode Copilot** | **Exact**    | **Exact**     | **Server-reported, ~81% coverage; ~19% missing (abnormal completions)** |
 
 ---
 
@@ -272,7 +274,7 @@ fields are available for the vast majority of requests.
 ### Source Type
 
 ```typescript
-source: "vscode-copilot"  // new Source enum value
+source: "vscode-copilot"; // new Source enum value
 ```
 
 ### Implementation Scope
@@ -280,15 +282,15 @@ source: "vscode-copilot"  // new Source enum value
 This is NOT a parser-only change. Adding VSCode Copilot support touches multiple
 layers of the stack:
 
-| Layer | File(s) | Change |
-|-------|---------|--------|
-| **Core types** | `packages/core/src/types.ts` | Add `"vscode-copilot"` to `Source` union; add `VscodeCopilotCursor` to `FileCursor` union; extend `CursorState` if needed |
-| **Parser** | `packages/cli/src/parsers/vscode-copilot.ts` | New parser module (CRDT JSONL → `UsageRecord[]`) |
-| **CLI wiring** | `packages/cli/src/parsers/index.ts` | Register new parser in discovery/dispatch |
-| **Queue schema** | `packages/core/src/types.ts` (`QueueRecord`) | No change — requests without exact tokens are skipped, not emitted with flags |
-| **Worker ingest** | `packages/worker/` | D1 `INSERT` must accept `"vscode-copilot"` as a valid source value |
-| **Web dashboard** | `packages/web/` | Source filter UI, color/icon mapping, any `Source`-exhaustive switches |
-| **Notifier** | `packages/cli/src/` | File-watch setup for `workspaceStorage/*/chatSessions/` directories |
+| Layer             | File(s)                                      | Change                                                                                                                    |
+| ----------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Core types**    | `packages/core/src/types.ts`                 | Add `"vscode-copilot"` to `Source` union; add `VscodeCopilotCursor` to `FileCursor` union; extend `CursorState` if needed |
+| **Parser**        | `packages/cli/src/parsers/vscode-copilot.ts` | New parser module (CRDT JSONL → `UsageRecord[]`)                                                                          |
+| **CLI wiring**    | `packages/cli/src/parsers/index.ts`          | Register new parser in discovery/dispatch                                                                                 |
+| **Queue schema**  | `packages/core/src/types.ts` (`QueueRecord`) | No change — requests without exact tokens are skipped, not emitted with flags                                             |
+| **Worker ingest** | `packages/worker/`                           | D1 `INSERT` must accept `"vscode-copilot"` as a valid source value                                                        |
+| **Web dashboard** | `packages/web/`                              | Source filter UI, color/icon mapping, any `Source`-exhaustive switches                                                    |
+| **Notifier**      | `packages/cli/src/`                          | File-watch setup for `workspaceStorage/*/chatSessions/` directories                                                       |
 
 **Decision**: no `incomplete`/`estimated` flags in the storage layer. Requests
 without exact token fields are skipped by the parser (see Fallback Strategy above).
@@ -317,12 +319,16 @@ the saved offset. The cursor must therefore persist:
 
 ```typescript
 interface VscodeCopilotFileCursor {
-  offset: number;                                    // byte offset for next read
-  processedRequestIndices: number[];                 // indices already emitted (JSON-serializable)
-  requestMeta: Record<number, {                      // index → metadata mapping
-    modelId: string;
-    timestamp: number;
-  }>;
+  offset: number; // byte offset for next read
+  processedRequestIndices: number[]; // indices already emitted (JSON-serializable)
+  requestMeta: Record<
+    number,
+    {
+      // index → metadata mapping
+      modelId: string;
+      timestamp: number;
+    }
+  >;
 }
 ```
 
@@ -334,16 +340,16 @@ result lines, and joins against the persisted `requestMeta` to produce records.
 
 ### Token Mapping
 
-| VSCode Field | pew `TokenDelta` Field | Notes |
-|-------------|----------------------|-------|
-| `promptTokens` | `inputTokens` | Exact. No cache breakdown available |
-| `outputTokens` | `outputTokens` | Exact |
-| (none) | `cachedInputTokens` | Not available — set to 0 |
-| (none) | `reasoningOutputTokens` | Not available — set to 0 |
+| VSCode Field   | pew `TokenDelta` Field  | Notes                               |
+| -------------- | ----------------------- | ----------------------------------- |
+| `promptTokens` | `inputTokens`           | Exact. No cache breakdown available |
+| `outputTokens` | `outputTokens`          | Exact                               |
+| (none)         | `cachedInputTokens`     | Not available — set to 0            |
+| (none)         | `reasoningOutputTokens` | Not available — set to 0            |
 
 **Limitation**: VSCode Copilot does not break down input tokens into cached vs
 uncached. `cachedInputTokens` will always be 0. If `thinking` response items
-exist, we *could* estimate reasoning tokens from their text length, but the
+exist, we _could_ estimate reasoning tokens from their text length, but the
 exact count is not provided.
 
 ### Cursor Type
@@ -365,7 +371,7 @@ correlation across incremental reads.
    does not cause data loss. If a file is truncated below the cursor offset,
    the inode/size check will detect it and trigger a full re-read.
 4. **cachedInputTokens / reasoningOutputTokens**: Set to 0. VSCode does not
-    report these breakdowns. This means pew will **undercount** for VSCode
+   report these breakdowns. This means pew will **undercount** for VSCode
    Copilot compared to sources that do report cache/reasoning tokens — the
    numbers are a lower bound, never an overcount.
 
@@ -376,6 +382,7 @@ cumulative.** Each turn reports the total input tokens sent to the model for
 that API call, including the full conversation history up to that point.
 
 Verified across 2 multi-turn sessions (13 + 8 turns with exact tokens):
+
 - Values generally increase as conversation history grows
 - But non-monotonic drops occur (e.g. −48,096 tokens between turns) when
   context is trimmed or a new context window is started
@@ -467,24 +474,24 @@ copilot/claude-opus-4.6-1m    (multiplier: 6x, 1M context)
 
 All CLI-side integration is complete and tested:
 
-| Layer | File(s) | Status |
-|-------|---------|--------|
-| Core types | `packages/core/src/types.ts` | `"vscode-copilot"` in `Source` union, `VscodeCopilotCursor` in `FileCursor` union |
-| Parser | `packages/cli/src/parsers/vscode-copilot.ts` | CRDT JSONL parser (19 tests) |
-| Discovery | `packages/cli/src/discovery/sources.ts` | `discoverVscodeCopilotFiles()` multi-dir scanning (8 tests) |
-| Paths | `packages/cli/src/utils/paths.ts` | `resolveVscodeCopilotDirs()` platform-aware resolution |
-| Token driver | `packages/cli/src/drivers/token/vscode-copilot-token-driver.ts` | `FileTokenDriver<VscodeCopilotCursor>` implementation (9 tests) |
-| Registry | `packages/cli/src/drivers/registry.ts` | Registered with array-length guard |
-| Sync orchestrator | `packages/cli/src/commands/sync.ts` | `vscodeCopilotDirs` option, source counts, filesScanned |
-| Session sync | `packages/cli/src/commands/session-sync.ts` | Counts initialized (no session driver yet) |
-| CLI | `packages/cli/src/cli.ts` | `isSource()`, `executeSync`/`executeNotify`/`executeStatus` wiring, output lines |
-| Notify | `packages/cli/src/commands/notify.ts` | Pass-through of `vscodeCopilotDirs` |
-| Status | `packages/cli/src/commands/status.ts` | `classifySource()` for multi-dir array |
+| Layer             | File(s)                                                         | Status                                                                            |
+| ----------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Core types        | `packages/core/src/types.ts`                                    | `"vscode-copilot"` in `Source` union, `VscodeCopilotCursor` in `FileCursor` union |
+| Parser            | `packages/cli/src/parsers/vscode-copilot.ts`                    | CRDT JSONL parser (19 tests)                                                      |
+| Discovery         | `packages/cli/src/discovery/sources.ts`                         | `discoverVscodeCopilotFiles()` multi-dir scanning (8 tests)                       |
+| Paths             | `packages/cli/src/utils/paths.ts`                               | `resolveVscodeCopilotDirs()` platform-aware resolution                            |
+| Token driver      | `packages/cli/src/drivers/token/vscode-copilot-token-driver.ts` | `FileTokenDriver<VscodeCopilotCursor>` implementation (9 tests)                   |
+| Registry          | `packages/cli/src/drivers/registry.ts`                          | Registered with array-length guard                                                |
+| Sync orchestrator | `packages/cli/src/commands/sync.ts`                             | `vscodeCopilotDirs` option, source counts, filesScanned                           |
+| Session sync      | `packages/cli/src/commands/session-sync.ts`                     | Counts initialized (no session driver yet)                                        |
+| CLI               | `packages/cli/src/cli.ts`                                       | `isSource()`, `executeSync`/`executeNotify`/`executeStatus` wiring, output lines  |
+| Notify            | `packages/cli/src/commands/notify.ts`                           | Pass-through of `vscodeCopilotDirs`                                               |
+| Status            | `packages/cli/src/commands/status.ts`                           | `classifySource()` for multi-dir array                                            |
 
 ### Not Yet Implemented
 
-| Layer | Notes |
-|-------|-------|
-| Worker ingest | D1 TEXT column accepts any source string — no change needed |
-| Web dashboard | Filter/color/icon for `"vscode-copilot"` — separate PR |
-| Session driver | No session tracking for VSCode Copilot (no hook mechanism) |
+| Layer          | Notes                                                       |
+| -------------- | ----------------------------------------------------------- |
+| Worker ingest  | D1 TEXT column accepts any source string — no change needed |
+| Web dashboard  | Filter/color/icon for `"vscode-copilot"` — separate PR      |
+| Session driver | No session tracking for VSCode Copilot (no hook mechanism)  |

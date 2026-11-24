@@ -24,9 +24,7 @@ export interface SignalFsOps {
  *  5. any error               → "error"
  *  6. otherwise               → "success"
  */
-export function deriveStatus(
-  result: CoordinatorRunResult,
-): RunLogEntry["status"] {
+export function deriveStatus(result: CoordinatorRunResult): RunLogEntry["status"] {
   if (result.skippedSync) return "skipped";
 
   // Coordinator-level error with no cycles means the run itself failed
@@ -34,13 +32,10 @@ export function deriveStatus(
   if (result.cycles.length === 0) return "skipped";
 
   const hasError =
-    result.cycles.some(
-      (c) => c.tokenSyncError != null || c.sessionSyncError != null,
-    ) || result.error != null;
+    result.cycles.some((c) => c.tokenSyncError != null || c.sessionSyncError != null) ||
+    result.error != null;
 
-  const hasSuccess = result.cycles.some(
-    (c) => c.tokenSync != null || c.sessionSync != null,
-  );
+  const hasSuccess = result.cycles.some((c) => c.tokenSync != null || c.sessionSync != null);
 
   if (hasError && hasSuccess) return "partial";
   if (hasError) return "error";

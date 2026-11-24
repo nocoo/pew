@@ -1,11 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -34,13 +28,7 @@ function writeHelpersPackage(
   version: string,
   files: Record<string, string>,
 ): string {
-  const helpers = join(
-    bunDir,
-    `@swc+helpers@${version}`,
-    "node_modules",
-    "@swc",
-    "helpers",
-  );
+  const helpers = join(bunDir, `@swc+helpers@${version}`, "node_modules", "@swc", "helpers");
   mkdirSync(helpers, { recursive: true });
   for (const [rel, body] of Object.entries(files)) {
     const full = join(helpers, rel);
@@ -76,13 +64,9 @@ describe("fix-standalone-swc-helpers", () => {
       "cjs/_interop_require_default.cjs": "module.exports = x => x;",
     });
 
-    expect(existsSync(join(dest, "esm", "_interop_require_default.js"))).toBe(
-      false,
-    );
+    expect(existsSync(join(dest, "esm", "_interop_require_default.js"))).toBe(false);
     copyFullSwcHelpers(src, dest);
-    expect(existsSync(join(dest, "esm", "_interop_require_default.js"))).toBe(
-      true,
-    );
+    expect(existsSync(join(dest, "esm", "_interop_require_default.js"))).toBe(true);
   });
 
   it("patches monorepo-shaped standalone tree", () => {
@@ -104,9 +88,7 @@ describe("fix-standalone-swc-helpers", () => {
     const result = fixStandaloneSwcHelpers({ rootDir: root, required: true });
     expect(result.skipped).toBe(false);
     expect(result.fixed).toHaveLength(1);
-    expect(
-      existsSync(join(result.fixed[0]!, "esm", "_interop_require_default.js")),
-    ).toBe(true);
+    expect(existsSync(join(result.fixed[0]!, "esm", "_interop_require_default.js"))).toBe(true);
   });
 
   it("soft-skips when standalone is absent", () => {

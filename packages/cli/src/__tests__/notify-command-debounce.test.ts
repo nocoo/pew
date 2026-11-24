@@ -106,10 +106,7 @@ describe("executeNotify — admission-dir cleanup runs before sync", () => {
       const boundaryBucket = currentBucket - 1;
       const currBucket = currentBucket;
       await writeFile(join(admissionDir, `sync-${oldBucket}.lock`), "");
-      await writeFile(
-        join(admissionDir, `forward-codex-${oldBucket}.lock`),
-        "",
-      );
+      await writeFile(join(admissionDir, `forward-codex-${oldBucket}.lock`), "");
       await writeFile(join(admissionDir, `sync-${boundaryBucket}.lock`), "");
       await writeFile(join(admissionDir, `sync-${currBucket}.lock`), "");
 
@@ -150,10 +147,7 @@ describe("executeNotify — admission-dir cleanup runs before sync", () => {
       const remaining = await readdir(admissionDir);
       // Buckets ≥ currentBucket - 1 stay, older removed.
       expect(remaining.sort()).toEqual(
-        [
-          `sync-${boundaryBucket}.lock`,
-          `sync-${currBucket}.lock`,
-        ].sort(),
+        [`sync-${boundaryBucket}.lock`, `sync-${currBucket}.lock`].sort(),
       );
     } finally {
       await rm(stateDir, { recursive: true, force: true });

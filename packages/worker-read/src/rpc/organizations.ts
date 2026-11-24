@@ -120,16 +120,14 @@ async function handleListOrganizations(db: D1Database): Promise<Response> {
     .prepare(
       `SELECT id, name, slug, logo_url, created_by, created_at, updated_at
        FROM organizations
-       ORDER BY name ASC`
+       ORDER BY name ASC`,
     )
     .all<OrgRow>();
 
   return Response.json({ result: results.results });
 }
 
-async function handleListOrganizationsWithCount(
-  db: D1Database
-): Promise<Response> {
+async function handleListOrganizationsWithCount(db: D1Database): Promise<Response> {
   const results = await db
     .prepare(
       `SELECT
@@ -138,7 +136,7 @@ async function handleListOrganizationsWithCount(
        FROM organizations o
        LEFT JOIN organization_members om ON om.org_id = o.id
        GROUP BY o.id
-       ORDER BY o.name ASC`
+       ORDER BY o.name ASC`,
     )
     .all<OrgWithCountRow>();
 
@@ -147,7 +145,7 @@ async function handleListOrganizationsWithCount(
 
 async function handleListUserOrganizations(
   req: ListUserOrganizationsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
@@ -159,7 +157,7 @@ async function handleListUserOrganizations(
        FROM organizations o
        JOIN organization_members om ON om.org_id = o.id
        WHERE om.user_id = ?
-       ORDER BY o.name ASC`
+       ORDER BY o.name ASC`,
     )
     .bind(req.userId)
     .all<OrgRow>();
@@ -169,7 +167,7 @@ async function handleListUserOrganizations(
 
 async function handleGetOrganizationById(
   req: GetOrganizationByIdRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.orgId) {
     return Response.json({ error: "orgId is required" }, { status: 400 });
@@ -177,7 +175,7 @@ async function handleGetOrganizationById(
 
   const result = await db
     .prepare(
-      `SELECT id, name, slug, logo_url, created_by, created_at, updated_at FROM organizations WHERE id = ?`
+      `SELECT id, name, slug, logo_url, created_by, created_at, updated_at FROM organizations WHERE id = ?`,
     )
     .bind(req.orgId)
     .first<OrgRow>();
@@ -187,7 +185,7 @@ async function handleGetOrganizationById(
 
 async function handleGetOrganizationBySlug(
   req: GetOrganizationBySlugRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.slug) {
     return Response.json({ error: "slug is required" }, { status: 400 });
@@ -195,7 +193,7 @@ async function handleGetOrganizationBySlug(
 
   const result = await db
     .prepare(
-      `SELECT id, name, slug, logo_url, created_by, created_at, updated_at FROM organizations WHERE slug = ?`
+      `SELECT id, name, slug, logo_url, created_by, created_at, updated_at FROM organizations WHERE slug = ?`,
     )
     .bind(req.slug)
     .first<OrgRow>();
@@ -205,19 +203,16 @@ async function handleGetOrganizationBySlug(
 
 async function handleCheckOrgMembership(
   req: CheckOrgMembershipRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.orgId || !req.userId) {
-    return Response.json(
-      { error: "orgId and userId are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "orgId and userId are required" }, { status: 400 });
   }
 
   const result = await db
     .prepare(
       `SELECT id FROM organization_members
-       WHERE org_id = ? AND user_id = ?`
+       WHERE org_id = ? AND user_id = ?`,
     )
     .bind(req.orgId, req.userId)
     .first<{ id: string }>();
@@ -225,10 +220,7 @@ async function handleCheckOrgMembership(
   return Response.json({ result: { exists: result !== null } });
 }
 
-async function handleListOrgMembers(
-  req: ListOrgMembersRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleListOrgMembers(req: ListOrgMembersRequest, db: D1Database): Promise<Response> {
   if (!req.orgId) {
     return Response.json({ error: "orgId is required" }, { status: 400 });
   }
@@ -239,7 +231,7 @@ async function handleListOrgMembers(
        FROM organization_members om
        JOIN users u ON u.id = om.user_id
        WHERE om.org_id = ?
-       ORDER BY om.joined_at DESC`
+       ORDER BY om.joined_at DESC`,
     )
     .bind(req.orgId)
     .all<OrgMemberRow>();
@@ -249,7 +241,7 @@ async function handleListOrgMembers(
 
 async function handleListOrgMembersAdmin(
   req: ListOrgMembersAdminRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.orgId) {
     return Response.json({ error: "orgId is required" }, { status: 400 });
@@ -261,7 +253,7 @@ async function handleListOrgMembersAdmin(
        FROM organization_members om
        JOIN users u ON u.id = om.user_id
        WHERE om.org_id = ?
-       ORDER BY om.joined_at DESC`
+       ORDER BY om.joined_at DESC`,
     )
     .bind(req.orgId)
     .all<OrgMemberAdminRow>();
@@ -271,7 +263,7 @@ async function handleListOrgMembersAdmin(
 
 async function handleCountOrgMembers(
   req: CountOrgMembersRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.orgId) {
     return Response.json({ error: "orgId is required" }, { status: 400 });
@@ -291,7 +283,7 @@ async function handleCountOrgMembers(
 
 export async function handleOrganizationsRpc(
   request: OrganizationsRpcRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   switch (request.method) {
     case "organizations.list":
@@ -317,7 +309,7 @@ export async function handleOrganizationsRpc(
         {
           error: `Unknown organizations method: ${(request as { method: string }).method}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

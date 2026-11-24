@@ -68,10 +68,7 @@ function toLocalDateString(d: Date): string {
  * front-end aggregation helpers already convert each record to a local
  * date before bucketing.
  */
-export function periodToDateRange(
-  period: Period,
-  tzOffset = 0,
-): { from: string; to?: string } {
+export function periodToDateRange(period: Period, tzOffset = 0): { from: string; to?: string } {
   const now = new Date();
 
   switch (period) {
@@ -123,9 +120,12 @@ export function periodToUtcRange(period: Period, today: string, tzOffset: number
 /** Human-readable label for a period. */
 export function periodLabel(period: Period): string {
   switch (period) {
-    case "6m": return "Last 6 Months";
-    case "3m": return "Last 3 Months";
-    case "1m": return "Last 1 Month";
+    case "6m":
+      return "Last 6 Months";
+    case "3m":
+      return "Last 3 Months";
+    case "1m":
+      return "Last 1 Month";
     case "all":
       return "All time";
     case "month":
@@ -177,7 +177,6 @@ export function formatMonth(year: number, month: number): string {
 // ---------------------------------------------------------------------------
 // detectPeakHours
 // ---------------------------------------------------------------------------
-
 
 // ---------------------------------------------------------------------------
 // Peak-hour detection (re-exported from date-helpers-peaks.ts)
@@ -375,10 +374,7 @@ export function fmtHour(hour: number): string {
  * Used by the Peak Hours card to render a familiar 24-bar histogram view
  * that lines up visually with the Working Hours heatmap above it.
  */
-export function aggregateHourlyTokens(
-  rows: UsageRow[],
-  tzOffset = 0,
-): number[] {
+export function aggregateHourlyTokens(rows: UsageRow[], tzOffset = 0): number[] {
   const buckets = new Array<number>(24).fill(0);
   for (const r of rows) {
     const utcMs = new Date(r.hour_start).getTime();

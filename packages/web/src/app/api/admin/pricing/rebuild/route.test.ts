@@ -36,7 +36,10 @@ const PARTIAL_OUTCOME: SyncOutcomeDto = {
   entriesWritten: 9,
   warnings: [],
   errors: [{ source: "openrouter", message: "HTTP 503" }],
-  meta: { ...META, lastErrors: [{ source: "openrouter", at: META.lastSyncedAt, message: "HTTP 503" }] },
+  meta: {
+    ...META,
+    lastErrors: [{ source: "openrouter", at: META.lastSyncedAt, message: "HTTP 503" }],
+  },
 };
 
 describe("POST /api/admin/pricing/rebuild", () => {

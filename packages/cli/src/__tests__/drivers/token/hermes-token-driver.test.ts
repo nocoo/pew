@@ -58,7 +58,9 @@ describe("hermesSqliteTokenDriver", () => {
     });
 
     const prevCursor: HermesSqliteCursor = {
-      sessionTotals: { "old-session": { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, reasoning: 0 } },
+      sessionTotals: {
+        "old-session": { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, reasoning: 0 },
+      },
       inode: 42,
       updatedAt: "2026-01-01T00:00:00Z",
     };
@@ -96,7 +98,9 @@ describe("hermesSqliteTokenDriver", () => {
     });
 
     const prevCursor: HermesSqliteCursor = {
-      sessionTotals: { "old-session": { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, reasoning: 0 } },
+      sessionTotals: {
+        "old-session": { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, reasoning: 0 },
+      },
       inode: 42,
       updatedAt: "2026-01-01T00:00:00Z",
     };
@@ -143,7 +147,9 @@ describe("hermesSqliteTokenDriver", () => {
       dbKey: "default",
       openHermesDb: () => ({
         querySessions: mockSessions(sessions),
-        close: () => { closeCalled = true; },
+        close: () => {
+          closeCalled = true;
+        },
       }),
     });
 

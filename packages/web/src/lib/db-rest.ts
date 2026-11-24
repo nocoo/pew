@@ -12,9 +12,7 @@ import type { DbWrite } from "./db";
 export function createRestDbWrite(): DbWrite {
   const client = getD1Client();
   return {
-    execute: async (sql: string, params?: unknown[]) =>
-      client.execute(sql, params ?? []),
-    batch: (stmts: Array<{ sql: string; params?: unknown[] }>) =>
-      client.batch(stmts),
+    execute: async (sql: string, params?: unknown[]) => client.execute(sql, params ?? []),
+    batch: (stmts: Array<{ sql: string; params?: unknown[] }>) => client.batch(stmts),
   };
 }

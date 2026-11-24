@@ -70,9 +70,7 @@ describe("GET /api/live", () => {
     expect(body.component).toBe("dashboard");
     expect(typeof body.uptime).toBe("number");
     expect(typeof body.timestamp).toBe("string");
-    expect(body.database).toEqual(
-      expect.objectContaining({ connected: true })
-    );
+    expect(body.database).toEqual(expect.objectContaining({ connected: true }));
   });
 
   it("should include correct response headers", async () => {
@@ -120,9 +118,7 @@ describe("GET /api/live", () => {
 
   it("should not contain 'ok' anywhere in error response body", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.ping.mockRejectedValue(
-      new Error("token is not ok for this account")
-    );
+    mockDbRead.ping.mockRejectedValue(new Error("token is not ok for this account"));
     getDbRead.mockResolvedValue(mockDbRead);
 
     const res = await GET(makeGetRequest());

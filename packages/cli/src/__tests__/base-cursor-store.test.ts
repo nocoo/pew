@@ -23,19 +23,13 @@ describe("BaseCursorStore", () => {
   });
 
   it("should return empty state when file does not exist", async () => {
-    const store = new BaseCursorStore<TestState>(
-      join(tempDir, "test.json"),
-      emptyState,
-    );
+    const store = new BaseCursorStore<TestState>(join(tempDir, "test.json"), emptyState);
     const state = await store.load();
     expect(state).toEqual({ version: 1, data: "" });
   });
 
   it("should save and load state", async () => {
-    const store = new BaseCursorStore<TestState>(
-      join(tempDir, "test.json"),
-      emptyState,
-    );
+    const store = new BaseCursorStore<TestState>(join(tempDir, "test.json"), emptyState);
     await store.save({ version: 1, data: "hello" });
     const loaded = await store.load();
     expect(loaded).toEqual({ version: 1, data: "hello" });

@@ -151,12 +151,7 @@ describe("collectClaudeSessions", () => {
 
   it("should handle malformed JSON lines gracefully", async () => {
     const f = join(tmpDir, "bad.jsonl");
-    const lines = [
-      "not json",
-      "{broken",
-      userLine(),
-      line(),
-    ];
+    const lines = ["not json", "{broken", userLine(), line()];
     await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);

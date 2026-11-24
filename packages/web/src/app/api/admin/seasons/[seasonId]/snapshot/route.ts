@@ -48,7 +48,7 @@ function uuid(): string {
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ seasonId: string }> }
+  { params }: { params: Promise<{ seasonId: string }> },
 ) {
   const admin = await resolveAdmin(request);
   if (!admin) {
@@ -64,10 +64,7 @@ export async function POST(
     const season = await dbRead.getSeasonById(seasonId);
 
     if (!season) {
-      return NextResponse.json(
-        { error: "Season not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Season not found" }, { status: 404 });
     }
 
     // 2. Validate status is ended
@@ -75,7 +72,7 @@ export async function POST(
     if (status !== "ended") {
       return NextResponse.json(
         { error: "Snapshot can only be created for ended seasons" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,27 +80,41 @@ export async function POST(
     const toDate = endDateExclusive(season.end_date);
 
     const teamIds = await dbRead.getRegisteredTeamIds(seasonId);
-    const memberRows: MemberAggRow[] = teamIds.length > 0
-      ? await dbRead.aggregateSeasonMemberTokens(seasonId, fromDate, toDate, teamIds)
-      : [];
-    const totals = new Map(teamIds.map((team_id) => [team_id, {
-      team_id, total_tokens: 0, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0,
-    }]));
+    const memberRows: MemberAggRow[] =
+      teamIds.length > 0
+        ? await dbRead.aggregateSeasonMemberTokens(seasonId, fromDate, toDate, teamIds)
+        : [];
+    const totals = new Map(
+      teamIds.map((team_id) => [
+        team_id,
+        {
+          team_id,
+          total_tokens: 0,
+          input_tokens: 0,
+          output_tokens: 0,
+          cached_input_tokens: 0,
+        },
+      ]),
+    );
     for (const member of memberRows) {
       const team = totals.get(member.team_id);
       if (!team) throw new Error("Unexpected snapshot team");
-      for (const field of ["total_tokens", "input_tokens", "output_tokens", "cached_input_tokens"] as const) {
+      for (const field of [
+        "total_tokens",
+        "input_tokens",
+        "output_tokens",
+        "cached_input_tokens",
+      ] as const) {
         team[field] = sumCounts(team[field], member[field]);
       }
     }
-    const teamRows = [...totals.values()].sort((a, b) => b.total_tokens - a.total_tokens || a.team_id.localeCompare(b.team_id));
+    const teamRows = [...totals.values()].sort(
+      (a, b) => b.total_tokens - a.total_tokens || a.team_id.localeCompare(b.team_id),
+    );
 
     // 5. Mark snapshot as not-ready before writing data.
     //    Readers (leaderboard route) will serve live data while snapshot_ready=0.
-    await dbWrite.execute(
-      "UPDATE seasons SET snapshot_ready = ? WHERE id = ?",
-      [0, seasonId]
-    );
+    await dbWrite.execute("UPDATE seasons SET snapshot_ready = ? WHERE id = ?", [0, seasonId]);
 
     // 6a. Upsert team snapshots via INSERT OR REPLACE.
     const now = new Date().toISOString();
@@ -208,10 +219,7 @@ export async function POST(
 
     // 8. All writes succeeded — mark snapshot as ready.
     //    Readers will now serve frozen snapshot data instead of live data.
-    await dbWrite.execute(
-      "UPDATE seasons SET snapshot_ready = ? WHERE id = ?",
-      [1, seasonId]
-    );
+    await dbWrite.execute("UPDATE seasons SET snapshot_ready = ? WHERE id = ?", [1, seasonId]);
 
     return NextResponse.json(
       {
@@ -220,20 +228,14 @@ export async function POST(
         member_count: memberRows.length,
         created_at: now,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Season tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Season tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to create season snapshot:", err);
-    return NextResponse.json(
-      { error: "Failed to create season snapshot" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create season snapshot" }, { status: 500 });
   }
 }

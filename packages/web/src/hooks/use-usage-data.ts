@@ -12,8 +12,21 @@ import { useTzOffset } from "@/hooks/use-tz-offset";
 // Re-export types and helpers for backward compatibility
 // ---------------------------------------------------------------------------
 
-export type { UsageRow, UsageSummary, DailyPoint, SourceAggregate, HeatmapPoint, ModelAggregate } from "@/lib/usage-transforms";
-export { toDailyPoints, toSourceAggregates, toHeatmapData, toModelAggregates, sourceLabel } from "@/lib/usage-transforms";
+export type {
+  UsageRow,
+  UsageSummary,
+  DailyPoint,
+  SourceAggregate,
+  HeatmapPoint,
+  ModelAggregate,
+} from "@/lib/usage-transforms";
+export {
+  toDailyPoints,
+  toSourceAggregates,
+  toHeatmapData,
+  toModelAggregates,
+  sourceLabel,
+} from "@/lib/usage-transforms";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,10 +68,16 @@ interface UseUsageDataResult {
   refetch: () => void;
 }
 
-export function useUsageData(
-  options: UseUsageDataOptions = {}
-): UseUsageDataResult {
-  const { days = 30, from: fromDate, to: toDate, source, deviceId, granularity = "day", enabled = true } = options;
+export function useUsageData(options: UseUsageDataOptions = {}): UseUsageDataResult {
+  const {
+    days = 30,
+    from: fromDate,
+    to: toDate,
+    source,
+    deviceId,
+    granularity = "day",
+    enabled = true,
+  } = options;
 
   // Frozen per mount — acceptable; page refresh handles DST changes
   const tzOffset = useTzOffset();

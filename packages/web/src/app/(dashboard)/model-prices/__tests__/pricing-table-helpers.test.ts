@@ -162,10 +162,7 @@ describe("pricing-table-helpers", () => {
     });
 
     it("does not mutate input", () => {
-      const data = [
-        entry({ model: "z" }),
-        entry({ model: "a" }),
-      ];
+      const data = [entry({ model: "z" }), entry({ model: "a" })];
       const before = data.map((e) => e.model).join(",");
       sortEntries(data, "model");
       expect(data.map((e) => e.model).join(",")).toBe(before);
@@ -288,28 +285,58 @@ describe("pricing-table-helpers", () => {
 
   describe("providerIconPath", () => {
     it("returns icon path for known providers (case-insensitive)", () => {
-      expect(providerIconPath("Anthropic")).toEqual({ src: "/icons/providers/anthropic.svg", invert: true });
-      expect(providerIconPath("OpenAI")).toEqual({ src: "/icons/providers/openai.svg", invert: true });
-      expect(providerIconPath("DeepSeek")).toEqual({ src: "/icons/providers/deepseek.svg", invert: false });
+      expect(providerIconPath("Anthropic")).toEqual({
+        src: "/icons/providers/anthropic.svg",
+        invert: true,
+      });
+      expect(providerIconPath("OpenAI")).toEqual({
+        src: "/icons/providers/openai.svg",
+        invert: true,
+      });
+      expect(providerIconPath("DeepSeek")).toEqual({
+        src: "/icons/providers/deepseek.svg",
+        invert: false,
+      });
     });
 
     it("maps Google to gemini icon", () => {
-      expect(providerIconPath("Google")).toEqual({ src: "/icons/providers/gemini.svg", invert: false });
+      expect(providerIconPath("Google")).toEqual({
+        src: "/icons/providers/gemini.svg",
+        invert: false,
+      });
     });
 
     it("resolves aliases to canonical icon", () => {
-      expect(providerIconPath("Meta-llama")).toEqual({ src: "/icons/providers/meta.svg", invert: false });
-      expect(providerIconPath("MistralAI")).toEqual({ src: "/icons/providers/mistral.svg", invert: false });
-      expect(providerIconPath("Z.ai")).toEqual({ src: "/icons/providers/zhipu.svg", invert: false });
-      expect(providerIconPath("GitHub Copilot")).toEqual({ src: "/icons/providers/github.svg", invert: true });
+      expect(providerIconPath("Meta-llama")).toEqual({
+        src: "/icons/providers/meta.svg",
+        invert: false,
+      });
+      expect(providerIconPath("MistralAI")).toEqual({
+        src: "/icons/providers/mistral.svg",
+        invert: false,
+      });
+      expect(providerIconPath("Z.ai")).toEqual({
+        src: "/icons/providers/zhipu.svg",
+        invert: false,
+      });
+      expect(providerIconPath("GitHub Copilot")).toEqual({
+        src: "/icons/providers/github.svg",
+        invert: true,
+      });
     });
 
     it("returns openrouter icon for OpenRouter provider", () => {
-      expect(providerIconPath("OpenRouter")).toEqual({ src: "/icons/providers/openrouter.svg", invert: false });
+      expect(providerIconPath("OpenRouter")).toEqual({
+        src: "/icons/providers/openrouter.svg",
+        invert: false,
+      });
     });
 
     it("moonshot icon uses dark:invert", () => {
-      expect(providerIconPath("Moonshot")).toEqual({ src: "/icons/providers/moonshot.svg", invert: true });
+      expect(providerIconPath("Moonshot")).toEqual({
+        src: "/icons/providers/moonshot.svg",
+        invert: true,
+      });
     });
 
     it("returns null for unknown providers", () => {
@@ -322,10 +349,7 @@ describe("pricing-table-helpers", () => {
   });
 
   describe("compareString null tie-break branches via sortEntries", () => {
-    function rawEntry(
-      model: string,
-      provider: string | null,
-    ): DynamicPricingEntryDto {
+    function rawEntry(model: string, provider: string | null): DynamicPricingEntryDto {
       return {
         model,
         provider,
@@ -351,10 +375,7 @@ describe("pricing-table-helpers", () => {
     });
 
     it("compareString returns -1 when second provider is null", () => {
-      const data = [
-        rawEntry("same-model", "AnyProvider"),
-        rawEntry("same-model", null),
-      ];
+      const data = [rawEntry("same-model", "AnyProvider"), rawEntry("same-model", null)];
       const sorted = sortEntries(data, "model", "asc");
       // Non-null still comes first; null sorted to end via the -1 branch.
       expect(sorted.map((e) => e.provider)).toEqual(["AnyProvider", null]);
@@ -362,10 +383,7 @@ describe("pricing-table-helpers", () => {
 
     it("compareString returns 0 when both providers are null (falls through to model)", () => {
       // Same model, both providers null → compareString returns 0 → model tertiary sort.
-      const data = [
-        rawEntry("zzz-model", null),
-        rawEntry("aaa-model", null),
-      ];
+      const data = [rawEntry("zzz-model", null), rawEntry("aaa-model", null)];
       // Sort by displayName (both null) → primary 0 → fall to provider compareString (both null → 0) → model.
       const sorted = sortEntries(data, "displayName", "asc");
       expect(sorted.map((e) => e.model)).toEqual(["aaa-model", "zzz-model"]);
@@ -374,7 +392,10 @@ describe("pricing-table-helpers", () => {
 
   describe("OPENROUTER_FALLBACK_ICON", () => {
     it("provides openrouter icon as fallback constant", () => {
-      expect(OPENROUTER_FALLBACK_ICON).toEqual({ src: "/icons/providers/openrouter.svg", invert: false });
+      expect(OPENROUTER_FALLBACK_ICON).toEqual({
+        src: "/icons/providers/openrouter.svg",
+        invert: false,
+      });
     });
   });
 });

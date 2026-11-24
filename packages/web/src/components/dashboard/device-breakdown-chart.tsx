@@ -1,24 +1,13 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
 import { deviceLabel } from "@/lib/device-helpers";
 import type { DeviceAggregate } from "@pew/core";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // Safe color references
 const colorOutput = CHART_COLORS[1] as string;
@@ -63,7 +52,12 @@ function DeviceBreakdownTooltip({
 
   const deviceData = payload[0]?.payload;
   const total = deviceData?.total_tokens ?? 0;
-  const orderedKeys = ["input_tokens", "output_tokens", "cached_input_tokens", "reasoning_output_tokens"] as const;
+  const orderedKeys = [
+    "input_tokens",
+    "output_tokens",
+    "cached_input_tokens",
+    "reasoning_output_tokens",
+  ] as const;
 
   return (
     <ChartTooltip title={label}>
@@ -92,16 +86,13 @@ function DeviceBreakdownTooltip({
  * Horizontal stacked bar chart showing token breakdown by device.
  * Stacked segments: input / output / cached. Sorted by total tokens descending.
  */
-export function DeviceBreakdownChart({
-  devices,
-  className,
-}: DeviceBreakdownChartProps) {
+export function DeviceBreakdownChart({ devices, className }: DeviceBreakdownChartProps) {
   if (!devices.length) {
     return (
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No device data yet
@@ -124,13 +115,11 @@ export function DeviceBreakdownChart({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs md:text-sm text-basalt-muted-foreground">
-          Token Breakdown by Device
-        </p>
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">Token Breakdown by Device</p>
         <div className="flex items-center gap-4">
           {[
             { key: "input", label: "Input", color: chart.violet },
@@ -139,10 +128,7 @@ export function DeviceBreakdownChart({
             { key: "reasoning", label: "Reasoning", color: colorReasoning },
           ].map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ background: color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ background: color }} />
               <span className="text-xs text-basalt-muted-foreground">{label}</span>
             </div>
           ))}

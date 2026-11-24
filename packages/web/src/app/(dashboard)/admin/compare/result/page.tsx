@@ -29,14 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@nocoo/basalt/components/tooltip";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip as RechartsTooltip,
-  CartesianGrid,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 import { CHART_COLORS, chartAxis } from "@/lib/palette";
 import { DashboardResponsiveContainer } from "@/components/dashboard/dashboard-responsive-container";
 import {
@@ -44,10 +37,7 @@ import {
   ChartTooltipRow,
   ChartTooltipSummary,
 } from "@/components/dashboard/chart-tooltip";
-import type {
-  CompareUser,
-  CompareResponse,
-} from "@/app/api/admin/usage/compare/route";
+import type { CompareUser, CompareResponse } from "@/app/api/admin/usage/compare/route";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -148,9 +138,7 @@ function CompareTooltipContent({
             />
           );
         })}
-      {payload.length > 1 && (
-        <ChartTooltipSummary label="Total" value={formatTokens(total)} />
-      )}
+      {payload.length > 1 && <ChartTooltipSummary label="Total" value={formatTokens(total)} />}
     </ChartTooltip>
   );
 }
@@ -166,10 +154,7 @@ function CompareResultContent() {
 
   // Get userIds from URL
   const userIdsParam = searchParams.get("userIds") ?? "";
-  const userIds = useMemo(
-    () => userIdsParam.split(",").filter(Boolean),
-    [userIdsParam]
-  );
+  const userIds = useMemo(() => userIdsParam.split(",").filter(Boolean), [userIdsParam]);
 
   // Filters
   const [dateFrom, setDateFrom] = useState(defaultFrom);
@@ -329,9 +314,7 @@ function CompareResultContent() {
                 className="flex items-center gap-2 rounded-full border border-basalt-border bg-basalt-secondary pl-1 pr-3 py-0.5"
               >
                 <Avatar className="h-5 w-5 shrink-0">
-                  {user.image && (
-                    <AvatarImage src={user.image} alt={user.name ?? ""} />
-                  )}
+                  {user.image && <AvatarImage src={user.image} alt={user.name ?? ""} />}
                   <AvatarFallback className="text-[8px] bg-basalt-primary text-basalt-primary-foreground">
                     {(user.name ?? user.email ?? "?")[0]?.toUpperCase()}
                   </AvatarFallback>
@@ -339,9 +322,7 @@ function CompareResultContent() {
                 <div
                   className="h-2 w-2 rounded-full shrink-0"
                   style={{
-                    backgroundColor: CHART_COLORS[
-                      i % CHART_COLORS.length
-                    ] as string,
+                    backgroundColor: CHART_COLORS[i % CHART_COLORS.length] as string,
                   }}
                 />
                 <span className="text-xs font-medium truncate max-w-[120px]">
@@ -355,7 +336,9 @@ function CompareResultContent() {
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label htmlFor={dateFromId} className="text-xs text-basalt-muted-foreground">From</label>
+            <label htmlFor={dateFromId} className="text-xs text-basalt-muted-foreground">
+              From
+            </label>
             <Input
               id={dateFromId}
               type="date"
@@ -365,7 +348,9 @@ function CompareResultContent() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label htmlFor={dateToId} className="text-xs text-basalt-muted-foreground">To</label>
+            <label htmlFor={dateToId} className="text-xs text-basalt-muted-foreground">
+              To
+            </label>
             <Input
               id={dateToId}
               type="date"
@@ -420,18 +405,14 @@ function CompareResultContent() {
         {!loading && data && chartData.length > 0 && (
           <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-xs md:text-sm text-basalt-muted-foreground">
-                Daily Token Usage
-              </p>
+              <p className="text-xs md:text-sm text-basalt-muted-foreground">Daily Token Usage</p>
               <div className="flex flex-wrap items-center gap-3">
                 {data.users.map((user, i) => (
                   <div key={user.id} className="flex items-center gap-1.5">
                     <div
                       className="h-2 w-2 rounded-full"
                       style={{
-                        background: CHART_COLORS[
-                          i % CHART_COLORS.length
-                        ] as string,
+                        background: CHART_COLORS[i % CHART_COLORS.length] as string,
                       }}
                     />
                     <span className="text-xs text-basalt-muted-foreground">
@@ -444,10 +425,7 @@ function CompareResultContent() {
 
             <div className="h-[240px] md:h-[320px]">
               <DashboardResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-                >
+                <LineChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke={chartAxis}
@@ -534,23 +512,13 @@ function CompareResultContent() {
                         <div
                           className="h-2 w-2 rounded-full shrink-0"
                           style={{
-                            backgroundColor:
-                              userColorMap.get(user.id) ?? chartAxis,
+                            backgroundColor: userColorMap.get(user.id) ?? chartAxis,
                           }}
                         />
                         <Avatar className="h-7 w-7 shrink-0">
-                          {user.image && (
-                            <AvatarImage
-                              src={user.image}
-                              alt={user.name ?? ""}
-                            />
-                          )}
+                          {user.image && <AvatarImage src={user.image} alt={user.name ?? ""} />}
                           <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
-                            {(
-                              user.name ??
-                              user.email ??
-                              "?"
-                            )[0]?.toUpperCase()}
+                            {(user.name ?? user.email ?? "?")[0]?.toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
@@ -573,9 +541,7 @@ function CompareResultContent() {
                             {formatTokens(user.totalTokens)}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          {formatTokensFull(user.totalTokens)}
-                        </TooltipContent>
+                        <TooltipContent>{formatTokensFull(user.totalTokens)}</TooltipContent>
                       </Tooltip>
                     </td>
                     {/* Daily Avg */}
@@ -587,9 +553,7 @@ function CompareResultContent() {
                     {/* Last Active */}
                     <td className="px-4 py-3 text-right hidden md:table-cell">
                       <span className="text-sm text-basalt-muted-foreground tabular-nums">
-                        {user.lastActive !== "—"
-                          ? fmtDate(user.lastActive)
-                          : "—"}
+                        {user.lastActive !== "—" ? fmtDate(user.lastActive) : "—"}
                       </span>
                     </td>
                     {/* Profile link */}
@@ -601,10 +565,7 @@ function CompareResultContent() {
                           rel="noopener noreferrer"
                           className="inline-flex items-center text-basalt-muted-foreground hover:text-basalt-foreground transition-colors"
                         >
-                          <ExternalLink
-                            className="h-3.5 w-3.5"
-                            strokeWidth={1.5}
-                          />
+                          <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
                         </a>
                       )}
                     </td>

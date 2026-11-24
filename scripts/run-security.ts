@@ -90,11 +90,9 @@ function hasCommand(name: string): boolean {
 }
 
 function resolveUpstreamRange(): string {
-  const r = spawnSync(
-    "git",
-    ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-    { encoding: "utf-8" },
-  );
+  const r = spawnSync("git", ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], {
+    encoding: "utf-8",
+  });
   const upstream = r.status === 0 ? r.stdout.trim() : "origin/main";
   return `${upstream}..HEAD`;
 }
@@ -157,7 +155,7 @@ if (hasOsv) {
     cache.osvToolVersion === osvVer;
 
   if (cacheHit) {
-const lockHashShort = lockHash ? lockHash.slice(0, 12) : "unknown";
+    const lockHashShort = lockHash ? lockHash.slice(0, 12) : "unknown";
     console.log(
       `⚡ osv-scanner: cached clean for bun.lock ${lockHashShort} (set PEW_G2_NO_CACHE=1 to force)`,
     );

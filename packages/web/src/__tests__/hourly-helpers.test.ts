@@ -38,9 +38,24 @@ describe("toHourlyByDevice", () => {
 
   it("should group tokens by hour and device", () => {
     const rows: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", source: "claude-code", model: "sonnet", total_tokens: 1000 }),
-      makeRow({ hour_start: "2026-03-07T10:30:00Z", source: "claude-code", model: "sonnet", total_tokens: 500 }),
-      makeRow({ hour_start: "2026-03-07T14:00:00Z", source: "opencode", model: "gpt-4", total_tokens: 2000 }),
+      makeRow({
+        hour_start: "2026-03-07T10:00:00Z",
+        source: "claude-code",
+        model: "sonnet",
+        total_tokens: 1000,
+      }),
+      makeRow({
+        hour_start: "2026-03-07T10:30:00Z",
+        source: "claude-code",
+        model: "sonnet",
+        total_tokens: 500,
+      }),
+      makeRow({
+        hour_start: "2026-03-07T14:00:00Z",
+        source: "opencode",
+        model: "gpt-4",
+        total_tokens: 2000,
+      }),
     ];
 
     const deviceDetails = [
@@ -63,8 +78,18 @@ describe("toHourlyByDevice", () => {
     // 2 days in range: Mar 7 and Mar 8
     const dateRange = { from: "2026-03-07", to: "2026-03-08" };
     const rows: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", source: "claude-code", model: "sonnet", total_tokens: 2000 }),
-      makeRow({ hour_start: "2026-03-08T10:00:00Z", source: "claude-code", model: "sonnet", total_tokens: 4000 }),
+      makeRow({
+        hour_start: "2026-03-07T10:00:00Z",
+        source: "claude-code",
+        model: "sonnet",
+        total_tokens: 2000,
+      }),
+      makeRow({
+        hour_start: "2026-03-08T10:00:00Z",
+        source: "claude-code",
+        model: "sonnet",
+        total_tokens: 4000,
+      }),
     ];
 
     const deviceDetails = [
@@ -80,7 +105,12 @@ describe("toHourlyByDevice", () => {
   it("should shift hours with timezone offset (UTC-8)", () => {
     // 2026-03-07T18:00Z → PST local = 2026-03-07T10:00 → hour 10
     const rows: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-07T18:00:00Z", source: "claude-code", model: "sonnet", total_tokens: 1000 }),
+      makeRow({
+        hour_start: "2026-03-07T18:00:00Z",
+        source: "claude-code",
+        model: "sonnet",
+        total_tokens: 1000,
+      }),
     ];
 
     const deviceDetails = [
@@ -95,7 +125,12 @@ describe("toHourlyByDevice", () => {
 
   it("should handle rows without matching devices", () => {
     const rows: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", source: "unknown-source", model: "unknown-model", total_tokens: 1000 }),
+      makeRow({
+        hour_start: "2026-03-07T10:00:00Z",
+        source: "unknown-source",
+        model: "unknown-model",
+        total_tokens: 1000,
+      }),
     ];
 
     // Device details exist but don't match the row's source:model

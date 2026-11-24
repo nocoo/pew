@@ -93,16 +93,19 @@ describe("Worker ingest endpoint", () => {
   // -----------------------------------------------------------------------
 
   describe("authentication", () => {
-    it.each([undefined, null, "", "   "])("rejects an unconfigured secret (%s) before touching D1", async (secret) => {
-      Object.assign(env, { WORKER_SECRET: secret });
-      const res = await worker.fetch(makeRequest(
-        { userId: "u1", records: [VALID_RECORD] },
-        { secret: String(secret) },
-      ), env);
-      expect(res.status).toBe(503);
-      expect(env.DB.prepare).not.toHaveBeenCalled();
-      expect(env.DB.batch).not.toHaveBeenCalled();
-    });
+    it.each([undefined, null, "", "   "])(
+      "rejects an unconfigured secret (%s) before touching D1",
+      async (secret) => {
+        Object.assign(env, { WORKER_SECRET: secret });
+        const res = await worker.fetch(
+          makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret: String(secret) }),
+          env,
+        );
+        expect(res.status).toBe(503);
+        expect(env.DB.prepare).not.toHaveBeenCalled();
+        expect(env.DB.batch).not.toHaveBeenCalled();
+      },
+    );
 
     it("should reject missing Authorization header with 401", async () => {
       const req = makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret: null });
@@ -238,12 +241,30 @@ describe("Worker ingest endpoint", () => {
 
   describe("batch execution", () => {
     it("preserves Antigravity token partitions in the D1 upsert", async () => {
-      const record = { ...VALID_RECORD, source: "antigravity", input_tokens: 100, cached_input_tokens: 900,
-        output_tokens: 40, reasoning_output_tokens: 60, total_tokens: 1100 };
+      const record = {
+        ...VALID_RECORD,
+        source: "antigravity",
+        input_tokens: 100,
+        cached_input_tokens: 900,
+        output_tokens: 40,
+        reasoning_output_tokens: 60,
+        total_tokens: 1100,
+      };
       const res = await worker.fetch(makeRequest({ userId: "u1", records: [record] }), env);
       expect(res.status).toBe(200);
       const bind = vi.mocked(env.DB.prepare).mock.results[0]?.value.bind;
-      expect(bind).toHaveBeenCalledWith("u1", "default", "antigravity", record.model, record.hour_start, 100, 900, 40, 60, 1100);
+      expect(bind).toHaveBeenCalledWith(
+        "u1",
+        "default",
+        "antigravity",
+        record.model,
+        record.hour_start,
+        100,
+        900,
+        40,
+        60,
+        1100,
+      );
       expect(env.DB.prepare).toHaveBeenCalledWith(expect.stringContaining("ON CONFLICT"));
     });
 
@@ -256,7 +277,9 @@ describe("Worker ingest endpoint", () => {
 
       // prepare() called once per record
       expect(env.DB.prepare).toHaveBeenCalledOnce();
-      expect(env.DB.prepare).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO usage_records"));
+      expect(env.DB.prepare).toHaveBeenCalledWith(
+        expect.stringContaining("INSERT INTO usage_records"),
+      );
 
       // bind() called with correct params
       const bindMock = (env.DB.prepare as ReturnType<typeof vi.fn>).mock.results[0]!.value.bind;

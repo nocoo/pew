@@ -24,11 +24,7 @@ import { join } from "node:path";
 
 const WORKERS = 32;
 
-const WORKER_SCRIPT = join(
-  __dirname,
-  "fixtures",
-  "admission-worker.cjs",
-);
+const WORKER_SCRIPT = join(__dirname, "fixtures", "admission-worker.cjs");
 
 interface WorkerOutcome {
   code: number;
@@ -54,36 +50,27 @@ function runWorker(gate: string, startPath: string): Promise<WorkerOutcome> {
 }
 
 describe("admission primitive — exclusive create across processes", () => {
-  it(
-    "32 concurrent wx creates on the same path yield exactly one winner",
-    async () => {
-      const dir = await mkdtemp(join(tmpdir(), "pew admission ")); // note the space
-      try {
-        const gate = join(dir, "sync-42.lock");
-        const startPath = join(dir, "start.flag");
-        // Kick off all workers first; they busy-wait until start.flag
-        // appears so the race is a genuine burst rather than a
-        // staircase of process start times.
-        const spawned = Array.from({ length: WORKERS }, () =>
-          runWorker(gate, startPath),
-        );
-        await writeFile(startPath, "go");
-        const results = await Promise.all(spawned);
-        const winners = results.filter((r) => r.stdout === "winner");
-        const losers = results.filter((r) =>
-          r.stdout.startsWith("loser:EEXIST"),
-        );
-        const anomalies = results.filter(
-          (r) =>
-            r.stdout !== "winner" && !r.stdout.startsWith("loser:EEXIST"),
-        );
-        expect(anomalies, JSON.stringify(anomalies)).toHaveLength(0);
-        expect(winners).toHaveLength(1);
-        expect(losers).toHaveLength(WORKERS - 1);
-      } finally {
-        await rm(dir, { recursive: true, force: true });
-      }
-    },
-    30_000,
-  );
+  it("32 concurrent wx creates on the same path yield exactly one winner", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pew admission ")); // note the space
+    try {
+      const gate = join(dir, "sync-42.lock");
+      const startPath = join(dir, "start.flag");
+      // Kick off all workers first; they busy-wait until start.flag
+      // appears so the race is a genuine burst rather than a
+      // staircase of process start times.
+      const spawned = Array.from({ length: WORKERS }, () => runWorker(gate, startPath));
+      await writeFile(startPath, "go");
+      const results = await Promise.all(spawned);
+      const winners = results.filter((r) => r.stdout === "winner");
+      const losers = results.filter((r) => r.stdout.startsWith("loser:EEXIST"));
+      const anomalies = results.filter(
+        (r) => r.stdout !== "winner" && !r.stdout.startsWith("loser:EEXIST"),
+      );
+      expect(anomalies, JSON.stringify(anomalies)).toHaveLength(0);
+      expect(winners).toHaveLength(1);
+      expect(losers).toHaveLength(WORKERS - 1);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }, 30_000);
 });

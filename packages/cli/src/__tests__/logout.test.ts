@@ -32,10 +32,7 @@ describe("executeLogout", () => {
   });
 
   it("clears token from config", async () => {
-    await writeFile(
-      join(tempDir, "config.json"),
-      JSON.stringify({ token: "zb_test123" }),
-    );
+    await writeFile(join(tempDir, "config.json"), JSON.stringify({ token: "zb_test123" }));
 
     const result = await executeLogout({ configDir: tempDir });
     expect(result.success).toBe(true);
@@ -43,10 +40,7 @@ describe("executeLogout", () => {
   });
 
   it("uses dev config when dev=true", async () => {
-    await writeFile(
-      join(tempDir, "config.dev.json"),
-      JSON.stringify({ token: "zb_dev456" }),
-    );
+    await writeFile(join(tempDir, "config.dev.json"), JSON.stringify({ token: "zb_dev456" }));
 
     const result = await executeLogout({ configDir: tempDir, dev: true });
     expect(result.success).toBe(true);
@@ -55,9 +49,7 @@ describe("executeLogout", () => {
 
   it("returns error with message when an Error is thrown", async () => {
     const { ConfigManager } = await import("../config/manager.js");
-    vi.spyOn(ConfigManager.prototype, "load").mockRejectedValueOnce(
-      new Error("disk exploded"),
-    );
+    vi.spyOn(ConfigManager.prototype, "load").mockRejectedValueOnce(new Error("disk exploded"));
 
     const result = await executeLogout({ configDir: tempDir });
     expect(result.success).toBe(false);
@@ -66,9 +58,7 @@ describe("executeLogout", () => {
 
   it("returns generic error for non-Error throws", async () => {
     const { ConfigManager } = await import("../config/manager.js");
-    vi.spyOn(ConfigManager.prototype, "load").mockRejectedValueOnce(
-      "string error",
-    );
+    vi.spyOn(ConfigManager.prototype, "load").mockRejectedValueOnce("string error");
 
     const result = await executeLogout({ configDir: tempDir });
     expect(result.success).toBe(false);

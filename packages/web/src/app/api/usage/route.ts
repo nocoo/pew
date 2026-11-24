@@ -54,26 +54,17 @@ export async function GET(request: Request) {
 
   // Validate source filter
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
-    return NextResponse.json(
-      { error: "Invalid source parameter" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid source parameter" }, { status: 400 });
   }
 
   // Validate granularity
   if (!VALID_GRANULARITIES.has(granularity)) {
-    return NextResponse.json(
-      { error: "Invalid granularity parameter" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid granularity parameter" }, { status: 400 });
   }
 
   // Validate tzOffset
   if (tzOffset === "invalid") {
-    return NextResponse.json(
-      { error: "Invalid tzOffset value" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid tzOffset value" }, { status: 400 });
   }
 
   // Validate and compute date range
@@ -82,10 +73,7 @@ export async function GET(request: Request) {
 
   if (fromParam) {
     if (!DATE_RE.test(fromParam)) {
-      return NextResponse.json(
-        { error: "Invalid from date format" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid from date format" }, { status: 400 });
     }
     fromDate = new Date(fromParam).toISOString();
   } else {
@@ -96,10 +84,7 @@ export async function GET(request: Request) {
 
   if (toParam) {
     if (!DATE_RE.test(toParam)) {
-      return NextResponse.json(
-        { error: "Invalid to date format" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid to date format" }, { status: 400 });
     }
     // When `to` is a bare date like "2026-03-13", treat it as inclusive:
     // bump to next day so that `hour_start < toDate` covers the entire day.
@@ -128,11 +113,9 @@ export async function GET(request: Request) {
     const summary = records.reduce(
       (acc, r) => ({
         input_tokens: sumCounts(acc.input_tokens, r.input_tokens),
-        cached_input_tokens:
-          sumCounts(acc.cached_input_tokens, r.cached_input_tokens),
+        cached_input_tokens: sumCounts(acc.cached_input_tokens, r.cached_input_tokens),
         output_tokens: sumCounts(acc.output_tokens, r.output_tokens),
-        reasoning_output_tokens:
-          sumCounts(acc.reasoning_output_tokens, r.reasoning_output_tokens),
+        reasoning_output_tokens: sumCounts(acc.reasoning_output_tokens, r.reasoning_output_tokens),
         total_tokens: sumCounts(acc.total_tokens, r.total_tokens),
       }),
       {
@@ -141,19 +124,20 @@ export async function GET(request: Request) {
         output_tokens: 0,
         reasoning_output_tokens: 0,
         total_tokens: 0,
-      }
+      },
     );
 
     const evidenceTokens = records.reduce((n, r) => sumCounts(n, r.evidence_tokens ?? 0), 0);
     const approximateTokens = records.reduce((n, r) => sumCounts(n, r.approximate_tokens ?? 0), 0);
-    return NextResponse.json({ records, summary: evidenceTokens > 0
-      ? { ...summary, evidence_tokens: evidenceTokens, approximate_tokens: approximateTokens }
-      : summary });
+    return NextResponse.json({
+      records,
+      summary:
+        evidenceTokens > 0
+          ? { ...summary, evidence_tokens: evidenceTokens, approximate_tokens: approximateTokens }
+          : summary,
+    });
   } catch (err) {
     console.error("Failed to query usage:", err);
-    return NextResponse.json(
-      { error: "Failed to query usage data" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to query usage data" }, { status: 500 });
   }
 }

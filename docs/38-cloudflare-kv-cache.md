@@ -13,21 +13,21 @@
 
 ## Status
 
-| # | Description | Status |
-|---|-------------|--------|
-| 1 | This document | ✅ done |
-| 2 | Add test environment KV binding | ✅ done |
-| 3 | Implement cache helper (`withCache`) | ✅ done |
-| 4 | Cache `pricing.listModelPricing` (24h TTL) | ✅ done |
-| 5 | Cache `seasons.getSnapshots` for frozen seasons (24h TTL) | ✅ done |
-| 6 | Cache `seasons.list` (5min TTL) | ✅ done |
-| 7 | Cache `leaderboard.getGlobal` — **public only** (5min TTL) | ✅ done |
-| 8 | ~~Cache `achievements.getEarners`~~ — **deferred** (see Decision 3) | ⏭️ skipped |
-| 9 | Add `cache.*` RPC domain + DbRead interface methods | ✅ done |
-| 10 | Add KV management card to Admin Storage page | ✅ done |
-| 11 | Tests (unit + integration) | ✅ done |
-| 12 | Deploy + verify | ✅ done |
-| 13 | Retrospective | ✅ done |
+| #   | Description                                                         | Status     |
+| --- | ------------------------------------------------------------------- | ---------- |
+| 1   | This document                                                       | ✅ done    |
+| 2   | Add test environment KV binding                                     | ✅ done    |
+| 3   | Implement cache helper (`withCache`)                                | ✅ done    |
+| 4   | Cache `pricing.listModelPricing` (24h TTL)                          | ✅ done    |
+| 5   | Cache `seasons.getSnapshots` for frozen seasons (24h TTL)           | ✅ done    |
+| 6   | Cache `seasons.list` (5min TTL)                                     | ✅ done    |
+| 7   | Cache `leaderboard.getGlobal` — **public only** (5min TTL)          | ✅ done    |
+| 8   | ~~Cache `achievements.getEarners`~~ — **deferred** (see Decision 3) | ⏭️ skipped |
+| 9   | Add `cache.*` RPC domain + DbRead interface methods                 | ✅ done    |
+| 10  | Add KV management card to Admin Storage page                        | ✅ done    |
+| 11  | Tests (unit + integration)                                          | ✅ done    |
+| 12  | Deploy + verify                                                     | ✅ done    |
+| 13  | Retrospective                                                       | ✅ done    |
 
 ---
 
@@ -41,11 +41,11 @@
 
 ### Problem
 
-| Scenario | Impact |
-|----------|--------|
-| 10 users view `/leaderboard` in 1 minute | 10 identical `leaderboard.getGlobal` queries |
-| Every cost calculation fetches pricing | ~100 identical `pricing.listModelPricing` calls/day |
-| Season list on navbar | Every page load triggers `seasons.list` |
+| Scenario                                 | Impact                                              |
+| ---------------------------------------- | --------------------------------------------------- |
+| 10 users view `/leaderboard` in 1 minute | 10 identical `leaderboard.getGlobal` queries        |
+| Every cost calculation fetches pricing   | ~100 identical `pricing.listModelPricing` calls/day |
+| Season list on navbar                    | Every page load triggers `seasons.list`             |
 
 ### Solution
 
@@ -65,27 +65,29 @@ Add Cloudflare KV as a cache layer in worker-read. KV provides:
 
 **Decision**: First version **only caches truly public, identity-independent data**:
 
-| Cacheable | Key Characteristics |
-|-----------|---------------------|
-| `pricing.listModelPricing` | Global, no user context |
-| `seasons.list` | Global, no user context |
-| `seasons.getSnapshots` (frozen only) | Frozen data, no user context |
-| `leaderboard.getGlobal` (no team/org filter) | Public leaderboard only |
+| Cacheable                                    | Key Characteristics          |
+| -------------------------------------------- | ---------------------------- |
+| `pricing.listModelPricing`                   | Global, no user context      |
+| `seasons.list`                               | Global, no user context      |
+| `seasons.getSnapshots` (frozen only)         | Frozen data, no user context |
+| `leaderboard.getGlobal` (no team/org filter) | Public leaderboard only      |
 
-| NOT Cacheable | Reason |
-|---------------|--------|
+| NOT Cacheable                                    | Reason                                    |
+| ------------------------------------------------ | ----------------------------------------- |
 | `leaderboard.getGlobal` with `teamId` or `orgId` | Scoped to membership, `private, no-store` |
-| `achievements.getEarners` | See Decision 3 |
-| All `usage.*`, `sessions.*`, `users.*` | Per-user data |
+| `achievements.getEarners`                        | See Decision 3                            |
+| All `usage.*`, `sessions.*`, `users.*`           | Per-user data                             |
 
 ### Decision 2: Honest Stats Over Fake Precision
 
 **Problem**: Worker isolates are ephemeral and multi-region. In-memory stats (hits/misses/writes) are:
+
 - Reset on every isolate restart
 - Not aggregated across regions
 - Misleading if presented as "global hit rate"
 
-**Decision**: 
+**Decision**:
+
 - **Do NOT display hit rate** in admin UI — it's not meaningful
 - Admin UI shows only **observable facts**: key list, key count
 - Stats are kept for local debugging only (Worker logs), not exposed to UI
@@ -94,10 +96,12 @@ Add Cloudflare KV as a cache layer in worker-read. KV provides:
 ### Decision 3: Defer `achievements.getEarners` Caching
 
 **Problem**: This RPC accepts raw `sql` and `params` from the caller. The key pattern in v1 (`ach:{id}:earners:{limit}:{offset}`) ignores the actual SQL shape, which could cause:
+
 - Cache collisions between different SQL queries for the same achievement
 - Stale data after achievement definition changes
 
 **Decision**: Defer to v2. Proper caching requires either:
+
 1. Standardized RPC methods per achievement (no raw SQL), or
 2. Stable hash of normalized SQL + params (complex, error-prone)
 
@@ -108,6 +112,7 @@ Neither is worth the complexity for v1 given the low query volume.
 **Problem**: `kv.list({ limit: 1000 })` only returns the first page. "Clear All" and "List Keys" would silently truncate.
 
 **Decision**: Implement cursor-based pagination for both operations:
+
 - `listAllCacheKeys()`: Paginate through all keys, return up to limit
 - `clearAllCache()`: Paginate and delete all keys, return deleted count
 - Set a hard limit (10,000 keys) to prevent runaway loops
@@ -118,6 +123,7 @@ Neither is worth the complexity for v1 given the low query volume.
 **Problem**: `seasons.getSnapshots` must verify `snapshot_ready = 1` before serving cached data. This means every request still hits D1 once, even for cached responses.
 
 **Analysis**:
+
 - Light query: `SELECT snapshot_ready FROM seasons WHERE id = ?` — indexed single-row lookup, <1ms
 - Heavy query: Multi-table JOIN + GROUP BY on `season_snapshots` + `teams`, 20-50ms
 - Cache hit eliminates the heavy query, not the light one
@@ -132,25 +138,25 @@ Neither is worth the complexity for v1 given the low query volume.
 
 ### Tier 1: Long TTL (24 hours)
 
-| RPC Method | Key Pattern | Conditions |
-|------------|-------------|------------|
-| `pricing.listModelPricing` | `pricing:all` | Always |
-| `seasons.getSnapshots` | `season:{id}:snapshots` | Only if `snapshot_ready = 1` |
+| RPC Method                 | Key Pattern             | Conditions                   |
+| -------------------------- | ----------------------- | ---------------------------- |
+| `pricing.listModelPricing` | `pricing:all`           | Always                       |
+| `seasons.getSnapshots`     | `season:{id}:snapshots` | Only if `snapshot_ready = 1` |
 
 ### Tier 2: Short TTL (5 minutes)
 
-| RPC Method | Key Pattern | Conditions |
-|------------|-------------|------------|
-| `seasons.list` | `seasons:list` | Always |
+| RPC Method              | Key Pattern                                          | Conditions                                   |
+| ----------------------- | ---------------------------------------------------- | -------------------------------------------- |
+| `seasons.list`          | `seasons:list`                                       | Always                                       |
 | `leaderboard.getGlobal` | `lb:global:{from}:{source}:{model}:{limit}:{offset}` | Only if `teamId` AND `orgId` are both absent |
 
 ### Explicitly NOT Cached
 
-| Category | Reason |
-|----------|--------|
+| Category                                         | Reason                              |
+| ------------------------------------------------ | ----------------------------------- |
 | `leaderboard.getGlobal` with `teamId` or `orgId` | Private scope, membership-dependent |
-| `achievements.getEarners` | Raw SQL, deferred to v2 |
-| All per-user RPC methods | Key explosion, privacy |
+| `achievements.getEarners`                        | Raw SQL, deferred to v2             |
+| All per-user RPC methods                         | Key explosion, privacy              |
 
 ---
 
@@ -183,7 +189,7 @@ id = "<TEST_KV_NAMESPACE_ID>"  # Create with: wrangler kv:namespace create CACHE
 // packages/worker-read/src/index.ts
 export interface Env {
   DB: D1Database;
-  CACHE: KVNamespace;  // NEW
+  CACHE: KVNamespace; // NEW
   WORKER_READ_SECRET: string;
 }
 ```
@@ -216,7 +222,7 @@ export async function withCache<T>(
   kv: KVNamespace,
   key: string,
   fetcher: () => Promise<T>,
-  options: CacheOptions
+  options: CacheOptions,
 ): Promise<{ data: T; cached: boolean }> {
   // 1. Try cache
   try {
@@ -247,12 +253,12 @@ export async function withCache<T>(
 /**
  * List all cache keys with cursor pagination.
  * Returns up to MAX_KEYS_LIMIT keys.
- * 
+ *
  * truncated = true means there are still keys in KV that were not returned.
  */
 export async function listAllCacheKeys(
   kv: KVNamespace,
-  prefix?: string
+  prefix?: string,
 ): Promise<{ keys: string[]; truncated: boolean; count: number }> {
   const keys: string[] = [];
   let cursor: string | undefined;
@@ -280,7 +286,7 @@ export async function listAllCacheKeys(
       hasMoreData = false;
       break;
     }
-    
+
     // More pages exist — continue
     cursor = result.cursor;
     // If we exit the while loop after this due to keys.length >= MAX_KEYS_LIMIT,
@@ -298,12 +304,12 @@ export async function listAllCacheKeys(
 /**
  * Delete all cache entries with cursor pagination.
  * Deletes up to MAX_KEYS_LIMIT keys.
- * 
+ *
  * truncated = true means there are still keys in KV that were not deleted.
  */
 export async function clearAllCache(
   kv: KVNamespace,
-  prefix?: string
+  prefix?: string,
 ): Promise<{ deleted: number; truncated: boolean }> {
   let deleted = 0;
   let cursor: string | undefined;
@@ -332,7 +338,7 @@ export async function clearAllCache(
       hasMoreData = false;
       break;
     }
-    
+
     // More pages exist — continue
     cursor = result.cursor;
     // If we exit the while loop after this due to deleted >= MAX_KEYS_LIMIT,
@@ -349,10 +355,7 @@ export async function clearAllCache(
 /**
  * Delete a single cache entry.
  */
-export async function invalidateKey(
-  kv: KVNamespace,
-  key: string
-): Promise<void> {
+export async function invalidateKey(kv: KVNamespace, key: string): Promise<void> {
   await kv.delete(key);
 }
 ```
@@ -374,7 +377,7 @@ import { withCache, TTL_24H } from "../cache";
 export async function handlePricingRpc(
   request: PricingRpcRequest,
   db: D1Database,
-  kv: KVNamespace  // NEW param
+  kv: KVNamespace, // NEW param
 ): Promise<Response> {
   switch (request.method) {
     case "pricing.listModelPricing":
@@ -383,10 +386,7 @@ export async function handlePricingRpc(
   }
 }
 
-async function handleListModelPricing(
-  db: D1Database,
-  kv: KVNamespace
-): Promise<Response> {
+async function handleListModelPricing(db: D1Database, kv: KVNamespace): Promise<Response> {
   const { data, cached } = await withCache(
     kv,
     "pricing:all",
@@ -396,7 +396,7 @@ async function handleListModelPricing(
         .all<ModelPricingRow>();
       return results.results;
     },
-    { ttlSeconds: TTL_24H }
+    { ttlSeconds: TTL_24H },
   );
 
   return Response.json({ result: data, _cached: cached });
@@ -408,16 +408,10 @@ async function handleListModelPricing(
 ```typescript
 import { withCache, TTL_24H, TTL_5M } from "../cache";
 
-async function handleListSeasons(
-  db: D1Database,
-  kv: KVNamespace
-): Promise<Response> {
-  const { data, cached } = await withCache(
-    kv,
-    "seasons:list",
-    () => fetchSeasonsList(db),
-    { ttlSeconds: TTL_5M }
-  );
+async function handleListSeasons(db: D1Database, kv: KVNamespace): Promise<Response> {
+  const { data, cached } = await withCache(kv, "seasons:list", () => fetchSeasonsList(db), {
+    ttlSeconds: TTL_5M,
+  });
 
   return Response.json({ result: data, _cached: cached });
 }
@@ -425,7 +419,7 @@ async function handleListSeasons(
 async function handleGetSeasonSnapshots(
   req: GetSeasonSnapshotsRequest,
   db: D1Database,
-  kv: KVNamespace
+  kv: KVNamespace,
 ): Promise<Response> {
   // Check if season is frozen
   const season = await db
@@ -441,7 +435,7 @@ async function handleGetSeasonSnapshots(
       kv,
       `season:${req.seasonId}:snapshots`,
       () => fetchSnapshots(db, req.seasonId),
-      { ttlSeconds: TTL_24H }
+      { ttlSeconds: TTL_24H },
     );
     return Response.json({ result: data, _cached: cached });
   }
@@ -460,7 +454,7 @@ import { withCache, TTL_5M } from "../cache";
 async function handleGetGlobalLeaderboard(
   req: GetGlobalLeaderboardRequest,
   db: D1Database,
-  kv: KVNamespace
+  kv: KVNamespace,
 ): Promise<Response> {
   // CRITICAL: Only cache if NO team/org scope
   // Team/org scoped results are membership-dependent and must not be shared
@@ -474,12 +468,9 @@ async function handleGetGlobalLeaderboard(
 
   // Public leaderboard: cache for 5min
   const cacheKey = buildPublicLeaderboardKey(req);
-  const { data, cached } = await withCache(
-    kv,
-    cacheKey,
-    () => fetchGlobalLeaderboard(db, req),
-    { ttlSeconds: TTL_5M }
-  );
+  const { data, cached } = await withCache(kv, cacheKey, () => fetchGlobalLeaderboard(db, req), {
+    ttlSeconds: TTL_5M,
+  });
 
   return Response.json({ result: data, _cached: cached });
 }
@@ -526,19 +517,13 @@ export interface CacheInvalidateRequest {
   key: string;
 }
 
-export type CacheRpcRequest =
-  | CacheListRequest
-  | CacheClearRequest
-  | CacheInvalidateRequest;
+export type CacheRpcRequest = CacheListRequest | CacheClearRequest | CacheInvalidateRequest;
 
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
-export async function handleCacheRpc(
-  request: CacheRpcRequest,
-  kv: KVNamespace
-): Promise<Response> {
+export async function handleCacheRpc(request: CacheRpcRequest, kv: KVNamespace): Promise<Response> {
   switch (request.method) {
     case "cache.list": {
       const result = await listAllCacheKeys(kv, request.prefix);
@@ -561,7 +546,7 @@ export async function handleCacheRpc(
     default:
       return Response.json(
         { error: `Unknown cache method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }
@@ -583,13 +568,13 @@ export interface DbRead {
   getCacheKeys(prefix?: string): Promise<{
     keys: string[];
     truncated: boolean;
-    count: number;  // Number of keys returned, not total in KV
+    count: number; // Number of keys returned, not total in KV
   }>;
 
   /** Clear all cache entries */
   clearCache(prefix?: string): Promise<{
     deleted: number;
-    truncated: boolean;  // true if more keys remain after hitting limit
+    truncated: boolean; // true if more keys remain after hitting limit
   }>;
 
   /** Invalidate a single cache key */
@@ -742,7 +727,9 @@ function KVCacheCard() {
       const res = await fetch("/api/admin/storage/cache", { method: "DELETE" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const result = await res.json();
-      alert(`Deleted ${result.deleted} keys${result.truncated ? " (limit reached, run again)" : ""}`);
+      alert(
+        `Deleted ${result.deleted} keys${result.truncated ? " (limit reached, run again)" : ""}`,
+      );
       await fetchKeys();
     } catch (err) {
       alert(`Failed to clear: ${err instanceof Error ? err.message : "Unknown error"}`);
@@ -772,9 +759,7 @@ function KVCacheCard() {
         </Button>
       </div>
 
-      {error && (
-        <div className="text-sm text-destructive">{error}</div>
-      )}
+      {error && <div className="text-sm text-destructive">{error}</div>}
 
       {/* Key count */}
       <div className="rounded-lg bg-background p-3">
@@ -818,14 +803,15 @@ function KVCacheCard() {
 
 ## Key Naming Convention
 
-| Cache Target | Key Pattern | Example |
-|--------------|-------------|---------|
-| Pricing | `pricing:all` | `pricing:all` |
-| Season snapshots | `season:{id}:snapshots` | `season:abc123:snapshots` |
-| Season list | `seasons:list` | `seasons:list` |
-| Public leaderboard | `lb:global:{from}:{source}:{model}:{limit}:{offset}` | `lb:global:_:_:_:50:0` |
+| Cache Target       | Key Pattern                                          | Example                   |
+| ------------------ | ---------------------------------------------------- | ------------------------- |
+| Pricing            | `pricing:all`                                        | `pricing:all`             |
+| Season snapshots   | `season:{id}:snapshots`                              | `season:abc123:snapshots` |
+| Season list        | `seasons:list`                                       | `seasons:list`            |
+| Public leaderboard | `lb:global:{from}:{source}:{model}:{limit}:{offset}` | `lb:global:_:_:_:50:0`    |
 
 **Rules**:
+
 - Use `:` as separator
 - Use `_` for null/undefined params
 - **Never include `teamId` or `orgId` in leaderboard keys** — those requests are not cached
@@ -834,12 +820,12 @@ function KVCacheCard() {
 
 ## Cache Invalidation Strategy
 
-| Scenario | Strategy |
-|----------|----------|
-| Pricing updated (admin) | Manual clear via admin UI |
-| Season snapshot generated | Automatic via TTL (24h) |
-| Season created/ended | Automatic via TTL (5min) |
-| Leaderboard data changes | Automatic via TTL (5min) |
+| Scenario                  | Strategy                  |
+| ------------------------- | ------------------------- |
+| Pricing updated (admin)   | Manual clear via admin UI |
+| Season snapshot generated | Automatic via TTL (24h)   |
+| Season created/ended      | Automatic via TTL (5min)  |
+| Leaderboard data changes  | Automatic via TTL (5min)  |
 
 **No proactive invalidation in v1** — TTL-based expiry is sufficient given data change frequency.
 
@@ -873,11 +859,7 @@ describe("withCache", () => {
     expect(result.data).toEqual({ value: 99 });
     expect(result.cached).toBe(false);
     expect(fetcher).toHaveBeenCalledOnce();
-    expect(kv.put).toHaveBeenCalledWith(
-      "test:key",
-      '{"value":99}',
-      { expirationTtl: 60 }
-    );
+    expect(kv.put).toHaveBeenCalledWith("test:key", '{"value":99}', { expirationTtl: 60 });
   });
 
   it("falls through on KV read error", async () => {
@@ -938,6 +920,7 @@ describe("clearAllCache", () => {
 **Note**: The `_cached` field is returned by worker-read RPC responses but is **not surfaced to Next.js API clients**. The `db-worker` adapter extracts only `body.result`, and API routes assemble their own response envelopes. This is intentional — cache observability is an internal concern, not part of the public API contract.
 
 **Testing strategy**:
+
 - **Unit tests**: Verify `withCache` behavior with mocked KV
 - **Worker-level tests**: Hit worker-read RPC directly to verify `_cached` field
 - **E2E tests**: Verify functional correctness (same data returned), not cache state
@@ -976,7 +959,7 @@ describe("leaderboard.getGlobal caching", () => {
     const res2 = await handleLeaderboardRpc(req1, db, kv);
     const json2 = await res2.json();
     expect(json2._cached).toBe(false);
-    
+
     // Verify KV was never written
     expect(kv.put).not.toHaveBeenCalled();
   });
@@ -998,13 +981,13 @@ describe("leaderboard.getGlobal caching", () => {
 
 ## Cloudflare KV Limits (Free Tier)
 
-| Resource | Limit | Expected Usage | OK? |
-|----------|-------|----------------|-----|
-| Reads/day | 100,000 | ~5,000 (100 users × 50 pageviews) | Yes |
-| Writes/day | 1,000 | ~200 (cache misses) | Yes |
-| Storage | 1GB | ~10MB (JSON payloads) | Yes |
-| Key size | 512 bytes | ~100 bytes | Yes |
-| Value size | 25MB | ~100KB max | Yes |
+| Resource   | Limit     | Expected Usage                    | OK? |
+| ---------- | --------- | --------------------------------- | --- |
+| Reads/day  | 100,000   | ~5,000 (100 users × 50 pageviews) | Yes |
+| Writes/day | 1,000     | ~200 (cache misses)               | Yes |
+| Storage    | 1GB       | ~10MB (JSON payloads)             | Yes |
+| Key size   | 512 bytes | ~100 bytes                        | Yes |
+| Value size | 25MB      | ~100KB max                        | Yes |
 
 ---
 
@@ -1021,14 +1004,14 @@ describe("leaderboard.getGlobal caching", () => {
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Stale data shown | Short TTL (5min) for dynamic data, 24h only for frozen data |
-| KV errors | `withCache` catches errors and falls back to D1 |
-| Key explosion | Only cache aggregated/public data, strict scope check |
-| Team/org data leaked | Explicit `hasPrivateScope` check, no caching for scoped requests |
-| Admin clears at wrong time | Confirm dialog, cache rebuilds naturally via TTL |
-| Stats misleading | No hit rate in UI, only observable facts (key count) |
+| Risk                       | Mitigation                                                       |
+| -------------------------- | ---------------------------------------------------------------- |
+| Stale data shown           | Short TTL (5min) for dynamic data, 24h only for frozen data      |
+| KV errors                  | `withCache` catches errors and falls back to D1                  |
+| Key explosion              | Only cache aggregated/public data, strict scope check            |
+| Team/org data leaked       | Explicit `hasPrivateScope` check, no caching for scoped requests |
+| Admin clears at wrong time | Confirm dialog, cache rebuilds naturally via TTL                 |
+| Stats misleading           | No hit rate in UI, only observable facts (key count)             |
 
 ---
 

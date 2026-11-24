@@ -36,10 +36,7 @@ const CELL_GAP = 2;
  * 7-row x 24-column CSS grid heatmap showing session counts by
  * day-of-week (rows) and hour-of-day (columns, UTC).
  */
-export function WorkingHoursHeatmap({
-  data,
-  className,
-}: WorkingHoursHeatmapProps) {
+export function WorkingHoursHeatmap({ data, className }: WorkingHoursHeatmapProps) {
   const maxValue = useMemo(() => {
     let max = 0;
     for (const day of data) {
@@ -57,7 +54,7 @@ export function WorkingHoursHeatmap({
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No session data yet
@@ -69,13 +66,11 @@ export function WorkingHoursHeatmap({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs md:text-sm text-basalt-muted-foreground">
-          Working Hours
-        </p>
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">Working Hours</p>
         {/* Legend */}
         <div className="flex items-center gap-1 text-xs text-basalt-muted-foreground">
           <span>Less</span>
@@ -86,8 +81,7 @@ export function WorkingHoursHeatmap({
               style={{
                 width: 10,
                 height: 10,
-                backgroundColor:
-                  alpha === 0 ? EMPTY_COLOR : withAlpha("chart-1", alpha),
+                backgroundColor: alpha === 0 ? EMPTY_COLOR : withAlpha("chart-1", alpha),
               }}
             />
           ))}

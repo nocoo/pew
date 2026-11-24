@@ -22,9 +22,7 @@ export interface OpenCodeJsonSessionCursor {
  * Lists subdirectories under the message dir (e.g. ses_xxx/).
  * Returns absolute paths to session directories, sorted.
  */
-async function discoverOpenCodeSessionDirs(
-  messageDir: string,
-): Promise<string[]> {
+async function discoverOpenCodeSessionDirs(messageDir: string): Promise<string[]> {
   let entries: import("node:fs").Dirent[];
   try {
     entries = await readdir(messageDir, { withFileTypes: true });
@@ -47,10 +45,7 @@ export const openCodeJsonSessionDriver: FileSessionDriver<OpenCodeJsonSessionCur
     return discoverOpenCodeSessionDirs(opts.openCodeMessageDir);
   },
 
-  shouldSkip(
-    cursor: OpenCodeJsonSessionCursor | undefined,
-    fingerprint: FileFingerprint,
-  ): boolean {
+  shouldSkip(cursor: OpenCodeJsonSessionCursor | undefined, fingerprint: FileFingerprint): boolean {
     if (!cursor) return false;
     // Directories: mtime-only comparison (size unreliable across filesystems)
     return cursor.mtimeMs === fingerprint.mtimeMs;

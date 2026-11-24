@@ -4,12 +4,7 @@ import { useMemo } from "react";
 import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 import { Button } from "@nocoo/basalt/components/button";
 import { chromeIconClassName } from "@/lib/ghost-icon";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-} from "@nocoo/basalt/components/dialog";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@nocoo/basalt/components/dialog";
 import { Calendar, X } from "@nocoo/basalt/icons";
 import { formatMemberSince } from "@/lib/date-helpers";
 import { useAdmin } from "@/hooks/use-admin";
@@ -17,10 +12,7 @@ import { useSeasons } from "@/hooks/use-seasons";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import { Skeleton } from "@nocoo/basalt/components/skeleton";
-import {
-  ProfileContent,
-  type ProfileTab,
-} from "@/components/profile/profile-content";
+import { ProfileContent, type ProfileTab } from "@/components/profile/profile-content";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,9 +76,7 @@ function ConfigLoadingSkeleton({
       <div className="flex items-start justify-between mb-5">
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14">
-            {displayImage && (
-              <AvatarImage src={displayImage} alt={displayName} />
-            )}
+            {displayImage && <AvatarImage src={displayImage} alt={displayName} />}
             <AvatarFallback className="bg-basalt-primary text-basalt-primary-foreground text-lg">
               {initial}
             </AvatarFallback>
@@ -175,9 +165,7 @@ function ProfileDialogHeader({
     <div className="flex items-start justify-between mb-5">
       <div className="flex items-center gap-4">
         <Avatar className="h-14 w-14">
-          {displayImage && (
-            <AvatarImage src={displayImage} alt={displayName} />
-          )}
+          {displayImage && <AvatarImage src={displayImage} alt={displayName} />}
           <AvatarFallback className="bg-basalt-primary text-basalt-primary-foreground text-lg">
             {initial}
           </AvatarFallback>
@@ -256,9 +244,7 @@ export function UserProfileDialog({
     const active = seasonsData?.seasons?.[0];
     if (!active) return null;
     // Compute exclusive end date (end_date is inclusive at minute precision)
-    const exclusiveEnd = new Date(
-      new Date(active.end_date).getTime() + 60_000,
-    ).toISOString();
+    const exclusiveEnd = new Date(new Date(active.end_date).getTime() + 60_000).toISOString();
     return { name: active.name, start: active.start_date, end: exclusiveEnd };
   }, [seasonsData]);
 
@@ -267,8 +253,7 @@ export function UserProfileDialog({
 
   // Config is ready when admin check is done AND season is resolved
   // (season from props = instant, season from API = wait for fetch)
-  const configReady =
-    !adminLoading && (seasonFromProps !== null || !seasonsLoading);
+  const configReady = !adminLoading && (seasonFromProps !== null || !seasonsLoading);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

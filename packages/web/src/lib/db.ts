@@ -93,10 +93,7 @@ export interface DbRead {
   getUserByApiKey(apiKey: string): Promise<UserApiKeyAuth | null>;
 
   /** Get user by OAuth provider account */
-  getUserByOAuthAccount(
-    provider: string,
-    providerAccountId: string,
-  ): Promise<UserAuth | null>;
+  getUserByOAuthAccount(provider: string, providerAccountId: string): Promise<UserAuth | null>;
 
   /** Check if slug exists (optionally excluding a user) */
   checkSlugExists(slug: string, excludeUserId?: string): Promise<boolean>;
@@ -447,14 +444,9 @@ export interface DbRead {
 // ---------------------------------------------------------------------------
 
 export interface DbWrite {
-  execute(
-    sql: string,
-    params?: unknown[],
-  ): Promise<{ changes: number; duration: number }>;
+  execute(sql: string, params?: unknown[]): Promise<{ changes: number; duration: number }>;
 
-  batch(
-    statements: Array<{ sql: string; params?: unknown[] }>,
-  ): Promise<D1QueryResult[]>;
+  batch(statements: Array<{ sql: string; params?: unknown[] }>): Promise<D1QueryResult[]>;
 }
 
 // ---------------------------------------------------------------------------

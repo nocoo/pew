@@ -18,7 +18,14 @@ interface OpenRouterApiResponse {
       input_cache_read?: string;
       input_cache_write?: string;
       input_cache_write_1h?: string;
-      overrides?: Array<{ min_prompt_tokens?: number; prompt?: string; completion?: string; input_cache_read?: string; input_cache_write?: string; input_cache_write_1h?: string }>;
+      overrides?: Array<{
+        min_prompt_tokens?: number;
+        prompt?: string;
+        completion?: string;
+        input_cache_read?: string;
+        input_cache_write?: string;
+        input_cache_write_1h?: string;
+      }>;
     };
   }>;
 }
@@ -112,13 +119,22 @@ export function parseOpenRouter(json: unknown, now: string): ParseResult {
     }
     const cacheRead = perMillion(pricing.input_cache_read);
     const contextTiers: PublicContextTier[] = [];
-    if (Array.isArray(pricing.overrides)) for (const t of pricing.overrides) {
-      if (!t || !Number.isSafeInteger(t.min_prompt_tokens) || Number(t.min_prompt_tokens) < 0) continue;
-      const input = perMillion(t.prompt); const output = perMillion(t.completion);
-      if (input === null || output === null) continue;
-      contextTiers.push({ minInputTokens: Number(t.min_prompt_tokens), inputPerMillion: input, outputPerMillion: output,
-        cachedPerMillion: perMillion(t.input_cache_read), cacheWritePerMillion: perMillion(t.input_cache_write), cacheWrite1hPerMillion: perMillion(t.input_cache_write_1h) });
-    }
+    if (Array.isArray(pricing.overrides))
+      for (const t of pricing.overrides) {
+        if (!t || !Number.isSafeInteger(t.min_prompt_tokens) || Number(t.min_prompt_tokens) < 0)
+          continue;
+        const input = perMillion(t.prompt);
+        const output = perMillion(t.completion);
+        if (input === null || output === null) continue;
+        contextTiers.push({
+          minInputTokens: Number(t.min_prompt_tokens),
+          inputPerMillion: input,
+          outputPerMillion: output,
+          cachedPerMillion: perMillion(t.input_cache_read),
+          cacheWritePerMillion: perMillion(t.input_cache_write),
+          cacheWrite1hPerMillion: perMillion(t.input_cache_write_1h),
+        });
+      }
 
     const provider = providerFromId(id);
     const rawName = typeof raw.name === "string" ? raw.name : "";
@@ -139,7 +155,9 @@ export function parseOpenRouter(json: unknown, now: string): ParseResult {
       cacheWritePerMillion: perMillion(pricing.input_cache_write),
       cacheWrite1hPerMillion: perMillion(pricing.input_cache_write_1h),
       route: "openrouter",
-      ...(contextTiers.length ? { contextTiers: contextTiers.sort((a, b) => a.minInputTokens - b.minInputTokens) } : {}),
+      ...(contextTiers.length
+        ? { contextTiers: contextTiers.sort((a, b) => a.minInputTokens - b.minInputTokens) }
+        : {}),
       contextWindow: ctx,
       origin: "openrouter",
       updatedAt: now,

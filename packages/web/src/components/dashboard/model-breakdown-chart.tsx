@@ -1,14 +1,7 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { displayCounters, modelUsage } from "@/lib/accounting";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
@@ -69,11 +62,7 @@ function ModelBreakdownTooltip({
 
   return (
     <ChartTooltip title={label}>
-      {modelData && (
-        <ChartTooltipSubtitle>
-          {modelData.sourceLabel}
-        </ChartTooltipSubtitle>
-      )}
+      {modelData && <ChartTooltipSubtitle>{modelData.sourceLabel}</ChartTooltipSubtitle>}
       {orderedKeys.map((key) => {
         const entry = payload.find((e) => e.dataKey === key);
         if (!entry) return null;
@@ -103,16 +92,13 @@ function ModelBreakdownTooltip({
  * multiple sources (e.g. GLM-4.7 via OpenCode + Gemini CLI) produces separate
  * entries.  We merge them here so the chart shows one bar per model.
  */
-export function ModelBreakdownChart({
-  data,
-  className,
-}: ModelBreakdownChartProps) {
+export function ModelBreakdownChart({ data, className }: ModelBreakdownChartProps) {
   if (!data.length) {
     return (
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No model data yet
@@ -123,7 +109,14 @@ export function ModelBreakdownChart({
   // Merge entries that share the same model name across different sources
   const merged = new Map<
     string,
-    { model: string; sources: string[]; input: number; output: number; cached: number; total: number }
+    {
+      model: string;
+      sources: string[];
+      input: number;
+      output: number;
+      cached: number;
+      total: number;
+    }
   >();
   for (const m of data) {
     const display = displayCounters(modelUsage(m));
@@ -168,13 +161,11 @@ export function ModelBreakdownChart({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs md:text-sm text-basalt-muted-foreground">
-          By Model
-        </p>
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">By Model</p>
         <div className="flex items-center gap-4">
           {[
             { key: "input", label: "Input", color: chart.violet },
@@ -182,10 +173,7 @@ export function ModelBreakdownChart({
             { key: "cached", label: "Cached", color: colorCached },
           ].map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ background: color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ background: color }} />
               <span className="text-xs text-basalt-muted-foreground">{label}</span>
             </div>
           ))}

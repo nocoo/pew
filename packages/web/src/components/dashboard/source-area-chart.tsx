@@ -2,25 +2,14 @@
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useMemo } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis } from "@/lib/palette";
 import { agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import type { SourceTrendPoint } from "@/lib/usage-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,11 +84,7 @@ function SourceAreaTooltip({
  * Stacked area chart showing daily token usage by source/agent.
  * Used in Daily Usage page for monthly view.
  */
-export function SourceAreaChart({
-  data,
-  padToDate,
-  className,
-}: SourceAreaChartProps) {
+export function SourceAreaChart({ data, padToDate, className }: SourceAreaChartProps) {
   // Extract unique source keys from first data point (all points have same keys due to zero-fill)
   const sourceKeys = useMemo(() => {
     if (!data.length) return [];
@@ -156,7 +141,7 @@ export function SourceAreaChart({
         for (const key of sourceKeys) {
           emptyPoint[key] = 0;
         }
-        result.push(emptyPoint as typeof raw[number]);
+        result.push(emptyPoint as (typeof raw)[number]);
       }
       cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
@@ -169,7 +154,7 @@ export function SourceAreaChart({
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No agent data yet
@@ -181,7 +166,7 @@ export function SourceAreaChart({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -193,9 +178,7 @@ export function SourceAreaChart({
                 className="h-2 w-2 rounded-full"
                 style={{ background: agentColor(source).color }}
               />
-              <span className="text-xs text-basalt-muted-foreground">
-                {sourceLabel(source)}
-              </span>
+              <span className="text-xs text-basalt-muted-foreground">{sourceLabel(source)}</span>
             </div>
           ))}
         </div>
@@ -203,30 +186,12 @@ export function SourceAreaChart({
 
       <div className="h-[200px]">
         <DashboardResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={chartData}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
               {sourceRenderKeys.map((source) => (
-                <linearGradient
-                  key={source}
-                  id={gradId(source)}
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="0%"
-                    stopColor={agentColor(source).color}
-                    stopOpacity={0.4}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={agentColor(source).color}
-                    stopOpacity={0.1}
-                  />
+                <linearGradient key={source} id={gradId(source)} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={agentColor(source).color} stopOpacity={0.4} />
+                  <stop offset="100%" stopColor={agentColor(source).color} stopOpacity={0.1} />
                 </linearGradient>
               ))}
             </defs>

@@ -29,8 +29,7 @@ function MiniStat({
     <div className="flex items-center gap-2">
       <Icon className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
       <span className="text-xs text-basalt-muted-foreground">
-        <span className="font-semibold tabular-nums text-basalt-foreground">{value}</span>
-        {" "}{label}
+        <span className="font-semibold tabular-nums text-basalt-foreground">{value}</span> {label}
       </span>
     </div>
   );
@@ -47,9 +46,10 @@ export function HeatmapHero({
 }: HeatmapHeroProps) {
   const daysInYear = useMemo(() => {
     const now = new Date();
-    const end = now.getFullYear() > year
-      ? Date.UTC(year + 1, 0, 1)
-      : Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const end =
+      now.getFullYear() > year
+        ? Date.UTC(year + 1, 0, 1)
+        : Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     return (end - Date.UTC(year, 0, 1)) / 86_400_000;
   }, [year]);
   const activityRate = daysInYear > 0 ? Math.round((activeDays / daysInYear) * 100) : 0;
@@ -58,9 +58,17 @@ export function HeatmapHero({
     return (
       <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4", className)}>
         {["Activity", "Goal Tracker"].map((label) => (
-          <section key={label} aria-label={label} aria-busy="true" className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0">
+          <section
+            key={label}
+            aria-label={label}
+            aria-busy="true"
+            className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0"
+          >
             <div className="mb-3 flex h-12 items-center justify-between">
-              <div className="space-y-2"><Skeleton style={{ width: undefined }} className="h-4 w-24" /><Skeleton style={{ width: undefined }} className="h-3 w-32" /></div>
+              <div className="space-y-2">
+                <Skeleton style={{ width: undefined }} className="h-4 w-24" />
+                <Skeleton style={{ width: undefined }} className="h-3 w-32" />
+              </div>
               <Skeleton style={{ width: undefined }} className="h-8 w-16" />
             </div>
             <Skeleton style={{ width: undefined }} className="h-[142px] w-full" />
@@ -76,14 +84,24 @@ export function HeatmapHero({
 
   return (
     <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4", className)}>
-      <section aria-label="Activity" className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0 flex flex-col">
+      <section
+        aria-label="Activity"
+        className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0 flex flex-col"
+      >
         <div className="mb-3 flex min-h-12 items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 shrink-0 text-basalt-muted-foreground" strokeWidth={1.5} />
-              <span className="text-xs font-medium uppercase tracking-wider text-basalt-muted-foreground">Activity</span>
+              <Activity
+                className="h-4 w-4 shrink-0 text-basalt-muted-foreground"
+                strokeWidth={1.5}
+              />
+              <span className="text-xs font-medium uppercase tracking-wider text-basalt-muted-foreground">
+                Activity
+              </span>
             </div>
-            <p className="text-xs text-basalt-muted-foreground">{year} · {activityRate}% active days</p>
+            <p className="text-xs text-basalt-muted-foreground">
+              {year} · {activityRate}% active days
+            </p>
           </div>
           <div className="shrink-0 text-right">
             <span className="text-2xl font-bold font-display tracking-tight text-basalt-foreground">
@@ -112,7 +130,10 @@ export function HeatmapHero({
         </div>
       </section>
 
-      <section aria-label="Goal Tracker" className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0 flex flex-col">
+      <section
+        aria-label="Goal Tracker"
+        className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0 flex flex-col"
+      >
         <GoalHeatmap data={data} year={year} className="flex-1" />
       </section>
     </div>

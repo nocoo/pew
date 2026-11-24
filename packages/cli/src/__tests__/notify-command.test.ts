@@ -43,11 +43,12 @@ describe("executeNotify", () => {
     const coordinatedSyncFn = vi.fn<
       (
         trigger: SyncTrigger,
-        opts: { executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>; stateDir: string },
+        opts: {
+          executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>;
+          stateDir: string;
+        },
       ) => Promise<CoordinatorRunResult>
-    >(async (trigger) =>
-      makeResult({ triggers: [trigger] }),
-    );
+    >(async (trigger) => makeResult({ triggers: [trigger] }));
 
     const result = await executeNotify({
       source: "codex",
@@ -121,10 +122,22 @@ describe("executeNotify", () => {
   });
 
   it("custom executeSyncFn result flows through coordinator to final result", async () => {
-    const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => ({
-      tokenSync: { totalDeltas: 5, totalRecords: 3, filesScanned: { claude: 2 }, sources: { claude: 3 } },
-      sessionSync: { totalSnapshots: 2, totalRecords: 2, filesScanned: { claude: 1 }, sources: { claude: 2 } },
-    }));
+    const executeSyncFn = vi.fn(
+      async (): Promise<SyncCycleResult> => ({
+        tokenSync: {
+          totalDeltas: 5,
+          totalRecords: 3,
+          filesScanned: { claude: 2 },
+          sources: { claude: 3 },
+        },
+        sessionSync: {
+          totalSnapshots: 2,
+          totalRecords: 2,
+          filesScanned: { claude: 1 },
+          sources: { claude: 2 },
+        },
+      }),
+    );
 
     const result = await executeNotify({
       source: "opencode",
@@ -142,10 +155,12 @@ describe("executeNotify", () => {
   });
 
   it("executeSyncFn returns partial success when session sync fails", async () => {
-    const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => ({
-      tokenSync: { totalDeltas: 3, totalRecords: 2, filesScanned: {}, sources: {} },
-      sessionSyncError: "session db locked",
-    }));
+    const executeSyncFn = vi.fn(
+      async (): Promise<SyncCycleResult> => ({
+        tokenSync: { totalDeltas: 3, totalRecords: 2, filesScanned: {}, sources: {} },
+        sessionSyncError: "session db locked",
+      }),
+    );
 
     const result = await executeNotify({
       source: "claude-code",
@@ -163,10 +178,22 @@ describe("executeNotify", () => {
   });
 
   it("executeSyncFn returns both results on full success", async () => {
-    const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => ({
-      tokenSync: { totalDeltas: 10, totalRecords: 8, filesScanned: { gemini: 4 }, sources: { gemini: 8 } },
-      sessionSync: { totalSnapshots: 5, totalRecords: 5, filesScanned: { gemini: 3 }, sources: { gemini: 5 } },
-    }));
+    const executeSyncFn = vi.fn(
+      async (): Promise<SyncCycleResult> => ({
+        tokenSync: {
+          totalDeltas: 10,
+          totalRecords: 8,
+          filesScanned: { gemini: 4 },
+          sources: { gemini: 8 },
+        },
+        sessionSync: {
+          totalSnapshots: 5,
+          totalRecords: 5,
+          filesScanned: { gemini: 3 },
+          sources: { gemini: 5 },
+        },
+      }),
+    );
 
     const result = await executeNotify({
       source: "pi",
@@ -307,12 +334,14 @@ describe("executeNotify", () => {
 
   it("default executeSyncFn passes stateDir and source dirs to executeSync", async () => {
     vi.mocked(executeSync).mockResolvedValueOnce({
-      totalDeltas: 0, totalRecords: 0,
+      totalDeltas: 0,
+      totalRecords: 0,
       filesScanned: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
       sources: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
     vi.mocked(executeSessionSync).mockResolvedValueOnce({
-      totalSnapshots: 0, totalRecords: 0,
+      totalSnapshots: 0,
+      totalRecords: 0,
       filesScanned: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
       sources: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
@@ -388,7 +417,10 @@ describe("trailing-edge cooldown sync", () => {
   it("schedules trailing sync when cooldown fires", async () => {
     let callCount = 0;
     const coordinatedSyncFn = vi.fn(
-      async (_trigger: SyncTrigger, _opts: Record<string, unknown>): Promise<CoordinatorRunResult> => {
+      async (
+        _trigger: SyncTrigger,
+        _opts: Record<string, unknown>,
+      ): Promise<CoordinatorRunResult> => {
         callCount++;
         if (callCount === 1) {
           // First call: cooldown skip
@@ -416,15 +448,17 @@ describe("trailing-edge cooldown sync", () => {
     expect(coordinatedSyncFn).toHaveBeenCalledTimes(1);
 
     // Wait for trailing sync to fire (real timer, short delay)
-    await vi.waitFor(() => {
-      expect(coordinatedSyncFn).toHaveBeenCalledTimes(2);
-    }, { timeout: 2_000 });
+    await vi.waitFor(
+      () => {
+        expect(coordinatedSyncFn).toHaveBeenCalledTimes(2);
+      },
+      { timeout: 2_000 },
+    );
   });
 
   it("does not schedule trailing sync when cooldown does not fire", async () => {
     const coordinatedSyncFn = vi.fn(
-      async (): Promise<CoordinatorRunResult> =>
-        makeResult({ cycles: [{}] }),
+      async (): Promise<CoordinatorRunResult> => makeResult({ cycles: [{}] }),
     );
 
     await executeNotify({
@@ -462,19 +496,17 @@ describe("trailing-edge cooldown sync", () => {
 
   it("only one trailing process sleeps — second cooldown skip is a no-op", async () => {
     let callCount = 0;
-    const coordinatedSyncFn = vi.fn(
-      async (): Promise<CoordinatorRunResult> => {
-        callCount++;
-        if (callCount <= 2) {
-          return makeResult({
-            skippedSync: true,
-            skippedReason: "cooldown",
-            cooldownRemainingMs: 200, // Long enough for second notify to see the lock
-          });
-        }
-        return makeResult({ cycles: [{}] });
-      },
-    );
+    const coordinatedSyncFn = vi.fn(async (): Promise<CoordinatorRunResult> => {
+      callCount++;
+      if (callCount <= 2) {
+        return makeResult({
+          skippedSync: true,
+          skippedReason: "cooldown",
+          cooldownRemainingMs: 200, // Long enough for second notify to see the lock
+        });
+      }
+      return makeResult({ cycles: [{}] });
+    });
 
     // First notify — acquires trailing.lock
     await executeNotify({
@@ -498,9 +530,12 @@ describe("trailing-edge cooldown sync", () => {
     expect(coordinatedSyncFn).toHaveBeenCalledTimes(2); // 2 initial calls
 
     // Wait for trailing sync — only one should fire
-    await vi.waitFor(() => {
-      expect(coordinatedSyncFn).toHaveBeenCalledTimes(3); // 2 initial + 1 trailing
-    }, { timeout: 2_000 });
+    await vi.waitFor(
+      () => {
+        expect(coordinatedSyncFn).toHaveBeenCalledTimes(3); // 2 initial + 1 trailing
+      },
+      { timeout: 2_000 },
+    );
 
     // Give extra time to confirm no fourth call
     await new Promise((r) => setTimeout(r, 300));
@@ -508,17 +543,21 @@ describe("trailing-edge cooldown sync", () => {
   });
 
   // Skip in CI: timing-sensitive test with process locking, unreliable in containers
-  it.skipIf(!!process.env.CI)("recovers from stale trailing.lock left by a crashed process", async () => {
-    const { writeFile: fsWriteFile } = await import("node:fs/promises");
-    const { join } = await import("node:path");
+  it.skipIf(!!process.env.CI)(
+    "recovers from stale trailing.lock left by a crashed process",
+    async () => {
+      const { writeFile: fsWriteFile } = await import("node:fs/promises");
+      const { join } = await import("node:path");
 
-    // Pre-create a stale trailing.lock with a dead PID (PID 2 is never a user process)
-    const trailingLockPath = join(tempDir, "trailing.lock");
-    await fsWriteFile(trailingLockPath, JSON.stringify({ pid: 2, startedAt: new Date().toISOString() }));
+      // Pre-create a stale trailing.lock with a dead PID (PID 2 is never a user process)
+      const trailingLockPath = join(tempDir, "trailing.lock");
+      await fsWriteFile(
+        trailingLockPath,
+        JSON.stringify({ pid: 2, startedAt: new Date().toISOString() }),
+      );
 
-    let callCount = 0;
-    const coordinatedSyncFn = vi.fn(
-      async (): Promise<CoordinatorRunResult> => {
+      let callCount = 0;
+      const coordinatedSyncFn = vi.fn(async (): Promise<CoordinatorRunResult> => {
         callCount++;
         if (callCount === 1) {
           return makeResult({
@@ -528,22 +567,25 @@ describe("trailing-edge cooldown sync", () => {
           });
         }
         return makeResult({ cycles: [{}] });
-      },
-    );
+      });
 
-    await executeNotify({
-      source: "claude-code",
-      stateDir: tempDir,
-      executeSyncFn: vi.fn(async () => ({})),
-      coordinatedSyncFn,
-    });
+      await executeNotify({
+        source: "claude-code",
+        stateDir: tempDir,
+        executeSyncFn: vi.fn(async () => ({})),
+        coordinatedSyncFn,
+      });
 
-    // Despite stale trailing.lock existing, trailing sync should still fire
-    // because the dead PID is detected and the lock is replaced
-    await vi.waitFor(() => {
-      expect(coordinatedSyncFn).toHaveBeenCalledTimes(2);
-    }, { timeout: 5_000 });
-  });
+      // Despite stale trailing.lock existing, trailing sync should still fire
+      // because the dead PID is detected and the lock is replaced
+      await vi.waitFor(
+        () => {
+          expect(coordinatedSyncFn).toHaveBeenCalledTimes(2);
+        },
+        { timeout: 5_000 },
+      );
+    },
+  );
 
   it("does not steal trailing.lock from a live process", async () => {
     const { writeFile: fsWriteFile } = await import("node:fs/promises");
@@ -551,7 +593,10 @@ describe("trailing-edge cooldown sync", () => {
 
     // Pre-create trailing.lock with PID 1 (init/launchd — always alive, not us)
     const trailingLockPath = join(tempDir, "trailing.lock");
-    await fsWriteFile(trailingLockPath, JSON.stringify({ pid: 1, startedAt: new Date().toISOString() }));
+    await fsWriteFile(
+      trailingLockPath,
+      JSON.stringify({ pid: 1, startedAt: new Date().toISOString() }),
+    );
 
     const coordinatedSyncFn = vi.fn(
       async (): Promise<CoordinatorRunResult> =>

@@ -53,10 +53,7 @@ describe("executeReset", () => {
     expect(deleted).toHaveLength(2);
     expect(skipped).toHaveLength(4);
 
-    expect(deleted.map((f) => f.file).sort()).toEqual([
-      "cursors.json",
-      "queue.jsonl",
-    ]);
+    expect(deleted.map((f) => f.file).sort()).toEqual(["cursors.json", "queue.jsonl"]);
   });
 
   it("should handle completely empty state dir", async () => {
@@ -88,9 +85,9 @@ describe("executeReset", () => {
     const permError = Object.assign(new Error("EACCES"), { code: "EACCES" });
     const unlinkFn = vi.fn().mockRejectedValue(permError);
 
-    await expect(
-      executeReset({ stateDir: tempDir, unlinkFn: unlinkFn as any }),
-    ).rejects.toThrow("EACCES");
+    await expect(executeReset({ stateDir: tempDir, unlinkFn: unlinkFn as any })).rejects.toThrow(
+      "EACCES",
+    );
   });
 
   it("should return correct file names in order", async () => {

@@ -5,15 +5,7 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import {
-  Users,
-  Plus,
-  LogIn,
-  LogOut,
-  Trash2,
-  ChevronRight,
-  UserPlus,
-} from "@nocoo/basalt/icons";
+import { Users, Plus, LogIn, LogOut, Trash2, ChevronRight, UserPlus } from "@nocoo/basalt/icons";
 import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -156,7 +148,9 @@ function TeamCard({
               variant="ghost"
               size="sm"
               onClick={handleLeave}
-              className={isOwner ? "hover:bg-basalt-destructive/10 hover:text-basalt-destructive" : undefined}
+              className={
+                isOwner ? "hover:bg-basalt-destructive/10 hover:text-basalt-destructive" : undefined
+              }
               aria-label={isOwner ? "Delete team" : "Leave team"}
             >
               {isOwner ? (
@@ -196,10 +190,7 @@ function TeamCard({
 // ---------------------------------------------------------------------------
 
 export default function TeamsPage() {
-  const { data: teamsData, mutate: mutateTeams } = useSWR<{ teams: Team[] }>(
-    "/api/teams",
-    fetcher,
-  );
+  const { data: teamsData, mutate: mutateTeams } = useSWR<{ teams: Team[] }>("/api/teams", fetcher);
   const teams = teamsData?.teams ?? [];
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");

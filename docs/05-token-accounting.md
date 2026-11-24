@@ -8,13 +8,13 @@
 
 Every usage record carries five token counters:
 
-| Field | Meaning |
-|-------|---------|
-| `input_tokens` | Tokens the model read as context, **including** cache-creation tokens |
-| `cached_input_tokens` | Tokens served from prompt cache (subset of what the model processed) |
-| `output_tokens` | Tokens the model generated as visible response |
+| Field                     | Meaning                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| `input_tokens`            | Tokens the model read as context, **including** cache-creation tokens           |
+| `cached_input_tokens`     | Tokens served from prompt cache (subset of what the model processed)            |
+| `output_tokens`           | Tokens the model generated as visible response                                  |
 | `reasoning_output_tokens` | Internal chain-of-thought / thinking tokens reported separately by some sources |
-| `total_tokens` | Sum of the four tracked counters above |
+| `total_tokens`            | Sum of the four tracked counters above                                          |
 
 ### `total_tokens` Formula
 
@@ -41,15 +41,16 @@ stored counters. The rationale:
 
 Raw fields (from `usage` object in JSONL):
 
-| Raw Field | Maps To | Notes |
-|-----------|---------|-------|
-| `input_tokens` | `inputTokens` (partial) | Non-cached, non-creation input |
-| `cache_creation_input_tokens` | `inputTokens` (added) | New cache entries; billed at full input rate |
-| `cache_read_input_tokens` | `cachedInputTokens` | Cache hits; billed at ~10% of input rate |
-| `output_tokens` | `outputTokens` | — |
-| *(not emitted)* | `reasoningOutputTokens` = 0 | Claude Code logs do not expose reasoning tokens |
+| Raw Field                     | Maps To                     | Notes                                           |
+| ----------------------------- | --------------------------- | ----------------------------------------------- |
+| `input_tokens`                | `inputTokens` (partial)     | Non-cached, non-creation input                  |
+| `cache_creation_input_tokens` | `inputTokens` (added)       | New cache entries; billed at full input rate    |
+| `cache_read_input_tokens`     | `cachedInputTokens`         | Cache hits; billed at ~10% of input rate        |
+| `output_tokens`               | `outputTokens`              | —                                               |
+| _(not emitted)_               | `reasoningOutputTokens` = 0 | Claude Code logs do not expose reasoning tokens |
 
 Effective mapping:
+
 ```
 inputTokens         = input_tokens + cache_creation_input_tokens
 cachedInputTokens   = cache_read_input_tokens
@@ -61,13 +62,13 @@ reasoningOutputTokens = 0
 
 Raw fields (from `tokens` object in session JSON):
 
-| Raw Field | Maps To | Notes |
-|-----------|---------|-------|
-| `input` | `inputTokens` | — |
-| `cached` | `cachedInputTokens` | — |
-| `output` | `outputTokens` (partial) | — |
-| `tool` | `outputTokens` (added) | Tool-call tokens merged into output |
-| `thoughts` | `reasoningOutputTokens` | Internal thinking tokens |
+| Raw Field  | Maps To                  | Notes                               |
+| ---------- | ------------------------ | ----------------------------------- |
+| `input`    | `inputTokens`            | —                                   |
+| `cached`   | `cachedInputTokens`      | —                                   |
+| `output`   | `outputTokens` (partial) | —                                   |
+| `tool`     | `outputTokens` (added)   | Tool-call tokens merged into output |
+| `thoughts` | `reasoningOutputTokens`  | Internal thinking tokens            |
 
 Gemini values are **cumulative** per session; the parser computes deltas.
 
@@ -75,13 +76,13 @@ Gemini values are **cumulative** per session; the parser computes deltas.
 
 Raw fields (from `tokens` object in per-message JSON):
 
-| Raw Field | Maps To | Notes |
-|-----------|---------|-------|
-| `input` | `inputTokens` (partial) | — |
-| `cache.write` | `inputTokens` (added) | Cache creation; same treatment as Claude |
-| `cache.read` | `cachedInputTokens` | — |
-| `output` | `outputTokens` | — |
-| `reasoning` | `reasoningOutputTokens` | — |
+| Raw Field     | Maps To                 | Notes                                    |
+| ------------- | ----------------------- | ---------------------------------------- |
+| `input`       | `inputTokens` (partial) | —                                        |
+| `cache.write` | `inputTokens` (added)   | Cache creation; same treatment as Claude |
+| `cache.read`  | `cachedInputTokens`     | —                                        |
+| `output`      | `outputTokens`          | —                                        |
+| `reasoning`   | `reasoningOutputTokens` | —                                        |
 
 OpenCode values are **cumulative** per session; the parser computes deltas.
 
@@ -89,13 +90,13 @@ OpenCode values are **cumulative** per session; the parser computes deltas.
 
 Raw fields (from `usage` object in JSONL):
 
-| Raw Field | Maps To | Notes |
-|-----------|---------|-------|
-| `input` | `inputTokens` | — |
-| `cacheRead` | `cachedInputTokens` (partial) | — |
-| `cacheWrite` | `cachedInputTokens` (added) | Both read+write → cached (differs from Claude) |
-| `output` | `outputTokens` | — |
-| *(not emitted)* | `reasoningOutputTokens` = 0 | — |
+| Raw Field       | Maps To                       | Notes                                          |
+| --------------- | ----------------------------- | ---------------------------------------------- |
+| `input`         | `inputTokens`                 | —                                              |
+| `cacheRead`     | `cachedInputTokens` (partial) | —                                              |
+| `cacheWrite`    | `cachedInputTokens` (added)   | Both read+write → cached (differs from Claude) |
+| `output`        | `outputTokens`                | —                                              |
+| _(not emitted)_ | `reasoningOutputTokens` = 0   | —                                              |
 
 ---
 
@@ -118,10 +119,10 @@ equivalent headline numbers when configured for the same sources.
 
 vibeusage stores two total fields per bucket:
 
-| Field | Meaning |
-|-------|---------|
-| `total_tokens` | Raw total from the source tool (e.g. Claude API's own `usage.total_tokens`) |
-| `billable_total_tokens` | Computed at ingest by `computeBillableTotalTokens()`, **source-specific** |
+| Field                   | Meaning                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `total_tokens`          | Raw total from the source tool (e.g. Claude API's own `usage.total_tokens`) |
+| `billable_total_tokens` | Computed at ingest by `computeBillableTotalTokens()`, **source-specific**   |
 
 The dashboard and summary API display `billable_total_tokens`, not
 `total_tokens`.

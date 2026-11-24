@@ -15,9 +15,7 @@ export { MODEL_SERIES_LIMIT } from "@/lib/usage-helpers";
  * then truncates to 24 characters with ellipsis.
  */
 export function shortModel(model: string): string {
-  const cleaned = model
-    .replace(/^models\//, "")
-    .replace(/-\d{8}$/, "");
+  const cleaned = model.replace(/^models\//, "").replace(/-\d{8}$/, "");
   return cleaned.length > 24 ? `${cleaned.slice(0, 22)}...` : cleaned;
 }
 
@@ -51,9 +49,13 @@ export function toModelEvolutionPoints(
 ): ModelEra[] {
   if (rows.length === 0) return [];
 
-  const ranked = rankUsageByRecency(rows.map((r) => ({
-    id: r.model, date: toLocalDateStr(r.hour_start, tzOffset), value: accountedTotal(r),
-  })));
+  const ranked = rankUsageByRecency(
+    rows.map((r) => ({
+      id: r.model,
+      date: toLocalDateStr(r.hour_start, tzOffset),
+      value: accountedTotal(r),
+    })),
+  );
   const topModels = new Set(ranked.slice(0, topN));
   const hasOther = includeOther && ranked.length > topN;
 
@@ -62,7 +64,7 @@ export function toModelEvolutionPoints(
 
   for (const r of rows) {
     const date = toLocalDateStr(r.hour_start, tzOffset);
-    const model = topModels.has(r.model) ? r.model : (includeOther ? "Other" : null);
+    const model = topModels.has(r.model) ? r.model : includeOther ? "Other" : null;
     if (model === null) continue; // Skip if not including Other and not top N
 
     let dateMap = byDate.get(date);

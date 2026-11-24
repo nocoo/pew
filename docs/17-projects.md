@@ -13,14 +13,14 @@
 
 Each AI tool generates `project_ref` differently:
 
-| Tool | Raw Source | Hashed by | `project_ref` Format |
-|------|-----------|-----------|---------------------|
-| Claude Code | Path-encoded dir name in `~/.claude/projects/` | **pew** — `SHA-256(dirName)[0:12]` | `a1b2c3d4e5f6` |
-| Codex | `session_meta.payload.cwd` (absolute path) | **pew** — `SHA-256(cwd)[0:12]` | `a1b2c3d4e5f6` |
-| Gemini CLI | `projectHash` field in session JSON | **Gemini CLI** (pre-hashed) | opaque string |
-| OpenCode (SQLite) | `session.project_id` column (SHA-1) | **OpenCode** (pre-hashed) | 40-char hex |
-| OpenCode (JSON) | None — legacy data before 2026-02-15 | N/A | `null` |
-| OpenClaw | Agent name from `~/.openclaw/agents/{name}/` | None — stored as-is | `my-agent` |
+| Tool              | Raw Source                                     | Hashed by                          | `project_ref` Format |
+| ----------------- | ---------------------------------------------- | ---------------------------------- | -------------------- |
+| Claude Code       | Path-encoded dir name in `~/.claude/projects/` | **pew** — `SHA-256(dirName)[0:12]` | `a1b2c3d4e5f6`       |
+| Codex             | `session_meta.payload.cwd` (absolute path)     | **pew** — `SHA-256(cwd)[0:12]`     | `a1b2c3d4e5f6`       |
+| Gemini CLI        | `projectHash` field in session JSON            | **Gemini CLI** (pre-hashed)        | opaque string        |
+| OpenCode (SQLite) | `session.project_id` column (SHA-1)            | **OpenCode** (pre-hashed)          | 40-char hex          |
+| OpenCode (JSON)   | None — legacy data before 2026-02-15           | N/A                                | `null`               |
+| OpenClaw          | Agent name from `~/.openclaw/agents/{name}/`   | None — stored as-is                | `my-agent`           |
 
 These raw values are meaningless to users. Worse, a user working on the same
 directory across Claude Code and Codex will see **different** `project_ref`
@@ -281,12 +281,8 @@ Update a project's name or modify its aliases.
 ```json
 {
   "name": "pew-monorepo",
-  "add_aliases": [
-    { "source": "gemini-cli", "project_ref": "xyz789opaque" }
-  ],
-  "remove_aliases": [
-    { "source": "codex", "project_ref": "f6e5d4c3b2a1" }
-  ]
+  "add_aliases": [{ "source": "gemini-cli", "project_ref": "xyz789opaque" }],
+  "remove_aliases": [{ "source": "codex", "project_ref": "f6e5d4c3b2a1" }]
 }
 ```
 
@@ -361,7 +357,7 @@ Uses `toProjectBreakdown()` helper in `session-helpers.ts` which aggregates
 
 ```typescript
 type ProjectBreakdownItem = {
-  projectName: string;   // project name or "Unassigned"
+  projectName: string; // project name or "Unassigned"
   sessions: number;
   totalHours: number;
   totalMessages: number;
@@ -379,6 +375,7 @@ A `<select>` dropdown on the Sessions page that filters all charts by project:
 - "Unassigned" — filters to sessions with no project mapping
 
 The filter works via the `?project=` query parameter on `/api/sessions`:
+
 - `?project=my-project` — filters by project name
 - `?project=_unassigned` — filters to sessions with `project_name IS NULL`
 
@@ -393,7 +390,7 @@ interface UseSessionDataOptions {
   from?: string;
   to?: string;
   source?: string;
-  project?: string;  // NEW — project name or "_unassigned"
+  project?: string; // NEW — project name or "_unassigned"
 }
 
 interface UseSessionDataResult {
@@ -401,7 +398,7 @@ interface UseSessionDataResult {
   overview: SessionOverview;
   hoursGrid: WorkingHoursDay[];
   dailyMessages: MessageDailyStat[];
-  projectBreakdown: ProjectBreakdownItem[];  // NEW
+  projectBreakdown: ProjectBreakdownItem[]; // NEW
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -445,25 +442,25 @@ Add `FolderKanban` to `ICON_MAP`.
 
 A list/card view of user-defined projects:
 
-| Element | Content |
-|---------|---------|
-| Project Name | Editable inline |
-| Aliases | Chips showing `source: project_ref` (truncated) |
-| Sessions | Aggregated count across all aliases |
-| Last Active | Most recent session across all aliases |
-| Actions | Add alias, remove alias, delete project |
+| Element      | Content                                         |
+| ------------ | ----------------------------------------------- |
+| Project Name | Editable inline                                 |
+| Aliases      | Chips showing `source: project_ref` (truncated) |
+| Sessions     | Aggregated count across all aliases             |
+| Last Active  | Most recent session across all aliases          |
+| Actions      | Add alias, remove alias, delete project         |
 
 #### 2. Unassigned References
 
 A table of `(source, project_ref)` pairs not yet assigned to any project:
 
-| Column | Content | Interaction |
-|--------|---------|-------------|
-| Source | Tool name (e.g., "claude-code") | Read-only |
-| Project Ref | Raw value (truncated, monospace) | Read-only |
-| Sessions | Count | Read-only |
-| Last Active | Relative time | Read-only |
-| Action | "Assign" button | Opens modal/dropdown to pick or create project |
+| Column      | Content                          | Interaction                                    |
+| ----------- | -------------------------------- | ---------------------------------------------- |
+| Source      | Tool name (e.g., "claude-code")  | Read-only                                      |
+| Project Ref | Raw value (truncated, monospace) | Read-only                                      |
+| Sessions    | Count                            | Read-only                                      |
+| Last Active | Relative time                    | Read-only                                      |
+| Action      | "Assign" button                  | Opens modal/dropdown to pick or create project |
 
 **Assign Flow**:
 
@@ -483,20 +480,20 @@ A table of `(source, project_ref)` pairs not yet assigned to any project:
 
 ## File Changes Checklist
 
-| File | Action | Phase | Description |
-|------|--------|-------|-------------|
-| `scripts/migrations/005-projects.sql` | Create | 1 | D1 migration (projects + project_aliases) |
-| `packages/web/src/lib/navigation.ts` | Edit | 1 | Add Projects nav item |
-| `packages/web/src/components/layout/sidebar.tsx` | Edit | 1 | Add FolderKanban icon |
-| `packages/web/src/app/api/projects/route.ts` | Create | 1 | GET + POST (collection) |
-| `packages/web/src/app/api/projects/[id]/route.ts` | Create | 1 | PATCH + DELETE (single project) |
-| `packages/web/src/app/(dashboard)/projects/page.tsx` | Create | 1 | Projects management page |
-| `packages/web/src/hooks/use-projects.ts` | Create | 1 | Hook for project data with CRUD mutations |
-| `packages/web/src/app/api/sessions/route.ts` | Edit | 1 | JOIN project_aliases for project_name + `?project=` filter |
-| `packages/web/src/lib/session-helpers.ts` | Edit | 2 | Add `toProjectBreakdown()` + `ProjectBreakdownItem` type |
-| `packages/web/src/hooks/use-session-data.ts` | Edit | 2 | Add `project` option + `projectBreakdown` return value |
-| `packages/web/src/components/dashboard/project-breakdown-chart.tsx` | Create | 2 | Horizontal bar chart for project session stats |
-| `packages/web/src/app/(dashboard)/sessions/page.tsx` | Edit | 2 | Add project filter dropdown + ProjectBreakdownChart |
+| File                                                                | Action | Phase | Description                                                |
+| ------------------------------------------------------------------- | ------ | ----- | ---------------------------------------------------------- |
+| `scripts/migrations/005-projects.sql`                               | Create | 1     | D1 migration (projects + project_aliases)                  |
+| `packages/web/src/lib/navigation.ts`                                | Edit   | 1     | Add Projects nav item                                      |
+| `packages/web/src/components/layout/sidebar.tsx`                    | Edit   | 1     | Add FolderKanban icon                                      |
+| `packages/web/src/app/api/projects/route.ts`                        | Create | 1     | GET + POST (collection)                                    |
+| `packages/web/src/app/api/projects/[id]/route.ts`                   | Create | 1     | PATCH + DELETE (single project)                            |
+| `packages/web/src/app/(dashboard)/projects/page.tsx`                | Create | 1     | Projects management page                                   |
+| `packages/web/src/hooks/use-projects.ts`                            | Create | 1     | Hook for project data with CRUD mutations                  |
+| `packages/web/src/app/api/sessions/route.ts`                        | Edit   | 1     | JOIN project_aliases for project_name + `?project=` filter |
+| `packages/web/src/lib/session-helpers.ts`                           | Edit   | 2     | Add `toProjectBreakdown()` + `ProjectBreakdownItem` type   |
+| `packages/web/src/hooks/use-session-data.ts`                        | Edit   | 2     | Add `project` option + `projectBreakdown` return value     |
+| `packages/web/src/components/dashboard/project-breakdown-chart.tsx` | Create | 2     | Horizontal bar chart for project session stats             |
+| `packages/web/src/app/(dashboard)/sessions/page.tsx`                | Edit   | 2     | Add project filter dropdown + ProjectBreakdownChart        |
 
 ---
 

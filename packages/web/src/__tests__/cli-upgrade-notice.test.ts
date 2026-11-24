@@ -18,7 +18,9 @@ describe("CLI 3.0 upgrade notice", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     db = new DatabaseSync(":memory:");
-    db.exec("CREATE TABLE users (id TEXT PRIMARY KEY); INSERT INTO users VALUES ('alice'), ('bob');");
+    db.exec(
+      "CREATE TABLE users (id TEXT PRIMARY KEY); INSERT INTO users VALUES ('alice'), ('bob');",
+    );
     db.exec(readFileSync(resolve("scripts/migrations/027-cli-upgrade-notice.sql"), "utf8"));
     dbWrite = createMockDbWrite();
     dbWrite.execute.mockImplementation(async (sql: string, params: SQLInputValue[] = []) => ({
@@ -43,8 +45,9 @@ describe("CLI 3.0 upgrade notice", () => {
     expect(first.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await first.json()).toEqual({ show: true });
     expect(await (await POST(request())).json()).toEqual({ show: false });
-    expect(db.prepare("SELECT cli_upgrade_notice_seen_at FROM users WHERE id = 'alice'").get())
-      .toEqual({ cli_upgrade_notice_seen_at: expect.any(String) });
+    expect(
+      db.prepare("SELECT cli_upgrade_notice_seen_at FROM users WHERE id = 'alice'").get(),
+    ).toEqual({ cli_upgrade_notice_seen_at: expect.any(String) });
   });
 
   it("only lets one concurrent dashboard claim the notice", async () => {
@@ -61,10 +64,14 @@ describe("CLI 3.0 upgrade notice", () => {
   });
 
   it("does not rewrite the seen timestamp on subsequent visits", async () => {
-    db.prepare("UPDATE users SET cli_upgrade_notice_seen_at = ? WHERE id = ?").run("2026-09-18 00:00:00", "alice");
+    db.prepare("UPDATE users SET cli_upgrade_notice_seen_at = ? WHERE id = ?").run(
+      "2026-09-18 00:00:00",
+      "alice",
+    );
     expect(await (await POST(request())).json()).toEqual({ show: false });
-    expect(db.prepare("SELECT cli_upgrade_notice_seen_at FROM users WHERE id = 'alice'").get())
-      .toEqual({ cli_upgrade_notice_seen_at: "2026-09-18 00:00:00" });
+    expect(
+      db.prepare("SELECT cli_upgrade_notice_seen_at FROM users WHERE id = 'alice'").get(),
+    ).toEqual({ cli_upgrade_notice_seen_at: "2026-09-18 00:00:00" });
   });
 
   it("does not claim a notice for a deleted account", async () => {

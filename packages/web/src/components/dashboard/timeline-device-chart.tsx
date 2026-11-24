@@ -1,25 +1,14 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import type { DeviceTimelinePoint, DeviceAggregate } from "@pew/core";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import { deviceLabel } from "@/lib/device-helpers";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -149,8 +138,7 @@ export function TimelineDeviceChart({
         }
         bySlot.set(key, point);
       }
-      point[row.device_id] =
-        (point[row.device_id] as number) + row.total_tokens;
+      point[row.device_id] = (point[row.device_id] as number) + row.total_tokens;
     }
 
     return Array.from(bySlot.entries())
@@ -165,7 +153,7 @@ export function TimelineDeviceChart({
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No device data yet
@@ -185,7 +173,7 @@ export function TimelineDeviceChart({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -193,10 +181,7 @@ export function TimelineDeviceChart({
         <div className="flex flex-wrap items-center gap-4">
           {legendItems.slice(0, 6).map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ background: color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ background: color }} />
               <span className="text-xs text-basalt-muted-foreground truncate max-w-[80px]">
                 {label}
               </span>
@@ -207,10 +192,7 @@ export function TimelineDeviceChart({
 
       <div className="h-[200px]">
         <DashboardResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={chartAxis}
@@ -246,9 +228,7 @@ export function TimelineDeviceChart({
                 dataKey={deviceId}
                 stackId="1"
                 fill={CHART_COLORS[i % CHART_COLORS.length] as string}
-                radius={
-                  i === deviceIds.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]
-                }
+                radius={i === deviceIds.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
               />
             ))}
           </BarChart>

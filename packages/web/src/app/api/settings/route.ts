@@ -100,16 +100,10 @@ export async function PATCH(request: Request) {
   if ("nickname" in body) {
     const nickname = body.nickname;
     if (nickname !== null && typeof nickname !== "string") {
-      return NextResponse.json(
-        { error: "nickname must be a string or null" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "nickname must be a string or null" }, { status: 400 });
     }
     if (typeof nickname === "string" && (nickname.length < 1 || nickname.length > 32)) {
-      return NextResponse.json(
-        { error: "nickname must be 1-32 characters" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "nickname must be 1-32 characters" }, { status: 400 });
     }
     sets.push("nickname = ?");
     params.push(nickname);
@@ -118,17 +112,11 @@ export async function PATCH(request: Request) {
   if ("slug" in body) {
     const slug = body.slug;
     if (slug !== null && typeof slug !== "string") {
-      return NextResponse.json(
-        { error: "slug must be a string or null" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "slug must be a string or null" }, { status: 400 });
     }
     if (typeof slug === "string") {
       if (slug.length < 2 || slug.length > 32) {
-        return NextResponse.json(
-          { error: "slug must be 2-32 characters" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "slug must be 2-32 characters" }, { status: 400 });
       }
       if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(slug)) {
         return NextResponse.json(
@@ -140,10 +128,7 @@ export async function PATCH(request: Request) {
       // Check uniqueness
       const slugTaken = await dbRead.checkSlugExists(slug, authResult.userId);
       if (slugTaken) {
-        return NextResponse.json(
-          { error: "slug is already taken" },
-          { status: 409 },
-        );
+        return NextResponse.json({ error: "slug is already taken" }, { status: 409 });
       }
     }
     sets.push("slug = ?");
@@ -153,10 +138,7 @@ export async function PATCH(request: Request) {
   if ("is_public" in body) {
     const isPublic = body.is_public;
     if (typeof isPublic !== "boolean") {
-      return NextResponse.json(
-        { error: "is_public must be a boolean" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "is_public must be a boolean" }, { status: 400 });
     }
     sets.push("is_public = ?");
     params.push(isPublic ? 1 : 0);
@@ -170,17 +152,18 @@ export async function PATCH(request: Request) {
   params.push(authResult.userId);
 
   try {
-    await dbWrite.execute(
-      `UPDATE users SET ${sets.join(", ")} WHERE id = ?`,
-      params,
-    );
+    await dbWrite.execute(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`, params);
 
     // Return updated settings
     const row = await dbRead.getUserSettings(authResult.userId);
 
     return NextResponse.json(
       row
-        ? { nickname: row.nickname, slug: row.slug, is_public: row.is_public === 1 } satisfies UserSettings
+        ? ({
+            nickname: row.nickname,
+            slug: row.slug,
+            is_public: row.is_public === 1,
+          } satisfies UserSettings)
         : null,
     );
   } catch (err) {

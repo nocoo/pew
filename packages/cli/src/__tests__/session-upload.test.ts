@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import {
-  deduplicateSessionRecords,
-  executeSessionUpload,
-} from "../commands/session-upload.js";
+import { deduplicateSessionRecords, executeSessionUpload } from "../commands/session-upload.js";
 import { SessionQueue } from "../storage/session-queue.js";
 import { ConfigManager } from "../config/manager.js";
 import { DEFAULT_HOST } from "../commands/login.js";
@@ -15,9 +12,7 @@ import type { SessionQueueRecord } from "@pew/core";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeSessionRecord(
-  overrides: Partial<SessionQueueRecord> = {},
-): SessionQueueRecord {
+function makeSessionRecord(overrides: Partial<SessionQueueRecord> = {}): SessionQueueRecord {
   return {
     session_key: "claude-code|abc123",
     source: "claude-code",
@@ -46,10 +41,7 @@ function createMockFetch(
   let callIndex = 0;
   const calls: Array<{ url: string; init: RequestInit }> = [];
 
-  const fetchFn = async (
-    url: string | URL | Request,
-    init?: RequestInit,
-  ): Promise<Response> => {
+  const fetchFn = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
     calls.push({ url: String(url), init: init ?? {} });
     const resp = responses[callIndex] ?? responses[responses.length - 1];
     callIndex++;
@@ -297,9 +289,7 @@ describe("executeSessionUpload", () => {
     ];
     await queue.appendBatch(records);
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 2 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
     const result = await executeSessionUpload({
       stateDir: dir,
@@ -347,9 +337,7 @@ describe("executeSessionUpload", () => {
     const batch2 = [makeSessionRecord({ session_key: "new-session" })];
     await queue.appendBatch(batch2);
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const result = await executeSessionUpload({
       stateDir: dir,
@@ -374,9 +362,7 @@ describe("executeSessionUpload", () => {
     const queue = new SessionQueue(dir);
     await queue.appendBatch([makeSessionRecord()]);
 
-    const { fetchFn } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     await executeSessionUpload({
       stateDir: dir,
@@ -417,9 +403,7 @@ describe("executeSessionUpload", () => {
       }),
     ]);
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const result = await executeSessionUpload({
       stateDir: dir,
@@ -583,9 +567,7 @@ describe("executeSessionUpload", () => {
     const queue = new SessionQueue(dir);
     await queue.appendBatch([makeSessionRecord()]);
 
-    const { fetchFn } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const events: Array<{ phase: string }> = [];
     await executeSessionUpload({

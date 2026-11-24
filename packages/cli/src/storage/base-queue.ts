@@ -78,10 +78,7 @@ export class BaseQueue<T> {
    */
   async overwrite(records: T[]): Promise<void> {
     await this.ensureDir();
-    const data =
-      records.length > 0
-        ? `${records.map((r) => JSON.stringify(r)).join("\n")}\n`
-        : "";
+    const data = records.length > 0 ? `${records.map((r) => JSON.stringify(r)).join("\n")}\n` : "";
     const tmpPath = `${this.queuePath}.tmp`;
     await writeFile(tmpPath, data);
     await rename(tmpPath, this.queuePath);

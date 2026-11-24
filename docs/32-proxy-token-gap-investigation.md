@@ -59,12 +59,12 @@ tokens from upstream, regardless of what Claude Code does afterward.
 The two systems use different token accounting for the same underlying API
 call:
 
-| Dimension | pew (from JSONL) | raven (from proxy) |
-|-----------|------------------|--------------------|
-| Input tokens | `input_tokens + cache_creation` | `prompt_tokens - cached_tokens` |
-| Cached | `cache_read_input_tokens` (separate field) | Subtracted from input, not stored |
-| Output | `output_tokens` | `completion_tokens` |
-| Total | `input + cached + output + reasoning` | `input + output` (generated column) |
+| Dimension    | pew (from JSONL)                           | raven (from proxy)                  |
+| ------------ | ------------------------------------------ | ----------------------------------- |
+| Input tokens | `input_tokens + cache_creation`            | `prompt_tokens - cached_tokens`     |
+| Cached       | `cache_read_input_tokens` (separate field) | Subtracted from input, not stored   |
+| Output       | `output_tokens`                            | `completion_tokens`                 |
+| Total        | `input + cached + output + reasoning`      | `input + output` (generated column) |
 
 **Key difference**: pew's `input_tokens` field (fresh input, no cache)
 equals raven's `input_tokens` field (`prompt - cached`). The definitions
@@ -153,6 +153,7 @@ the proxy but never logged to JSONL:
 ### Why missing requests are larger than average
 
 Interrupted requests are biased toward the **longest-running** generations:
+
 - Short requests (1-5s) complete before the user has time to interrupt
 - Long requests (100-400s) are more likely to be cancelled, hit timeouts,
   or trigger context compaction
@@ -166,11 +167,11 @@ also the ones consuming the most tokens.
 
 ## Quantified Impact
 
-| Metric | Value |
-|--------|-------|
-| Missing requests | 3.6% of total |
-| Missing input tokens | 17.0% of proxy total |
-| Missing output tokens | 33.1% of proxy total |
+| Metric                       | Value                    |
+| ---------------------------- | ------------------------ |
+| Missing requests             | 3.6% of total            |
+| Missing input tokens         | 17.0% of proxy total     |
+| Missing output tokens        | 33.1% of proxy total     |
 | Missing total (input+output) | **18.1%** of proxy total |
 
 The 3.6% missing request rate translates to an 18.1% token gap because

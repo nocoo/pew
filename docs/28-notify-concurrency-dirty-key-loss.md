@@ -7,10 +7,10 @@
 
 ## Status
 
-| # | Commit | Description | Status |
-|---|--------|-------------|--------|
-| 1 | `docs: add notify concurrency dirty-key loss investigation` | This document | done |
-| 2 | `docs: revise fix design based on code review` | Add review findings; phased approach | done |
+| #   | Commit                                                      | Description                          | Status |
+| --- | ----------------------------------------------------------- | ------------------------------------ | ------ |
+| 1   | `docs: add notify concurrency dirty-key loss investigation` | This document                        | done   |
+| 2   | `docs: revise fix design based on code review`              | Add review findings; phased approach | done   |
 
 ## Symptom
 
@@ -205,14 +205,14 @@ data on every sync cycle where notify processes run concurrently — which is
 
 ## Evidence Summary
 
-| Check | Result |
-|---|---|
-| Raw JSONL files (source) | Complete — 05:00 onward |
-| queue.jsonl (local queue) | Complete — 18 unique keys |
-| queue.state.json dirtyKeys (at upload time) | **Incomplete — only 8 keys** |
-| D1 database (dashboard) | Missing 05:00–07:00 records |
-| Coordinator lock status | 100% `degradedToUnlocked` |
-| Concurrent notify processes per 15-min window | 3–10 simultaneous |
+| Check                                         | Result                       |
+| --------------------------------------------- | ---------------------------- |
+| Raw JSONL files (source)                      | Complete — 05:00 onward      |
+| queue.jsonl (local queue)                     | Complete — 18 unique keys    |
+| queue.state.json dirtyKeys (at upload time)   | **Incomplete — only 8 keys** |
+| D1 database (dashboard)                       | Missing 05:00–07:00 records  |
+| Coordinator lock status                       | 100% `degradedToUnlocked`    |
+| Concurrent notify processes per 15-min window | 3–10 simultaneous            |
 
 ## Immediate Remediation
 
@@ -295,7 +295,7 @@ A simple lockfile with "exit on contention" would regress notification
 reliability.
 
 **Conclusion:** Fix must preserve all four coordinator semantics. Only the
-lock *acquisition mechanism* changes (from `FileHandle.lock()` to `O_EXCL`
+lock _acquisition mechanism_ changes (from `FileHandle.lock()` to `O_EXCL`
 lockfile), not the coordination protocol.
 
 ### Risk 3 — Age-Based Stale Lock Detection Is Unsafe (MEDIUM)
@@ -327,14 +327,14 @@ notify runs on this user's machine.
 on all Node.js/Bun versions, while **preserving** every existing coordinator
 semantic:
 
-| Semantic | Current (broken) | Phase 1 (fixed) |
-|---|---|---|
-| Mutual exclusion | `FileHandle.lock()` — fails silently | `O_EXCL` lockfile — portable |
-| Signal file (`notify.signal`) | ✓ O_APPEND atomic append | ✓ Unchanged |
-| Blocking waiter | `fd.lock('exclusive')` blocking call | Poll lockfile with backoff (see below) |
-| Follow-up cycle | ✓ truncate → sync → check size | ✓ Unchanged |
-| Waiter dedup | ✓ check signal size after lock acquired | ✓ Unchanged |
-| Fail-closed on lock error | No — degrades to `runUnlocked()` | Yes — `skippedSync: true` + error, **never** run unlocked |
+| Semantic                      | Current (broken)                        | Phase 1 (fixed)                                           |
+| ----------------------------- | --------------------------------------- | --------------------------------------------------------- |
+| Mutual exclusion              | `FileHandle.lock()` — fails silently    | `O_EXCL` lockfile — portable                              |
+| Signal file (`notify.signal`) | ✓ O_APPEND atomic append                | ✓ Unchanged                                               |
+| Blocking waiter               | `fd.lock('exclusive')` blocking call    | Poll lockfile with backoff (see below)                    |
+| Follow-up cycle               | ✓ truncate → sync → check size          | ✓ Unchanged                                               |
+| Waiter dedup                  | ✓ check signal size after lock acquired | ✓ Unchanged                                               |
+| Fail-closed on lock error     | No — degrades to `runUnlocked()`        | Yes — `skippedSync: true` + error, **never** run unlocked |
 
 **Lockfile details:**
 
@@ -401,24 +401,26 @@ returns `{ skippedSync: true, error: "..." }` and exits without executing sync.
 ```typescript
 // In finally block
 try {
-  const content = await readFile(lockPath, 'utf8');
+  const content = await readFile(lockPath, "utf8");
   const { pid } = JSON.parse(content);
   if (pid === process.pid) {
     await unlink(lockPath);
   }
   // If PID doesn't match, another process stole the lock (shouldn't happen
   // but defensive). Don't remove someone else's lockfile.
-} catch { /* lockfile already removed or unreadable — fine */ }
+} catch {
+  /* lockfile already removed or unreadable — fine */
+}
 ```
 
 **Failure mode analysis (Phase 1):**
 
-| Failure point | State after restart | Behavior |
-|---|---|---|
-| Crash after lock, before sync | Stale lockfile on disk | Next run detects dead PID → removes lockfile → proceeds |
-| Crash during sync | Stale lockfile; queue/cursors in unknown state | Next run removes stale lockfile; existing crash recovery applies |
-| Normal exit | Lockfile removed in `finally` | Clean |
-| PID recycled (rare) | Lockfile with live PID that's a different process | Poll loop waits until timeout; worst case = delayed sync (60s) |
+| Failure point                 | State after restart                               | Behavior                                                         |
+| ----------------------------- | ------------------------------------------------- | ---------------------------------------------------------------- |
+| Crash after lock, before sync | Stale lockfile on disk                            | Next run detects dead PID → removes lockfile → proceeds          |
+| Crash during sync             | Stale lockfile; queue/cursors in unknown state    | Next run removes stale lockfile; existing crash recovery applies |
+| Normal exit                   | Lockfile removed in `finally`                     | Clean                                                            |
+| PID recycled (rare)           | Lockfile with live PID that's a different process | Poll loop waits until timeout; worst case = delayed sync (60s)   |
 
 ### Phase 2: Idempotent Token Queue (Prerequisite for Cursor-After-Upload)
 
@@ -475,6 +477,7 @@ today, and the cost/risk of implementing it now outweighs the benefit.
    re-parse is harmless (0 deltas, no inflation) and fast (<100ms).
 
 **When to revisit:** Phase 2 becomes necessary if any of these conditions arise:
+
 - Upload failures become frequent enough that redundant re-parses cause
   noticeable latency (unlikely with Phase 3's 5-minute cooldown)
 - A new feature requires crash-safe exactly-once queue semantics
@@ -549,10 +552,10 @@ signals persist for the next run after cooldown expires.
 > `last-success.json` is only written when `entry.status === "success"`,
 > ensuring the cooldown timer is anchored to the last real sync.
 
-| Trigger | Cooldown check | Rationale |
-|---|---|---|
-| `pew notify` (hook) | Skip if last sync < 5 min ago | High-frequency hooks; data arrives in 30-min buckets anyway |
-| `pew sync` (manual) | Always execute, ignore cooldown | User explicitly requested; bypasses coordinator entirely |
+| Trigger             | Cooldown check                  | Rationale                                                   |
+| ------------------- | ------------------------------- | ----------------------------------------------------------- |
+| `pew notify` (hook) | Skip if last sync < 5 min ago   | High-frequency hooks; data arrives in 30-min buckets anyway |
+| `pew sync` (manual) | Always execute, ignore cooldown | User explicitly requested; bypasses coordinator entirely    |
 
 **Why 5 minutes:** Token data is bucketed into 30-minute windows. A 5-minute
 sync interval means at most 6 syncs per bucket window — more than enough to
@@ -599,6 +602,7 @@ scheduleTrailingSync() — fire-and-forget async IIFE
 ```
 
 Key properties:
+
 - **Single-waiter:** O_EXCL `trailing.lock` ensures only one process sleeps.
   Subsequent cooldown skips see the lock and no-op immediately.
 - **Stale recovery:** `trailing.lock` stores `{ pid, startedAt }` JSON. If the
@@ -621,56 +625,56 @@ from `runLockedCycles()` where sync already started.
 
 ### Phase 1 (Fix the Lock)
 
-| File | Change |
-|---|---|
-| `packages/cli/src/notifier/coordinator.ts` | Replace `FileHandle.lock()` with O_EXCL lockfile; preserve signal/dedup semantics; add PID-based stale detection |
-| New: `packages/cli/src/notifier/lockfile.ts` | O_EXCL lockfile module: acquire, release, stale detection |
-| `packages/cli/src/__tests__/coordinator.test.ts` | Update lock acquisition tests; add stale PID tests |
-| New: `packages/cli/src/__tests__/lockfile.test.ts` | L1 tests for lockfile module |
+| File                                               | Change                                                                                                           |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `packages/cli/src/notifier/coordinator.ts`         | Replace `FileHandle.lock()` with O_EXCL lockfile; preserve signal/dedup semantics; add PID-based stale detection |
+| New: `packages/cli/src/notifier/lockfile.ts`       | O_EXCL lockfile module: acquire, release, stale detection                                                        |
+| `packages/cli/src/__tests__/coordinator.test.ts`   | Update lock acquisition tests; add stale PID tests                                                               |
+| New: `packages/cli/src/__tests__/lockfile.test.ts` | L1 tests for lockfile module                                                                                     |
 
 ### Phase 2 (Idempotent Queue) — future
 
-| File | Change |
-|---|---|
-| `packages/cli/src/commands/sync.ts` | Replace SUM-based merge with snapshot overwrite or staged delta |
-| `packages/cli/src/commands/upload.ts` | Update `aggregateRecords()` if snapshot model is chosen |
-| `packages/cli/src/storage/base-queue.ts` | Add staging area if staged delta model is chosen |
+| File                                     | Change                                                          |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| `packages/cli/src/commands/sync.ts`      | Replace SUM-based merge with snapshot overwrite or staged delta |
+| `packages/cli/src/commands/upload.ts`    | Update `aggregateRecords()` if snapshot model is chosen         |
+| `packages/cli/src/storage/base-queue.ts` | Add staging area if staged delta model is chosen                |
 
 ### Phase 3 (Cooldown + Trailing-Edge) — done
 
-| File | Change |
-|---|---|
-| `packages/cli/src/notifier/coordinator.ts` | Add cooldown check (returns remaining ms); `cooldownMs` option; `cooldownRemainingMs` in result and run log; inner try/catch for lock errors |
-| `packages/core/src/types.ts` | Add `skippedReason` and `cooldownRemainingMs` to `CoordinatorRunResult` and `RunLogEntry.coordination` |
-| `packages/cli/src/commands/notify.ts` | Wire `cooldownMs: 300_000`; `scheduleTrailingSync()` with PID-based `trailing.lock` stale detection |
-| `packages/cli/src/__tests__/coordinator.test.ts` | 10 cooldown unit tests + 1 EACCES skippedSync test |
-| `packages/cli/src/__tests__/coordinator-integration.test.ts` | 4 cooldown integration tests |
-| `packages/cli/src/__tests__/notify-command.test.ts` | 6 trailing-edge tests (schedule, no-schedule ×2, single-waiter, stale recovery, live-PID respect) |
+| File                                                         | Change                                                                                                                                       |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/cli/src/notifier/coordinator.ts`                   | Add cooldown check (returns remaining ms); `cooldownMs` option; `cooldownRemainingMs` in result and run log; inner try/catch for lock errors |
+| `packages/core/src/types.ts`                                 | Add `skippedReason` and `cooldownRemainingMs` to `CoordinatorRunResult` and `RunLogEntry.coordination`                                       |
+| `packages/cli/src/commands/notify.ts`                        | Wire `cooldownMs: 300_000`; `scheduleTrailingSync()` with PID-based `trailing.lock` stale detection                                          |
+| `packages/cli/src/__tests__/coordinator.test.ts`             | 10 cooldown unit tests + 1 EACCES skippedSync test                                                                                           |
+| `packages/cli/src/__tests__/coordinator-integration.test.ts` | 4 cooldown integration tests                                                                                                                 |
+| `packages/cli/src/__tests__/notify-command.test.ts`          | 6 trailing-edge tests (schedule, no-schedule ×2, single-waiter, stale recovery, live-PID respect)                                            |
 
 ## Implementation Steps
 
-| # | Phase | Commit | Description | Status |
-|---|-------|--------|-------------|--------|
-| 1 | — | `docs: add notify concurrency dirty-key loss investigation` | This document | done |
-| 2 | 1 | `test: add O_EXCL lockfile acquire/release/stale tests` | L1 tests for new lock module | done |
-| 3 | 1 | `feat: implement O_EXCL lockfile with PID-based stale detection` | New `lockfile.ts` module | done |
-| 4 | 1 | `test: update coordinator tests for O_EXCL lock` | Replace FileHandle.lock mock with lockfile mock | done |
-| 5 | 1 | `feat: replace FileHandle.lock with O_EXCL lockfile in coordinator` | Core fix — working mutual exclusion | done |
-| 6 | 1 | `test: integration test for concurrent notify serialization` | Simulate concurrent notify; verify dirty keys intact | done |
-| 7 | 1 | `chore: remove FileHandle.lock and runUnlocked code paths` | Clean up dead code; no unlocked fallback remains | done (no dead code found in src/) |
-| 8 | 2 | — | Design decision: snapshot vs staged delta | deferred |
-| 9 | 2 | — | Implement idempotent token queue | deferred |
-| 10 | 2 | — | Cursor-after-upload (safe after idempotent queue) | deferred |
-| 11 | 3 | `docs: defer Phase 2, detail Phase 3 cooldown steps` | Update doc 28 status | done |
-| 12 | 3 | `feat: add skippedReason to CoordinatorRunResult and RunLogEntry` | Core type change | done |
-| 13 | 3 | `test: add cooldown coordinator unit tests` | TDD: write tests first | done |
-| 14 | 3 | `feat: implement cooldown check in coordinator` | Read last-success.json, skip if < cooldownMs since last success | done |
-| 15 | 3 | `test: add cooldown integration test` | Real filesystem cooldown behavior | done |
-| 16 | 3 | `docs: mark Phase 3 as done in doc 28` | Update status | done |
-| 17 | 3 | `feat: wire 5-minute cooldown to pew notify` | `cooldownMs: 300_000` in coordinator options | done |
-| 18 | 3 | `fix: set skippedSync: true when lock acquisition throws` | Inner try/catch for acquireLock errors | done |
-| 19 | 3 | `feat: return cooldownRemainingMs from coordinator` | checkCooldown returns remaining ms; type fields | done |
-| 20 | 3 | `feat: add trailing-edge sync guarantee for cooldown` | scheduleTrailingSync with O_EXCL trailing.lock | done |
-| 21 | 3 | `fix: add PID-based stale detection to trailing.lock` | Dead PID → remove stale lock, prevent permanent lockout | done |
-| 22 | 3 | `fix: use dedicated last-success.json for cooldown instead of last-run.json` | Cooldown reads success-only timestamp; prevents skipped runs from breaking cooldown | done |
-| 23 | 3 | `docs: align doc 28 with last-success.json implementation` | Update doc to reflect actual cooldown storage mechanism | done |
+| #   | Phase | Commit                                                                       | Description                                                                         | Status                            |
+| --- | ----- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------- |
+| 1   | —     | `docs: add notify concurrency dirty-key loss investigation`                  | This document                                                                       | done                              |
+| 2   | 1     | `test: add O_EXCL lockfile acquire/release/stale tests`                      | L1 tests for new lock module                                                        | done                              |
+| 3   | 1     | `feat: implement O_EXCL lockfile with PID-based stale detection`             | New `lockfile.ts` module                                                            | done                              |
+| 4   | 1     | `test: update coordinator tests for O_EXCL lock`                             | Replace FileHandle.lock mock with lockfile mock                                     | done                              |
+| 5   | 1     | `feat: replace FileHandle.lock with O_EXCL lockfile in coordinator`          | Core fix — working mutual exclusion                                                 | done                              |
+| 6   | 1     | `test: integration test for concurrent notify serialization`                 | Simulate concurrent notify; verify dirty keys intact                                | done                              |
+| 7   | 1     | `chore: remove FileHandle.lock and runUnlocked code paths`                   | Clean up dead code; no unlocked fallback remains                                    | done (no dead code found in src/) |
+| 8   | 2     | —                                                                            | Design decision: snapshot vs staged delta                                           | deferred                          |
+| 9   | 2     | —                                                                            | Implement idempotent token queue                                                    | deferred                          |
+| 10  | 2     | —                                                                            | Cursor-after-upload (safe after idempotent queue)                                   | deferred                          |
+| 11  | 3     | `docs: defer Phase 2, detail Phase 3 cooldown steps`                         | Update doc 28 status                                                                | done                              |
+| 12  | 3     | `feat: add skippedReason to CoordinatorRunResult and RunLogEntry`            | Core type change                                                                    | done                              |
+| 13  | 3     | `test: add cooldown coordinator unit tests`                                  | TDD: write tests first                                                              | done                              |
+| 14  | 3     | `feat: implement cooldown check in coordinator`                              | Read last-success.json, skip if < cooldownMs since last success                     | done                              |
+| 15  | 3     | `test: add cooldown integration test`                                        | Real filesystem cooldown behavior                                                   | done                              |
+| 16  | 3     | `docs: mark Phase 3 as done in doc 28`                                       | Update status                                                                       | done                              |
+| 17  | 3     | `feat: wire 5-minute cooldown to pew notify`                                 | `cooldownMs: 300_000` in coordinator options                                        | done                              |
+| 18  | 3     | `fix: set skippedSync: true when lock acquisition throws`                    | Inner try/catch for acquireLock errors                                              | done                              |
+| 19  | 3     | `feat: return cooldownRemainingMs from coordinator`                          | checkCooldown returns remaining ms; type fields                                     | done                              |
+| 20  | 3     | `feat: add trailing-edge sync guarantee for cooldown`                        | scheduleTrailingSync with O_EXCL trailing.lock                                      | done                              |
+| 21  | 3     | `fix: add PID-based stale detection to trailing.lock`                        | Dead PID → remove stale lock, prevent permanent lockout                             | done                              |
+| 22  | 3     | `fix: use dedicated last-success.json for cooldown instead of last-run.json` | Cooldown reads success-only timestamp; prevents skipped runs from breaking cooldown | done                              |
+| 23  | 3     | `docs: align doc 28 with last-success.json implementation`                   | Update doc to reflect actual cooldown storage mechanism                             | done                              |

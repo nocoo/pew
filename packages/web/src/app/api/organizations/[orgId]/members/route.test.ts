@@ -38,9 +38,7 @@ describe("GET /api/organizations/[orgId]/members error handling", () => {
   });
 
   it("returns 503 when table is missing", async () => {
-    mockDbRead.getOrganizationById.mockRejectedValueOnce(
-      new Error("no such table: organizations"),
-    );
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table: organizations"));
 
     const req = makeGetRequest("/api/organizations/org1/members");
     const res = await GET(req, makeParams());
@@ -53,9 +51,7 @@ describe("GET /api/organizations/[orgId]/members error handling", () => {
 
   it("returns 500 for unexpected database failures", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockDbRead.getOrganizationById.mockRejectedValueOnce(
-      new Error("connection refused"),
-    );
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("connection refused"));
 
     const req = makeGetRequest("/api/organizations/org1/members");
     const res = await GET(req, makeParams());

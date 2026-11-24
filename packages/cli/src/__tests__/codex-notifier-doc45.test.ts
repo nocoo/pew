@@ -163,12 +163,7 @@ describe("Codex notifier — doc 45 §7.2 runtime + §8 ownership hardening", ()
       await writeFile(
         originalBackupPath,
         JSON.stringify({
-          notify: [
-            "/usr/bin/env",
-            "node",
-            "/tmp/pew/bin/notify.cjs",
-            "--source=codex",
-          ],
+          notify: ["/usr/bin/env", "node", "/tmp/pew/bin/notify.cjs", "--source=codex"],
           capturedAt: "2026-01-01T00:00:00Z",
         }),
       );

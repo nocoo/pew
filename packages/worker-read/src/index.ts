@@ -78,9 +78,7 @@ async function secureCompare(a: string, b: string): Promise<boolean> {
     timingSafeEqual?: (a: BufferSource, b: BufferSource) => boolean;
   };
   if (typeof subtle.timingSafeEqual === "function") {
-    return (
-      bufA.byteLength === bufB.byteLength && subtle.timingSafeEqual(paddedA, paddedB)
-    );
+    return bufA.byteLength === bufB.byteLength && subtle.timingSafeEqual(paddedA, paddedB);
   }
   // Fallback constant-time comparison (XOR every byte, accumulate diff bits).
   let diff = bufA.byteLength ^ bufB.byteLength;
@@ -110,7 +108,14 @@ async function handleLive(env: Env): Promise<Response> {
   const healthy = database.connected;
 
   return Response.json(
-    { status: healthy ? "ok" : "error", version: WORKER_VERSION, component: "worker-read", timestamp, uptime, database },
+    {
+      status: healthy ? "ok" : "error",
+      version: WORKER_VERSION,
+      component: "worker-read",
+      timestamp,
+      uptime,
+      database,
+    },
     { status: healthy ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
 }
@@ -182,17 +187,11 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
       case "cache":
         return handleCacheRpc(body as CacheRpcRequest, env.CACHE, env.DB);
       default:
-        return Response.json(
-          { error: `Unknown RPC domain: ${domain}` },
-          { status: 400 },
-        );
+        return Response.json({ error: `Unknown RPC domain: ${domain}` }, { status: 400 });
     }
   } catch (err) {
     console.error(err);
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -208,10 +207,7 @@ const worker: ExportedHandler<Env> = {
     // GET /api/live — no auth
     if (path === "/api/live") {
       if (request.method !== "GET") {
-        return Response.json(
-          { error: "Method not allowed" },
-          { status: 405 },
-        );
+        return Response.json({ error: "Method not allowed" }, { status: 405 });
       }
       return handleLive(env);
     }
@@ -229,20 +225,14 @@ const worker: ExportedHandler<Env> = {
     // POST /api/rpc — typed RPC endpoint
     if (path === "/api/rpc") {
       if (request.method !== "POST") {
-        return Response.json(
-          { error: "Method not allowed" },
-          { status: 405 },
-        );
+        return Response.json({ error: "Method not allowed" }, { status: 405 });
       }
 
       let body: unknown;
       try {
         body = await request.json();
       } catch {
-        return Response.json(
-          { error: "Invalid JSON body" },
-          { status: 400 },
-        );
+        return Response.json({ error: "Invalid JSON body" }, { status: 400 });
       }
 
       return checkedCountResponse(handleRpc(body, { ...env, DB: checkedCountDatabase(env.DB) }));

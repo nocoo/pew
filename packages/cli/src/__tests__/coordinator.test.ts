@@ -42,10 +42,13 @@ function createFakeProcess(pid = 9999): ProcessOps {
  * (i.e. writeFile with flag="wx" succeeds), allowing tests to simulate
  * concurrent behavior.
  */
-function createFakeFs(state?: Partial<FakeFsState>, opts?: {
-  onLockAcquired?: () => void;
-  statOverride?: () => Promise<{ size: number }>;
-}) {
+function createFakeFs(
+  state?: Partial<FakeFsState>,
+  opts?: {
+    onLockAcquired?: () => void;
+    statOverride?: () => Promise<{ size: number }>;
+  },
+) {
   const fakeState: FakeFsState = {
     signalSize: 0,
     appendCalls: 0,
@@ -58,14 +61,16 @@ function createFakeFs(state?: Partial<FakeFsState>, opts?: {
   };
 
   const fs: FsOps = {
-    stat: opts?.statOverride ?? vi.fn(async () => {
-      if (!fakeState.signalExists) {
-        const err = new Error("missing") as NodeJS.ErrnoException;
-        err.code = "ENOENT";
-        throw err;
-      }
-      return { size: fakeState.signalSize };
-    }),
+    stat:
+      opts?.statOverride ??
+      vi.fn(async () => {
+        if (!fakeState.signalExists) {
+          const err = new Error("missing") as NodeJS.ErrnoException;
+          err.code = "ENOENT";
+          throw err;
+        }
+        return { size: fakeState.signalSize };
+      }),
 
     appendFile: vi.fn(async (_path: string, content: string) => {
       fakeState.signalExists = true;
@@ -129,7 +134,11 @@ function createFakeFs(state?: Partial<FakeFsState>, opts?: {
 
 /** Extract the RunLogEntry written to last-run.json from the fake fs writeFile calls */
 function extractRunLog(fs: FsOps): RunLogEntry | undefined {
-  const calls = (fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [string, string, unknown?][];
+  const calls = (fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
+    string,
+    string,
+    unknown?,
+  ][];
   const logCall = calls.find(([path]) => path.endsWith("last-run.json"));
   return logCall ? JSON.parse(logCall[1]) : undefined;
 }
@@ -259,7 +268,9 @@ describe("coordinatedSync", () => {
         }
         return fake.fs.readFile(path);
       }),
-      unlink: vi.fn(async () => { fake.state.lockContent = null; }),
+      unlink: vi.fn(async () => {
+        fake.state.lockContent = null;
+      }),
     };
 
     const executeSyncFn = vi.fn(async () => ({}));
@@ -324,7 +335,9 @@ describe("coordinatedSync", () => {
         }
         return fake.fs.readFile(path);
       }),
-      unlink: vi.fn(async () => { fake.state.lockContent = null; }),
+      unlink: vi.fn(async () => {
+        fake.state.lockContent = null;
+      }),
     };
 
     const executeSyncFn = vi.fn(async () => ({}));
@@ -498,11 +511,23 @@ describe("coordinatedSync", () => {
   it("stores a full SyncCycleResult in cycles[0]", async () => {
     const fake = createFakeFs({ lockContent: null, signalSize: 0 });
     const fullCycle: SyncCycleResult = {
-      tokenSync: { filesScanned: { claude: 3 }, totalDeltas: 10, totalRecords: 5, sources: { claude: 5 } },
+      tokenSync: {
+        filesScanned: { claude: 3 },
+        totalDeltas: 10,
+        totalRecords: 5,
+        sources: { claude: 5 },
+      },
       sessionSync: {
         totalSnapshots: 2,
         totalRecords: 2,
-        filesScanned: { claude: 1, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+        filesScanned: {
+          claude: 1,
+          codex: 0,
+          gemini: 0,
+          opencode: 0,
+          openclaw: 0,
+          vscodeCopilot: 0,
+        },
         sources: { claude: 2 },
       },
     };
@@ -527,7 +552,14 @@ describe("coordinatedSync", () => {
     const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => {
       callCount += 1;
       if (callCount <= 2) fake.state.signalSize = 1;
-      return { tokenSync: { filesScanned: { claude: callCount }, totalDeltas: callCount, totalRecords: callCount, sources: {} } };
+      return {
+        tokenSync: {
+          filesScanned: { claude: callCount },
+          totalDeltas: callCount,
+          totalRecords: callCount,
+          sources: {},
+        },
+      };
     });
 
     const result = await coordinatedSync(createTrigger(), {
@@ -567,7 +599,12 @@ describe("coordinatedSync", () => {
   it("preserves a partial success cycle (tokenSync present, sessionSyncError present)", async () => {
     const fake = createFakeFs({ lockContent: null, signalSize: 0 });
     const partialCycle: SyncCycleResult = {
-      tokenSync: { filesScanned: { gemini: 5 }, totalDeltas: 3, totalRecords: 3, sources: { gemini: 3 } },
+      tokenSync: {
+        filesScanned: { gemini: 5 },
+        totalDeltas: 3,
+        totalRecords: 3,
+        sources: { gemini: 3 },
+      },
       sessionSyncError: "session db locked",
     };
     const executeSyncFn = vi.fn(async () => partialCycle);
@@ -649,7 +686,10 @@ describe("run log writing", () => {
       process: createFakeProcess(),
     });
 
-    const mkdirCalls = (fake.fs.mkdir as ReturnType<typeof vi.fn>).mock.calls as unknown as [string, { recursive: boolean }][];
+    const mkdirCalls = (fake.fs.mkdir as ReturnType<typeof vi.fn>).mock.calls as unknown as [
+      string,
+      { recursive: boolean },
+    ][];
     const runsDirCall = mkdirCalls.find(([path]) => path.endsWith("/runs"));
     expect(runsDirCall).toBeDefined();
     expect(runsDirCall![1]).toEqual({ recursive: true });
@@ -682,7 +722,8 @@ describe("run log writing", () => {
       }),
       readFile: vi.fn(async (path: string) => {
         if (path.endsWith("sync.lock")) {
-          if (wxCallCount <= 1) return JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" });
+          if (wxCallCount <= 1)
+            return JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" });
           if (fake.state.lockContent) return fake.state.lockContent;
           const err = new Error("ENOENT") as NodeJS.ErrnoException;
           err.code = "ENOENT";
@@ -690,7 +731,9 @@ describe("run log writing", () => {
         }
         return fake.fs.readFile(path);
       }),
-      unlink: vi.fn(async () => { fake.state.lockContent = null; }),
+      unlink: vi.fn(async () => {
+        fake.state.lockContent = null;
+      }),
     };
 
     await coordinatedSync(createTrigger(), {
@@ -798,17 +841,19 @@ describe("run log writing", () => {
   it("returns normally when run log write fails (non-fatal)", async () => {
     const fake = createFakeFs({ lockContent: null, signalSize: 0 });
     const originalWriteFile = fake.fs.writeFile;
-    fake.fs.writeFile = vi.fn(async (path: string, content: string, options?: { flag?: string }) => {
-      if (options?.flag === "wx") {
-        // Let lock acquisition through
+    fake.fs.writeFile = vi.fn(
+      async (path: string, content: string, options?: { flag?: string }) => {
+        if (options?.flag === "wx") {
+          // Let lock acquisition through
+          return originalWriteFile(path, content, options);
+        }
+        // Let signal truncation through but fail on run log writes
+        if (path.endsWith(".json")) {
+          throw new Error("disk full");
+        }
         return originalWriteFile(path, content, options);
-      }
-      // Let signal truncation through but fail on run log writes
-      if (path.endsWith(".json")) {
-        throw new Error("disk full");
-      }
-      return originalWriteFile(path, content, options);
-    });
+      },
+    );
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -983,7 +1028,11 @@ describe("cooldown", () => {
 
     // Signal truncation writes empty string to notify.signal.
     // Verify it was never called — only run log writes should have happened.
-    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [string, string, unknown?][];
+    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
+      string,
+      string,
+      unknown?,
+    ][];
     const signalTruncateCalls = writeCalls.filter(
       ([path, content]) => path.endsWith("notify.signal") && content === "",
     );
@@ -1062,7 +1111,11 @@ describe("cooldown", () => {
     });
 
     // Verify last-success.json was written
-    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [string, string, unknown?][];
+    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
+      string,
+      string,
+      unknown?,
+    ][];
     const successWrites = writeCalls.filter(([path]) => path.endsWith("last-success.json"));
     expect(successWrites).toHaveLength(1);
     // Content should be an ISO timestamp
@@ -1094,7 +1147,11 @@ describe("cooldown", () => {
     expect(executeSyncFn).not.toHaveBeenCalled();
 
     // Verify last-success.json was NOT written
-    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [string, string, unknown?][];
+    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
+      string,
+      string,
+      unknown?,
+    ][];
     const successWrites = writeCalls.filter(([path]) => path.endsWith("last-success.json"));
     expect(successWrites).toHaveLength(0);
   });

@@ -1,8 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import {
-  createTokenDrivers,
-  createSessionDrivers,
-} from "../../drivers/registry.js";
+import { createTokenDrivers, createSessionDrivers } from "../../drivers/registry.js";
 
 // ---------------------------------------------------------------------------
 // createTokenDrivers()
@@ -71,7 +68,7 @@ describe("createTokenDrivers", () => {
     });
     expect(fileDrivers).toHaveLength(6);
     const sources = fileDrivers.map((d) => d.source);
-    expect(sources).toEqual(["claude-code", "codex", "copilot-cli", "opencode", "openclaw", "pi", ]);
+    expect(sources).toEqual(["claude-code", "codex", "copilot-cli", "opencode", "openclaw", "pi"]);
     expect(dbDrivers).toHaveLength(0);
   });
 
@@ -139,9 +136,7 @@ describe("createTokenDrivers", () => {
     const { dbDrivers } = createTokenDrivers({
       hermesDbPath: "/tmp/hermes/state.db",
       openHermesDb: mockOpener,
-      hermesProfileDbPaths: [
-        { dbPath: "/tmp/hermes/profiles/a/state.db", dbKey: "profiles/a" },
-      ],
+      hermesProfileDbPaths: [{ dbPath: "/tmp/hermes/profiles/a/state.db", dbKey: "profiles/a" }],
     });
     expect(dbDrivers).toHaveLength(2);
   });
@@ -149,9 +144,7 @@ describe("createTokenDrivers", () => {
   it("excludes hermes drivers when openHermesDb is not provided", () => {
     const { dbDrivers } = createTokenDrivers({
       hermesDbPath: "/tmp/hermes/state.db",
-      hermesProfileDbPaths: [
-        { dbPath: "/tmp/hermes/profiles/a/state.db", dbKey: "profiles/a" },
-      ],
+      hermesProfileDbPaths: [{ dbPath: "/tmp/hermes/profiles/a/state.db", dbKey: "profiles/a" }],
     });
     expect(dbDrivers).toHaveLength(0);
   });

@@ -43,9 +43,28 @@ describe("groupByModel", () => {
 
   it("groups records by model with correct aggregates", () => {
     const rows = [
-      makeRow({ model: "claude-sonnet-4-20250514", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, total_tokens: 150 }),
-      makeRow({ model: "claude-sonnet-4-20250514", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, total_tokens: 300 }),
-      makeRow({ model: "gpt-4o", source: "opencode", input_tokens: 500, output_tokens: 200, cached_input_tokens: 0, total_tokens: 700 }),
+      makeRow({
+        model: "claude-sonnet-4-20250514",
+        input_tokens: 100,
+        output_tokens: 50,
+        cached_input_tokens: 10,
+        total_tokens: 150,
+      }),
+      makeRow({
+        model: "claude-sonnet-4-20250514",
+        input_tokens: 200,
+        output_tokens: 100,
+        cached_input_tokens: 20,
+        total_tokens: 300,
+      }),
+      makeRow({
+        model: "gpt-4o",
+        source: "opencode",
+        input_tokens: 500,
+        output_tokens: 200,
+        cached_input_tokens: 0,
+        total_tokens: 700,
+      }),
     ];
 
     const result = groupByModel(rows, pm());

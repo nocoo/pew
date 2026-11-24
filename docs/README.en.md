@@ -41,15 +41,15 @@ pew status
 
 `pew login` connects to [pew.md](https://pew.md) through your browser. The web application uses Google sign-in. New accounts require an invite code by default, depending on site settings. For a machine without a browser, generate a one-time code on the web Devices management page and run `pew login --code XXXX-XXXX`.
 
-| Command | Purpose |
-| --- | --- |
-| `pew sync` | Scan local data and upload when signed in |
-| `pew sync --no-upload` | Parse into the local queue without uploading |
-| `pew status` | Inspect scanning, queue, and automatic-sync status |
-| `pew init` | Configure supported automatic-sync integrations |
-| `pew uninstall` | Remove automatic-sync integrations |
-| `pew logout` | Clear current login credentials |
-| `pew update` | Update the installed CLI |
+| Command                | Purpose                                            |
+| ---------------------- | -------------------------------------------------- |
+| `pew sync`             | Scan local data and upload when signed in          |
+| `pew sync --no-upload` | Parse into the local queue without uploading       |
+| `pew status`           | Inspect scanning, queue, and automatic-sync status |
+| `pew init`             | Configure supported automatic-sync integrations    |
+| `pew uninstall`        | Remove automatic-sync integrations                 |
+| `pew logout`           | Clear current login credentials                    |
+| `pew update`           | Update the installed CLI                           |
 
 Automatic synchronization supports Claude Code, Codex, OpenClaw, OpenCode, and Pi. Setup changes the corresponding tool configuration. pew stores its own credentials, cursors, queues, and run records under `~/.config/pew/`.
 
@@ -70,13 +70,13 @@ cp packages/web/.env.example packages/web/.env.local
 
 Fill in `packages/web/.env.local`, then run `bun run dev`. The web address is `http://localhost:7020`; the Google OAuth callback is `http://localhost:7020/api/auth/callback/google`.
 
-| Configuration | Purpose |
-| --- | --- |
-| `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Sessions and Google sign-in |
-| `CF_ACCOUNT_ID`, `CF_D1_DATABASE_ID`, `CF_D1_API_TOKEN` | D1 REST writes and database access |
-| `WORKER_INGEST_URL`, `WORKER_SECRET` | Batched usage and session ingestion |
-| `WORKER_READ_URL`, `WORKER_READ_SECRET` | Required runtime database queries |
-| `ADMIN_EMAILS` | Administrator email list |
+| Configuration                                           | Purpose                             |
+| ------------------------------------------------------- | ----------------------------------- |
+| `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`   | Sessions and Google sign-in         |
+| `CF_ACCOUNT_ID`, `CF_D1_DATABASE_ID`, `CF_D1_API_TOKEN` | D1 REST writes and database access  |
+| `WORKER_INGEST_URL`, `WORKER_SECRET`                    | Batched usage and session ingestion |
+| `WORKER_READ_URL`, `WORKER_READ_SECRET`                 | Required runtime database queries   |
+| `ADMIN_EMAILS`                                          | Administrator email list            |
 
 The application requires an initialized D1 database and both Workers. Migrations live in [scripts/migrations/](../scripts/migrations/); each Worker's `wrangler.toml` defines bindings and its test environment. Team and organization logo uploads also need `CF_R2_ENDPOINT`, `CF_R2_ACCESS_KEY_ID`, `CF_R2_SECRET_ACCESS_KEY`, and `CF_R2_BUCKET`. The public asset domain is currently configured in [r2.ts](../packages/web/src/lib/r2.ts).
 
@@ -89,23 +89,23 @@ bun run --filter '@nocoo/pew' build
 
 The root `build` command builds core and web only; build the CLI separately. The web application uses Next.js standalone output, with a container entry point in [Dockerfile](../Dockerfile). The CLI's production and development hosts are currently fixed in [login.ts](../packages/cli/src/commands/login.ts); adjust them for a self-hosted installation.
 
-| Directory | Contents |
-| --- | --- |
-| `packages/core` | Shared TypeScript types |
-| `packages/cli` | npm CLI, parsers, queues, and automatic synchronization |
-| `packages/web` | Dashboard, accounts, and application APIs |
-| `packages/worker` | D1 batch-ingestion Worker |
-| `packages/worker-read` | Queries, caching, and model-price synchronization |
-| `scripts` | Migrations, tests, and maintenance scripts |
+| Directory              | Contents                                                |
+| ---------------------- | ------------------------------------------------------- |
+| `packages/core`        | Shared TypeScript types                                 |
+| `packages/cli`         | npm CLI, parsers, queues, and automatic synchronization |
+| `packages/web`         | Dashboard, accounts, and application APIs               |
+| `packages/worker`      | D1 batch-ingestion Worker                               |
+| `packages/worker-read` | Queries, caching, and model-price synchronization       |
+| `scripts`              | Migrations, tests, and maintenance scripts              |
 
 ## Tests
 
-| Layer | Command | Prerequisites |
-| --- | --- | --- |
-| Unit and component logic | `bun run test` | Installed dependencies |
-| CLI collection-pipeline integration | `bun run test:e2e:cli` | Temporary test data and directories; no login |
-| API end-to-end | `bun run test:e2e` | Local isolated D1/KV runtime and Worker bridge; port 17020 |
-| Browser end-to-end | `bun run test:e2e:ui` | Local isolated runtime, Chromium; port 27020 |
+| Layer                               | Command                | Prerequisites                                              |
+| ----------------------------------- | ---------------------- | ---------------------------------------------------------- |
+| Unit and component logic            | `bun run test`         | Installed dependencies                                     |
+| CLI collection-pipeline integration | `bun run test:e2e:cli` | Temporary test data and directories; no login              |
+| API end-to-end                      | `bun run test:e2e`     | Local isolated D1/KV runtime and Worker bridge; port 17020 |
+| Browser end-to-end                  | `bun run test:e2e:ui`  | Local isolated runtime, Chromium; port 27020               |
 
 Run `bunx playwright install chromium` before browser tests. Use `bun run test:watch` for unit tests during development or `bun run test:coverage` for a report.
 
@@ -122,13 +122,13 @@ No cloud credentials or test environment files are required (in fact, local `.en
 ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=white)
 
-| Area | Implementation |
-| --- | --- |
-| CLI | Node.js / Bun, TypeScript, @nocoo/base-cli, built-in SQLite |
-| Web | Next.js, React, Basalt, Tailwind CSS, Recharts, SWR |
-| Authentication | Auth.js, Google OAuth |
-| Data and storage | Cloudflare Workers, D1, KV, R2 |
-| Development and tests | Bun workspaces, Biome, Vitest, Playwright |
+| Area                  | Implementation                                              |
+| --------------------- | ----------------------------------------------------------- |
+| CLI                   | Node.js / Bun, TypeScript, @nocoo/base-cli, built-in SQLite |
+| Web                   | Next.js, React, Basalt, Tailwind CSS, Recharts, SWR         |
+| Authentication        | Auth.js, Google OAuth                                       |
+| Data and storage      | Cloudflare Workers, D1, KV, R2                              |
+| Development and tests | Bun workspaces, Biome, Vitest, Playwright                   |
 
 ## Documentation
 

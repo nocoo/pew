@@ -12,66 +12,110 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 describe("E2E process isolation", () => {
-  it.each(["api", "ui"] as const)("tolerates missing %s output without hiding other cleanup errors", async (tier) => {
-    const root = mkdtempSync(join(tmpdir(), "pew-output-cleanup-"));
-    const fs = await import("node:fs");
-    const removePath = (await vi.importActual<typeof import("node:fs")>("node:fs")).rmSync;
-    const missing = join(root, "already-removed");
-    const denied = Object.assign(new Error("synthetic cleanup permission denied"), { code: "EACCES" });
-    const listeners = new Map(["SIGINT", "SIGTERM"].map((event) => [event, new Set(process.listeners(event))]));
-    let failRemoval = false;
-    const remove = vi.mocked(fs.rmSync).mockImplementation((_path, options) => {
-      if (failRemoval) throw denied;
-      removePath(missing, options);
-    });
-    const list = vi.mocked(fs.readdirSync).mockReturnValue([]);
-    const env = {
-      NODE_ENV: "development", RESOURCE_ENV: "test", E2E_SKIP_AUTH: "true",
-      CF_ACCOUNT_ID: "pew-local-test", CF_D1_DATABASE_ID: "pew-local-test", CF_D1_API_TOKEN: "synthetic",
-      PEW_LOCAL_D1_URL: "http://127.0.0.1:12345", WORKER_INGEST_URL: "http://127.0.0.1:12345/ingest",
-      WORKER_READ_URL: "http://127.0.0.1:12345", PEW_TEST_RUN_ID: "owned-run",
-    };
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-      success: true, result: [{ results: [{ key: "env", value: "test" }, { key: "run", value: "owned-run" }] }],
-    })));
-    vi.stubGlobal("Bun", {
-      spawn: vi.fn((command: string[], options: { ipc?: (message: unknown) => void }) => {
-        const exit = Promise.withResolvers<number>();
-        const child = {
-          pid: 123456, exitCode: null as number | null, exited: exit.promise,
-          kill() { this.exitCode = 0; exit.resolve(0); },
-          send() { this.kill(); },
-        };
-        if (options.ipc) queueMicrotask(() => options.ipc?.({ env, state: root }));
-        else if (!command.includes("dev")) child.kill();
-        return child;
-      }),
-      sleep: vi.fn(async () => {}),
-    });
-    try {
-      await expect(runLocalE2e(tier)).resolves.toBe(0);
-      expect(remove).toHaveBeenCalledExactlyOnceWith(join("packages/web", tier === "api" ? ".next-e2e" : ".next-e2e-ui"), { recursive: true, force: true });
-      expect(existsSync(root)).toBe(true);
-      failRemoval = true;
-      await expect(runLocalE2e(tier)).rejects.toBe(denied);
-    } finally {
-      for (const [event, original] of listeners) {
-        for (const listener of process.listeners(event)) if (!original.has(listener)) process.removeListener(event, listener);
+  it.each(["api", "ui"] as const)(
+    "tolerates missing %s output without hiding other cleanup errors",
+    async (tier) => {
+      const root = mkdtempSync(join(tmpdir(), "pew-output-cleanup-"));
+      const fs = await import("node:fs");
+      const removePath = (await vi.importActual<typeof import("node:fs")>("node:fs")).rmSync;
+      const missing = join(root, "already-removed");
+      const denied = Object.assign(new Error("synthetic cleanup permission denied"), {
+        code: "EACCES",
+      });
+      const listeners = new Map(
+        ["SIGINT", "SIGTERM"].map((event) => [event, new Set(process.listeners(event))]),
+      );
+      let failRemoval = false;
+      const remove = vi.mocked(fs.rmSync).mockImplementation((_path, options) => {
+        if (failRemoval) throw denied;
+        removePath(missing, options);
+      });
+      const list = vi.mocked(fs.readdirSync).mockReturnValue([]);
+      const env = {
+        NODE_ENV: "development",
+        RESOURCE_ENV: "test",
+        E2E_SKIP_AUTH: "true",
+        CF_ACCOUNT_ID: "pew-local-test",
+        CF_D1_DATABASE_ID: "pew-local-test",
+        CF_D1_API_TOKEN: "synthetic",
+        PEW_LOCAL_D1_URL: "http://127.0.0.1:12345",
+        WORKER_INGEST_URL: "http://127.0.0.1:12345/ingest",
+        WORKER_READ_URL: "http://127.0.0.1:12345",
+        PEW_TEST_RUN_ID: "owned-run",
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({
+            success: true,
+            result: [
+              {
+                results: [
+                  { key: "env", value: "test" },
+                  { key: "run", value: "owned-run" },
+                ],
+              },
+            ],
+          }),
+        ),
+      );
+      vi.stubGlobal("Bun", {
+        spawn: vi.fn((command: string[], options: { ipc?: (message: unknown) => void }) => {
+          const exit = Promise.withResolvers<number>();
+          const child = {
+            pid: 123456,
+            exitCode: null as number | null,
+            exited: exit.promise,
+            kill() {
+              this.exitCode = 0;
+              exit.resolve(0);
+            },
+            send() {
+              this.kill();
+            },
+          };
+          if (options.ipc) queueMicrotask(() => options.ipc?.({ env, state: root }));
+          else if (!command.includes("dev")) child.kill();
+          return child;
+        }),
+        sleep: vi.fn(async () => {}),
+      });
+      try {
+        await expect(runLocalE2e(tier)).resolves.toBe(0);
+        expect(remove).toHaveBeenCalledExactlyOnceWith(
+          join("packages/web", tier === "api" ? ".next-e2e" : ".next-e2e-ui"),
+          { recursive: true, force: true },
+        );
+        expect(existsSync(root)).toBe(true);
+        failRemoval = true;
+        await expect(runLocalE2e(tier)).rejects.toBe(denied);
+      } finally {
+        for (const [event, original] of listeners) {
+          for (const listener of process.listeners(event))
+            if (!original.has(listener)) process.removeListener(event, listener);
+        }
+        remove.mockRestore();
+        list.mockRestore();
+        vi.unstubAllGlobals();
+        removePath(root, { recursive: true });
       }
-      remove.mockRestore(); list.mockRestore(); vi.unstubAllGlobals();
-      removePath(root, { recursive: true });
-    }
-  });
+    },
+  );
 
   it.each([false, true])("bounds no-IPC startup and disposal (abort=%s)", async (interrupt) => {
     let exit: (code: number) => void;
-    const exited = new Promise<number>((done) => { exit = done; });
+    const exited = new Promise<number>((done) => {
+      exit = done;
+    });
     const child = { pid: 123456, exitCode: null, exited, send: vi.fn() };
     const spawnChild = vi.fn(() => child);
     vi.stubGlobal("Bun", { spawn: spawnChild });
     vi.stubEnv("CI", "true");
     vi.stubEnv("PEW_SYNTHETIC_PARENT_SECRET", "must-not-forward");
-    const kill = vi.spyOn(process, "kill").mockImplementation(() => { exit(137); return true; });
+    const kill = vi.spyOn(process, "kill").mockImplementation(() => {
+      exit(137);
+      return true;
+    });
     try {
       const abort = new AbortController();
       const pending = startLocalBindings(abort.signal, 20);
@@ -79,9 +123,21 @@ describe("E2E process isolation", () => {
       await expect(pending).rejects.toThrow("disposal timed out");
       expect(child.send).toHaveBeenCalledWith("dispose");
       expect(kill).toHaveBeenCalledExactlyOnceWith(-123456, "SIGKILL");
-      expect(spawnChild).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ env: expect.objectContaining({ CI: "true" }) }));
-      expect(spawnChild).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ env: expect.not.objectContaining({ PEW_SYNTHETIC_PARENT_SECRET: "must-not-forward" }) }));
-    } finally { vi.unstubAllGlobals(); vi.unstubAllEnvs(); kill.mockRestore(); }
+      expect(spawnChild).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ env: expect.objectContaining({ CI: "true" }) }),
+      );
+      expect(spawnChild).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          env: expect.not.objectContaining({ PEW_SYNTHETIC_PARENT_SECRET: "must-not-forward" }),
+        }),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+      kill.mockRestore();
+    }
   });
 
   it("refuses an occupied port without killing its owner", async () => {
@@ -93,64 +149,106 @@ describe("E2E process isolation", () => {
       await expect(ensurePortFree(String(address.port))).rejects.toThrow();
       expect(server.listening).toBe(true);
       await expect(ensurePortFree("17020; unsafe")).rejects.toThrow("Invalid");
-    } finally { await new Promise<void>((done) => server.close(() => done())); }
+    } finally {
+      await new Promise<void>((done) => server.close(() => done()));
+    }
   });
 
   it("rejects daily environment files before creating a database", async () => {
     const root = mkdtempSync(join(tmpdir(), "pew-env-test-"));
     try {
       writeFileSync(join(root, ".env.local"), "AUTH_SECRET=synthetic-test-only\n");
-      const child = spawn("bun", ["--no-env-file", "-e", `import {assertNoLocalEnv} from ${JSON.stringify(join(import.meta.dirname, "../e2e-utils.ts"))}; assertNoLocalEnv();`], { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+      const child = spawn(
+        "bun",
+        [
+          "--no-env-file",
+          "-e",
+          `import {assertNoLocalEnv} from ${JSON.stringify(join(import.meta.dirname, "../e2e-utils.ts"))}; assertNoLocalEnv();`,
+        ],
+        { cwd: root, stdio: ["ignore", "pipe", "pipe"] },
+      );
       let stderr = "";
-      child.stderr.on("data", (data) => { stderr += data; });
+      child.stderr.on("data", (data) => {
+        stderr += data;
+      });
       const code = await new Promise((done) => child.once("exit", done));
       expect(code).not.toBe(0);
       expect(stderr).toContain("refuses local environment files");
-    } finally { rmSync(root, { recursive: true }); }
+    } finally {
+      rmSync(root, { recursive: true });
+    }
   });
 
   it("cleans migrated state when interrupted before binding startup", async () => {
     const root = mkdtempSync(join(tmpdir(), "pew-signal-test-"));
-    const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], { env: { PATH: process.env.PATH, HOME: root, TMPDIR: root, E2E_PORT: "37020" }, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], {
+      env: { PATH: process.env.PATH, HOME: root, TMPDIR: root, E2E_PORT: "37020" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     const exited = new Promise<number | null>((done) => child.once("exit", done));
     try {
       let output = "";
-      child.stdout.on("data", (data) => { output += data; });
-      child.stderr.on("data", (data) => { output += data; });
+      child.stdout.on("data", (data) => {
+        output += data;
+      });
+      child.stderr.on("data", (data) => {
+        output += data;
+      });
       const started = Date.now();
       while (!readdirSync(root).some((name) => name.startsWith("pew-e2e-"))) {
-        if (child.exitCode !== null || Date.now() - started > 10_000) throw new Error(`No owned state created: ${output}`);
+        if (child.exitCode !== null || Date.now() - started > 10_000)
+          throw new Error(`No owned state created: ${output}`);
         await new Promise((done) => setTimeout(done, 50));
       }
       child.kill("SIGTERM");
       expect(await exited, output).not.toBe(0);
-      expect(readdirSync(root).filter((name) => name.startsWith("pew-e2e-")), output).toEqual([]);
+      expect(
+        readdirSync(root).filter((name) => name.startsWith("pew-e2e-")),
+        output,
+      ).toEqual([]);
       expect(existsSync(root)).toBe(true);
     } finally {
-      if (child.exitCode === null && child.signalCode === null) { child.kill("SIGTERM"); await exited; }
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill("SIGTERM");
+        await exited;
+      }
       rmSync(root, { recursive: true, maxRetries: 3, retryDelay: 100 });
     }
   }, 30_000);
 
   it("cleans D1 and the listener after a started server is interrupted", async () => {
     const root = mkdtempSync(join(tmpdir(), "pew-started-test-"));
-    const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], { env: { PATH: process.env.PATH, HOME: root, TMPDIR: root, E2E_PORT: "37021" }, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], {
+      env: { PATH: process.env.PATH, HOME: root, TMPDIR: root, E2E_PORT: "37021" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     const exited = new Promise<number | null>((done) => child.once("exit", done));
     let output = "";
-    child.stdout.on("data", (data) => { output += data; });
-    child.stderr.on("data", (data) => { output += data; });
+    child.stdout.on("data", (data) => {
+      output += data;
+    });
+    child.stderr.on("data", (data) => {
+      output += data;
+    });
     try {
       const started = Date.now();
       while (!output.includes("Local:")) {
-        if (child.exitCode !== null || Date.now() - started > 70_000) throw new Error(`Server did not start: ${output}`);
+        if (child.exitCode !== null || Date.now() - started > 70_000)
+          throw new Error(`Server did not start: ${output}`);
         await new Promise((done) => setTimeout(done, 50));
       }
       child.kill("SIGTERM");
       expect(await exited, output).not.toBe(0);
-      expect(readdirSync(root).filter((name) => name.startsWith("pew-e2e-")), output).toEqual([]);
+      expect(
+        readdirSync(root).filter((name) => name.startsWith("pew-e2e-")),
+        output,
+      ).toEqual([]);
       await expect(ensurePortFree("37021")).resolves.toBeUndefined();
     } finally {
-      if (child.exitCode === null && child.signalCode === null) { child.kill("SIGTERM"); await exited; }
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill("SIGTERM");
+        await exited;
+      }
       rmSync(root, { recursive: true, maxRetries: 3, retryDelay: 100 });
     }
   }, 90_000);
@@ -159,19 +257,36 @@ describe("E2E process isolation", () => {
     const root = mkdtempSync(join(tmpdir(), "pew-start-failure-"));
     const bin = join(root, "bin");
     mkdirSync(bin);
-    writeFileSync(join(bin, "node"), `#!/bin/sh\ncase "$1" in */next/dist/bin/next) exit 23;; esac\nexec ${JSON.stringify(process.execPath)} "$@"\n`, { mode: 0o755 });
-    const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], { env: { PATH: `${bin}:${process.env.PATH}`, HOME: root, TMPDIR: root, E2E_PORT: "37022" }, stdio: ["ignore", "pipe", "pipe"] });
+    writeFileSync(
+      join(bin, "node"),
+      `#!/bin/sh\ncase "$1" in */next/dist/bin/next) exit 23;; esac\nexec ${JSON.stringify(process.execPath)} "$@"\n`,
+      { mode: 0o755 },
+    );
+    const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], {
+      env: { PATH: `${bin}:${process.env.PATH}`, HOME: root, TMPDIR: root, E2E_PORT: "37022" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     const exited = new Promise<number | null>((done) => child.once("exit", done));
     let output = "";
-    child.stdout.on("data", (data) => { output += data; });
-    child.stderr.on("data", (data) => { output += data; });
+    child.stdout.on("data", (data) => {
+      output += data;
+    });
+    child.stderr.on("data", (data) => {
+      output += data;
+    });
     try {
       expect(await exited, output).not.toBe(0);
       expect(output).toContain("E2E server exited 23");
-      expect(readdirSync(root).filter((name) => name.startsWith("pew-e2e-")), output).toEqual([]);
+      expect(
+        readdirSync(root).filter((name) => name.startsWith("pew-e2e-")),
+        output,
+      ).toEqual([]);
       await expect(ensurePortFree("37022")).resolves.toBeUndefined();
     } finally {
-      if (child.exitCode === null && child.signalCode === null) { child.kill("SIGTERM"); await exited; }
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill("SIGTERM");
+        await exited;
+      }
       rmSync(root, { recursive: true, maxRetries: 3, retryDelay: 100 });
     }
   }, 90_000);

@@ -40,7 +40,7 @@ export const grokTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     if (ctx.collectAccounting) {
       const sessions = opts.grokSessionsDir ?? join(dirname(opts.grokLogsPath), "..", "sessions");
       ctx.accountingSnapshots ??= [];
-      ctx.accountingSnapshots.push(...await readGrokAccountingSnapshots(sessions));
+      ctx.accountingSnapshots.push(...(await readGrokAccountingSnapshots(sessions)));
     }
     return discoverGrokLogFile(opts.grokLogsPath);
   },
@@ -49,9 +49,11 @@ export const grokTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     return fileUnchanged(cursor, fingerprint);
   },
 
-  resumeState(cursor: ByteOffsetCursor | undefined, fingerprint: FileFingerprint): ByteOffsetResumeState {
-    const startOffset =
-      cursor && cursor.inode === fingerprint.inode ? (cursor.offset ?? 0) : 0;
+  resumeState(
+    cursor: ByteOffsetCursor | undefined,
+    fingerprint: FileFingerprint,
+  ): ByteOffsetResumeState {
+    const startOffset = cursor && cursor.inode === fingerprint.inode ? (cursor.offset ?? 0) : 0;
     return { kind: "byte-offset", startOffset };
   },
 
@@ -59,8 +61,7 @@ export const grokTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     const r = resume as ByteOffsetResumeState;
     // Prefer explicit override (DiscoverOpts.grokSessionsDir via ctx);
     // fall back to default layout: logs/unified.jsonl → sibling sessions/
-    const sessionsDir =
-      ctx.grokSessionsDir ?? join(dirname(filePath), "..", "sessions");
+    const sessionsDir = ctx.grokSessionsDir ?? join(dirname(filePath), "..", "sessions");
     const maps = await buildGrokModelMaps(sessionsDir);
     const result = await parseGrokLogFile({
       filePath,

@@ -13,11 +13,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
  * Renders the outer shell (top-right icons, centered container, footer).
  * Pages render their own header + nav + content inside {children}.
  */
-export default function LeaderboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function LeaderboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-screen flex-col bg-basalt-background">
       {/* Top-right icons — same pattern as landing page */}
@@ -46,9 +42,7 @@ export default function LeaderboardLayout({
       </div>
 
       {/* Centered content area — pages render header + nav + main */}
-      <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">
-        {children}
-      </div>
+      <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">{children}</div>
 
       <SiteFooter />
     </div>

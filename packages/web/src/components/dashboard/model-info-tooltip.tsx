@@ -4,11 +4,7 @@ import { Info } from "@nocoo/basalt/icons";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@nocoo/basalt/components/hover-card";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@nocoo/basalt/components/hover-card";
 import { usePricingEntries } from "@/hooks/use-pricing-entries";
 import {
   findPricingEntriesForModel,
@@ -58,15 +54,9 @@ export function ModelInfoTooltip({ model, className }: Props) {
           <Info className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
         </Button>
       </HoverCardTrigger>
-      <HoverCardContent
-        align="start"
-        sideOffset={6}
-        className="w-80 space-y-3"
-      >
+      <HoverCardContent align="start" sideOffset={6} className="w-80 space-y-3">
         <div>
-          <div className="font-mono text-xs text-basalt-foreground break-all">
-            {model}
-          </div>
+          <div className="font-mono text-xs text-basalt-foreground break-all">{model}</div>
           {matches[0]?.displayName && (
             <div className="mt-0.5 text-xs text-basalt-muted-foreground">
               {matches[0].displayName}
@@ -83,11 +73,7 @@ export function ModelInfoTooltip({ model, className }: Props) {
         )}
 
         {error && matches.length === 0 && (
-          <Banner
-            tone="danger"
-            size="sm"
-            description={`Failed to load pricing: ${error}`}
-          />
+          <Banner tone="danger" size="sm" description={`Failed to load pricing: ${error}`} />
         )}
 
         {matches.length > 0 && (
@@ -116,33 +102,30 @@ function ModelPricingRow({
       <div className="flex items-center justify-between gap-2 text-[11px]">
         <span className="flex items-center gap-1 font-medium text-basalt-foreground">
           {(() => {
-            const icon = providerIconPath(entry.provider) ?? (entry.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
+            const icon =
+              providerIconPath(entry.provider) ??
+              (entry.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
             if (!icon) return null;
             return (
               // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
-              <img
-                src={icon.src}
-                alt=""
-                className={cn("h-3 w-3", icon.invert && "dark:invert")}
-              />
+              <img src={icon.src} alt="" className={cn("h-3 w-3", icon.invert && "dark:invert")} />
             );
           })()}
           {entry.provider}
         </span>
-        <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", originChipClass(entry.origin))}>
+        <span
+          className={cn(
+            "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+            originChipClass(entry.origin),
+          )}
+        >
           {entry.origin}
         </span>
       </div>
       <div className="grid grid-cols-3 gap-1 text-[11px]">
         <PricingCell label="Input" value={formatPerMillion(entry.inputPerMillion)} />
-        <PricingCell
-          label="Output"
-          value={formatPerMillion(entry.outputPerMillion)}
-        />
-        <PricingCell
-          label="Cached"
-          value={formatPerMillion(entry.cachedPerMillion)}
-        />
+        <PricingCell label="Output" value={formatPerMillion(entry.outputPerMillion)} />
+        <PricingCell label="Cached" value={formatPerMillion(entry.cachedPerMillion)} />
       </div>
       {ctx && (
         <div className="text-[11px] text-basalt-muted-foreground">

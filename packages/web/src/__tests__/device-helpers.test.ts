@@ -23,7 +23,11 @@ describe("recent device activity", () => {
       { model: "middle", hour_start: "2026-09-15T05:00:00Z", total_tokens: 150 },
     ];
 
-    expect(sortRecentActivityRecords(records).map((record) => record.model)).toEqual(["newer", "middle", "older"]);
+    expect(sortRecentActivityRecords(records).map((record) => record.model)).toEqual([
+      "newer",
+      "middle",
+      "older",
+    ]);
   });
 
   it("formats relative time from an exact ISO timestamp instead of a UTC midnight bucket", () => {
@@ -41,35 +45,76 @@ describe("recent device activity", () => {
 });
 
 describe("device accounting display", () => {
-  it.each([null, 70])("counts Hermes reasoning once and preserves the cache partition (read=%s)", (read) => {
-    const record = accountingFixture() as AccountingRecord;
-    const basis = { input_tokens: 10, cached_input_tokens: 90, output_tokens: 30, reasoning_output_tokens: 5, total_tokens: 135 };
-    const group = { ...record.groups[0]!, basis, counts: { input_total_tokens: 100, cache_read_input_tokens: read,
-      cache_write_input_tokens: read === null ? null : 20, cache_write_5m_input_tokens: null, cache_write_1h_input_tokens: null,
-      output_total_tokens: 30, reasoning_output_tokens: 5 } };
-    const detail: DeviceCostDetail = { ...basis, device_id: "test-device", source: "hermes", model: record.model,
-      accounting: [{ status: "matched", basis, groups: [group] }] };
-    const data: ByDeviceResponse = {
-      devices: [{ ...detail, alias: null, first_seen: record.hour_start, last_seen: record.hour_start,
-        estimated_cost: 1, sources: ["hermes"], models: [record.model] }],
-      timeline: [{ ...detail, date: "2026-09-01" }], deviceDetails: [detail],
-    };
-    const display = toDeviceDisplayData(data);
-    const expected = { input_tokens: read === null ? 10 : 30, cached_input_tokens: read ?? 90,
-      output_tokens: 25, reasoning_output_tokens: 5, total_tokens: 130 };
-    expect(display.devices[0]).toMatchObject(expected);
-    expect(display.timeline[0]).toMatchObject(expected);
-    expect(display.devices[0]).not.toHaveProperty("accounting");
-    expect(toDeviceDisplayData(display)).toEqual(display);
-    expect(toDeviceTrendPoints(display.timeline)[0]?.["test-device"]).toBe(130);
-    const doubled = Object.fromEntries(Object.entries(expected).map(([key, value]) => [key, value * 2]));
-    expect(toDeviceAgentBreakdown([detail, detail])[0]).toMatchObject(doubled);
-    expect(toDeviceModelBreakdown([detail, detail])[0]).toMatchObject(doubled);
-    // Billing and reconciliation still receive the unmodified legacy basis.
-    expect(display.deviceDetails[0]).toBe(detail);
-    expect(data.devices[0]?.total_tokens).toBe(135);
-    expect(data.timeline[0]?.total_tokens).toBe(135);
-  });
+  it.each([null, 70])(
+    "counts Hermes reasoning once and preserves the cache partition (read=%s)",
+    (read) => {
+      const record = accountingFixture() as AccountingRecord;
+      const basis = {
+        input_tokens: 10,
+        cached_input_tokens: 90,
+        output_tokens: 30,
+        reasoning_output_tokens: 5,
+        total_tokens: 135,
+      };
+      const group = {
+        ...record.groups[0]!,
+        basis,
+        counts: {
+          input_total_tokens: 100,
+          cache_read_input_tokens: read,
+          cache_write_input_tokens: read === null ? null : 20,
+          cache_write_5m_input_tokens: null,
+          cache_write_1h_input_tokens: null,
+          output_total_tokens: 30,
+          reasoning_output_tokens: 5,
+        },
+      };
+      const detail: DeviceCostDetail = {
+        ...basis,
+        device_id: "test-device",
+        source: "hermes",
+        model: record.model,
+        accounting: [{ status: "matched", basis, groups: [group] }],
+      };
+      const data: ByDeviceResponse = {
+        devices: [
+          {
+            ...detail,
+            alias: null,
+            first_seen: record.hour_start,
+            last_seen: record.hour_start,
+            estimated_cost: 1,
+            sources: ["hermes"],
+            models: [record.model],
+          },
+        ],
+        timeline: [{ ...detail, date: "2026-09-01" }],
+        deviceDetails: [detail],
+      };
+      const display = toDeviceDisplayData(data);
+      const expected = {
+        input_tokens: read === null ? 10 : 30,
+        cached_input_tokens: read ?? 90,
+        output_tokens: 25,
+        reasoning_output_tokens: 5,
+        total_tokens: 130,
+      };
+      expect(display.devices[0]).toMatchObject(expected);
+      expect(display.timeline[0]).toMatchObject(expected);
+      expect(display.devices[0]).not.toHaveProperty("accounting");
+      expect(toDeviceDisplayData(display)).toEqual(display);
+      expect(toDeviceTrendPoints(display.timeline)[0]?.["test-device"]).toBe(130);
+      const doubled = Object.fromEntries(
+        Object.entries(expected).map(([key, value]) => [key, value * 2]),
+      );
+      expect(toDeviceAgentBreakdown([detail, detail])[0]).toMatchObject(doubled);
+      expect(toDeviceModelBreakdown([detail, detail])[0]).toMatchObject(doubled);
+      // Billing and reconciliation still receive the unmodified legacy basis.
+      expect(display.deviceDetails[0]).toBe(detail);
+      expect(data.devices[0]?.total_tokens).toBe(135);
+      expect(data.timeline[0]?.total_tokens).toBe(135);
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -78,9 +123,7 @@ describe("device accounting display", () => {
 
 describe("shortDeviceId", () => {
   it("should return first 8 chars of a UUID", () => {
-    expect(shortDeviceId("a3f8c2d1-1234-5678-9abc-def012345678")).toBe(
-      "a3f8c2d1"
-    );
+    expect(shortDeviceId("a3f8c2d1-1234-5678-9abc-def012345678")).toBe("a3f8c2d1");
   });
 
   it("should return 'default' unchanged", () => {
@@ -102,9 +145,7 @@ describe("shortDeviceId", () => {
 
 describe("deviceLabel", () => {
   it("should return alias when set", () => {
-    expect(
-      deviceLabel({ alias: "MacBook", device_id: "a3f8c2d1-1234-5678-9abc" })
-    ).toBe("MacBook");
+    expect(deviceLabel({ alias: "MacBook", device_id: "a3f8c2d1-1234-5678-9abc" })).toBe("MacBook");
   });
 
   it("should return short UUID when alias is null", () => {
@@ -112,20 +153,16 @@ describe("deviceLabel", () => {
       deviceLabel({
         alias: null,
         device_id: "a3f8c2d1-1234-5678-9abc-def012345678",
-      })
+      }),
     ).toBe("a3f8c2d1");
   });
 
   it("should return 'Legacy Device' for default device without alias", () => {
-    expect(deviceLabel({ alias: null, device_id: "default" })).toBe(
-      "Legacy Device"
-    );
+    expect(deviceLabel({ alias: null, device_id: "default" })).toBe("Legacy Device");
   });
 
   it("should return alias even for default device when alias is set", () => {
-    expect(deviceLabel({ alias: "Old Machine", device_id: "default" })).toBe(
-      "Old Machine"
-    );
+    expect(deviceLabel({ alias: "Old Machine", device_id: "default" })).toBe("Old Machine");
   });
 });
 
@@ -161,9 +198,33 @@ describe("buildDeviceLabelMap", () => {
 describe("toDeviceTrendPoints", () => {
   it("should pivot timeline into date-keyed objects with device_id keys", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 600, output_tokens: 300, cached_input_tokens: 100, reasoning_output_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-b", total_tokens: 500, input_tokens: 300, output_tokens: 150, cached_input_tokens: 50, reasoning_output_tokens: 0 },
-      { date: "2026-03-02", device_id: "dev-a", total_tokens: 2000, input_tokens: 1200, output_tokens: 600, cached_input_tokens: 200, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "dev-a",
+        total_tokens: 1000,
+        input_tokens: 600,
+        output_tokens: 300,
+        cached_input_tokens: 100,
+        reasoning_output_tokens: 0,
+      },
+      {
+        date: "2026-03-01",
+        device_id: "dev-b",
+        total_tokens: 500,
+        input_tokens: 300,
+        output_tokens: 150,
+        cached_input_tokens: 50,
+        reasoning_output_tokens: 0,
+      },
+      {
+        date: "2026-03-02",
+        device_id: "dev-a",
+        total_tokens: 2000,
+        input_tokens: 1200,
+        output_tokens: 600,
+        cached_input_tokens: 200,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceTrendPoints(timeline);
@@ -181,8 +242,24 @@ describe("toDeviceTrendPoints", () => {
   it("should zero-fill all devices on every date", () => {
     // dev-a active on day 1 only, dev-b active on day 2 only
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
-      { date: "2026-03-02", device_id: "dev-b", total_tokens: 2000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "dev-a",
+        total_tokens: 1000,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
+      {
+        date: "2026-03-02",
+        device_id: "dev-b",
+        total_tokens: 2000,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceTrendPoints(timeline);
@@ -202,7 +279,15 @@ describe("toDeviceTrendPoints", () => {
 
   it("should use device_id as key, not display label", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "default", total_tokens: 100, input_tokens: 60, output_tokens: 30, cached_input_tokens: 10, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "default",
+        total_tokens: 100,
+        input_tokens: 60,
+        output_tokens: 30,
+        cached_input_tokens: 10,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceTrendPoints(timeline);
@@ -218,8 +303,24 @@ describe("toDeviceTrendPoints", () => {
 describe("toDeviceSharePoints", () => {
   it("should convert to percentage-based points summing to 100", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 750, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-b", total_tokens: 250, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "dev-a",
+        total_tokens: 750,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
+      {
+        date: "2026-03-01",
+        device_id: "dev-b",
+        total_tokens: 250,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -232,7 +333,15 @@ describe("toDeviceSharePoints", () => {
 
   it("should handle single device as 100%", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 500, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "dev-a",
+        total_tokens: 500,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -246,7 +355,15 @@ describe("toDeviceSharePoints", () => {
 
   it("should handle zero total tokens gracefully", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 0, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "dev-a",
+        total_tokens: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -259,8 +376,24 @@ describe("toDeviceSharePoints", () => {
   it("should zero-fill missing devices to 0% on each date", () => {
     // dev-a active on day 1 only, dev-b active on day 2 only
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
-      { date: "2026-03-02", device_id: "dev-b", total_tokens: 2000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "dev-a",
+        total_tokens: 1000,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
+      {
+        date: "2026-03-02",
+        device_id: "dev-b",
+        total_tokens: 2000,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -277,9 +410,33 @@ describe("toDeviceSharePoints", () => {
   it("should guarantee percentages sum to exactly 100 (thirds case)", () => {
     // 3 devices with equal tokens — naive Math.round gives 33+33+33=99
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-b", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-c", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "dev-a",
+        total_tokens: 1000,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
+      {
+        date: "2026-03-01",
+        device_id: "dev-b",
+        total_tokens: 1000,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
+      {
+        date: "2026-03-01",
+        device_id: "dev-c",
+        total_tokens: 1000,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -305,7 +462,7 @@ describe("toDeviceSharePoints", () => {
       input_tokens: 0,
       output_tokens: 0,
       cached_input_tokens: 0,
-  reasoning_output_tokens: 0,
+      reasoning_output_tokens: 0,
     }));
 
     const result = toDeviceSharePoints(timeline);
@@ -325,8 +482,24 @@ describe("toDeviceSharePoints", () => {
     // Tokens: 1, 1, 1, 1, 1, 1, 1 = 7 total → each ~14.28%
     // But also test a more realistic uneven case
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 501, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-b", total_tokens: 499, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      {
+        date: "2026-03-01",
+        device_id: "dev-a",
+        total_tokens: 501,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
+      {
+        date: "2026-03-01",
+        device_id: "dev-b",
+        total_tokens: 499,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -342,7 +515,19 @@ describe("toDeviceSharePoints", () => {
 // toDeviceAgentBreakdown
 // ---------------------------------------------------------------------------
 
-const makeDetail = (overrides: Partial<{ source: string; model: string; input_tokens: number; output_tokens: number; cached_input_tokens: number; reasoning_output_tokens: number; total_tokens: number; device_id: string; date: string }> = {}) => ({
+const makeDetail = (
+  overrides: Partial<{
+    source: string;
+    model: string;
+    input_tokens: number;
+    output_tokens: number;
+    cached_input_tokens: number;
+    reasoning_output_tokens: number;
+    total_tokens: number;
+    device_id: string;
+    date: string;
+  }> = {},
+) => ({
   source: "claude",
   model: "sonnet",
   input_tokens: 100,
@@ -369,8 +554,20 @@ describe("toDeviceAgentBreakdown", () => {
 
   it("should aggregate items with same source", () => {
     const result = toDeviceAgentBreakdown([
-      makeDetail({ source: "claude", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, total_tokens: 160 }),
-      makeDetail({ source: "claude", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, total_tokens: 320 }),
+      makeDetail({
+        source: "claude",
+        input_tokens: 100,
+        output_tokens: 50,
+        cached_input_tokens: 10,
+        total_tokens: 160,
+      }),
+      makeDetail({
+        source: "claude",
+        input_tokens: 200,
+        output_tokens: 100,
+        cached_input_tokens: 20,
+        total_tokens: 320,
+      }),
     ]);
     expect(result).toHaveLength(1);
     expect(result[0]!.input_tokens).toBe(300);
@@ -417,8 +614,20 @@ describe("toDeviceModelBreakdown", () => {
 
   it("should aggregate items with same model", () => {
     const result = toDeviceModelBreakdown([
-      makeDetail({ model: "sonnet", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, total_tokens: 160 }),
-      makeDetail({ model: "sonnet", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, total_tokens: 320 }),
+      makeDetail({
+        model: "sonnet",
+        input_tokens: 100,
+        output_tokens: 50,
+        cached_input_tokens: 10,
+        total_tokens: 160,
+      }),
+      makeDetail({
+        model: "sonnet",
+        input_tokens: 200,
+        output_tokens: 100,
+        cached_input_tokens: 20,
+        total_tokens: 320,
+      }),
     ]);
     expect(result).toHaveLength(1);
     expect(result[0]!.input_tokens).toBe(300);

@@ -33,9 +33,7 @@ interface UseSeasonsResult {
   refetch: () => void;
 }
 
-export function useSeasons(
-  options: UseSeasonsOptions = {},
-): UseSeasonsResult {
+export function useSeasons(options: UseSeasonsOptions = {}): UseSeasonsResult {
   const { status } = options;
 
   const url = useMemo(() => {
@@ -45,10 +43,7 @@ export function useSeasons(
     return qs ? `/api/seasons?${qs}` : "/api/seasons";
   }, [status]);
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR<SeasonsData>(
-    url,
-    fetcher,
-  );
+  const { data, error, isLoading, isValidating, mutate } = useSWR<SeasonsData>(url, fetcher);
 
   return {
     data: data ?? null,

@@ -90,8 +90,15 @@ describe("Worker session ingest endpoint", () => {
 
   describe("path routing", () => {
     it("accepts Antigravity session snapshots", async () => {
-      const record = { ...VALID_SESSION_RECORD, source: "antigravity", session_key: "antigravity:synthetic-session" };
-      const res = await worker.fetch(makeRequest("/ingest/sessions", { userId: "u1", records: [record] }), env);
+      const record = {
+        ...VALID_SESSION_RECORD,
+        source: "antigravity",
+        session_key: "antigravity:synthetic-session",
+      };
+      const res = await worker.fetch(
+        makeRequest("/ingest/sessions", { userId: "u1", records: [record] }),
+        env,
+      );
       expect(res.status).toBe(200);
       expect((await json(res)).ingested).toBe(1);
     });
@@ -290,8 +297,7 @@ describe("Worker session ingest endpoint", () => {
 
       await worker.fetch(req, env);
 
-      const bindMock = (env.DB.prepare as ReturnType<typeof vi.fn>).mock
-        .results[0]!.value.bind;
+      const bindMock = (env.DB.prepare as ReturnType<typeof vi.fn>).mock.results[0]!.value.bind;
       expect(bindMock).toHaveBeenCalledWith(
         "u1",
         VALID_SESSION_RECORD.session_key,
@@ -325,8 +331,7 @@ describe("Worker session ingest endpoint", () => {
       expect(res.status).toBe(200);
       expect(env.DB.prepare).toHaveBeenCalledTimes(3);
 
-      const batchArgs = (env.DB.batch as ReturnType<typeof vi.fn>).mock
-        .calls[0]!;
+      const batchArgs = (env.DB.batch as ReturnType<typeof vi.fn>).mock.calls[0]!;
       expect(batchArgs[0]).toHaveLength(3);
     });
 
@@ -361,7 +366,10 @@ describe("Worker session ingest endpoint", () => {
     });
 
     it("makes the existing session source immutable during a snapshot update", async () => {
-      await worker.fetch(makeRequest("/ingest/sessions", { userId: "u1", records: [VALID_SESSION_RECORD] }), env);
+      await worker.fetch(
+        makeRequest("/ingest/sessions", { userId: "u1", records: [VALID_SESSION_RECORD] }),
+        env,
+      );
       expect(env.DB.prepare).toHaveBeenCalledWith(
         expect.stringContaining("excluded.source = session_records.source"),
       );

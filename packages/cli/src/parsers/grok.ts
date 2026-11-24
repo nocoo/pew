@@ -103,12 +103,7 @@ export async function parseGrokLogFile(opts: {
   sidPrimaryModel?: Map<string, string>;
   includeAccounting?: boolean;
 }): Promise<GrokFileResult> {
-  const {
-    filePath,
-    startOffset,
-    sidTurnTimeline = new Map(),
-    sidPrimaryModel = new Map(),
-  } = opts;
+  const { filePath, startOffset, sidTurnTimeline = new Map(), sidPrimaryModel = new Map() } = opts;
   const deltas: ParsedDelta[] = [];
 
   const st = await stat(filePath).catch(() => null);
@@ -125,9 +120,7 @@ export async function parseGrokLogFile(opts: {
 
   try {
     for await (const chunk of stream) {
-      const piece: Uint8Array = Buffer.isBuffer(chunk)
-        ? chunk
-        : Buffer.from(chunk as string);
+      const piece: Uint8Array = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
       if (pending.length === 0) {
         pending = piece;
       } else {
@@ -165,16 +158,11 @@ export async function parseGrokLogFile(opts: {
 
         const sid = typeof obj.sid === "string" ? obj.sid : "";
         const ctx =
-          obj.ctx && typeof obj.ctx === "object"
-            ? (obj.ctx as Record<string, unknown>)
-            : null;
+          obj.ctx && typeof obj.ctx === "object" ? (obj.ctx as Record<string, unknown>) : null;
         if (!ctx) continue;
 
         // Require at least one token field present (missing both → skip)
-        if (
-          ctx.prompt_tokens === undefined &&
-          ctx.completion_tokens === undefined
-        ) {
+        if (ctx.prompt_tokens === undefined && ctx.completion_tokens === undefined) {
           continue;
         }
 
@@ -193,11 +181,21 @@ export async function parseGrokLogFile(opts: {
           model,
           timestamp: ts,
           tokens,
-          ...(opts.includeAccounting ? { accounting: inclusiveAccounting(tokens, {
-            input: ctx.prompt_tokens, read: ctx.cached_prompt_tokens,
-            write: ctx.cache_write_tokens ?? ctx.cache_write_input_tokens,
-            output: ctx.completion_tokens, reasoning: ctx.reasoning_tokens,
-          }, { origin: "grok:inference", model, provider: "xai", rawTotal: ctx.total_tokens }) } : {}),
+          ...(opts.includeAccounting
+            ? {
+                accounting: inclusiveAccounting(
+                  tokens,
+                  {
+                    input: ctx.prompt_tokens,
+                    read: ctx.cached_prompt_tokens,
+                    write: ctx.cache_write_tokens ?? ctx.cache_write_input_tokens,
+                    output: ctx.completion_tokens,
+                    reasoning: ctx.reasoning_tokens,
+                  },
+                  { origin: "grok:inference", model, provider: "xai", rawTotal: ctx.total_tokens },
+                ),
+              }
+            : {}),
         });
       }
 
@@ -228,9 +226,7 @@ async function readJsonFile(path: string): Promise<Record<string, unknown> | nul
 /**
  * Parse events.jsonl for turn_started entries → ordered timeline.
  */
-export async function parseGrokTurnTimeline(
-  eventsPath: string,
-): Promise<GrokTurnTimeline> {
+export async function parseGrokTurnTimeline(eventsPath: string): Promise<GrokTurnTimeline> {
   let raw: string;
   try {
     raw = await readFile(eventsPath, "utf8");
@@ -263,9 +259,7 @@ export async function parseGrokTurnTimeline(
  * Fast path: signals.json.modelsUsed.length === 1 → no events scan.
  * Slow path: otherwise scan events.jsonl turn_started timeline.
  */
-export async function buildGrokModelMaps(
-  sessionsDir: string,
-): Promise<{
+export async function buildGrokModelMaps(sessionsDir: string): Promise<{
   sidTurnTimeline: Map<string, GrokTurnTimeline>;
   sidPrimaryModel: Map<string, string>;
 }> {
@@ -302,9 +296,7 @@ export async function buildGrokModelMaps(
       const signals = await readJsonFile(join(sessionDir, "signals.json"));
       const modelsUsed = signals?.modelsUsed;
       const primary =
-        typeof signals?.primaryModelId === "string"
-          ? signals.primaryModelId.trim()
-          : null;
+        typeof signals?.primaryModelId === "string" ? signals.primaryModelId.trim() : null;
       if (primary) sidPrimaryModel.set(sid, primary);
 
       const isFastPath =

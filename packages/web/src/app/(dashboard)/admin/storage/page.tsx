@@ -35,18 +35,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@nocoo/basalt/components/tooltip";
-import {
-  UserProfileDialog,
-  type ProfileDialogTab,
-} from "@/components/user-profile-dialog";
-import type {
-  StorageUserRow,
-  StorageSummary,
-} from "@/app/api/admin/storage/route";
-import type {
-  CacheListResponse,
-  CacheClearResponse,
-} from "@/app/api/admin/cache/route";
+import { UserProfileDialog, type ProfileDialogTab } from "@/components/user-profile-dialog";
+import type { StorageUserRow, StorageSummary } from "@/app/api/admin/storage/route";
+import type { CacheListResponse, CacheClearResponse } from "@/app/api/admin/cache/route";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,8 +106,11 @@ function StorageSkeleton() {
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              key={`slot-${i}`}
+              className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4"
+            >
               <Skeleton style={{ width: undefined }} className="h-3 w-12 mb-2" />
               <Skeleton style={{ width: undefined }} className="h-6 w-16" />
             </div>
@@ -138,8 +132,11 @@ function StorageSkeleton() {
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           {Array.from({ length: 2 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              key={`slot-${i}`}
+              className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4"
+            >
               <Skeleton style={{ width: undefined }} className="h-3 w-12 mb-2" />
               <Skeleton style={{ width: undefined }} className="h-6 w-16" />
             </div>
@@ -177,25 +174,14 @@ function SortHeader({
   className?: string;
 }) {
   const isActive = currentSort === sortKey;
-  const Icon = isActive
-    ? currentDir === "asc"
-      ? ArrowUp
-      : ArrowDown
-    : ArrowUpDown;
+  const Icon = isActive ? (currentDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
 
-  const ariaSort = isActive
-    ? currentDir === "asc"
-      ? "ascending"
-      : "descending"
-    : "none";
+  const ariaSort = isActive ? (currentDir === "asc" ? "ascending" : "descending") : "none";
 
   return (
     <th
       aria-sort={ariaSort as "ascending" | "descending" | "none"}
-      className={cn(
-        "px-4 py-3 text-xs font-medium text-basalt-muted-foreground",
-        className
-      )}
+      className={cn("px-4 py-3 text-xs font-medium text-basalt-muted-foreground", className)}
     >
       <Button
         type="button"
@@ -204,7 +190,7 @@ function SortHeader({
         onClick={() => onSort(sortKey)}
         className={cn(
           "ml-auto inline-flex h-auto items-center gap-1 px-0 py-0 text-xs font-medium hover:bg-transparent hover:text-basalt-foreground",
-          isActive && "text-basalt-foreground"
+          isActive && "text-basalt-foreground",
         )}
       >
         {label}
@@ -229,7 +215,7 @@ export default function AdminStoragePage() {
     isLoading: storageLoading,
   } = useSWR<{ users: StorageUserRow[]; summary: StorageSummary }>(
     isAdmin ? "/api/admin/storage" : null,
-    fetcher
+    fetcher,
   );
   const users = storageData?.users ?? EMPTY_USERS;
   const summary = storageData?.summary ?? null;
@@ -256,18 +242,13 @@ export default function AdminStoragePage() {
     error: cacheSwrError,
     isLoading: cacheLoading,
     mutate: mutateCache,
-  } = useSWR<CacheListResponse>(
-    isAdmin ? "/api/admin/cache" : null,
-    fetcher
-  );
+  } = useSWR<CacheListResponse>(isAdmin ? "/api/admin/cache" : null, fetcher);
   const cacheKeys = cacheData?.keys ?? EMPTY_KEYS;
   const cacheCount = cacheData?.count ?? 0;
   const cacheTruncated = cacheData?.truncated ?? false;
   const [cacheClearing, setCacheClearing] = useState(false);
   const [cacheDeletingKey, setCacheDeletingKey] = useState<string | null>(null);
-  const [cacheMutationError, setCacheMutationError] = useState<string | null>(
-    null
-  );
+  const [cacheMutationError, setCacheMutationError] = useState<string | null>(null);
   const [cacheMessage, setCacheMessage] = useState<MessageBannerMsg | null>(null);
   const { confirm, dialogProps } = useConfirm();
   const cacheError =
@@ -278,14 +259,11 @@ export default function AdminStoragePage() {
         : "Failed to load"
       : null);
 
-  const openProfileDialog = useCallback(
-    (user: StorageUserRow, tab: ProfileDialogTab = "total") => {
-      setDialogUser(user);
-      setDialogTab(tab);
-      setDialogOpen(true);
-    },
-    []
-  );
+  const openProfileDialog = useCallback((user: StorageUserRow, tab: ProfileDialogTab = "total") => {
+    setDialogUser(user);
+    setDialogTab(tab);
+    setDialogOpen(true);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Cache management handlers
@@ -329,22 +307,19 @@ export default function AdminStoragePage() {
     async (key: string) => {
       setCacheDeletingKey(key);
       try {
-        const res = await fetch(
-          `/api/admin/cache?key=${encodeURIComponent(key)}`,
-          { method: "DELETE" }
-        );
+        const res = await fetch(`/api/admin/cache?key=${encodeURIComponent(key)}`, {
+          method: "DELETE",
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         // Refresh list
         await mutateCache();
       } catch (err) {
-        setCacheMutationError(
-          err instanceof Error ? err.message : "Failed to invalidate"
-        );
+        setCacheMutationError(err instanceof Error ? err.message : "Failed to invalidate");
       } finally {
         setCacheDeletingKey(null);
       }
     },
-    [mutateCache]
+    [mutateCache],
   );
 
   // ---------------------------------------------------------------------------
@@ -370,7 +345,7 @@ export default function AdminStoragePage() {
         setSortDir("desc");
       }
     },
-    [sortKey]
+    [sortKey],
   );
 
   // ---------------------------------------------------------------------------
@@ -385,8 +360,7 @@ export default function AdminStoragePage() {
       const q = search.trim().toLowerCase();
       list = list.filter(
         (u) =>
-          (u.email ?? "").toLowerCase().includes(q) ||
-          (u.name ?? "").toLowerCase().includes(q)
+          (u.email ?? "").toLowerCase().includes(q) || (u.name ?? "").toLowerCase().includes(q),
       );
     }
 
@@ -436,10 +410,7 @@ export default function AdminStoragePage() {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4 md:space-y-6">
-        <PageHeader
-          title="Storage"
-          description="Database and cache storage overview."
-        />
+        <PageHeader title="Storage" description="Database and cache storage overview." />
 
         {/* Error */}
         <ErrorBanner messagePrefix="Failed to load storage stats" error={error} />
@@ -454,10 +425,7 @@ export default function AdminStoragePage() {
             <div className="flex flex-col gap-4 lg:max-h-[calc(100vh-12rem)] lg:overflow-hidden">
               {/* Section header */}
               <div className="flex items-center gap-2 shrink-0">
-                <Database
-                  className="h-4 w-4 text-basalt-muted-foreground"
-                  strokeWidth={1.5}
-                />
+                <Database className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
                 <h2 className="font-medium">Database (D1)</h2>
               </div>
 
@@ -484,9 +452,7 @@ export default function AdminStoragePage() {
                           {formatTokens(summary.total_tokens)}
                         </p>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        {formatTokensFull(summary.total_tokens)}
-                      </TooltipContent>
+                      <TooltipContent>{formatTokensFull(summary.total_tokens)}</TooltipContent>
                     </Tooltip>
                   </div>
                   <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
@@ -601,17 +567,10 @@ export default function AdminStoragePage() {
                             >
                               <Avatar className="h-7 w-7 shrink-0">
                                 {user.image && (
-                                  <AvatarImage
-                                    src={user.image}
-                                    alt={user.name ?? ""}
-                                  />
+                                  <AvatarImage src={user.image} alt={user.name ?? ""} />
                                 )}
                                 <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
-                                  {(
-                                    user.name ??
-                                    user.email ??
-                                    "?"
-                                  )[0]?.toUpperCase()}
+                                  {(user.name ?? user.email ?? "?")[0]?.toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0">
@@ -646,9 +605,7 @@ export default function AdminStoragePage() {
                                   {formatTokens(user.total_tokens)}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>
-                                {formatTokensFull(user.total_tokens)}
-                              </TooltipContent>
+                              <TooltipContent>{formatTokensFull(user.total_tokens)}</TooltipContent>
                             </Tooltip>
                           </td>
                         </tr>
@@ -664,10 +621,7 @@ export default function AdminStoragePage() {
               {/* Section header with actions */}
               <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <HardDrive
-                    className="h-4 w-4 text-basalt-muted-foreground"
-                    strokeWidth={1.5}
-                  />
+                  <HardDrive className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
                   <h2 className="font-medium">Edge Cache (KV)</h2>
                 </div>
                 <div className="flex items-center gap-2">
@@ -679,10 +633,7 @@ export default function AdminStoragePage() {
                     disabled={cacheLoading}
                   >
                     <RefreshCw
-                      className={cn(
-                        "h-3 w-3",
-                        cacheLoading && "animate-spin"
-                      )}
+                      className={cn("h-3 w-3", cacheLoading && "animate-spin")}
                       strokeWidth={1.5}
                     />
                     Refresh
@@ -768,7 +719,7 @@ export default function AdminStoragePage() {
                         key={key}
                         className={cn(
                           "flex items-start gap-3 rounded-lg bg-basalt-secondary p-3 group",
-                          isDeleting && "opacity-50"
+                          isDeleting && "opacity-50",
                         )}
                       >
                         <div className="flex-1 min-w-0">
@@ -785,7 +736,7 @@ export default function AdminStoragePage() {
                                 type === "Leaderboard" &&
                                   "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
                                 type === "Unknown" &&
-                                  "bg-basalt-secondary text-basalt-muted-foreground"
+                                  "bg-basalt-secondary text-basalt-muted-foreground",
                               )}
                             >
                               {type}

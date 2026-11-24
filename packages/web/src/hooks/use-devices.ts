@@ -12,30 +12,16 @@ interface UseDevicesResult {
   loading: boolean;
   error: string | null;
   refetch: () => void;
-  updateAlias: (
-    deviceId: string,
-    alias: string
-  ) => Promise<{ success: boolean; error?: string }>;
-  deleteDevice: (
-    deviceId: string
-  ) => Promise<{ success: boolean; error?: string }>;
-  setRevoked: (
-    deviceId: string,
-    revoked: boolean
-  ) => Promise<{ success: boolean; error?: string }>;
+  updateAlias: (deviceId: string, alias: string) => Promise<{ success: boolean; error?: string }>;
+  deleteDevice: (deviceId: string) => Promise<{ success: boolean; error?: string }>;
+  setRevoked: (deviceId: string, revoked: boolean) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function useDevices(): UseDevicesResult {
-  const { data, error, isLoading, mutate } = useSWR<DevicesResponse>(
-    "/api/devices",
-    fetcher,
-  );
+  const { data, error, isLoading, mutate } = useSWR<DevicesResponse>("/api/devices", fetcher);
 
   const updateAlias = useCallback(
-    async (
-      deviceId: string,
-      alias: string
-    ): Promise<{ success: boolean; error?: string }> => {
+    async (deviceId: string, alias: string): Promise<{ success: boolean; error?: string }> => {
       try {
         const res = await fetch("/api/devices", {
           method: "PUT",
@@ -54,13 +40,11 @@ export function useDevices(): UseDevicesResult {
         return { success: false, error: errorMsg };
       }
     },
-    [mutate]
+    [mutate],
   );
 
   const deleteDevice = useCallback(
-    async (
-      deviceId: string
-    ): Promise<{ success: boolean; error?: string }> => {
+    async (deviceId: string): Promise<{ success: boolean; error?: string }> => {
       try {
         const res = await fetch("/api/devices", {
           method: "DELETE",
@@ -79,14 +63,11 @@ export function useDevices(): UseDevicesResult {
         return { success: false, error: errorMsg };
       }
     },
-    [mutate]
+    [mutate],
   );
 
   const setRevoked = useCallback(
-    async (
-      deviceId: string,
-      revoked: boolean
-    ): Promise<{ success: boolean; error?: string }> => {
+    async (deviceId: string, revoked: boolean): Promise<{ success: boolean; error?: string }> => {
       try {
         const res = await fetch("/api/devices", {
           method: "PATCH",
@@ -105,7 +86,7 @@ export function useDevices(): UseDevicesResult {
         return { success: false, error: errorMsg };
       }
     },
-    [mutate]
+    [mutate],
   );
 
   return {

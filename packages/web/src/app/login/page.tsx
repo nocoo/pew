@@ -43,7 +43,8 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const rawCallback = searchParams.get("callbackUrl");
-  const callbackUrl = rawCallback?.startsWith("/") && !rawCallback.startsWith("//") ? rawCallback : "/dashboard";
+  const callbackUrl =
+    rawCallback?.startsWith("/") && !rawCallback.startsWith("//") ? rawCallback : "/dashboard";
 
   const [inviteCode, setInviteCode] = useState("");
   const [inviteError, setInviteError] = useState("");
@@ -83,12 +84,7 @@ function LoginContent() {
 
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
           <HeaderTooltip label="GitHub repository">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={chromeIconClassName}
-              asChild
-            >
+            <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
               <a
                 href="https://github.com/nocoo/pew"
                 target="_blank"
@@ -118,7 +114,9 @@ function LoginContent() {
             <Image src="/logo-80.png" alt="pew" width={80} height={80} />
 
             <p className="mt-5 text-lg font-semibold text-basalt-foreground">Show your tokens</p>
-            <p className="mt-1 text-xs text-basalt-muted-foreground">Sign in to view your dashboard</p>
+            <p className="mt-1 text-xs text-basalt-muted-foreground">
+              Sign in to view your dashboard
+            </p>
 
             {error && error !== "InviteRequired" ? (
               <Banner
@@ -154,9 +152,7 @@ function LoginContent() {
                   }}
                   className="rounded-xl py-3 text-center font-mono tracking-widest placeholder:font-sans placeholder:tracking-normal"
                 />
-                {inviteError && (
-                  <Banner tone="danger" size="sm" description={inviteError} />
-                )}
+                {inviteError && <Banner tone="danger" size="sm" description={inviteError} />}
                 <Button
                   variant="secondary"
                   className="w-full rounded-xl py-3"

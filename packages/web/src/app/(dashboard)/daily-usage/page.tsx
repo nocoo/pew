@@ -3,11 +3,7 @@
 import { estimateUsageCost, accountedTotal, displayCounters } from "@/lib/accounting";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronLeft } from "@nocoo/basalt/icons";
-import {
-  useUsageData,
-  toDailyPoints,
-  sourceLabel,
-} from "@/hooks/use-usage-data";
+import { useUsageData, toDailyPoints, sourceLabel } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/error-banner";
@@ -31,10 +27,7 @@ import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { ghostIconClassName } from "@/lib/ghost-icon";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import {
-  groupByDate,
-  toSourceTrendPoints,
-} from "@/lib/usage-helpers";
+import { groupByDate, toSourceTrendPoints } from "@/lib/usage-helpers";
 import { MODEL_SERIES_LIMIT, toModelEvolutionPoints } from "@/lib/model-helpers";
 import type { DailyGroup } from "@/lib/usage-helpers";
 import { getMonthRange, formatMonth, formatDate } from "@/lib/date-helpers";
@@ -68,7 +61,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
 
       if (existing) {
         existing.input += display.input_tokens;
-        existing.output += (display.output_tokens + display.reasoning_output_tokens);
+        existing.output += display.output_tokens + display.reasoning_output_tokens;
         existing.cached += display.cached_input_tokens;
         existing.total += accountedTotal(r);
         existing.cost += cost.totalCost;
@@ -77,7 +70,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
           source: r.source,
           model: r.model,
           input: display.input_tokens,
-          output: (display.output_tokens + display.reasoning_output_tokens),
+          output: display.output_tokens + display.reasoning_output_tokens,
           cached: display.cached_input_tokens,
           total: accountedTotal(r),
           cost: cost.totalCost,
@@ -108,11 +101,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
                 setExpanded(!expanded);
               }}
             >
-              {expanded ? (
-                <ChevronDown strokeWidth={1.5} />
-              ) : (
-                <ChevronRight strokeWidth={1.5} />
-              )}
+              {expanded ? <ChevronDown strokeWidth={1.5} /> : <ChevronRight strokeWidth={1.5} />}
             </Button>
             <span className="font-medium">{formatDate(group.date)}</span>
           </div>
@@ -140,9 +129,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
             className="border-b border-basalt-border/30 last:border-0 bg-basalt-accent/30"
           >
             <td className="pl-10 pr-4 py-2.5 text-xs text-basalt-muted-foreground">
-              <span className="text-basalt-foreground/70">
-                {sourceLabel(row.source)}
-              </span>
+              <span className="text-basalt-foreground/70">{sourceLabel(row.source)}</span>
               <span className="mx-1.5 text-basalt-border">/</span>
               <span className="font-mono text-basalt-foreground/60">{row.model}</span>
               <ModelInfoTooltip model={row.model} className="ml-1.5" />
@@ -193,7 +180,10 @@ function DonutSkeleton() {
       <Skeleton style={{ width: undefined }} className="h-3 w-16 mb-2" />
       <div className="flex items-center gap-3">
         {/* Donut placeholder */}
-        <Skeleton style={{ width: undefined }} className="w-[80px] h-[80px] rounded-full shrink-0" />
+        <Skeleton
+          style={{ width: undefined }}
+          className="w-[80px] h-[80px] rounded-full shrink-0"
+        />
         {/* Legend */}
         <div className="flex-1 space-y-1">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -230,24 +220,48 @@ function DailySkeleton() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-basalt-border">
-                  <th className="px-4 py-3 text-left"><Skeleton style={{ width: undefined }} className="h-3 w-12" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+                  <th className="px-4 py-3 text-left">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-12" />
+                  </th>
+                  <th className="px-4 py-3 text-right">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
+                  <th className="px-4 py-3 text-right">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
+                  <th className="px-4 py-3 text-right hidden md:table-cell">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
+                  <th className="px-4 py-3 text-right">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
+                  <th className="px-4 py-3 text-right hidden sm:table-cell">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
                   <tr key={`slot-${i}`} className="border-b border-basalt-border/50">
-                    <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-20" /></td>
-                    <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3 hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
+                    <td className="px-4 py-3">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-20" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -313,7 +327,7 @@ export default function DailyUsagePage() {
           cached: 0,
           reasoning: 0,
           total: 0,
-        }
+        },
       );
     }
     return padded;
@@ -328,23 +342,22 @@ export default function DailyUsagePage() {
   // Source trend data
   const sourceTrend = useMemo(
     () => (data ? toSourceTrendPoints(data.records, tzOffset) : []),
-    [data, tzOffset]
+    [data, tzOffset],
   );
 
   // Recent models plus Other, shared by the timeline and donut.
   const modelEvolution = useMemo(
     () => (data ? toModelEvolutionPoints(data.records, MODEL_SERIES_LIMIT, tzOffset) : []),
-    [data, tzOffset]
+    [data, tzOffset],
   );
 
   // Daily groups for the table
   const dailyGroups = useMemo(
     () => (data ? groupByDate(data.records, pricingMap, tzOffset) : []),
-    [data, pricingMap, tzOffset]
+    [data, pricingMap, tzOffset],
   );
 
-  const isCurrentMonth =
-    year === now.getFullYear() && month === now.getMonth();
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
 
   function goToPrevMonth() {
     if (month === 0) {
@@ -396,7 +409,11 @@ export default function DailyUsagePage() {
             >
               <ChevronRight strokeWidth={1.5} />
             </Button>
-            <UsageInformation records={data?.records ?? []} pricingMap={pricingMap} loading={pricingLoading} />
+            <UsageInformation
+              records={data?.records ?? []}
+              pricingMap={pricingMap}
+              loading={pricingLoading}
+            />
           </div>
         }
       />
@@ -408,102 +425,94 @@ export default function DailyUsagePage() {
       {loading && <DailySkeleton />}
 
       {/* Content */}
-      {!loading && data && (
-        data.summary.total_tokens > 0 ? (
-            <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
-              {/* Left column: Daily charts + Detail table (3/4) */}
-              <div className="xl:col-span-3 space-y-4 md:space-y-6">
-                <DashboardSegment title="Monthly Timeline">
-                  <div className="space-y-4">
-                    {/* Input / Output */}
-                    <UsageTrendChart data={daily} />
+      {!loading &&
+        data &&
+        (data.summary.total_tokens > 0 ? (
+          <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
+            {/* Left column: Daily charts + Detail table (3/4) */}
+            <div className="xl:col-span-3 space-y-4 md:space-y-6">
+              <DashboardSegment title="Monthly Timeline">
+                <div className="space-y-4">
+                  {/* Input / Output */}
+                  <UsageTrendChart data={daily} />
 
-                    {/* By Device */}
-                    {deviceData?.timeline && deviceData?.devices && (
-                      <DeviceAreaChart
-                        timeline={deviceData.timeline}
-                        devices={deviceData.devices}
-                        padToDate={lastDayOfMonth}
-                      />
-                    )}
-
-                    {/* By Agent */}
-                    <SourceAreaChart data={sourceTrend} padToDate={lastDayOfMonth} />
-
-                    {/* By Model */}
-                    <ModelAreaChart data={modelEvolution} padToDate={lastDayOfMonth} />
-                  </div>
-
-                  {/* Per-day detail table */}
-                  {dailyGroups.length > 0 && (
-                    <div className="mt-6 rounded-xl bg-basalt-background/50 p-1 overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-basalt-border">
-                            <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                              Date
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                              Input
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                              Output
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
-                              Cached
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                              Total
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
-                              Est. Cost
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {dailyGroups.map((group) => (
-                            <DayRow
-                              key={group.date}
-                              group={group}
-                              pricingMap={pricingMap}
-                            />
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  {/* By Device */}
+                  {deviceData?.timeline && deviceData?.devices && (
+                    <DeviceAreaChart
+                      timeline={deviceData.timeline}
+                      devices={deviceData.devices}
+                      padToDate={lastDayOfMonth}
+                    />
                   )}
-                </DashboardSegment>
-              </div>
 
-              {/* Right column: Monthly breakdown donut charts (1/4) */}
-              <div className="xl:col-span-1 space-y-4 md:space-y-6">
-                <DashboardSegment title="Monthly Breakdown">
-                  <div className="space-y-4">
-                    {/* Device donut chart */}
-                    {deviceData?.devices && deviceData.devices.length > 0 && (
-                      <DeviceDonutChart devices={deviceData.devices} />
-                    )}
+                  {/* By Agent */}
+                  <SourceAreaChart data={sourceTrend} padToDate={lastDayOfMonth} />
 
-                    {/* Agent donut chart */}
-                    {sourceTrend.length > 0 && (
-                      <AgentDonutChart sourceTrend={sourceTrend} />
-                    )}
+                  {/* By Model */}
+                  <ModelAreaChart data={modelEvolution} padToDate={lastDayOfMonth} />
+                </div>
 
-                    {/* Model donut chart */}
-                    {modelEvolution.length > 0 && (
-                      <ModelDonutChart modelEvolution={modelEvolution} />
-                    )}
+                {/* Per-day detail table */}
+                {dailyGroups.length > 0 && (
+                  <div className="mt-6 rounded-xl bg-basalt-background/50 p-1 overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-basalt-border">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                            Date
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                            Input
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                            Output
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
+                            Cached
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                            Total
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
+                            Est. Cost
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dailyGroups.map((group) => (
+                          <DayRow key={group.date} group={group} pricingMap={pricingMap} />
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </DashboardSegment>
-              </div>
+                )}
+              </DashboardSegment>
             </div>
-          ) : (
-            <Empty
-              title={`No usage data for ${formatMonth(year, month)}.`}
-              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-            />
-          )
-      )}
+
+            {/* Right column: Monthly breakdown donut charts (1/4) */}
+            <div className="xl:col-span-1 space-y-4 md:space-y-6">
+              <DashboardSegment title="Monthly Breakdown">
+                <div className="space-y-4">
+                  {/* Device donut chart */}
+                  {deviceData?.devices && deviceData.devices.length > 0 && (
+                    <DeviceDonutChart devices={deviceData.devices} />
+                  )}
+
+                  {/* Agent donut chart */}
+                  {sourceTrend.length > 0 && <AgentDonutChart sourceTrend={sourceTrend} />}
+
+                  {/* Model donut chart */}
+                  {modelEvolution.length > 0 && <ModelDonutChart modelEvolution={modelEvolution} />}
+                </div>
+              </DashboardSegment>
+            </div>
+          </div>
+        ) : (
+          <Empty
+            title={`No usage data for ${formatMonth(year, month)}.`}
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+          />
+        ))}
     </div>
   );
 }

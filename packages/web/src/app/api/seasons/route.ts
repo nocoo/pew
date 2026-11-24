@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   if (statusFilter && !VALID_STATUSES.has(statusFilter)) {
     return NextResponse.json(
       { error: "Invalid status filter. Must be: upcoming, active, or ended" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -72,9 +72,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ seasons: [] });
     }
     console.error("Failed to list seasons:", err);
-    return NextResponse.json(
-      { error: "Failed to list seasons" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list seasons" }, { status: 500 });
   }
 }

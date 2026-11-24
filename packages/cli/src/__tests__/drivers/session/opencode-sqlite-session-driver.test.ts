@@ -57,10 +57,21 @@ describe("openCodeSqliteSessionDriver", () => {
     await writeFile(dbPath, "fake-sqlite-content");
 
     const sessions: SessionRow[] = [
-      { id: "ses-1", project_id: null, title: "Test", time_created: 1735689600000, time_updated: 1735689700000 },
+      {
+        id: "ses-1",
+        project_id: null,
+        title: "Test",
+        time_created: 1735689600000,
+        time_updated: 1735689700000,
+      },
     ];
     const messages: SessionMessageRow[] = [
-      { session_id: "ses-1", role: "user", time_created: 1735689600000, data: JSON.stringify({ time: { created: 1735689600000 } }) },
+      {
+        session_id: "ses-1",
+        role: "user",
+        time_created: 1735689600000,
+        data: JSON.stringify({ time: { created: 1735689600000 } }),
+      },
       {
         session_id: "ses-1",
         role: "assistant",
@@ -78,7 +89,9 @@ describe("openCodeSqliteSessionDriver", () => {
       openSessionDb: () => ({
         querySessions: () => sessions,
         querySessionMessages: () => messages,
-        close: () => { closed = true; },
+        close: () => {
+          closed = true;
+        },
       }),
     });
 
@@ -100,8 +113,20 @@ describe("openCodeSqliteSessionDriver", () => {
     const { ino: dbInode } = await import("node:fs/promises").then((fs) => fs.stat(dbPath));
 
     const sessions: SessionRow[] = [
-      { id: "ses-1", project_id: null, title: "Old", time_created: 1735689500000, time_updated: 1735689600000 },
-      { id: "ses-2", project_id: null, title: "New", time_created: 1735689600000, time_updated: 1735689700000 },
+      {
+        id: "ses-1",
+        project_id: null,
+        title: "Old",
+        time_created: 1735689500000,
+        time_updated: 1735689600000,
+      },
+      {
+        id: "ses-2",
+        project_id: null,
+        title: "New",
+        time_created: 1735689600000,
+        time_updated: 1735689700000,
+      },
     ];
 
     const driver = createOpenCodeSqliteSessionDriver({
@@ -109,7 +134,12 @@ describe("openCodeSqliteSessionDriver", () => {
       openSessionDb: () => ({
         querySessions: () => sessions,
         querySessionMessages: () => [
-          { session_id: "ses-2", role: "user", time_created: 1735689600000, data: JSON.stringify({ time: { created: 1735689600000 } }) },
+          {
+            session_id: "ses-2",
+            role: "user",
+            time_created: 1735689600000,
+            data: JSON.stringify({ time: { created: 1735689600000 } }),
+          },
         ],
         close: () => {},
       }),
@@ -134,16 +164,30 @@ describe("openCodeSqliteSessionDriver", () => {
     await writeFile(dbPath, "fake-sqlite-content");
 
     const sessions: SessionRow[] = [
-      { id: "ses-1", project_id: null, title: "Test", time_created: 1735689600000, time_updated: 1735689700000 },
+      {
+        id: "ses-1",
+        project_id: null,
+        title: "Test",
+        time_created: 1735689600000,
+        time_updated: 1735689700000,
+      },
     ];
 
     let queriedWatermark = -1;
     const driver = createOpenCodeSqliteSessionDriver({
       dbPath,
       openSessionDb: () => ({
-        querySessions: (ts: number) => { queriedWatermark = ts; return sessions; },
+        querySessions: (ts: number) => {
+          queriedWatermark = ts;
+          return sessions;
+        },
         querySessionMessages: () => [
-          { session_id: "ses-1", role: "user", time_created: 1735689600000, data: JSON.stringify({ time: { created: 1735689600000 } }) },
+          {
+            session_id: "ses-1",
+            role: "user",
+            time_created: 1735689600000,
+            data: JSON.stringify({ time: { created: 1735689600000 } }),
+          },
         ],
         close: () => {},
       }),
@@ -169,7 +213,13 @@ describe("openCodeSqliteSessionDriver", () => {
     const { ino: dbInode } = await import("node:fs/promises").then((fs) => fs.stat(dbPath));
 
     const sessions: SessionRow[] = [
-      { id: "ses-1", project_id: null, title: "Test", time_created: 1735689600000, time_updated: 1735689700000 },
+      {
+        id: "ses-1",
+        project_id: null,
+        title: "Test",
+        time_created: 1735689600000,
+        time_updated: 1735689700000,
+      },
     ];
 
     const driver = createOpenCodeSqliteSessionDriver({
@@ -177,7 +227,12 @@ describe("openCodeSqliteSessionDriver", () => {
       openSessionDb: () => ({
         querySessions: () => sessions,
         querySessionMessages: () => [
-          { session_id: "ses-1", role: "user", time_created: 1735689600000, data: JSON.stringify({ time: { created: 1735689600000 } }) },
+          {
+            session_id: "ses-1",
+            role: "user",
+            time_created: 1735689600000,
+            data: JSON.stringify({ time: { created: 1735689600000 } }),
+          },
         ],
         close: () => {},
       }),

@@ -13,15 +13,10 @@
 
 import { NextResponse } from "next/server";
 import { getDbRead, getDbWrite } from "@/lib/db";
-import {
-  AUTH_CODE_VERIFY_RATE_LIMIT,
-  getClientIp,
-  inMemoryRateLimiter,
-} from "@/lib/rate-limit";
+import { AUTH_CODE_VERIFY_RATE_LIMIT, getClientIp, inMemoryRateLimiter } from "@/lib/rate-limit";
 
 // Generic error message for all auth failures (avoids information leakage)
 const AUTH_ERROR = "Invalid or expired code";
-
 
 /** Generate a random API key: pk_ prefix + 32 hex chars */
 function generateApiKey(): string {
@@ -34,10 +29,7 @@ function generateApiKey(): string {
 export async function POST(request: Request) {
   // Rate limit: 5 verification attempts per minute per IP
   const ip = getClientIp(request);
-  const rl = inMemoryRateLimiter.check(
-    `auth-code-verify:${ip}`,
-    AUTH_CODE_VERIFY_RATE_LIMIT,
-  );
+  const rl = inMemoryRateLimiter.check(`auth-code-verify:${ip}`, AUTH_CODE_VERIFY_RATE_LIMIT);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
@@ -81,17 +73,14 @@ export async function POST(request: Request) {
     // 3. Check if code is still valid (not used, not expired, no failed attempts)
     const now = new Date();
     const expiresAt = new Date(authCode.expires_at);
-    const isValid =
-      !authCode.used_at &&
-      now <= expiresAt &&
-      authCode.failed_attempts === 0;
+    const isValid = !authCode.used_at && now <= expiresAt && authCode.failed_attempts === 0;
 
     if (!isValid) {
       // Code exists but is not valid — increment failed_attempts to ensure it stays invalid
       // (This handles edge case where code was valid but expired between check and now)
       await dbWrite.execute(
         `UPDATE auth_codes SET failed_attempts = failed_attempts + 1 WHERE code = ?`,
-        [normalizedCode]
+        [normalizedCode],
       );
       return NextResponse.json({ error: AUTH_ERROR }, { status: 401 });
     }
@@ -116,7 +105,7 @@ export async function POST(request: Request) {
       const updateKeyResult = await dbWrite.execute(
         `UPDATE users SET api_key = ?, updated_at = datetime('now')
          WHERE id = ? AND api_key IS NULL`,
-        [newKey, user.id]
+        [newKey, user.id],
       );
 
       if (updateKeyResult.changes === 1) {
@@ -139,7 +128,7 @@ export async function POST(request: Request) {
       `UPDATE auth_codes
        SET used_at = datetime('now')
        WHERE code = ? AND used_at IS NULL AND failed_attempts = 0`,
-      [normalizedCode]
+      [normalizedCode],
     );
 
     // If no rows updated, race condition — someone else invalidated or used it
@@ -154,9 +143,6 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("Failed to verify auth code:", err);
-    return NextResponse.json(
-      { error: "Failed to verify code" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to verify code" }, { status: 500 });
   }
 }

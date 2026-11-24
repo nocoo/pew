@@ -124,7 +124,9 @@ describe("autoRegisterTeamsForSeason", () => {
     mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
     mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
     mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-1"); // owner lookup
-    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "owner-1" }]);
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+      { id: "team-1", created_by: "owner-1" },
+    ]);
     mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1", "u2"]);
     mockDbWrite.batch.mockResolvedValueOnce([{ results: [], meta: { changes: 1, duration: 0 } }]);
 
@@ -134,7 +136,10 @@ describe("autoRegisterTeamsForSeason", () => {
     expect(result.skipped).toBe(0);
     expect(mockDbWrite.batch).toHaveBeenCalledTimes(1);
     // Should have 1 season_teams INSERT + 2 season_team_members INSERTs
-    const batchStatements = mockDbWrite.batch.mock.calls[0]![0] as Array<{ sql: string; params: unknown[] }>;
+    const batchStatements = mockDbWrite.batch.mock.calls[0]![0] as Array<{
+      sql: string;
+      params: unknown[];
+    }>;
     expect(batchStatements).toHaveLength(3);
     expect(batchStatements[0]!.sql).toContain("INSERT INTO season_teams");
     expect(batchStatements[1]!.sql).toContain("INSERT INTO season_team_members");
@@ -144,7 +149,9 @@ describe("autoRegisterTeamsForSeason", () => {
   it("should skip team when a member has a conflict", async () => {
     mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
     mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce({ user_id: "u1" }); // conflict found
-    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "owner-1" }]);
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+      { id: "team-1", created_by: "owner-1" },
+    ]);
     mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
@@ -178,7 +185,9 @@ describe("autoRegisterTeamsForSeason", () => {
   it("should handle team with no members gracefully", async () => {
     mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
     mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-1"); // owner lookup
-    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-empty", created_by: "owner-1" }]);
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+      { id: "team-empty", created_by: "owner-1" },
+    ]);
     mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce([]); // no members
 
     mockDbWrite.batch.mockResolvedValueOnce([{ results: [], meta: { changes: 1, duration: 0 } }]);
@@ -187,7 +196,10 @@ describe("autoRegisterTeamsForSeason", () => {
 
     expect(result.registered).toBe(1);
     // Only 1 statement: season_teams INSERT (no member rows)
-    const batchStatements = mockDbWrite.batch.mock.calls[0]![0] as Array<{ sql: string; params: unknown[] }>;
+    const batchStatements = mockDbWrite.batch.mock.calls[0]![0] as Array<{
+      sql: string;
+      params: unknown[];
+    }>;
     expect(batchStatements).toHaveLength(1);
     expect(batchStatements[0]!.sql).toContain("INSERT INTO season_teams");
   });
@@ -238,7 +250,9 @@ describe("autoRegisterTeamsForSeason", () => {
   it("counts an atomic batch failure as skipped without compensation", async () => {
     mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
     mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-1");
-    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "owner-1" }]);
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+      { id: "team-1", created_by: "owner-1" },
+    ]);
     mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
     mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 batch failed"));
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
@@ -247,42 +261,57 @@ describe("autoRegisterTeamsForSeason", () => {
     expect(mockDbWrite.execute).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])("enforces upcoming at the database write (crossed start: %s)", async (crossedStart) => {
-    const sqlite = new DatabaseSync(":memory:");
-    try {
-      sqlite.exec(`CREATE TABLE seasons(id TEXT PRIMARY KEY, start_date TEXT);
+  it.each([false, true])(
+    "enforces upcoming at the database write (crossed start: %s)",
+    async (crossedStart) => {
+      const sqlite = new DatabaseSync(":memory:");
+      try {
+        sqlite.exec(`CREATE TABLE seasons(id TEXT PRIMARY KEY, start_date TEXT);
         CREATE TABLE season_teams(id TEXT PRIMARY KEY, season_id TEXT, team_id TEXT, registered_by TEXT);
         CREATE TABLE season_team_members(id TEXT PRIMARY KEY, season_id TEXT, team_id TEXT, user_id TEXT);
         INSERT INTO seasons VALUES ('season-1', '2099-01-01T00:00:00Z');`);
-      mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
-      mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "owner-1" }]);
-      mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1", "u2"]);
-      mockDbRead.getTeamOwner.mockImplementationOnce(async () => {
-        if (crossedStart) sqlite.exec("UPDATE seasons SET start_date='2000-01-01T00:00:00Z'");
-        return "owner-1";
-      });
-      mockDbWrite.batch.mockImplementationOnce(async (statements) => {
-        sqlite.exec("BEGIN");
-        const results = statements.map(({ sql, params = [] }: { sql: string; params?: unknown[] }) => {
-          const result = sqlite.prepare(sql).run(...params as never[]);
-          return { results: [], meta: { changes: Number(result.changes), duration: 0 } };
+        mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+        mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+          { id: "team-1", created_by: "owner-1" },
+        ]);
+        mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1", "u2"]);
+        mockDbRead.getTeamOwner.mockImplementationOnce(async () => {
+          if (crossedStart) sqlite.exec("UPDATE seasons SET start_date='2000-01-01T00:00:00Z'");
+          return "owner-1";
         });
-        sqlite.exec("COMMIT");
-        return results;
-      });
-      const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
-      expect(result.registered).toBe(crossedStart ? 0 : 1);
-      expect(result.skipped).toBe(crossedStart ? 1 : 0);
-      expect(sqlite.prepare("SELECT COUNT(*) AS n FROM season_teams").get()?.n).toBe(crossedStart ? 0 : 1);
-      expect(sqlite.prepare("SELECT COUNT(*) AS n FROM season_team_members").get()?.n).toBe(crossedStart ? 0 : 2);
-    } finally { sqlite.close(); }
-  });
+        mockDbWrite.batch.mockImplementationOnce(async (statements) => {
+          sqlite.exec("BEGIN");
+          const results = statements.map(
+            ({ sql, params = [] }: { sql: string; params?: unknown[] }) => {
+              const result = sqlite.prepare(sql).run(...(params as never[]));
+              return { results: [], meta: { changes: Number(result.changes), duration: 0 } };
+            },
+          );
+          sqlite.exec("COMMIT");
+          return results;
+        });
+        const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
+        expect(result.registered).toBe(crossedStart ? 0 : 1);
+        expect(result.skipped).toBe(crossedStart ? 1 : 0);
+        expect(sqlite.prepare("SELECT COUNT(*) AS n FROM season_teams").get()?.n).toBe(
+          crossedStart ? 0 : 1,
+        );
+        expect(sqlite.prepare("SELECT COUNT(*) AS n FROM season_team_members").get()?.n).toBe(
+          crossedStart ? 0 : 2,
+        );
+      } finally {
+        sqlite.close();
+      }
+    },
+  );
 
   it("falls back to team.created_by when owner lookup returns null", async () => {
     mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
     mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
     mockDbRead.getTeamOwner.mockResolvedValueOnce(null); // owner lookup empty → fallback path
-    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "fallback-creator" }]);
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+      { id: "team-1", created_by: "fallback-creator" },
+    ]);
     mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
     mockDbWrite.batch.mockResolvedValueOnce([{ results: [], meta: { changes: 1, duration: 0 } }]);
 
@@ -295,5 +324,4 @@ describe("autoRegisterTeamsForSeason", () => {
     // season_teams INSERT's 4th param is registered_by; should be team.created_by.
     expect(batchStatements[0]!.params[3]).toBe("fallback-creator");
   });
-
 });

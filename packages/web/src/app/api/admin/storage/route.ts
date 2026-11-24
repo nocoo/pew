@@ -48,7 +48,10 @@ export async function GET(request: Request) {
       total_sessions: users.reduce((total, user) => sumCounts(total, user.session_count), 0),
       total_usage_rows: users.reduce((total, user) => sumCounts(total, user.usage_row_count), 0),
       total_messages: users.reduce((total, user) => sumCounts(total, user.total_messages), 0),
-      total_duration_seconds: users.reduce((total, user) => sumCounts(total, user.total_duration_seconds), 0),
+      total_duration_seconds: users.reduce(
+        (total, user) => sumCounts(total, user.total_duration_seconds),
+        0,
+      ),
     };
 
     return NextResponse.json({ users, summary });
@@ -57,13 +60,17 @@ export async function GET(request: Request) {
     if (msg.includes("no such table")) {
       return NextResponse.json({
         users: [],
-        summary: { total_users: 0, total_tokens: 0, total_sessions: 0, total_usage_rows: 0, total_messages: 0, total_duration_seconds: 0 },
+        summary: {
+          total_users: 0,
+          total_tokens: 0,
+          total_sessions: 0,
+          total_usage_rows: 0,
+          total_messages: 0,
+          total_duration_seconds: 0,
+        },
       });
     }
     console.error("Failed to load storage stats:", err);
-    return NextResponse.json(
-      { error: "Failed to load storage stats" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load storage stats" }, { status: 500 });
   }
 }

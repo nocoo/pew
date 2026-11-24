@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { deriveSeasonStatus, formatSeasonDate } from "@/lib/seasons";
-import {
-  utcToLocalDatetimeValue,
-  localDatetimeValueToUtc,
-} from "@/lib/date-helpers";
+import { utcToLocalDatetimeValue, localDatetimeValueToUtc } from "@/lib/date-helpers";
 
 // ---------------------------------------------------------------------------
 // deriveSeasonStatus — ISO 8601 datetime precision
@@ -12,72 +9,56 @@ import {
 describe("deriveSeasonStatus", () => {
   it("should return 'upcoming' when now < startDate", () => {
     const now = new Date("2026-03-14T23:59:59Z");
-    expect(
-      deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)
-    ).toBe("upcoming");
+    expect(deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)).toBe(
+      "upcoming",
+    );
   });
 
   it("should return 'active' at exactly startDate", () => {
     const now = new Date("2026-03-15T00:00:00Z");
-    expect(
-      deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)
-    ).toBe("active");
+    expect(deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)).toBe("active");
   });
 
   it("should return 'active' during the season", () => {
     const now = new Date("2026-03-20T12:30:00Z");
-    expect(
-      deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)
-    ).toBe("active");
+    expect(deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)).toBe("active");
   });
 
   it("should return 'active' at exactly endDate", () => {
     const now = new Date("2026-04-15T23:59:00Z");
-    expect(
-      deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)
-    ).toBe("active");
+    expect(deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)).toBe("active");
   });
 
   it("should return 'active' at exactly endDate + 59 seconds (within the final minute)", () => {
     // end_date is inclusive at minute precision, so end_date + 59s is still active
     const now = new Date("2026-04-15T23:59:59Z");
-    expect(
-      deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)
-    ).toBe("active");
+    expect(deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)).toBe("active");
   });
 
   it("should return 'ended' at exactly endDate + 60 seconds (exclusive boundary)", () => {
     // Season ends at endDate + 60s (exclusive), so endDate + 60s is the first "ended" moment
     const now = new Date("2026-04-16T00:00:00Z");
-    expect(
-      deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)
-    ).toBe("ended");
+    expect(deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)).toBe("ended");
   });
 
   it("should handle minute-precision boundary correctly", () => {
     // Season starts at 08:00 UTC — at 07:59 it's still upcoming
     const before = new Date("2026-03-15T07:59:59Z");
-    expect(
-      deriveSeasonStatus("2026-03-15T08:00:00Z", "2026-04-15T20:00:00Z", before)
-    ).toBe("upcoming");
+    expect(deriveSeasonStatus("2026-03-15T08:00:00Z", "2026-04-15T20:00:00Z", before)).toBe(
+      "upcoming",
+    );
 
     // At 08:00 it's active
     const at = new Date("2026-03-15T08:00:00Z");
-    expect(
-      deriveSeasonStatus("2026-03-15T08:00:00Z", "2026-04-15T20:00:00Z", at)
-    ).toBe("active");
+    expect(deriveSeasonStatus("2026-03-15T08:00:00Z", "2026-04-15T20:00:00Z", at)).toBe("active");
   });
 
   it("should use current time when now is not provided", () => {
     // Far future season → upcoming
-    expect(
-      deriveSeasonStatus("2099-01-01T00:00:00Z", "2099-12-31T23:59:00Z")
-    ).toBe("upcoming");
+    expect(deriveSeasonStatus("2099-01-01T00:00:00Z", "2099-12-31T23:59:00Z")).toBe("upcoming");
 
     // Far past season → ended
-    expect(
-      deriveSeasonStatus("2020-01-01T00:00:00Z", "2020-12-31T23:59:00Z")
-    ).toBe("ended");
+    expect(deriveSeasonStatus("2020-01-01T00:00:00Z", "2020-12-31T23:59:00Z")).toBe("ended");
   });
 });
 

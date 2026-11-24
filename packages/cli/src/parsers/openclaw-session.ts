@@ -39,9 +39,7 @@ function extractAgentName(filePath: string): string | null {
  *
  * Returns 0 or 1 SessionSnapshot.
  */
-export async function collectOpenClawSessions(
-  filePath: string,
-): Promise<SessionSnapshot[]> {
+export async function collectOpenClawSessions(filePath: string): Promise<SessionSnapshot[]> {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile() || st.size === 0) return [];
 
@@ -75,8 +73,7 @@ export async function collectOpenClawSessions(
         // Extract model from message.model
         const msg = obj.message as Record<string, unknown> | undefined;
         if (msg && typeof msg === "object") {
-          const model =
-            typeof msg.model === "string" ? msg.model.trim() : null;
+          const model = typeof msg.model === "string" ? msg.model.trim() : null;
           if (model) {
             lastModel = model;
           }
@@ -84,8 +81,7 @@ export async function collectOpenClawSessions(
       }
 
       // Track timestamps
-      const timestamp =
-        typeof obj.timestamp === "string" ? obj.timestamp : null;
+      const timestamp = typeof obj.timestamp === "string" ? obj.timestamp : null;
       if (timestamp) {
         if (!minTimestamp || timestamp < minTimestamp) {
           minTimestamp = timestamp;
@@ -105,14 +101,10 @@ export async function collectOpenClawSessions(
 
   const startedAt = minTimestamp;
   const lastMessageAt = maxTimestamp ?? minTimestamp;
-  const durationMs =
-    new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
+  const durationMs = new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
 
   // Session key: sha256 of absolute path (OpenClaw has no native session ID)
-  const hash = createHash("sha256")
-    .update(resolve(filePath))
-    .digest("hex")
-    .slice(0, 16);
+  const hash = createHash("sha256").update(resolve(filePath)).digest("hex").slice(0, 16);
   const sessionKey = `openclaw:${hash}`;
 
   // Project ref: hash of agent name from path (privacy-safe)

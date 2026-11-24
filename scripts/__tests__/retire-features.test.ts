@@ -54,52 +54,94 @@ describe("retired feature migration", () => {
   afterEach(() => db.close());
 
   it.each([
-    { file: "023-retire-features.sql", retired: ["projects", "project_aliases", "project_tags", "showcases", "showcase_upvotes"] },
+    {
+      file: "023-retire-features.sql",
+      retired: ["projects", "project_aliases", "project_tags", "showcases", "showcase_upvotes"],
+    },
     { file: "025-retire-budgets.sql", retired: ["user_budgets"] },
-  ])("$file drops only retired tables, is repeatable, and preserves usage and session data", ({ file, retired }) => {
-    const tablesBefore = db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name").all();
-    const retained = ["users", "usage_records", "usage_evidence", "usage_totals", "session_records"];
-    const rowsBefore = retained.map((table) => db.prepare(`SELECT * FROM ${table}`).all());
+  ])(
+    "$file drops only retired tables, is repeatable, and preserves usage and session data",
+    ({ file, retired }) => {
+      const tablesBefore = db
+        .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name")
+        .all();
+      const retained = [
+        "users",
+        "usage_records",
+        "usage_evidence",
+        "usage_totals",
+        "session_records",
+      ];
+      const rowsBefore = retained.map((table) => db.prepare(`SELECT * FROM ${table}`).all());
 
-    db.exec(migration(file));
-    db.exec(migration(file));
+      db.exec(migration(file));
+      db.exec(migration(file));
 
-    expect(db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name").all())
-      .toEqual(tablesBefore.filter((row) => !retired.includes(String(row.name))));
-    expect(retained.map((table) => db.prepare(`SELECT * FROM ${table}`).all())).toEqual(rowsBefore);
-    expect(db.prepare("SELECT SUM(total_tokens) AS total FROM usage_totals").get()).toEqual({ total: 15 });
-    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
-  });
+      expect(
+        db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name").all(),
+      ).toEqual(tablesBefore.filter((row) => !retired.includes(String(row.name))));
+      expect(retained.map((table) => db.prepare(`SELECT * FROM ${table}`).all())).toEqual(
+        rowsBefore,
+      );
+      expect(db.prepare("SELECT SUM(total_tokens) AS total FROM usage_totals").get()).toEqual({
+        total: 15,
+      });
+      expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    },
+  );
 
   it("reads scoped sessions without project tables and retains legacy project_ref values", async () => {
     db.exec(migration("023-retire-features.sql"));
     const workerDb = {
       prepare: (sql: string) => ({
         bind: (...params: unknown[]) => ({
-          all: async () => ({ results: db.prepare(sql).all(...params as never[]) }),
+          all: async () => ({ results: db.prepare(sql).all(...(params as never[])) }),
         }),
       }),
     } as unknown as Parameters<typeof handleSessionsRpc>[1];
 
-    const response = await handleSessionsRpc({
-      method: "sessions.getRecords",
-      userId: "u1",
-      fromDate: "2026-09-13T00:00:00Z",
-      toDate: "2026-09-14T00:00:00Z",
-      source: "claude-code",
-      kind: "human",
-    }, workerDb);
+    const response = await handleSessionsRpc(
+      {
+        method: "sessions.getRecords",
+        userId: "u1",
+        fromDate: "2026-09-13T00:00:00Z",
+        toDate: "2026-09-14T00:00:00Z",
+        source: "claude-code",
+        kind: "human",
+      },
+      workerDb,
+    );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ result: [
-      { session_key: "latest", source: "claude-code", kind: "human",
-        started_at: "2026-09-13T10:00:00Z", last_message_at: "2026-09-13T10:00:00Z",
-        duration_seconds: 600, user_messages: 2, assistant_messages: 3, total_messages: 5,
-        project_ref: null, model: "test-model" },
-      { session_key: "start", source: "claude-code", kind: "human",
-        started_at: "2026-09-13T00:00:00Z", last_message_at: "2026-09-13T00:00:00Z",
-        duration_seconds: 600, user_messages: 2, assistant_messages: 3, total_messages: 5,
-        project_ref: "abc123", model: "test-model" },
-    ] });
+    expect(await response.json()).toEqual({
+      result: [
+        {
+          session_key: "latest",
+          source: "claude-code",
+          kind: "human",
+          started_at: "2026-09-13T10:00:00Z",
+          last_message_at: "2026-09-13T10:00:00Z",
+          duration_seconds: 600,
+          user_messages: 2,
+          assistant_messages: 3,
+          total_messages: 5,
+          project_ref: null,
+          model: "test-model",
+        },
+        {
+          session_key: "start",
+          source: "claude-code",
+          kind: "human",
+          started_at: "2026-09-13T00:00:00Z",
+          last_message_at: "2026-09-13T00:00:00Z",
+          duration_seconds: 600,
+          user_messages: 2,
+          assistant_messages: 3,
+          total_messages: 5,
+          project_ref: "abc123",
+          model: "test-model",
+        },
+      ],
+    });
   });
 });

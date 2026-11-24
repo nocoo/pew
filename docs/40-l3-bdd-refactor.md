@@ -15,19 +15,19 @@ grep -cE '^\s*test\(' packages/web/e2e/*.spec.ts | awk -F: '{s+=$2} END {print s
 # => 64
 ```
 
-| 指标 | 数值 |
-|------|------|
-| Spec 文件数 | 16 |
-| 测试用例总数 | **64** |
-| Smoke 域 | 1 spec, 1 test |
-| Auth 域 | 1 spec, 3 tests |
-| Dashboard 域 (dashboard + dashboard-data + navigation) | 3 spec, 12 tests |
-| Public 域 | 1 spec, 2 tests |
-| Leaderboard 域 (leaderboard + leaderboard-data) | 2 spec, 12 tests |
-| 数据页面域 (data-pages + devices + settings-projects) | 3 spec, 10 tests |
-| 协作域 (teams + organizations) | 2 spec, 12 tests |
-| Admin 域 (admin + admin-badges-crud + admin-seasons-crud) | 3 spec, 12 tests |
-| **合计** | **16 spec, 64 tests** |
+| 指标                                                      | 数值                  |
+| --------------------------------------------------------- | --------------------- |
+| Spec 文件数                                               | 16                    |
+| 测试用例总数                                              | **64**                |
+| Smoke 域                                                  | 1 spec, 1 test        |
+| Auth 域                                                   | 1 spec, 3 tests       |
+| Dashboard 域 (dashboard + dashboard-data + navigation)    | 3 spec, 12 tests      |
+| Public 域                                                 | 1 spec, 2 tests       |
+| Leaderboard 域 (leaderboard + leaderboard-data)           | 2 spec, 12 tests      |
+| 数据页面域 (data-pages + devices + settings-projects)     | 3 spec, 10 tests      |
+| 协作域 (teams + organizations)                            | 2 spec, 12 tests      |
+| Admin 域 (admin + admin-badges-crud + admin-seasons-crud) | 3 spec, 12 tests      |
+| **合计**                                                  | **16 spec, 64 tests** |
 
 域加总核对：1 + 3 + 12 + 2 + 12 + 10 + 12 + 12 = 64 ✅
 
@@ -36,40 +36,40 @@ grep -cE '^\s*test\(' packages/web/e2e/*.spec.ts | awk -F: '{s+=$2} END {print s
 Per-file counts (reproducible via
 `grep -cE '^\s*test\(' packages/web/e2e/*.spec.ts`, sorted by domain):
 
-| Spec 文件 | 测试数 | 域 | 覆盖范围 |
-|-----------|--------|-----|---------| 
-| `smoke` | 1 | Smoke | 应用加载、页面标题 |
-| `auth` | 3 | Auth | 认证绕过验证（E2E_SKIP_AUTH）、登录页 |
-| `navigation` | 3 | Dashboard | 侧边栏链接、页面导航 |
-| `dashboard` | 5 | Dashboard | 仪表盘加载、内容/空状态、侧边栏、导航 |
-| `dashboard-data` | 4 | Dashboard | 数据卡片（route-mocked）、费用统计、趋势段 |
-| `public` | 2 | Public | 隐私页面、公开用户页面 |
-| `leaderboard` | 8 | Leaderboard | 排行榜导航标签、子页面（成就/agent/模型/展示/赛季/赛季详情） |
-| `leaderboard-data` | 4 | Leaderboard | 排行榜数据展示（route-mocked）、排名条目、时段切换 |
-| `data-pages` | 6 | Data Pages | agents/models/projects/sessions/daily-usage/hourly-usage 页面加载 |
-| `devices` | 2 | Data Pages | 设备分析页面、设备管理页面 |
-| `settings-projects` | 2 | Data Pages | 设置展示、管理项目页面 |
-| `teams` | 3 | Collaboration | 团队列表、创建/加入选项、团队详情容错 |
-| `organizations` | 9 | Collaboration | 组织管理（admin 页面、设置、排行榜、导航） |
-| `admin` | 8 | Admin | 后台子页面加载（badges/compare/invites/model-prices/seasons/showcases/storage） |
-| `admin-badges-crud` | 2 | Admin | 徽章 CRUD（route-mocked、serial mode） |
-| `admin-seasons-crud` | 2 | Admin | 赛季 CRUD（route-mocked、serial mode） |
-| **合计** | **64** | | |
+| Spec 文件            | 测试数 | 域            | 覆盖范围                                                                        |
+| -------------------- | ------ | ------------- | ------------------------------------------------------------------------------- |
+| `smoke`              | 1      | Smoke         | 应用加载、页面标题                                                              |
+| `auth`               | 3      | Auth          | 认证绕过验证（E2E_SKIP_AUTH）、登录页                                           |
+| `navigation`         | 3      | Dashboard     | 侧边栏链接、页面导航                                                            |
+| `dashboard`          | 5      | Dashboard     | 仪表盘加载、内容/空状态、侧边栏、导航                                           |
+| `dashboard-data`     | 4      | Dashboard     | 数据卡片（route-mocked）、费用统计、趋势段                                      |
+| `public`             | 2      | Public        | 隐私页面、公开用户页面                                                          |
+| `leaderboard`        | 8      | Leaderboard   | 排行榜导航标签、子页面（成就/agent/模型/展示/赛季/赛季详情）                    |
+| `leaderboard-data`   | 4      | Leaderboard   | 排行榜数据展示（route-mocked）、排名条目、时段切换                              |
+| `data-pages`         | 6      | Data Pages    | agents/models/projects/sessions/daily-usage/hourly-usage 页面加载               |
+| `devices`            | 2      | Data Pages    | 设备分析页面、设备管理页面                                                      |
+| `settings-projects`  | 2      | Data Pages    | 设置展示、管理项目页面                                                          |
+| `teams`              | 3      | Collaboration | 团队列表、创建/加入选项、团队详情容错                                           |
+| `organizations`      | 9      | Collaboration | 组织管理（admin 页面、设置、排行榜、导航）                                      |
+| `admin`              | 8      | Admin         | 后台子页面加载（badges/compare/invites/model-prices/seasons/showcases/storage） |
+| `admin-badges-crud`  | 2      | Admin         | 徽章 CRUD（route-mocked、serial mode）                                          |
+| `admin-seasons-crud` | 2      | Admin         | 赛季 CRUD（route-mocked、serial mode）                                          |
+| **合计**             | **64** |               |                                                                                 |
 
 ### 1.3 技术栈现状
 
-| 维度 | 现状 |
-|------|------|
-| 框架 | Playwright (Chromium only) |
-| 配置 | `packages/web/e2e/playwright.config.ts` |
-| 测试目录 | `packages/web/e2e/` (testDir: ".") |
-| 端口 | 27020 (dev=7020, L2=17020, L3=27020) |
-| 启动器 | `scripts/run-e2e-ui.ts`（管理 Next.js dev server + D1 测试隔离 + Playwright） |
-| 并行度 | CI: 2 workers, 本地: 1 worker |
-| 超时 | 60s per test, 30s navigation |
-| CI 方式 | 自建 job（非 base-ci `enable-l3`），需 10 个 Cloudflare 秘钥 |
-| 共享 fixtures | 无（所有 fixture 内联在各 spec 中） |
-| BDD 元素 | 零（无 Given/When/Then、无 .feature 文件、无 step definitions） |
+| 维度          | 现状                                                                          |
+| ------------- | ----------------------------------------------------------------------------- |
+| 框架          | Playwright (Chromium only)                                                    |
+| 配置          | `packages/web/e2e/playwright.config.ts`                                       |
+| 测试目录      | `packages/web/e2e/` (testDir: ".")                                            |
+| 端口          | 27020 (dev=7020, L2=17020, L3=27020)                                          |
+| 启动器        | `scripts/run-e2e-ui.ts`（管理 Next.js dev server + D1 测试隔离 + Playwright） |
+| 并行度        | CI: 2 workers, 本地: 1 worker                                                 |
+| 超时          | 60s per test, 30s navigation                                                  |
+| CI 方式       | 自建 job（非 base-ci `enable-l3`），需 10 个 Cloudflare 秘钥                  |
+| 共享 fixtures | 无（所有 fixture 内联在各 spec 中）                                           |
+| BDD 元素      | 零（无 Given/When/Then、无 .feature 文件、无 step definitions）               |
 
 ### 1.4 测试风格分析
 
@@ -77,37 +77,38 @@ Per-file counts (reproducible via
 
 **Locator 策略**：
 
-| 定位方式 | 使用次数 | 占比 |
-|----------|---------|------|
-| `page.getByRole()` | 57 | 42% |
-| `page.getByText()` | 54 | 40% |
-| `page.locator()` (CSS) | 22 | 16% |
-| `page.getByPlaceholder()` | 3 | <1% |
-| `page.getByTestId()` | 0 | 0% |
+| 定位方式                  | 使用次数 | 占比 |
+| ------------------------- | -------- | ---- |
+| `page.getByRole()`        | 57       | 42%  |
+| `page.getByText()`        | 54       | 40%  |
+| `page.locator()` (CSS)    | 22       | 16%  |
+| `page.getByPlaceholder()` | 3        | <1%  |
+| `page.getByTestId()`      | 0        | 0%   |
 
 **断言模式**：
 
-| 断言 | 使用次数 |
-|------|---------|
-| `toBeVisible()` | 61 |
-| `toContainText()` | 35 |
-| `toHaveURL()` | 8 |
-| `toBe(true)` | 8（防御性 fallback） |
-| `not.toBeVisible()` | 2 |
-| `toHaveTitle()` | 1 |
-| `toBeEnabled()` | 1 |
+| 断言                | 使用次数             |
+| ------------------- | -------------------- |
+| `toBeVisible()`     | 61                   |
+| `toContainText()`   | 35                   |
+| `toHaveURL()`       | 8                    |
+| `toBe(true)`        | 8（防御性 fallback） |
+| `not.toBeVisible()` | 2                    |
+| `toHaveTitle()`     | 1                    |
+| `toBeEnabled()`     | 1                    |
 
 **操作复杂度**：
 
-| 操作 | 使用次数 | 说明 |
-|------|---------|------|
-| `page.goto()` | 64 | 每个 test 一次 |
-| `.click()` | 18 | 导航和表单交互 |
-| `.fill()` | 6 | 仅 CRUD specs（badges + seasons） |
-| `page.route()` | 12 | API 响应 mock（4 个 spec） |
-| `waitForTimeout()` | 5 | 显式等待 1-3s |
+| 操作               | 使用次数 | 说明                              |
+| ------------------ | -------- | --------------------------------- |
+| `page.goto()`      | 64       | 每个 test 一次                    |
+| `.click()`         | 18       | 导航和表单交互                    |
+| `.fill()`          | 6        | 仅 CRUD specs（badges + seasons） |
+| `page.route()`     | 12       | API 响应 mock（4 个 spec）        |
+| `waitForTimeout()` | 5        | 显式等待 1-3s                     |
 
 **结论**：
+
 1. **Locator 质量较高**：82% 已使用 `getByRole`/`getByText`，优于 firefly（仅 19% getByText + 0% getByRole）。18% 的 CSS locator 需审查
 2. 绝大多数测试是**只读页面验证**，仅 CRUD specs 有写入操作
 3. 4 个 spec 使用 `page.route()` mock API，需原样保留 mock 逻辑
@@ -135,6 +136,7 @@ Per-file counts (reproducible via
 - 独立的 step definitions 目录
 
 理由：
+
 - pew 的 64 个测试都是 Playwright 原生写法，引入 .feature 文件改写成本过高
 - 其他已完成项目（dove/lyre/backy/gecko/neo/noheir/wooly/otter/pew-game）使用相同的 Playwright 原生 BDD 命名
 - 保持依赖最小化
@@ -198,6 +200,7 @@ test.describe("Feature: Dashboard", () => { ... });
 4. **Auth 绕过封装**：复用 `E2E_SKIP_AUTH` + `E2E_ADMIN_BYPASS` 环境约定
 
 **不放进 fixtures**：
+
 - 任何 spec 内部一次性使用的 helper
 - 任何与具体业务断言耦合的逻辑
 - 不稳定的 CSS fallback selector
@@ -228,7 +231,9 @@ export { base as test, expect };
 **调用示例**：
 
 ```typescript
-test("Given usage data exists, When I visit the dashboard, Then I see stat cards", async ({ page }) => {
+test("Given usage data exists, When I visit the dashboard, Then I see stat cards", async ({
+  page,
+}) => {
   await page.goto("/dashboard");
   const count = await page.getByText("Total Tokens").count();
   const gate = emptyDataGate(count, "usage data");
@@ -257,14 +262,22 @@ pew 现有两种数据处理策略，均需标准化：
 
 ```typescript
 // ❌ 当前：永远通过，掩盖真实失败
-const hasData = await page.getByText("Total Tokens").isVisible().catch(() => false);
-const hasEmpty = await page.getByText("Ready to Track").isVisible().catch(() => false);
+const hasData = await page
+  .getByText("Total Tokens")
+  .isVisible()
+  .catch(() => false);
+const hasEmpty = await page
+  .getByText("Ready to Track")
+  .isVisible()
+  .catch(() => false);
 expect(hasData || hasEmpty).toBe(true);
 ```
 
 ```typescript
 // ✅ BDD：明确跳过或断言
-test("Given no usage data, When I visit dashboard, Then I see getting started guide", async ({ page }) => {
+test("Given no usage data, When I visit dashboard, Then I see getting started guide", async ({
+  page,
+}) => {
   // Given: no usage data (test DB empty)
   // When: visit dashboard
   await page.goto("/dashboard");
@@ -288,10 +301,10 @@ route-mock 替代。
 
 5 处 `waitForTimeout()` 必须替换为 Playwright 原生等待：
 
-| 现有模式 | 替换为 |
-|---------|--------|
-| `await page.waitForTimeout(3000)` → then assert | `await expect(element).toBeVisible({ timeout: 5000 })` |
-| `await page.waitForTimeout(1000)` → then check | `await page.waitForLoadState("networkidle")` 或直接 `await expect(...)` |
+| 现有模式                                        | 替换为                                                                  |
+| ----------------------------------------------- | ----------------------------------------------------------------------- |
+| `await page.waitForTimeout(3000)` → then assert | `await expect(element).toBeVisible({ timeout: 5000 })`                  |
+| `await page.waitForTimeout(1000)` → then check  | `await page.waitForLoadState("networkidle")` 或直接 `await expect(...)` |
 
 ## 3. Spec 合并计划
 
@@ -299,17 +312,17 @@ route-mock 替代。
 
 > **来源数核对原则**：本表"原测试数"列必须与 §1.2 完全一致。
 
-| 目标 BDD Spec | 合并来源 (旧 spec → 取用测试数) | 原测试数 | 预估 BDD 测试数 |
-|---------------|-----------------------------|---------|----------------|
-| `smoke.spec.ts` | smoke(1) | 1 | 1 |
-| `auth.spec.ts` | auth(3) | 3 | 3 |
-| `dashboard.spec.ts` | dashboard(5) + dashboard-data(4) + navigation(3) | 12 | 10 |
-| `public.spec.ts` | public(2) | 2 | 2 |
-| `leaderboard.spec.ts` | leaderboard(8) + leaderboard-data(4) | 12 | 10 |
-| `data-pages.spec.ts` | data-pages(6) + devices(2) + settings-projects(2) | 10 | 8 |
-| `collaboration.spec.ts` | teams(3) + organizations(9) | 12 | 10 |
-| `admin.spec.ts` | admin(8) + admin-badges-crud(2) + admin-seasons-crud(2) | 12 | 11 |
-| **合计** | **16 → 8** | **64** | **~55** |
+| 目标 BDD Spec           | 合并来源 (旧 spec → 取用测试数)                         | 原测试数 | 预估 BDD 测试数 |
+| ----------------------- | ------------------------------------------------------- | -------- | --------------- |
+| `smoke.spec.ts`         | smoke(1)                                                | 1        | 1               |
+| `auth.spec.ts`          | auth(3)                                                 | 3        | 3               |
+| `dashboard.spec.ts`     | dashboard(5) + dashboard-data(4) + navigation(3)        | 12       | 10              |
+| `public.spec.ts`        | public(2)                                               | 2        | 2               |
+| `leaderboard.spec.ts`   | leaderboard(8) + leaderboard-data(4)                    | 12       | 10              |
+| `data-pages.spec.ts`    | data-pages(6) + devices(2) + settings-projects(2)       | 10       | 8               |
+| `collaboration.spec.ts` | teams(3) + organizations(9)                             | 12       | 10              |
+| `admin.spec.ts`         | admin(8) + admin-badges-crud(2) + admin-seasons-crud(2) | 12       | 11              |
+| **合计**                | **16 → 8**                                              | **64**   | **~55**         |
 
 **合计来源核对**：1+3+12+2+12+10+12+12 = 64 ✅
 
@@ -342,6 +355,7 @@ route-mock 替代。
 - **admin + admin-*-crud → admin.spec.ts**：同属管理后台域，CRUD specs 保持 `test.describe.configure({ mode: "serial" })`
 
 预估测试数减少原因：
+
 - 合并 navigation 和 dashboard 中重复的侧边栏断言（sidebar links visible + sidebar navigation is visible）
 - 合并 data-pages 中 6 个结构相同的"页面加载"测试为参数化模式
 - 去除 dashboard 中 `expect(true).toBe(true)` 的无效断言
@@ -358,9 +372,9 @@ route-mock 替代。
 
 ### 4.2 Phase 0：基建准备
 
-| 批次 | 内容 | 工作量 |
-|------|------|--------|
-| 0.1 | 创建 `packages/web/e2e/bdd/fixtures.ts` + Stage 1 config commit | 极小 |
+| 批次 | 内容                                                            | 工作量 |
+| ---- | --------------------------------------------------------------- | ------ |
+| 0.1  | 创建 `packages/web/e2e/bdd/fixtures.ts` + Stage 1 config commit | 极小   |
 
 **Phase 0 验收**（保证基建 commit 不改变测试行为）：
 
@@ -374,26 +388,26 @@ fixtures.ts，或漏收某个旧 spec），必须立即修正后再进入 Phase 
 
 ### 4.3 Phase 1：无状态页面（风险最低）
 
-| 批次 | Spec | 测试数 (旧→新) | 工作量 | 理由 |
-|------|------|--------|--------|------|
-| 1.1 | `smoke.spec.ts` | 1 → 1 | 极小 | 单个测试 BDD 改名 |
-| 1.2 | `auth.spec.ts` | 3 → 3 | 小 | 纯断言，无数据依赖 |
-| 1.3 | `public.spec.ts` | 2 → 2 | 小 | 公开页面，无认证 |
-| 1.4 | `data-pages.spec.ts` | 10 → 8 | 中 | 合并 3 个 spec，参数化页面加载测试 |
+| 批次 | Spec                 | 测试数 (旧→新) | 工作量 | 理由                               |
+| ---- | -------------------- | -------------- | ------ | ---------------------------------- |
+| 1.1  | `smoke.spec.ts`      | 1 → 1          | 极小   | 单个测试 BDD 改名                  |
+| 1.2  | `auth.spec.ts`       | 3 → 3          | 小     | 纯断言，无数据依赖                 |
+| 1.3  | `public.spec.ts`     | 2 → 2          | 小     | 公开页面，无认证                   |
+| 1.4  | `data-pages.spec.ts` | 10 → 8         | 中     | 合并 3 个 spec，参数化页面加载测试 |
 
 ### 4.4 Phase 2：数据展示页面（有 route-mock）
 
-| 批次 | Spec | 测试数 (旧→新) | 工作量 | 理由 |
-|------|------|--------|--------|------|
-| 2.1 | `dashboard.spec.ts` | 12 → 10 | 中 | 合并 3 个 spec，消除防御性 catch，保留 route-mock |
-| 2.2 | `leaderboard.spec.ts` | 12 → 10 | 中 | 合并 2 个 spec，8 个子页面 + route-mock |
+| 批次 | Spec                  | 测试数 (旧→新) | 工作量 | 理由                                              |
+| ---- | --------------------- | -------------- | ------ | ------------------------------------------------- |
+| 2.1  | `dashboard.spec.ts`   | 12 → 10        | 中     | 合并 3 个 spec，消除防御性 catch，保留 route-mock |
+| 2.2  | `leaderboard.spec.ts` | 12 → 10        | 中     | 合并 2 个 spec，8 个子页面 + route-mock           |
 
 ### 4.5 Phase 3：交互页面（有 click/fill/serial）
 
-| 批次 | Spec | 测试数 (旧→新) | 工作量 | 理由 |
-|------|------|--------|--------|------|
-| 3.1 | `collaboration.spec.ts` | 12 → 10 | 中 | 合并 teams + organizations，organizations 有嵌套 describe |
-| 3.2 | `admin.spec.ts` | 12 → 11 | 大 | 合并 3 个 spec，CRUD 有 serial mode + fill + route-mock |
+| 批次 | Spec                    | 测试数 (旧→新) | 工作量 | 理由                                                      |
+| ---- | ----------------------- | -------------- | ------ | --------------------------------------------------------- |
+| 3.1  | `collaboration.spec.ts` | 12 → 10        | 中     | 合并 teams + organizations，organizations 有嵌套 describe |
+| 3.2  | `admin.spec.ts`         | 12 → 11        | 大     | 合并 3 个 spec，CRUD 有 serial mode + fill + route-mock   |
 
 ## 5. 迁移检查清单（每个批次 / 每个目标 spec）
 
@@ -416,14 +430,15 @@ fixtures.ts，或漏收某个旧 spec），必须立即修正后再进入 Phase 
     - `bunx playwright test --config packages/web/e2e/playwright.config.ts --list`（确认新 spec 被收集）
     - `bun run test:e2e:ui`（全量通过）
 
-   注：pre-commit hook 已对 lint/typecheck 做强制门禁；此处保留是实施期
-   的自检纪律（每批落地前手动跑一遍），与 commit 门禁不冲突。
+注：pre-commit hook 已对 lint/typecheck 做强制门禁；此处保留是实施期
+的自检纪律（每批落地前手动跑一遍），与 commit 门禁不冲突。
 
 ## 6. CI 迁移
 
 ### 6.1 当前 CI 架构
 
 pew CI 使用**自建 L3 job**（`browser-e2e`），因为需要：
+
 - D1 测试隔离（`d1-test-guard.ts` 四层防御：existence check、DB ID 非等、Worker URL 非等、`_test_marker` 表验证）
 - 10 个 Cloudflare 秘钥（CF_ACCOUNT_ID、CF_D1_DATABASE_ID_TEST、WORKER_*_URL_TEST 等）
 - 启动 Next.js dev server（`E2E_SKIP_AUTH=true`, `E2E_ADMIN_BYPASS=true`）
@@ -537,6 +552,7 @@ pre-push 并行集合，不允许 SDE 自行决定 opt-in 退路。仅当 Stage 
 实测 `bun run test:e2e:ui` 单次 wall time **>120s**，且 Reviewer-B 与
 @zheng-li **明确批准** 后，方可切换为 `PEW_PREPUSH_L3=1` env opt-in
 模式；该切换必须落在独立 commit 中，commit body 必须包含：
+
 1. 实测耗时数据（多次平均值）
 2. Reviewer-B + zheng-li 的批准引用（slock 消息 ID）
 3. README 同步更新 opt-in 使用说明
@@ -549,39 +565,39 @@ CI `browser-e2e` job 始终强制跑 L3，不受任何 opt-in env 影响。
 
 ## 7. 工作量估算
 
-| Phase | Spec 数 | 测试数 | 预估工时 | SDE Issue 数 |
-|-------|---------|--------|---------|-------------|
-| 准备工作 | 0 | 0 | 0.5h | 1（创建 fixtures.ts + Stage 1 config commit） |
-| Phase 1 | 4 | 14 | 1h | 4（每个目标 spec 一个 commit） |
-| Phase 2 | 2 | 20 | 1.5h | 2 |
-| Phase 3 | 2 | 21 | 2h | 2 |
-| 收尾 | 0 | 0 | 0.5h | 1（Stage 2 config + 删旧文件 + 添加 alias + pre-push 接 L3） |
-| **合计** | **8** | **~55** | **~5.5h** | **10** |
+| Phase    | Spec 数 | 测试数  | 预估工时  | SDE Issue 数                                                 |
+| -------- | ------- | ------- | --------- | ------------------------------------------------------------ |
+| 准备工作 | 0       | 0       | 0.5h      | 1（创建 fixtures.ts + Stage 1 config commit）                |
+| Phase 1  | 4       | 14      | 1h        | 4（每个目标 spec 一个 commit）                               |
+| Phase 2  | 2       | 20      | 1.5h      | 2                                                            |
+| Phase 3  | 2       | 21      | 2h        | 2                                                            |
+| 收尾     | 0       | 0       | 0.5h      | 1（Stage 2 config + 删旧文件 + 添加 alias + pre-push 接 L3） |
+| **合计** | **8**   | **~55** | **~5.5h** | **10**                                                       |
 
 ## 8. 约束与风险
 
 ### 8.1 不变量（baseline 数字均可复跑验证）
 
-| 不变量 | Baseline | 验证命令 |
-|--------|----------|---------|
-| `scripts/run-e2e-ui.ts` 启动器不改 | — | `git diff main -- scripts/run-e2e-ui.ts` 必须为空 |
-| `packages/web/e2e/playwright.config.ts` 位置不变 | — | 文件路径不变，只改 `testDir`/`testMatch` |
-| L1 测试数 | 232 test files | `find packages -name '*.test.ts' -o -name '*.test.tsx' \| wc -l` |
-| L3 browser baseline | 16 spec files / 64 tests | `grep -cE '^\s*test\(' packages/web/e2e/*.spec.ts \| awk -F: '{s+=$2} END {print s}'` |
-| CI 自建 job 结构 | — | `.github/workflows/ci.yml` 中 `browser-e2e` job 步骤数不变 |
-| D1 测试隔离逻辑 | — | `scripts/d1-test-guard.ts` 不改 |
-| Route-mock specs 的 API 端点覆盖 | — | mock 的端点（`/api/usage*`, `/api/achievements*`, `/api/pricing`, `/api/leaderboard**`）必须在新 spec 中完整保留 |
+| 不变量                                           | Baseline                 | 验证命令                                                                                                         |
+| ------------------------------------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `scripts/run-e2e-ui.ts` 启动器不改               | —                        | `git diff main -- scripts/run-e2e-ui.ts` 必须为空                                                                |
+| `packages/web/e2e/playwright.config.ts` 位置不变 | —                        | 文件路径不变，只改 `testDir`/`testMatch`                                                                         |
+| L1 测试数                                        | 232 test files           | `find packages -name '*.test.ts' -o -name '*.test.tsx' \| wc -l`                                                 |
+| L3 browser baseline                              | 16 spec files / 64 tests | `grep -cE '^\s*test\(' packages/web/e2e/*.spec.ts \| awk -F: '{s+=$2} END {print s}'`                            |
+| CI 自建 job 结构                                 | —                        | `.github/workflows/ci.yml` 中 `browser-e2e` job 步骤数不变                                                       |
+| D1 测试隔离逻辑                                  | —                        | `scripts/d1-test-guard.ts` 不改                                                                                  |
+| Route-mock specs 的 API 端点覆盖                 | —                        | mock 的端点（`/api/usage*`, `/api/achievements*`, `/api/pricing`, `/api/leaderboard**`）必须在新 spec 中完整保留 |
 
 ### 8.2 风险
 
-| 风险 | 影响 | 缓解措施 |
-|------|------|---------|
-| 防御性 catch 改为 test.skip 后暴露真实失败 | 测试数减少（被正确跳过） | 可接受——说明 test DB 缺少 seed 数据，BDD 改写的价值之一就是暴露这些 |
-| Route-mock fixture 提取时遗漏字段 | Mock 不完整导致测试失败 | 每个 fixture 常量必须完整复制，不允许"精简"字段 |
-| Serial mode CRUD specs 合并后顺序依赖被打破 | 数据状态不一致 | 保持 `test.describe.configure({ mode: "serial" })` 在新 spec 中 |
-| organizations 嵌套 describe 合并到 collaboration 后结构复杂 | 可读性下降 | 保持子 describe 嵌套，只在最外层加 Feature: 前缀 |
-| Stage 1 期间旧/新并存导致重复执行 | CI 时长上涨 | 跨阶段命名不冲突；每删一个旧 spec 同 commit 落地新 spec |
-| waitForTimeout 消除后 flaky | 等待不足 | 使用 `{ timeout: N }` 参数替代硬编码，CI `retries: 1` 已配置 |
+| 风险                                                        | 影响                     | 缓解措施                                                            |
+| ----------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------- |
+| 防御性 catch 改为 test.skip 后暴露真实失败                  | 测试数减少（被正确跳过） | 可接受——说明 test DB 缺少 seed 数据，BDD 改写的价值之一就是暴露这些 |
+| Route-mock fixture 提取时遗漏字段                           | Mock 不完整导致测试失败  | 每个 fixture 常量必须完整复制，不允许"精简"字段                     |
+| Serial mode CRUD specs 合并后顺序依赖被打破                 | 数据状态不一致           | 保持 `test.describe.configure({ mode: "serial" })` 在新 spec 中     |
+| organizations 嵌套 describe 合并到 collaboration 后结构复杂 | 可读性下降               | 保持子 describe 嵌套，只在最外层加 Feature: 前缀                    |
+| Stage 1 期间旧/新并存导致重复执行                           | CI 时长上涨              | 跨阶段命名不冲突；每删一个旧 spec 同 commit 落地新 spec             |
+| waitForTimeout 消除后 flaky                                 | 等待不足                 | 使用 `{ timeout: N }` 参数替代硬编码，CI `retries: 1` 已配置        |
 
 ## 9. 验收标准
 

@@ -36,9 +36,5 @@ export function fileUnchanged(
   if (!prev) return false;
   // Old cursors may lack mtimeMs/size — treat as changed for gradual migration
   if (prev.mtimeMs === undefined || prev.size === undefined) return false;
-  return (
-    prev.inode === curr.inode &&
-    prev.mtimeMs === curr.mtimeMs &&
-    prev.size === curr.size
-  );
+  return prev.inode === curr.inode && prev.mtimeMs === curr.mtimeMs && prev.size === curr.size;
 }

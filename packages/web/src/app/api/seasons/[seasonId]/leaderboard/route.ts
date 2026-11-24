@@ -59,10 +59,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Route handler
 // ---------------------------------------------------------------------------
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ seasonId: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ seasonId: string }> }) {
   const { seasonId } = await params;
   const url = new URL(request.url);
   const expandMembers = url.searchParams.get("expand") === "members";
@@ -72,15 +69,10 @@ export async function GET(
   try {
     // Fetch season by UUID or slug
     const isUUID = UUID_RE.test(seasonId);
-    const season = isUUID
-      ? await db.getSeasonById(seasonId)
-      : await db.getSeasonBySlug(seasonId);
+    const season = isUUID ? await db.getSeasonById(seasonId) : await db.getSeasonBySlug(seasonId);
 
     if (!season) {
-      return NextResponse.json(
-        { error: "Season not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Season not found" }, { status: 404 });
     }
 
     const status = deriveSeasonStatus(season.start_date, season.end_date);
@@ -130,7 +122,7 @@ export async function GET(
         // Their token contributions are still counted in team totals
         const memberSnapshots = await db.getSeasonMemberSnapshots(
           season.id,
-          true // publicOnly
+          true, // publicOnly
         );
 
         for (const row of memberSnapshots) {
@@ -178,10 +170,10 @@ export async function GET(
             season.id,
             snapshotTeamIds,
             fromDate,
-            toDate
+            toDate,
           );
           const teamSessionMap = new Map(
-            teamSessionStats.map((r: SeasonTeamSessionStatsRow) => [r.team_id, r])
+            teamSessionStats.map((r: SeasonTeamSessionStatsRow) => [r.team_id, r]),
           );
           for (const entry of entries) {
             const stats = teamSessionMap.get(entry.team.id);
@@ -196,20 +188,18 @@ export async function GET(
               season.id,
               snapshotTeamIds,
               fromDate,
-              toDate
+              toDate,
             );
             const memberSessionMap = new Map(
               memberSessionStats.map((r: SeasonMemberSessionStatsRow) => [
                 `${r.team_id}:${r.user_id}`,
                 r,
-              ])
+              ]),
             );
             for (const entry of entries) {
               if (entry.members) {
                 for (const member of entry.members) {
-                  const stats = memberSessionMap.get(
-                    `${entry.team.id}:${member.user_id}`
-                  );
+                  const stats = memberSessionMap.get(`${entry.team.id}:${member.user_id}`);
                   if (stats) {
                     member.session_count = stats.session_count;
                     member.total_duration_seconds = stats.total_duration_seconds;
@@ -236,7 +226,7 @@ export async function GET(
           teamIds,
           fromDate,
           toDate,
-          true // publicOnly
+          true, // publicOnly
         );
 
         for (const row of memberRows) {
@@ -284,10 +274,10 @@ export async function GET(
             season.id,
             liveTeamIds,
             fromDate,
-            toDate
+            toDate,
           );
           const teamSessionMap = new Map(
-            teamSessionStats.map((r: SeasonTeamSessionStatsRow) => [r.team_id, r])
+            teamSessionStats.map((r: SeasonTeamSessionStatsRow) => [r.team_id, r]),
           );
           for (const entry of entries) {
             const stats = teamSessionMap.get(entry.team.id);
@@ -302,20 +292,18 @@ export async function GET(
               season.id,
               liveTeamIds,
               fromDate,
-              toDate
+              toDate,
             );
             const memberSessionMap = new Map(
               memberSessionStats.map((r: SeasonMemberSessionStatsRow) => [
                 `${r.team_id}:${r.user_id}`,
                 r,
-              ])
+              ]),
             );
             for (const entry of entries) {
               if (entry.members) {
                 for (const member of entry.members) {
-                  const stats = memberSessionMap.get(
-                    `${entry.team.id}:${member.user_id}`
-                  );
+                  const stats = memberSessionMap.get(`${entry.team.id}:${member.user_id}`);
                   if (stats) {
                     member.session_count = stats.session_count;
                     member.total_duration_seconds = stats.total_duration_seconds;
@@ -330,30 +318,27 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({
-      season: {
-        id: season.id,
-        name: season.name,
-        slug: season.slug,
-        start_date: season.start_date,
-        end_date: season.end_date,
-        status,
-        is_snapshot: hasSnapshot,
+    return NextResponse.json(
+      {
+        season: {
+          id: season.id,
+          name: season.name,
+          slug: season.slug,
+          start_date: season.start_date,
+          end_date: season.end_date,
+          status,
+          is_snapshot: hasSnapshot,
+        },
+        entries,
       },
-      entries,
-    }, { headers: { "Cache-Control": "private, no-store" } });
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Season tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Season tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to query season leaderboard:", err);
-    return NextResponse.json(
-      { error: "Failed to load season leaderboard" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load season leaderboard" }, { status: 500 });
   }
 }

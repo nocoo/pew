@@ -34,15 +34,11 @@ const { resolveAdmin } = (await import("@/lib/admin")) as unknown as {
   resolveAdmin: ReturnType<typeof vi.fn>;
 };
 
-const { syncAllRostersForSeason } = (await import(
-  "@/lib/season-roster"
-)) as unknown as {
+const { syncAllRostersForSeason } = (await import("@/lib/season-roster")) as unknown as {
   syncAllRostersForSeason: ReturnType<typeof vi.fn>;
 };
 
-const { autoRegisterTeamsForSeason } = (await import(
-  "@/lib/auto-register"
-)) as unknown as {
+const { autoRegisterTeamsForSeason } = (await import("@/lib/auto-register")) as unknown as {
   autoRegisterTeamsForSeason: ReturnType<typeof vi.fn>;
 };
 
@@ -144,7 +140,11 @@ describe("POST /api/admin/seasons", () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonBySlug.mockResolvedValueOnce(null); // no slug collision
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
-    autoRegisterTeamsForSeason.mockResolvedValueOnce({ registered: 0, skipped: 0, seasonEligible: true });
+    autoRegisterTeamsForSeason.mockResolvedValueOnce({
+      registered: 0,
+      skipped: 0,
+      seasonEligible: true,
+    });
 
     const res = await POST(
       makeJsonRequest("POST", "/api/admin/seasons", {
@@ -152,7 +152,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "s1",
         start_date: "2099-04-01T00:00:00Z",
         end_date: "2099-04-30T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(201);
     const json = await res.json();
@@ -167,7 +167,11 @@ describe("POST /api/admin/seasons", () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonBySlug.mockResolvedValueOnce(null); // no slug collision
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
-    autoRegisterTeamsForSeason.mockResolvedValueOnce({ registered: 3, skipped: 1, seasonEligible: true });
+    autoRegisterTeamsForSeason.mockResolvedValueOnce({
+      registered: 3,
+      skipped: 1,
+      seasonEligible: true,
+    });
 
     const res = await POST(
       makeJsonRequest("POST", "/api/admin/seasons", {
@@ -175,7 +179,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "s2",
         start_date: "2099-05-01T00:00:00Z",
         end_date: "2099-05-31T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(201);
     const json = await res.json();
@@ -194,7 +198,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "s3",
         start_date: "2099-06-01T00:00:00Z",
         end_date: "2099-06-30T23:59:00Z",
-      })
+      }),
     );
     // Should still succeed — auto-registration is best-effort
     expect(res.status).toBe(201);
@@ -212,7 +216,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "s1",
         start_date: "2099-05-01T00:00:00Z",
         end_date: "2099-05-31T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(409);
     const json = await res.json();
@@ -228,7 +232,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "bad",
         start_date: "2099-05-01T00:00:00Z",
         end_date: "2099-04-30T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -244,7 +248,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "bad-date",
         start_date: "not-a-date",
         end_date: "2099-04-30T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -259,7 +263,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "s1",
         start_date: "2099-04-01T00:00:00Z",
         end_date: "2099-04-30T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(403);
   });
@@ -287,7 +291,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "s1",
         start_date: "2099-04-01T00:00:00Z",
         end_date: "2099-04-30T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -302,7 +306,7 @@ describe("POST /api/admin/seasons", () => {
         name: "Season 1",
         start_date: "2099-04-01T00:00:00Z",
         end_date: "2099-04-30T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -317,7 +321,7 @@ describe("POST /api/admin/seasons", () => {
         name: "Season 1",
         slug: "s1",
         start_date: "2099-04-01T00:00:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -334,7 +338,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "s1",
         start_date: "2099-04-01T00:00:00Z",
         end_date: "2099-04-30T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(503);
     const json = await res.json();
@@ -352,7 +356,7 @@ describe("POST /api/admin/seasons", () => {
         slug: "s1",
         start_date: "2099-04-01T00:00:00Z",
         end_date: "2099-04-30T23:59:00Z",
-      })
+      }),
     );
     expect(res.status).toBe(500);
     const json = await res.json();
@@ -402,10 +406,9 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
       });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await PATCH(
-      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }),
-      { params: patchParams }
-    );
+    const res = await PATCH(makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }), {
+      params: patchParams,
+    });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.name).toBe("New Name");
@@ -439,7 +442,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
         start_date: "2099-07-01T00:00:00Z",
         end_date: "2099-07-31T23:59:00Z",
       }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -460,7 +463,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeJsonRequest("PATCH", "/api/admin/seasons", { start_date: "2020-02-01T00:00:00Z" }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -480,7 +483,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeJsonRequest("PATCH", "/api/admin/seasons", { end_date: "2021-01-31T23:59:00Z" }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -491,10 +494,9 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(null);
 
-    const res = await PATCH(
-      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "Ghost" }),
-      { params: patchParams }
-    );
+    const res = await PATCH(makeJsonRequest("PATCH", "/api/admin/seasons", { name: "Ghost" }), {
+      params: patchParams,
+    });
     expect(res.status).toBe(404);
     const json = await res.json();
     expect(json.error).toBe("Season not found");
@@ -529,7 +531,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeJsonRequest("PATCH", "/api/admin/seasons", { allow_roster_changes: true }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(200);
     expect(syncAllRostersForSeason).toHaveBeenCalledWith(mockDbRead, mockDbWrite, "season-1");
@@ -563,7 +565,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeJsonRequest("PATCH", "/api/admin/seasons", { allow_roster_changes: true }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(200);
     expect(syncAllRostersForSeason).not.toHaveBeenCalled();
@@ -597,7 +599,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeJsonRequest("PATCH", "/api/admin/seasons", { allow_roster_changes: true }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(200);
     expect(syncAllRostersForSeason).not.toHaveBeenCalled();
@@ -638,7 +640,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
         end_date: "2099-12-31T23:59:00Z",
         allow_roster_changes: true,
       }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(200);
     expect(syncAllRostersForSeason).toHaveBeenCalledWith(mockDbRead, mockDbWrite, "season-1");
@@ -647,10 +649,9 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
   it("should return 403 if not admin", async () => {
     resolveAdmin.mockResolvedValueOnce(null);
 
-    const res = await PATCH(
-      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }),
-      { params: patchParams }
-    );
+    const res = await PATCH(makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }), {
+      params: patchParams,
+    });
     expect(res.status).toBe(403);
     const json = await res.json();
     expect(json.error).toBe("Forbidden");
@@ -681,10 +682,9 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
       end_date: "2099-06-30T23:59:00Z",
     });
 
-    const res = await PATCH(
-      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "" }),
-      { params: patchParams }
-    );
+    const res = await PATCH(makeJsonRequest("PATCH", "/api/admin/seasons", { name: "" }), {
+      params: patchParams,
+    });
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain("name must be 1-64 characters");
@@ -702,7 +702,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeJsonRequest("PATCH", "/api/admin/seasons", { start_date: "2099/06/15" }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -721,7 +721,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeJsonRequest("PATCH", "/api/admin/seasons", { end_date: "invalid" }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -743,7 +743,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
         start_date: "2099-07-01T00:00:00Z",
         end_date: "2099-06-01T00:00:00Z",
       }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -762,7 +762,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeJsonRequest("PATCH", "/api/admin/seasons", { unknownField: "value" }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -782,10 +782,9 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
       .mockResolvedValueOnce(null); // disappeared after update
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await PATCH(
-      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }),
-      { params: patchParams }
-    );
+    const res = await PATCH(makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }), {
+      params: patchParams,
+    });
     expect(res.status).toBe(404);
     const json = await res.json();
     expect(json.error).toBe("Season not found after update");
@@ -795,10 +794,9 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockRejectedValueOnce(new Error("no such table: seasons"));
 
-    const res = await PATCH(
-      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }),
-      { params: patchParams }
-    );
+    const res = await PATCH(makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }), {
+      params: patchParams,
+    });
     expect(res.status).toBe(503);
     const json = await res.json();
     expect(json.error).toBe("Season tables not yet migrated");
@@ -809,10 +807,9 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
     mockDbRead.getSeasonById.mockRejectedValueOnce(new Error("Connection timeout"));
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const res = await PATCH(
-      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }),
-      { params: patchParams }
-    );
+    const res = await PATCH(makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }), {
+      params: patchParams,
+    });
     expect(res.status).toBe(500);
     const json = await res.json();
     expect(json.error).toBe("Failed to update season");
@@ -824,10 +821,9 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
     mockDbRead.getSeasonById.mockRejectedValueOnce("opaque");
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const res = await PATCH(
-      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }),
-      { params: patchParams }
-    );
+    const res = await PATCH(makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }), {
+      params: patchParams,
+    });
     expect(res.status).toBe(500);
     consoleSpy.mockRestore();
   });
@@ -862,7 +858,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
         allow_late_registration: true,
         allow_late_withdrawal: false,
       }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(200);
     // Verify both flag updates were applied
@@ -906,7 +902,7 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
       makeJsonRequest("PATCH", "/api/admin/seasons", {
         allow_roster_changes: false,
       }),
-      { params: patchParams }
+      { params: patchParams },
     );
     expect(res.status).toBe(200);
     const values = mockDbWrite.execute.mock.calls[0]![1] as unknown[];

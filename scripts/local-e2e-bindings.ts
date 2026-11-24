@@ -3,22 +3,36 @@ import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { PlatformProxy } from "../packages/worker/node_modules/wrangler";
-import type { D1Database, KVNamespace } from "../packages/worker/node_modules/@cloudflare/workers-types";
+import type {
+  D1Database,
+  KVNamespace,
+} from "../packages/worker/node_modules/@cloudflare/workers-types";
 import { localD1BaseUrl } from "../packages/web/src/lib/d1";
 
 type Bindings = { DB: D1Database; CACHE: KVNamespace };
-type LocalWorker = { default: { fetch(request: Request, env: Bindings & { WORKER_SECRET?: string; WORKER_READ_SECRET?: string }): Promise<Response> } };
+type LocalWorker = {
+  default: {
+    fetch(
+      request: Request,
+      env: Bindings & { WORKER_SECRET?: string; WORKER_READ_SECRET?: string },
+    ): Promise<Response>;
+  };
+};
 
 export async function verifyLocalMarker(env: Record<string, string>): Promise<void> {
-  const base = localD1BaseUrl({
-    accountId: env.CF_ACCOUNT_ID ?? "",
-    databaseId: env.CF_D1_DATABASE_ID ?? "",
-    apiToken: env.CF_D1_API_TOKEN ?? "",
-  }, env);
+  const base = localD1BaseUrl(
+    {
+      accountId: env.CF_ACCOUNT_ID ?? "",
+      databaseId: env.CF_D1_DATABASE_ID ?? "",
+      apiToken: env.CF_D1_API_TOKEN ?? "",
+    },
+    env,
+  );
   if (!base || !env.PEW_TEST_RUN_ID) throw new Error("Local D1 test marker configuration missing");
   for (const key of ["WORKER_INGEST_URL", "WORKER_READ_URL"]) {
     const url = new URL(env[key] ?? "");
-    if (url.origin !== base) throw new Error("Local Worker must belong to the same isolated test target");
+    if (url.origin !== base)
+      throw new Error("Local Worker must belong to the same isolated test target");
   }
   const response = await fetch(`${base}/query`, {
     method: "POST",
@@ -27,16 +41,29 @@ export async function verifyLocalMarker(env: Record<string, string>): Promise<vo
     body: JSON.stringify({ sql: "SELECT key,value FROM _test_marker ORDER BY key" }),
     signal: AbortSignal.timeout(5000),
   });
-  const data = await response.json() as { success?: boolean; result?: Array<{ results?: Array<{ key: string; value: string }> }> };
+  const data = (await response.json()) as {
+    success?: boolean;
+    result?: Array<{ results?: Array<{ key: string; value: string }> }>;
+  };
   const rows = data.result?.[0]?.results;
-  if (!response.ok || !data.success || rows?.length !== 2 ||
-    rows[0]?.key !== "env" || rows[0]?.value !== "test" ||
-    rows[1]?.key !== "run" || rows[1]?.value !== env.PEW_TEST_RUN_ID) {
+  if (
+    !response.ok ||
+    !data.success ||
+    rows?.length !== 2 ||
+    rows[0]?.key !== "env" ||
+    rows[0]?.value !== "test" ||
+    rows[1]?.key !== "run" ||
+    rows[1]?.value !== env.PEW_TEST_RUN_ID
+  ) {
     throw new Error("Local D1 _test_marker is missing, non-test, or belongs to another run");
   }
 }
 
-export async function localIsolatedEnv(migrations = resolve("scripts/migrations"), signal?: AbortSignal, readiness = false) {
+export async function localIsolatedEnv(
+  migrations = resolve("scripts/migrations"),
+  signal?: AbortSignal,
+  readiness = false,
+) {
   const state = mkdtempSync(join(tmpdir(), "pew-e2e-"));
   process.env.HOME = state;
   process.env.XDG_CONFIG_HOME = state;
@@ -68,85 +95,172 @@ export async function localIsolatedEnv(migrations = resolve("scripts/migrations"
   let server: ReturnType<typeof Bun.serve> | undefined;
   let marked = false;
   let disposal: Promise<void> | undefined;
-  const dispose = () => disposal ??= (async () => {
-    const errors: unknown[] = [];
-    try {
-      if (marked && proxy) {
-        const rows = await proxy.env.DB.prepare("SELECT key,value FROM _test_marker ORDER BY key").all<{ key: string; value: string }>();
-        if (rows.results.length !== 2 || rows.results[0]?.key !== "env" || rows.results[0]?.value !== "test" || rows.results[1]?.key !== "run" || rows.results[1]?.value !== runId) {
-          throw new Error("Refusing to remove D1 state with a mismatched ownership marker");
+  const dispose = () =>
+    (disposal ??= (async () => {
+      const errors: unknown[] = [];
+      try {
+        if (marked && proxy) {
+          const rows = await proxy.env.DB.prepare(
+            "SELECT key,value FROM _test_marker ORDER BY key",
+          ).all<{ key: string; value: string }>();
+          if (
+            rows.results.length !== 2 ||
+            rows.results[0]?.key !== "env" ||
+            rows.results[0]?.value !== "test" ||
+            rows.results[1]?.key !== "run" ||
+            rows.results[1]?.value !== runId
+          ) {
+            throw new Error("Refusing to remove D1 state with a mismatched ownership marker");
+          }
         }
+      } catch (error) {
+        errors.push(error);
       }
-    } catch (error) { errors.push(error); }
-    server?.stop(true);
-    try { await proxy?.dispose(); } catch (error) { errors.push(error); }
-    if (!errors.length) rmSync(state, { recursive: true });
-    if (errors.length) throw new AggregateError(errors, "Local D1 cleanup failed");
-  })();
+      server?.stop(true);
+      try {
+        await proxy?.dispose();
+      } catch (error) {
+        errors.push(error);
+      }
+      if (!errors.length) rmSync(state, { recursive: true });
+      if (errors.length) throw new AggregateError(errors, "Local D1 cleanup failed");
+    })());
   try {
     signal?.throwIfAborted();
     const migrationDir = join(state, "migrations");
     mkdirSync(migrationDir);
-    const superseded = new Set(["004-is-public.sql", "006-device-id.sql", "006c-team-logo-url.sql"]);
-    for (const [index, name] of readdirSync(migrations).filter((name) => name.endsWith(".sql") && !superseded.has(name)).sort().entries()) {
-      copyFileSync(join(migrations, name), join(migrationDir, `${String(index).padStart(4, "0")}-${name}`));
+    const superseded = new Set([
+      "004-is-public.sql",
+      "006-device-id.sql",
+      "006c-team-logo-url.sql",
+    ]);
+    for (const [index, name] of readdirSync(migrations)
+      .filter((name) => name.endsWith(".sql") && !superseded.has(name))
+      .sort()
+      .entries()) {
+      copyFileSync(
+        join(migrations, name),
+        join(migrationDir, `${String(index).padStart(4, "0")}-${name}`),
+      );
     }
     const configPath = join(state, "wrangler.json");
-    writeFileSync(configPath, JSON.stringify({
-      name: "pew-local-test", compatibility_date: "2026-03-01", workers_dev: false, routes: [],
-      d1_databases: [{ binding: "DB", database_name: "pew-local-test", database_id: runId, migrations_dir: migrationDir }],
-      kv_namespaces: [{ binding: "CACHE", id: runId.replaceAll("-", "") }],
-    }));
-    const command = Bun.spawn([
-      "node", resolve("packages/worker/node_modules/wrangler/bin/wrangler.js"),
-      "d1", "migrations", "apply", "DB", "--local", "--config", configPath, "--persist-to", state,
-    ], { env, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        name: "pew-local-test",
+        compatibility_date: "2026-03-01",
+        workers_dev: false,
+        routes: [],
+        d1_databases: [
+          {
+            binding: "DB",
+            database_name: "pew-local-test",
+            database_id: runId,
+            migrations_dir: migrationDir,
+          },
+        ],
+        kv_namespaces: [{ binding: "CACHE", id: runId.replaceAll("-", "") }],
+      }),
+    );
+    const command = Bun.spawn(
+      [
+        "node",
+        resolve("packages/worker/node_modules/wrangler/bin/wrangler.js"),
+        "d1",
+        "migrations",
+        "apply",
+        "DB",
+        "--local",
+        "--config",
+        configPath,
+        "--persist-to",
+        state,
+      ],
+      { env, stdin: "ignore", stdout: "pipe", stderr: "pipe" },
+    );
     const stopMigration = () => command.kill();
     signal?.addEventListener("abort", stopMigration, { once: true });
-    const [stdout, stderr, code] = await Promise.all([new Response(command.stdout).text(), new Response(command.stderr).text(), command.exited]).finally(() => signal?.removeEventListener("abort", stopMigration));
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(command.stdout).text(),
+      new Response(command.stderr).text(),
+      command.exited,
+    ]).finally(() => signal?.removeEventListener("abort", stopMigration));
     signal?.throwIfAborted();
     if (code) throw new Error(`Local D1 migrations failed: ${stdout}\n${stderr}`);
     const { getPlatformProxy } = await import("../packages/worker/node_modules/wrangler");
-    proxy = await getPlatformProxy<Bindings>({ configPath, envFiles: [], persist: { path: join(state, "v3") }, remoteBindings: false });
+    proxy = await getPlatformProxy<Bindings>({
+      configPath,
+      envFiles: [],
+      persist: { path: join(state, "v3") },
+      remoteBindings: false,
+    });
     const bindings = proxy.env;
-    await bindings.DB.prepare("CREATE TABLE _test_marker(key TEXT PRIMARY KEY,value TEXT NOT NULL)").run();
+    await bindings.DB.prepare(
+      "CREATE TABLE _test_marker(key TEXT PRIMARY KEY,value TEXT NOT NULL)",
+    ).run();
     await bindings.DB.batch([
       bindings.DB.prepare("INSERT INTO _test_marker VALUES ('env','test')"),
       bindings.DB.prepare("INSERT INTO _test_marker VALUES ('run',?)").bind(runId),
     ]);
     marked = true;
-    await bindings.DB.prepare("INSERT INTO users(id,email,name) VALUES (?,?,?)").bind(
-      `e2e-test-user-${runId}`, `e2e-${runId}@test.invalid`, "E2E Test User",
-    ).run();
+    await bindings.DB.prepare("INSERT INTO users(id,email,name) VALUES (?,?,?)")
+      .bind(`e2e-test-user-${runId}`, `e2e-${runId}@test.invalid`, "E2E Test User")
+      .run();
     if (readiness) {
       const { seedReadiness } = await import("./readiness-seed");
       Object.assign(env, await seedReadiness(bindings.DB, `e2e-test-user-${runId}`));
     }
-    const ingestWorker = await import(resolve("packages/worker/src/index.ts")) as LocalWorker;
-    const readWorker = await import(resolve("packages/worker-read/src/index.ts")) as LocalWorker;
+    const ingestWorker = (await import(resolve("packages/worker/src/index.ts"))) as LocalWorker;
+    const readWorker = (await import(resolve("packages/worker-read/src/index.ts"))) as LocalWorker;
     server = Bun.serve({
-      hostname: "127.0.0.1", port: 0,
+      hostname: "127.0.0.1",
+      port: 0,
       fetch: async (request) => {
         const url = new URL(request.url);
         if (url.pathname === "/query") {
-          if (request.method !== "POST" || request.headers.get("Authorization") !== `Bearer ${token}`) {
-            return Response.json({ success: false, errors: [{ message: "Unauthorized" }] }, { status: 401 });
+          if (
+            request.method !== "POST" ||
+            request.headers.get("Authorization") !== `Bearer ${token}`
+          ) {
+            return Response.json(
+              { success: false, errors: [{ message: "Unauthorized" }] },
+              { status: 401 },
+            );
           }
           try {
-            const body = await request.json() as { sql: string; params?: unknown[]; batch?: Array<{ sql: string; params?: unknown[] }> };
-            const statements = (body.batch ?? [body]).map(({ sql, params = [] }) => bindings.DB.prepare(sql).bind(...params));
+            const body = (await request.json()) as {
+              sql: string;
+              params?: unknown[];
+              batch?: Array<{ sql: string; params?: unknown[] }>;
+            };
+            const statements = (body.batch ?? [body]).map(({ sql, params = [] }) =>
+              bindings.DB.prepare(sql).bind(...params),
+            );
             const results = await bindings.DB.batch(statements);
             return Response.json({ success: true, result: results });
           } catch (error) {
-            return Response.json({ success: false, errors: [{ message: error instanceof Error ? error.message : "Local query failed" }] }, { status: 500 });
+            return Response.json(
+              {
+                success: false,
+                errors: [
+                  { message: error instanceof Error ? error.message : "Local query failed" },
+                ],
+              },
+              { status: 500 },
+            );
           }
         }
-        if (url.pathname.startsWith("/ingest")) return ingestWorker.default.fetch(request, { ...bindings, WORKER_SECRET: secret });
+        if (url.pathname.startsWith("/ingest"))
+          return ingestWorker.default.fetch(request, { ...bindings, WORKER_SECRET: secret });
         return readWorker.default.fetch(request, { ...bindings, WORKER_READ_SECRET: readSecret });
       },
     });
     const base = `http://127.0.0.1:${server.port}`;
-    Object.assign(env, { PEW_LOCAL_D1_URL: base, WORKER_INGEST_URL: `${base}/ingest`, WORKER_READ_URL: base });
+    Object.assign(env, {
+      PEW_LOCAL_D1_URL: base,
+      WORKER_INGEST_URL: `${base}/ingest`,
+      WORKER_READ_URL: base,
+    });
     await verifyLocalMarker(env);
     signal?.throwIfAborted();
     return { env, state, dispose };

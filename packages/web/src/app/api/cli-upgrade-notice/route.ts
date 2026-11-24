@@ -23,9 +23,6 @@ export async function POST(request: Request) {
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch {
-    return NextResponse.json(
-      { error: "Could not load CLI upgrade notice" },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Could not load CLI upgrade notice" }, { status: 503 });
   }
 }

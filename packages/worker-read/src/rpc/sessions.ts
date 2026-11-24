@@ -92,10 +92,7 @@ export type SessionsRpcRequest =
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handleListSessions(
-  req: ListSessionsRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleListSessions(req: ListSessionsRequest, db: D1Database): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
   }
@@ -130,14 +127,17 @@ async function handleListSessions(
 
   params.push(limit, offset);
 
-  const results = await db.prepare(sql).bind(...params).all<SessionRow>();
+  const results = await db
+    .prepare(sql)
+    .bind(...params)
+    .all<SessionRow>();
 
   return Response.json({ result: results.results });
 }
 
 async function handleGetSessionStats(
   req: GetSessionStatsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
@@ -164,15 +164,15 @@ async function handleGetSessionStats(
                FROM session_records
                WHERE ${conditions.join(" AND ")}`;
 
-  const result = await db.prepare(sql).bind(...params).first<SessionStatsRow>();
+  const result = await db
+    .prepare(sql)
+    .bind(...params)
+    .first<SessionStatsRow>();
 
   return Response.json({ result: result });
 }
 
-async function handleCountSessions(
-  req: CountSessionsRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleCountSessions(req: CountSessionsRequest, db: D1Database): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
   }
@@ -197,27 +197,23 @@ async function handleCountSessions(
 
   const sql = `SELECT COUNT(*) AS count FROM session_records WHERE ${conditions.join(" AND ")}`;
 
-  const result = await db.prepare(sql).bind(...params).first<{ count: number }>();
+  const result = await db
+    .prepare(sql)
+    .bind(...params)
+    .first<{ count: number }>();
 
   return Response.json({ result: result?.count ?? 0 });
 }
 
 async function handleGetSessionRecords(
   req: GetSessionRecordsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId || !req.fromDate || !req.toDate) {
-    return Response.json(
-      { error: "userId, fromDate, and toDate are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId, fromDate, and toDate are required" }, { status: 400 });
   }
 
-  const conditions = [
-    "sr.user_id = ?",
-    "sr.started_at >= ?",
-    "sr.started_at < ?",
-  ];
+  const conditions = ["sr.user_id = ?", "sr.started_at >= ?", "sr.started_at < ?"];
   const params: unknown[] = [req.userId, req.fromDate, req.toDate];
 
   if (req.source) {
@@ -248,7 +244,10 @@ async function handleGetSessionRecords(
     ORDER BY sr.started_at DESC
   `;
 
-  const results = await db.prepare(sql).bind(...params).all<SessionRecordRow>();
+  const results = await db
+    .prepare(sql)
+    .bind(...params)
+    .all<SessionRecordRow>();
 
   return Response.json({ result: results.results });
 }
@@ -259,7 +258,7 @@ async function handleGetSessionRecords(
 
 export async function handleSessionsRpc(
   request: SessionsRpcRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   switch (request.method) {
     case "sessions.list":
@@ -273,7 +272,7 @@ export async function handleSessionsRpc(
     default:
       return Response.json(
         { error: `Unknown sessions method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

@@ -21,7 +21,12 @@ const ACCOUNTING_SCHEMA_VERSION = 2;
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import { EvidenceQueue } from "../storage/evidence-queue.js";
-import { AccountingQueue, accountingJson, accountingKey, planAccountingUpdates } from "../storage/accounting-queue.js";
+import {
+  AccountingQueue,
+  accountingJson,
+  accountingKey,
+  planAccountingUpdates,
+} from "../storage/accounting-queue.js";
 import { commitSync, recoverSyncCommit } from "../storage/sync-commit.js";
 import { withStateLock } from "../storage/state-lock.js";
 import { toEvidenceRecord } from "../utils/usage-evidence.js";
@@ -43,15 +48,22 @@ import {
   usesJsonlOffsetResume,
 } from "../utils/continuity-anchor.js";
 import { parseStableJsonlFile } from "../utils/jsonl-offset.js";
-import {
-  restoreJsonlSharedState,
-  snapshotJsonlSharedState,
-} from "../utils/jsonl-shared-state.js";
+import { restoreJsonlSharedState, snapshotJsonlSharedState } from "../utils/jsonl-shared-state.js";
 import { aggregateRecords } from "./upload.js";
 import { ANTIGRAVITY_CACHE_VERSION, readAntigravitySource } from "../parsers/antigravity.js";
-import { antigravityRecords, readAntigravityBaseline, replaceAntigravityPartition, tokenRecordKey } from "../utils/antigravity-snapshot.js";
+import {
+  antigravityRecords,
+  readAntigravityBaseline,
+  replaceAntigravityPartition,
+  tokenRecordKey,
+} from "../utils/antigravity-snapshot.js";
 import { inclusiveAccounting } from "../utils/accounting.js";
-import { isRetiredCursorPath, RETIRED_SOURCES, isRetiredSource, readRetainedQueueState } from "../utils/retired-sources.js";
+import {
+  isRetiredCursorPath,
+  RETIRED_SOURCES,
+  isRetiredSource,
+  readRetainedQueueState,
+} from "../utils/retired-sources.js";
 
 /** Sync execution options */
 export interface SyncOptions {
@@ -66,7 +78,7 @@ export interface SyncOptions {
   codexSessionsDir?: string;
   /** Override: Multica Codex extra session directories */
   multicaCodexDirs?: string[];
-    /** Override: OpenCode message directory (~/.local/share/opencode/storage/message) */
+  /** Override: OpenCode message directory (~/.local/share/opencode/storage/message) */
   openCodeMessageDir?: string;
   /** Override: OpenCode SQLite database path (~/.local/share/opencode/opencode.db) */
   openCodeDbPath?: string;
@@ -74,9 +86,9 @@ export interface SyncOptions {
   openMessageDb?: (dbPath: string) => { queryMessages: QueryMessagesFn; close: () => void } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
-    /** Override: Pi session directory (~/.pi/agent/sessions) */
+  /** Override: Pi session directory (~/.pi/agent/sessions) */
   piSessionsDir?: string;
-    /** Override: GitHub Copilot CLI logs directory (~/.copilot/logs) */
+  /** Override: GitHub Copilot CLI logs directory (~/.copilot/logs) */
   copilotCliLogsDir?: string;
   /** Copilot OTel exporter files or recursively scanned directories */
   copilotCliOtelPaths?: string[];
@@ -86,11 +98,11 @@ export interface SyncOptions {
   hermesProfileDbPaths?: Array<{ dbPath: string; dbKey: string }>;
   /** Factory for opening the Hermes SQLite DB (DI for testability) */
   openHermesDb?: (dbPath: string) => HermesQueryHandle | null;
-      /** Override: Grok CLI unified log path (~/.grok/logs/unified.jsonl) */
+  /** Override: Grok CLI unified log path (~/.grok/logs/unified.jsonl) */
   grokLogsPath?: string;
   /** Override: Grok CLI sessions directory (~/.grok/sessions) */
   grokSessionsDir?: string;
-      /** Progress callback */
+  /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
   onCorruptLine?: OnCorruptLine;
@@ -138,7 +150,6 @@ export interface SyncResult {
 
     copilotCli: number;
     hermes: number;
-
   };
   /** Total files scanned per source */
   filesScanned: {
@@ -154,14 +165,12 @@ export interface SyncResult {
 
     copilotCli: number;
     hermes: number;
-
   };
   /** Total SQLite databases scanned per source */
   dbsScanned: {
     antigravity: number;
     opencode: number;
     hermes: number;
-
   };
 }
 
@@ -176,15 +185,24 @@ interface Bucket {
 /** Map Source type to short result key */
 function sourceKey(source: Source): keyof SyncResult["sources"] {
   switch (source) {
-    case "antigravity": return "antigravity";
-    case "claude-code": return "claude";
-    case "grok": return "grok";
-    case "opencode": return "opencode";
-    case "openclaw": return "openclaw";
-    case "pi": return "pi";
-    case "codex": return "codex";
-    case "copilot-cli": return "copilotCli";
-    case "hermes": return "hermes";
+    case "antigravity":
+      return "antigravity";
+    case "claude-code":
+      return "claude";
+    case "grok":
+      return "grok";
+    case "opencode":
+      return "opencode";
+    case "openclaw":
+      return "openclaw";
+    case "pi":
+      return "pi";
+    case "codex":
+      return "codex";
+    case "copilot-cli":
+      return "copilotCli";
+    case "hermes":
+      return "hermes";
     default: {
       // Exhaustiveness check — if Source adds a new value, this will fail to compile
       throw new Error(`Inactive source: ${source}`);
@@ -224,7 +242,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     const retained = await readAntigravityBaseline(opts.stateDir, true);
     internal.previousAntigravityRecords = retained.filter((r) => r.source === "antigravity");
     internal.previousRetiredRecords = retained.filter((r) => isRetiredSource(r.source));
-    if (internal.previousRetiredRecords.length) await readRetainedQueueState(opts.stateDir, "queue.state.json");
+    if (internal.previousRetiredRecords.length)
+      await readRetainedQueueState(opts.stateDir, "queue.state.json");
     internal.previousAntigravityCursor = (await new CursorStore(opts.stateDir).load()).antigravity;
     if (opts.antigravityDirs?.length) {
       try {
@@ -242,19 +261,37 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         const records = antigravityRecords(snapshot.deltas, opts.deviceId);
         let invalid = false;
         const verified = new Set<string>();
-        planAccountingUpdates({ previous: [], before: [], after: records, deltas: snapshot.deltas,
-          replay: true, deviceId: opts.deviceId, onWarning: () => { invalid = true; },
-          onVerified: (key) => { verified.add(key); } });
-        if (invalid || verified.size !== records.length) throw new Error("Invalid Antigravity accounting snapshot");
+        planAccountingUpdates({
+          previous: [],
+          before: [],
+          after: records,
+          deltas: snapshot.deltas,
+          replay: true,
+          deviceId: opts.deviceId,
+          onWarning: () => {
+            invalid = true;
+          },
+          onVerified: (key) => {
+            verified.add(key);
+          },
+        });
+        if (invalid || verified.size !== records.length)
+          throw new Error("Invalid Antigravity accounting snapshot");
         for (const message of snapshot.warnings) {
           opts.onProgress?.({ source: "antigravity", phase: "warn", message });
         }
         internal.antigravitySnapshot = snapshot;
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT" || internal.previousAntigravityRecords.length ||
-          internal.previousAntigravityCursor) {
-          opts.onProgress?.({ source: "antigravity", phase: "warn",
-            message: "Antigravity source unavailable or invalid; previous usage is preserved" });
+        if (
+          (error as NodeJS.ErrnoException).code !== "ENOENT" ||
+          internal.previousAntigravityRecords.length ||
+          internal.previousAntigravityCursor
+        ) {
+          opts.onProgress?.({
+            source: "antigravity",
+            phase: "warn",
+            message: "Antigravity source unavailable or invalid; previous usage is preserved",
+          });
         }
       }
     }
@@ -270,13 +307,34 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   const evidenceQueue = new EvidenceQueue(stateDir);
   const priorEvidence = (await evidenceQueue.readFromOffset(0)).records;
   const priorAccounting = (await new AccountingQueue(stateDir).readFromOffset(0)).records;
-  const cursors = Object.fromEntries(Object.entries(await cursorStore.load()).filter(([key]) => key !== "zcodeSqlite")) as CursorState;
-  const activePaths = [opts.claudeDir, opts.codexSessionsDir, ...(opts.multicaCodexDirs ?? []),
-    opts.openCodeMessageDir, opts.openclawDir, opts.piSessionsDir, opts.copilotCliLogsDir,
-    ...(opts.copilotCliOtelPaths ?? []), opts.grokLogsPath, opts.grokSessionsDir];
-  cursors.files = Object.fromEntries(Object.entries(cursors.files).filter(([path]) => !isRetiredCursorPath(path, activePaths)));
-  if (cursors.knownFilePaths) cursors.knownFilePaths = Object.fromEntries(Object.entries(cursors.knownFilePaths).filter(([path]) => !isRetiredCursorPath(path, activePaths)));
-  if (cursors.knownDbSources) cursors.knownDbSources = Object.fromEntries(Object.entries(cursors.knownDbSources).filter(([key]) => key !== "zcodeSqlite"));
+  const cursors = Object.fromEntries(
+    Object.entries(await cursorStore.load()).filter(([key]) => key !== "zcodeSqlite"),
+  ) as CursorState;
+  const activePaths = [
+    opts.claudeDir,
+    opts.codexSessionsDir,
+    ...(opts.multicaCodexDirs ?? []),
+    opts.openCodeMessageDir,
+    opts.openclawDir,
+    opts.piSessionsDir,
+    opts.copilotCliLogsDir,
+    ...(opts.copilotCliOtelPaths ?? []),
+    opts.grokLogsPath,
+    opts.grokSessionsDir,
+  ];
+  cursors.files = Object.fromEntries(
+    Object.entries(cursors.files).filter(([path]) => !isRetiredCursorPath(path, activePaths)),
+  );
+  if (cursors.knownFilePaths)
+    cursors.knownFilePaths = Object.fromEntries(
+      Object.entries(cursors.knownFilePaths).filter(
+        ([path]) => !isRetiredCursorPath(path, activePaths),
+      ),
+    );
+  if (cursors.knownDbSources)
+    cursors.knownDbSources = Object.fromEntries(
+      Object.entries(cursors.knownDbSources).filter(([key]) => key !== "zcodeSqlite"),
+    );
 
   // Migrate hermesSqlite from flat object (pre-multi-profile) to Record format.
   // Old cursors.json: { hermesSqlite: { sessionTotals: {...}, inode: N, updatedAt: "..." } }
@@ -301,18 +359,13 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // Full-scan detection: if cursors were completely empty at start (first run
   // or after `pew reset`), all records represent the complete picture.
   const initialCursorEmpty =
-    Object.keys(cursors.files).length === 0 &&
-    !cursors.openCodeSqlite &&
-    isHermesCursorsEmpty();
+    Object.keys(cursors.files).length === 0 && !cursors.openCodeSqlite && isHermesCursorsEmpty();
 
   // Token accounting schema upgrade (global): when any source changes how
   // TokenDeltas are normalized (e.g. inclusive → disjoint for codex /
   // copilot-cli / grok), replaying only new bytes would SUM-mix old and new
   // semantics. One-time wipe + full rescan overwrites the queue cleanly.
-  if (
-    !initialCursorEmpty &&
-    (cursors.accountingSchemaVersion ?? 0) < ACCOUNTING_SCHEMA_VERSION
-  ) {
+  if (!initialCursorEmpty && (cursors.accountingSchemaVersion ?? 0) < ACCOUNTING_SCHEMA_VERSION) {
     onProgress?.({
       source: "all",
       phase: "warn",
@@ -406,9 +459,33 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { antigravity: opts.antigravitySnapshot?.stepCount ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
-  const filesScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
-  const dbsScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, opencode: 0, hermes: 0 };
+  const sourceCounts = {
+    antigravity: opts.antigravitySnapshot?.stepCount ?? 0,
+    claude: 0,
+    codex: 0,
+    copilotCli: 0,
+    grok: 0,
+    hermes: 0,
+    opencode: 0,
+    openclaw: 0,
+    pi: 0,
+  };
+  const filesScanned = {
+    antigravity: opts.antigravitySnapshot?.dbCount ?? 0,
+    claude: 0,
+    codex: 0,
+    copilotCli: 0,
+    grok: 0,
+    hermes: 0,
+    opencode: 0,
+    openclaw: 0,
+    pi: 0,
+  };
+  const dbsScanned = {
+    antigravity: opts.antigravitySnapshot?.dbCount ?? 0,
+    opencode: 0,
+    hermes: 0,
+  };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
   const discoveredFiles = new Set<string>();
@@ -436,21 +513,23 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // counter across many rollouts, and the rollout that first observed an edge is
   // routinely pruned before its siblings. Per-file storage lost the edge with the
   // file, so the next replay counted it again.
-  const ctx: SyncContext = { collectAccounting: true, dirMtimes: cursors.dirMtimes, evidenceRecords: priorEvidence.filter((r) => r.device_id === opts.deviceId),
-    accountingRecords: priorAccounting.filter((r) => r.device_id === opts.deviceId) };
+  const ctx: SyncContext = {
+    collectAccounting: true,
+    dirMtimes: cursors.dirMtimes,
+    evidenceRecords: priorEvidence.filter((r) => r.device_id === opts.deviceId),
+    accountingRecords: priorAccounting.filter((r) => r.device_id === opts.deviceId),
+  };
   const persistedScopes = cursors.codexScopes ?? {};
   ctx.codexScopeTotals = new Map(
     Object.entries(persistedScopes)
-      .filter((entry): entry is [string, { totals: TokenDelta; usageKeys: string[] }] =>
-        entry[1].totals !== null,
+      .filter(
+        (entry): entry is [string, { totals: TokenDelta; usageKeys: string[] }] =>
+          entry[1].totals !== null,
       )
       .map(([scopeId, scope]) => [scopeId, scope.totals]),
   );
   ctx.codexSeenUsageKeys = new Map(
-    Object.entries(persistedScopes).map(([scopeId, scope]) => [
-      scopeId,
-      new Set(scope.usageKeys),
-    ]),
+    Object.entries(persistedScopes).map(([scopeId, scope]) => [scopeId, new Set(scope.usageKeys)]),
   );
   ctx.codexKnownScopes = Object.fromEntries(
     Object.entries(cursors.files).flatMap(([filePath, cursor]) => {
@@ -524,12 +603,12 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     }
 
     // Build discover message with skipped dirs info from context
-    const skippedDirs = driver.source === "opencode" && ctx.dirMtimes
-      ? Object.keys(ctx.dirMtimes).length
-      : 0;
-    const parseMsg = driver.source === "opencode" && skippedDirs > 0
-      ? `Parsing ${files.length} ${driver.source} files (${skippedDirs} dirs skipped)...`
-      : `Parsing ${files.length} ${driver.source} files...`;
+    const skippedDirs =
+      driver.source === "opencode" && ctx.dirMtimes ? Object.keys(ctx.dirMtimes).length : 0;
+    const parseMsg =
+      driver.source === "opencode" && skippedDirs > 0
+        ? `Parsing ${files.length} ${driver.source} files (${skippedDirs} dirs skipped)...`
+        : `Parsing ${files.length} ${driver.source} files...`;
 
     onProgress?.({
       source: driver.source,
@@ -560,8 +639,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
 
       const cursor = cursors.files[filePath] as FileCursorBase | undefined;
       const offsetCursor = isOffsetCursor(cursor) ? cursor : undefined;
-      const poisonedOffset =
-        !!offsetCursor && offsetCursor.offset > fingerprint.size;
+      const poisonedOffset = !!offsetCursor && offsetCursor.offset > fingerprint.size;
 
       // Fast skip: file unchanged since last cursor?
       // A cursor whose offset is already past EOF is never unchanged — the
@@ -584,14 +662,10 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         if (
           offsetCursor &&
           usesJsonlOffsetResume(driver.source, filePath) &&
-          (!offsetCursor.continuityAnchors ||
-            offsetCursor.continuityAnchors.length === 0)
+          (!offsetCursor.continuityAnchors || offsetCursor.continuityAnchors.length === 0)
         ) {
           try {
-            const stamped = await readContinuityAnchors(
-              filePath,
-              offsetCursor.offset,
-            );
+            const stamped = await readContinuityAnchors(filePath, offsetCursor.offset);
             if (stamped && stamped.length > 0) {
               offsetCursor.continuityAnchors = stamped;
               cursors.files[filePath] = offsetCursor as FileCursor;
@@ -701,10 +775,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
             let eofAnchors = stamped;
             if (parked !== fingerprint.size) {
               try {
-                eofAnchors = await readContinuityAnchors(
-                  filePath,
-                  fingerprint.size,
-                );
+                eofAnchors = await readContinuityAnchors(filePath, fingerprint.size);
               } catch {
                 eofAnchors = stamped;
               }
@@ -752,16 +823,15 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
           filePath,
           startOffset,
           snapshotSize: fingerprint.size,
-          confirm: continuityOpts && continuityAction
-            ? async () => {
-                const again = await resolveJsonlContinuity(continuityOpts);
-                return again.action === continuityAction
-                  && again.startOffset === continuityStart;
-              }
-            : undefined,
+          confirm:
+            continuityOpts && continuityAction
+              ? async () => {
+                  const again = await resolveJsonlContinuity(continuityOpts);
+                  return again.action === continuityAction && again.startOffset === continuityStart;
+                }
+              : undefined,
           parse: parseFile,
-          buildCursor: (parsed) =>
-            driver.buildCursor(fingerprint, parsed, cursor) as FileCursor,
+          buildCursor: (parsed) => driver.buildCursor(fingerprint, parsed, cursor) as FileCursor,
         });
         if (!stable) {
           restoreJsonlSharedState(ctx, sharedSnapshot);
@@ -924,9 +994,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     const isHermes = driver.source === "hermes";
 
     // For Hermes, extract dbKey from the driver instance
-    const hermesDbKey = isHermes
-      ? (driver as typeof driver & { dbKey: string }).dbKey
-      : null;
+    const hermesDbKey = isHermes ? (driver as typeof driver & { dbKey: string }).dbKey : null;
 
     // Display name for progress messages
     const displayName = isOpenCode
@@ -935,7 +1003,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         ? `Hermes SQLite (${hermesDbKey})`
         : isHermes
           ? "Hermes SQLite"
-            : `${driver.source} SQLite`;
+          : `${driver.source} SQLite`;
 
     onProgress?.({
       source: driver.source,
@@ -950,7 +1018,6 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     } else if (isHermes && hermesDbKey) {
       // Hermes uses Record<dbKey, HermesSqliteCursor>
       prevCursor = cursors.hermesSqlite?.[hermesDbKey];
-
     }
 
     // Detect DB cursor loss (parallel to file-based knownFilePaths logic):
@@ -961,7 +1028,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       ? "openCodeSqlite"
       : isHermes
         ? `hermesSqlite:${hermesDbKey}`
-          : `${driver.source}Sqlite`;
+        : `${driver.source}Sqlite`;
 
     if (!initialCursorEmpty && !prevCursor && cursors.knownDbSources?.[dbSourceKey]) {
       onProgress?.({
@@ -1034,7 +1101,6 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         cursors.hermesSqlite = {};
       }
       cursors.hermesSqlite[hermesDbKey] = result.cursor as HermesSqliteCursor;
-
     }
 
     // Track this DB source as "previously synced" for cursor-loss detection
@@ -1048,7 +1114,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       dbsScanned[key] += 1;
     }
 
-    const dedupSkipped = result.rowCount - (Math.max(result.deltas.length , 0));
+    const dedupSkipped = result.rowCount - Math.max(result.deltas.length, 0);
     onProgress?.({
       source: driver.source,
       phase: "parse",
@@ -1101,15 +1167,10 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // their mtime was unchanged. Their per-message cursors are still
   // valid; we protect them so the prune pass doesn't stat() every
   // single message file (heavy installs have 66K+ message files).
-  const pruned = await pruneAliasCursors(
-    cursors.files,
-    cursorValidPaths,
-    cursors.knownFilePaths,
-    {
-      protectedPrefixes: ctx.mtimeSkippedDirs,
-      inDiscoveryPaths: discoveredFiles,
-    },
-  );
+  const pruned = await pruneAliasCursors(cursors.files, cursorValidPaths, cursors.knownFilePaths, {
+    protectedPrefixes: ctx.mtimeSkippedDirs,
+    inDiscoveryPaths: discoveredFiles,
+  });
   cursors.files = pruned.cursorFiles;
   cursors.knownFilePaths = pruned.knownFilePaths ?? cursors.knownFilePaths;
 
@@ -1211,9 +1272,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // to be inflated (v1 re-counted each file's whole cumulative total), so zero
   // is the closer of the two available answers.
   const codexFullyRescanned =
-    codexFilesDiscovered > 0 &&
-    codexParseFailures === 0 &&
-    ctx.codexDiscoveryComplete === true;
+    codexFilesDiscovered > 0 && codexParseFailures === 0 && ctx.codexDiscoveryComplete === true;
   if (initialCursorEmpty && opts.reconcilePreviousQueueRecords && codexFullyRescanned) {
     const recordKey = (record: QueueRecord) =>
       `${record.source}|${record.model}|${record.hour_start}|${record.device_id}`;
@@ -1237,21 +1296,45 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     }
   }
 
-  const evidenceRecords = allDeltas.filter((d) => d.evidence).map((d) => toEvidenceRecord(d, opts.deviceId));
+  const evidenceRecords = allDeltas
+    .filter((d) => d.evidence)
+    .map((d) => toEvidenceRecord(d, opts.deviceId));
   const { records: oldRecords } = await queue.readFromOffset(0);
   const retiredRecords = opts.previousRetiredRecords ?? [];
-  let finalRecords = initialCursorEmpty ? [...records, ...retiredRecords] : records.length > 0 ? aggregateRecords([...oldRecords, ...records]) : undefined;
+  let finalRecords = initialCursorEmpty
+    ? [...records, ...retiredRecords]
+    : records.length > 0
+      ? aggregateRecords([...oldRecords, ...records])
+      : undefined;
   const previousAntigravity = opts.previousAntigravityRecords ?? [];
   const freshAntigravity = opts.antigravitySnapshot
-    ? antigravityRecords(opts.antigravitySnapshot.deltas, opts.deviceId) : null;
-  const antigravity = replaceAntigravityPartition(previousAntigravity, finalRecords ?? oldRecords,
-    freshAntigravity, opts.deviceId);
-  if (finalRecords || antigravity.changedKeys.length || previousAntigravity.length && initialCursorEmpty) {
+    ? antigravityRecords(opts.antigravitySnapshot.deltas, opts.deviceId)
+    : null;
+  const antigravity = replaceAntigravityPartition(
+    previousAntigravity,
+    finalRecords ?? oldRecords,
+    freshAntigravity,
+    opts.deviceId,
+  );
+  if (
+    finalRecords ||
+    antigravity.changedKeys.length ||
+    (previousAntigravity.length && initialCursorEmpty)
+  ) {
     finalRecords = antigravity.records;
   }
-  if (previousAntigravity.length && finalRecords && records.length === 0 && antigravity.changedKeys.length === 0 &&
-    accountingJson([...finalRecords].sort((a, b) => tokenRecordKey(a).localeCompare(tokenRecordKey(b)))) ===
-    accountingJson([...oldRecords].sort((a, b) => tokenRecordKey(a).localeCompare(tokenRecordKey(b))))) {
+  if (
+    previousAntigravity.length &&
+    finalRecords &&
+    records.length === 0 &&
+    antigravity.changedKeys.length === 0 &&
+    accountingJson(
+      [...finalRecords].sort((a, b) => tokenRecordKey(a).localeCompare(tokenRecordKey(b))),
+    ) ===
+      accountingJson(
+        [...oldRecords].sort((a, b) => tokenRecordKey(a).localeCompare(tokenRecordKey(b))),
+      )
+  ) {
     finalRecords = undefined;
   }
   cursors.antigravity = opts.antigravitySnapshot
@@ -1264,27 +1347,71 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     : opts.previousAntigravityCursor;
   const accountingWarnings = new Set<string>();
   const verifiedAccountingKeys = new Set<string>();
-  const onVerified = (key: string) => { verifiedAccountingKeys.add(key); };
+  const onVerified = (key: string) => {
+    verifiedAccountingKeys.add(key);
+  };
   const onAccountingWarning = (source: string) => accountingWarnings.add(source);
-  const accounting = planAccountingUpdates({ previous: priorAccounting, before: oldRecords, after: finalRecords ?? oldRecords,
-    deltas: allDeltas, replay: initialCursorEmpty, deviceId: opts.deviceId, onWarning: onAccountingWarning, onVerified });
+  const accounting = planAccountingUpdates({
+    previous: priorAccounting,
+    before: oldRecords,
+    after: finalRecords ?? oldRecords,
+    deltas: allDeltas,
+    replay: initialCursorEmpty,
+    deviceId: opts.deviceId,
+    onWarning: onAccountingWarning,
+    onVerified,
+  });
   if (ctx.accountingSnapshots?.length) {
-    const current = [...new Map([...priorAccounting, ...accounting].map((r) => [accountingKey(r), r])).values()];
-    accounting.push(...planAccountingUpdates({ previous: current, before: [], after: finalRecords ?? oldRecords,
-      deltas: ctx.accountingSnapshots, replay: true, deviceId: opts.deviceId, onWarning: onAccountingWarning, onVerified }));
+    const current = [
+      ...new Map([...priorAccounting, ...accounting].map((r) => [accountingKey(r), r])).values(),
+    ];
+    accounting.push(
+      ...planAccountingUpdates({
+        previous: current,
+        before: [],
+        after: finalRecords ?? oldRecords,
+        deltas: ctx.accountingSnapshots,
+        replay: true,
+        deviceId: opts.deviceId,
+        onWarning: onAccountingWarning,
+        onVerified,
+      }),
+    );
   }
   if (opts.antigravitySnapshot) {
     const tombstoneDeltas: ParsedDelta[] = antigravity.tombstones.map((r) => {
       const tokens = emptyTokenDelta();
-      return { source: "antigravity", model: r.model, timestamp: r.hour_start, tokens,
-        accounting: inclusiveAccounting(tokens, { input: 0, read: 0, write: 0, output: 0, reasoning: 0 },
-          { origin: "antigravity:step", model: r.model, aggregate: true }) };
+      return {
+        source: "antigravity",
+        model: r.model,
+        timestamp: r.hour_start,
+        tokens,
+        accounting: inclusiveAccounting(
+          tokens,
+          { input: 0, read: 0, write: 0, output: 0, reasoning: 0 },
+          { origin: "antigravity:step", model: r.model, aggregate: true },
+        ),
+      };
     });
-    accounting.push(...planAccountingUpdates({ previous: priorAccounting, before: [], after: antigravity.records,
-      deltas: [...opts.antigravitySnapshot.deltas, ...tombstoneDeltas], replay: true,
-      deviceId: opts.deviceId, onWarning: onAccountingWarning, onVerified }));
+    accounting.push(
+      ...planAccountingUpdates({
+        previous: priorAccounting,
+        before: [],
+        after: antigravity.records,
+        deltas: [...opts.antigravitySnapshot.deltas, ...tombstoneDeltas],
+        replay: true,
+        deviceId: opts.deviceId,
+        onWarning: onAccountingWarning,
+        onVerified,
+      }),
+    );
   }
-  for (const source of accountingWarnings) onProgress?.({ source, phase: "warn", message: "Some accounting details are unavailable; original usage is preserved" });
+  for (const source of accountingWarnings)
+    onProgress?.({
+      source,
+      phase: "warn",
+      message: "Some accounting details are unavailable; original usage is preserved",
+    });
 
   // ---------- Write to queue (overwrite, not append) ----------
   // Design note: this is O(total_queue) not O(delta), which is intentional.
@@ -1300,39 +1427,48 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // files → overwrite queue entirely (discard any stale accumulated values).
   //
   // Incremental (cursors exist): records are deltas since last sync → SUM
-   // with existing queue contents to accumulate across multiple sync cycles
-   // that haven't been uploaded yet.
-   //
-   // Dirty-key tracking: each branch saves the set of bucket keys that were
-   // modified in this sync cycle. The upload engine uses dirtyKeys to filter
-   // which records actually need sending, avoiding full re-upload on every sync.
+  // with existing queue contents to accumulate across multiple sync cycles
+  // that haven't been uploaded yet.
+  //
+  // Dirty-key tracking: each branch saves the set of bucket keys that were
+  // modified in this sync cycle. The upload engine uses dirtyKeys to filter
+  // which records actually need sending, avoiding full re-upload on every sync.
   let dirtyKeys: string[] | undefined;
   if (initialCursorEmpty) {
     // All records are dirty (fresh full scan)
-    const newKeys = records.map(
-      (r) => `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`,
-    );
+    const newKeys = records.map((r) => `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`);
     dirtyKeys = [...new Set(newKeys)];
   } else if (records.length > 0) {
     // Incremental with new data: SUM with existing queue records
     // Union new bucket keys into existing dirtyKeys
-    const newKeys = records.map(
-      (r) => `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`,
-    );
+    const newKeys = records.map((r) => `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`);
     const existingDirty = (await queue.loadDirtyKeys()) ?? [];
     const unionSet = new Set([...existingDirty, ...newKeys]);
     dirtyKeys = [...unionSet];
   }
   if (finalRecords) {
     const savedDirty = await queue.loadDirtyKeys();
-    const previousDirty = savedDirty ?? (await queue.readFromOffset(await queue.loadOffset())).records.map(tokenRecordKey);
-    const antigravityKeys = new Set([...previousAntigravity, ...retiredRecords].map(tokenRecordKey));
+    const previousDirty =
+      savedDirty ??
+      (await queue.readFromOffset(await queue.loadOffset())).records.map(tokenRecordKey);
+    const antigravityKeys = new Set(
+      [...previousAntigravity, ...retiredRecords].map(tokenRecordKey),
+    );
     const retainedDirty = previousDirty.filter((key) => antigravityKeys.has(key));
     const finalKeys = new Set(finalRecords.map(tokenRecordKey));
-    const pending = initialCursorEmpty ? retainedDirty : previousDirty.filter((key) => finalKeys.has(key));
-    dirtyKeys = [...new Set([...(dirtyKeys ?? previousDirty), ...pending, ...antigravity.changedKeys])];
-    if (initialCursorEmpty) dirtyKeys = dirtyKeys.filter((key) => !antigravityKeys.has(key) ||
-      retainedDirty.includes(key) || antigravity.changedKeys.includes(key));
+    const pending = initialCursorEmpty
+      ? retainedDirty
+      : previousDirty.filter((key) => finalKeys.has(key));
+    dirtyKeys = [
+      ...new Set([...(dirtyKeys ?? previousDirty), ...pending, ...antigravity.changedKeys]),
+    ];
+    if (initialCursorEmpty)
+      dirtyKeys = dirtyKeys.filter(
+        (key) =>
+          !antigravityKeys.has(key) ||
+          retainedDirty.includes(key) ||
+          antigravity.changedKeys.includes(key),
+      );
   }
   // else: incremental with no new data — skip queue write entirely
   // to preserve the upload offset and dirtyKeys (Bug B: re-marking uploaded records)
@@ -1342,8 +1478,16 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // A crash between queue and cursor replacement cannot replay additive deltas.
   cursors.accountingSchemaVersion = ACCOUNTING_SCHEMA_VERSION;
   cursors.updatedAt = new Date().toISOString();
-  await commitSync(stateDir, { version: 1, records: finalRecords, dirtyKeys, evidence: evidenceRecords, accounting,
-    replay: initialCursorEmpty, preserveAccountingSources: ["antigravity", ...RETIRED_SOURCES], cursors });
+  await commitSync(stateDir, {
+    version: 1,
+    records: finalRecords,
+    dirtyKeys,
+    evidence: evidenceRecords,
+    accounting,
+    replay: initialCursorEmpty,
+    preserveAccountingSources: ["antigravity", ...RETIRED_SOURCES],
+    cursors,
+  });
 
   onProgress?.({
     source: "all",

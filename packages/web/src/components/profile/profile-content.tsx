@@ -121,7 +121,7 @@ export function ProfileContent({
 
   const resolvedDefault = useMemo(() => {
     const wanted = defaultTab ?? "7d";
-    return tabs.some((t) => t.id === wanted) ? wanted : tabs[0]?.id ?? "30d";
+    return tabs.some((t) => t.id === wanted) ? wanted : (tabs[0]?.id ?? "30d");
   }, [defaultTab, tabs]);
 
   const [tab, setTab] = useState<ProfileTab>(resolvedDefault);
@@ -147,15 +147,10 @@ export function ProfileContent({
   // ---- Data fetching -------------------------------------------------------
 
   // Tab-driven data (changes on tab switch)
-  const {
-    data,
-    daily,
-    sources,
-    models,
-    loading,
-    error,
-    notFound,
-  } = useUserProfile({ slug, ...timeRange });
+  const { data, daily, sources, models, loading, error, notFound } = useUserProfile({
+    slug,
+    ...timeRange,
+  });
 
   // 365-day data for heatmap (stable, fires once)
   const yearData = useUserProfile({ slug, days: 365 });
@@ -163,11 +158,7 @@ export function ProfileContent({
   // Pricing
   const { pricingMap, loading: pricingLoading } = usePricingMap();
   const accountingSummary = useMemo(() => summarizeAccounting(data?.records ?? []), [data]);
-  const estimatedCost = useMemo(
-    () => computeTotalCost(models, pricingMap),
-    [models, pricingMap],
-  );
-
+  const estimatedCost = useMemo(() => computeTotalCost(models, pricingMap), [models, pricingMap]);
 
   // ---- Loading states ------------------------------------------------------
 
@@ -195,26 +186,31 @@ export function ProfileContent({
   return (
     <>
       <div className="mb-5 flex items-start justify-end gap-2">
-      {/* Tab bar — hidden when only 1 tab */}
-      {tabs.length > 1 && (
-        <div className="flex min-w-0 flex-1 gap-1 rounded-lg bg-basalt-secondary p-1">
-          {tabs.map((t) => (
-            <button type="button"
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                tab === t.id
-                  ? "bg-basalt-secondary text-basalt-foreground shadow-sm"
-                  : "text-basalt-muted-foreground hover:text-basalt-foreground",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-      <UsageInformation records={!error && !notFound ? data?.records ?? [] : []} pricingMap={pricingMap} loading={pricingLoading} />
+        {/* Tab bar — hidden when only 1 tab */}
+        {tabs.length > 1 && (
+          <div className="flex min-w-0 flex-1 gap-1 rounded-lg bg-basalt-secondary p-1">
+            {tabs.map((t) => (
+              <button
+                type="button"
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  tab === t.id
+                    ? "bg-basalt-secondary text-basalt-foreground shadow-sm"
+                    : "text-basalt-muted-foreground hover:text-basalt-foreground",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <UsageInformation
+          records={!error && !notFound ? (data?.records ?? []) : []}
+          pricingMap={pricingMap}
+          loading={pricingLoading}
+        />
       </div>
 
       {/* Season date range indicator */}
@@ -229,17 +225,10 @@ export function ProfileContent({
       )}
 
       {/* Error state */}
-      {error && (
-        <Banner tone="danger" className="mb-4" description={error} />
-      )}
+      {error && <Banner tone="danger" className="mb-4" description={error} />}
 
       {/* Not found state */}
-      {notFound && (
-        <Empty
-          title="User profile not found or not public."
-          className="mb-4"
-        />
-      )}
+      {notFound && <Empty title="User profile not found or not public." className="mb-4" />}
 
       {/* Content area */}
       {!error &&
@@ -271,7 +260,11 @@ export function ProfileContent({
               />
               <StatCard
                 title="Cache Read Rate"
-                value={accountingSummary.readCoverage === 0 ? "—" : `${Math.round(accountingSummary.cacheReadRate)}%`}
+                value={
+                  accountingSummary.readCoverage === 0
+                    ? "—"
+                    : `${Math.round(accountingSummary.cacheReadRate)}%`
+                }
                 subtitle={`${formatTokens(accountingSummary.cacheReadTokens)} known read tokens`}
                 icon={Database}
                 iconColor="text-success"
@@ -309,7 +302,6 @@ export function ProfileContent({
             {/* Model breakdown */}
             <ModelBreakdownChart data={models} />
 
-
             {/* Activity heatmap */}
             <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
               <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">
@@ -325,7 +317,6 @@ export function ProfileContent({
                 />
               )}
             </div>
-
           </div>
         ) : null)}
     </>

@@ -44,7 +44,8 @@ interface CodexScopeNode {
   parentThreadId: string | null;
 }
 
-const ROLLOUT_THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/i;
+const ROLLOUT_THREAD_ID_RE =
+  /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/i;
 
 function rolloutThreadId(filePath: string): string | null {
   return basename(filePath).match(ROLLOUT_THREAD_ID_RE)?.[1] ?? null;
@@ -74,9 +75,8 @@ async function readScopeNode(filePath: string): Promise<CodexScopeNode> {
       const source = payload.source as Record<string, unknown> | undefined;
       const subagent = source?.subagent as Record<string, unknown> | undefined;
       const spawn = subagent?.thread_spawn as Record<string, unknown> | undefined;
-      node.parentThreadId = typeof spawn?.parent_thread_id === "string"
-        ? spawn.parent_thread_id
-        : null;
+      node.parentThreadId =
+        typeof spawn?.parent_thread_id === "string" ? spawn.parent_thread_id : null;
       break;
     }
   } finally {
@@ -102,7 +102,7 @@ async function resolveCodexScopes(
   const nodes: CodexScopeNode[] = [];
   // Avoid opening thousands of rollout files at once on long-lived installs.
   for (let i = 0; i < files.length; i += 32) {
-    nodes.push(...await Promise.all(files.slice(i, i + 32).map(readScopeNode)));
+    nodes.push(...(await Promise.all(files.slice(i, i + 32).map(readScopeNode))));
   }
   const byThread = new Map<string, CodexScopeNode>();
   for (const node of nodes) {
@@ -166,10 +166,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       if (threadId) knownThreadScopes.set(threadId, scopeId);
     }
     const unresolved = files.filter((filePath) => !known[filePath]);
-    const { fileScopes, scopeFileCounts } = await resolveCodexScopes(
-      unresolved,
-      knownThreadScopes,
-    );
+    const { fileScopes, scopeFileCounts } = await resolveCodexScopes(unresolved, knownThreadScopes);
 
     for (const filePath of files) {
       const cached = known[filePath];
@@ -200,7 +197,9 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       startOffset: sameFile ? (cursor.offset ?? 0) : 0,
       lastTotals: sameFile ? (cursor.lastTotals ?? null) : null,
       lastModel: sameFile ? (cursor.lastModel ?? null) : null,
-      ...(sameFile && cursor.accountingContext ? { accountingContext: cursor.accountingContext } : {}),
+      ...(sameFile && cursor.accountingContext
+        ? { accountingContext: cursor.accountingContext }
+        : {}),
     };
   },
 
@@ -208,9 +207,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
     const r = resume as CodexResumeState;
     const scopeId = _ctx.codexFileScopes?.get(filePath) ?? filePath;
     const sharedScope = scopeId !== null && (_ctx.codexScopeFileCounts?.get(scopeId) ?? 0) > 1;
-    const highWaterTotals = sharedScope
-      ? (_ctx.codexScopeTotals?.get(scopeId) ?? null)
-      : undefined;
+    const highWaterTotals = sharedScope ? (_ctx.codexScopeTotals?.get(scopeId) ?? null) : undefined;
     _ctx.codexSeenUsageKeys ??= new Map<string, Set<string>>();
     const seenUsageKeys = _ctx.codexSeenUsageKeys.get(scopeId) ?? new Set<string>();
     _ctx.codexSeenUsageKeys.set(scopeId, seenUsageKeys);
@@ -222,7 +219,9 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       lastModel: r.lastModel,
       ...(sharedScope ? { highWaterTotals } : {}),
       seenUsageKeys,
-      ...(_ctx.collectAccounting ? { includeAccounting: true, lastAccountingContext: r.accountingContext } : {}),
+      ...(_ctx.collectAccounting
+        ? { includeAccounting: true, lastAccountingContext: r.accountingContext }
+        : {}),
     });
     if (sharedScope && scopeId && result.highWaterTotals) {
       _ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
@@ -235,7 +234,9 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       lastModel: result.lastModel,
       scopeId,
       usageKeys: result.usageKeys,
-      ...(result.lastAccountingContext || r.accountingContext ? { accountingContext: result.lastAccountingContext ?? r.accountingContext } : {}),
+      ...(result.lastAccountingContext || r.accountingContext
+        ? { accountingContext: result.lastAccountingContext ?? r.accountingContext }
+        : {}),
     };
   },
 

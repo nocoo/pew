@@ -36,9 +36,8 @@ export function LeaderboardNav() {
       aria-label="Leaderboard navigation"
     >
       {TABS.map((tab) => {
-        const isActive = tab.href === "/leaderboard"
-          ? pathname === "/leaderboard"
-          : pathname.startsWith(tab.href);
+        const isActive =
+          tab.href === "/leaderboard" ? pathname === "/leaderboard" : pathname.startsWith(tab.href);
 
         return (
           <Link

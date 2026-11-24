@@ -3,11 +3,7 @@ import type { NotifierOperationResult, Source } from "@pew/core";
 import { removeNotifyHandler } from "../notifier/notify-handler.js";
 import { resolveNotifierPaths, type NotifierPaths } from "../notifier/paths.js";
 import { cleanupRetiredHooks } from "../notifier/retired-hook-cleanup.js";
-import {
-  getAllDrivers,
-  getDriver,
-  uninstallAll,
-} from "../notifier/registry.js";
+import { getAllDrivers, getDriver, uninstallAll } from "../notifier/registry.js";
 
 interface ArtifactRemovalResult {
   changed: boolean;
@@ -31,9 +27,7 @@ export interface UninstallOptions {
   ) => Promise<NotifierOperationResult>;
   getAllDriversFn?: typeof getAllDrivers;
   spawn?: (cmd: string, args: string[], opts?: object) => { status: number | null };
-  removeNotifyHandlerFn?: (opts: {
-    notifyPath: string;
-  }) => Promise<ArtifactRemovalResult>;
+  removeNotifyHandlerFn?: (opts: { notifyPath: string }) => Promise<ArtifactRemovalResult>;
   removeCodexBackupFn?: (path: string) => Promise<ArtifactRemovalResult>;
 }
 
@@ -49,7 +43,8 @@ export async function executeUninstall(opts: UninstallOptions): Promise<Uninstal
   const paths = resolveNotifierPathsFn(opts.home, opts.env);
   const allSources = getAllDriversFn().map((driver) => driver.source);
   const selectedSources = opts.sources && opts.sources.length > 0 ? opts.sources : allSources;
-  const fullUninstall = selectedSources.length === allSources.length &&
+  const fullUninstall =
+    selectedSources.length === allSources.length &&
     allSources.every((source) => selectedSources.includes(source));
   const shouldRemoveCodexBackup = fullUninstall || selectedSources.includes("codex");
 
@@ -78,7 +73,7 @@ export async function executeUninstall(opts: UninstallOptions): Promise<Uninstal
   if (fullUninstall) {
     const uninstallAllFn = opts.uninstallAllFn ?? uninstallAll;
     hooks = await uninstallAllFn(paths, { spawn: opts.spawn });
-    hooks.push(...await cleanupRetiredHooks(opts.home, paths.notifyPath, opts.env));
+    hooks.push(...(await cleanupRetiredHooks(opts.home, paths.notifyPath, opts.env)));
   } else {
     const uninstallDriverFn =
       opts.uninstallDriverFn ??
@@ -114,13 +109,14 @@ export async function executeUninstall(opts: UninstallOptions): Promise<Uninstal
   const removeNotifyHandlerFn = opts.removeNotifyHandlerFn ?? removeNotifyHandler;
   const removeCodexBackupFn = opts.removeCodexBackupFn ?? removeOptionalFile;
 
-  const notifyHandler = fullUninstall && hooks.every((hook) => !hook.warnings?.length)
-    ? await removeNotifyHandlerFn({ notifyPath: paths.notifyPath })
-    : {
-      changed: false,
-      path: paths.notifyPath,
-      detail: "shared artifact kept",
-    };
+  const notifyHandler =
+    fullUninstall && hooks.every((hook) => !hook.warnings?.length)
+      ? await removeNotifyHandlerFn({ notifyPath: paths.notifyPath })
+      : {
+          changed: false,
+          path: paths.notifyPath,
+          detail: "shared artifact kept",
+        };
 
   // Doc 45 §8: the outer uninstall command must NOT delete
   // codex_notify_original.json unconditionally — the Codex driver already
@@ -141,12 +137,12 @@ export async function executeUninstall(opts: UninstallOptions): Promise<Uninstal
     shouldRemoveCodexBackup && codexDriverClean
       ? await removeCodexBackupFn(paths.codexNotifyOriginalPath)
       : {
-        changed: false,
-        path: paths.codexNotifyOriginalPath,
-        detail: shouldRemoveCodexBackup
-          ? "backup preserved: Codex driver did not report a clean uninstall"
-          : "not selected",
-      };
+          changed: false,
+          path: paths.codexNotifyOriginalPath,
+          detail: shouldRemoveCodexBackup
+            ? "backup preserved: Codex driver did not report a clean uninstall"
+            : "not selected",
+        };
 
   return { notifyHandler, codexBackup, hooks };
 }

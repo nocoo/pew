@@ -1,18 +1,6 @@
-import {
-  stat,
-  appendFile,
-  writeFile,
-  readFile,
-  unlink,
-  mkdir,
-} from "node:fs/promises";
+import { stat, appendFile, writeFile, readFile, unlink, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import type {
-  CoordinatorRunResult,
-  RunLogEntry,
-  SyncCycleResult,
-  SyncTrigger,
-} from "@pew/core";
+import type { CoordinatorRunResult, RunLogEntry, SyncCycleResult, SyncTrigger } from "@pew/core";
 import {
   acquireLock,
   releaseLock,
@@ -20,7 +8,14 @@ import {
   type LockFsOps,
   type ProcessOps,
 } from "./lockfile.js";
-import { deriveStatus, toErrorMessage, readLastSuccessAt, readSignalSize, appendSignal, truncateSignal } from "./coordinator-helpers.js";
+import {
+  deriveStatus,
+  toErrorMessage,
+  readLastSuccessAt,
+  readSignalSize,
+  appendSignal,
+  truncateSignal,
+} from "./coordinator-helpers.js";
 
 // ---------------------------------------------------------------------------
 // Fs abstraction (signal + run log operations)
@@ -29,11 +24,7 @@ import { deriveStatus, toErrorMessage, readLastSuccessAt, readSignalSize, append
 export interface FsOps {
   stat: (path: string) => Promise<{ size: number }>;
   appendFile: (path: string, data: string) => Promise<unknown>;
-  writeFile: (
-    path: string,
-    data: string,
-    options?: { flag?: string },
-  ) => Promise<unknown>;
+  writeFile: (path: string, data: string, options?: { flag?: string }) => Promise<unknown>;
   readFile: (path: string) => Promise<string>;
   unlink: (path: string) => Promise<unknown>;
   mkdir: (path: string, options: { recursive: boolean }) => Promise<unknown>;
@@ -120,14 +111,7 @@ export async function coordinatedSync(
   } catch (err) {
     result = { ...baseResult, error: toErrorMessage(err) };
   }
-  await writeRunLog(
-    result,
-    startTime,
-    now,
-    opts.version ?? "unknown",
-    opts.stateDir,
-    fs,
-  );
+  await writeRunLog(result, startTime, now, opts.version ?? "unknown", opts.stateDir, fs);
   return result;
 }
 
@@ -260,10 +244,7 @@ async function runLockedCycles({
   trigger: SyncTrigger;
   maxFollowUps: number;
 }): Promise<
-  Pick<
-    CoordinatorRunResult,
-    "hadFollowUp" | "followUpCount" | "skippedSync" | "cycles" | "error"
-  >
+  Pick<CoordinatorRunResult, "hadFollowUp" | "followUpCount" | "skippedSync" | "cycles" | "error">
 > {
   let hadFollowUp = false;
   let error: string | undefined;
@@ -321,9 +302,7 @@ async function writeRunLog(
       coordination: {
         waitedForLock: result.waitedForLock,
         skippedSync: result.skippedSync,
-        ...(result.skippedReason != null
-          ? { skippedReason: result.skippedReason }
-          : {}),
+        ...(result.skippedReason != null ? { skippedReason: result.skippedReason } : {}),
         ...(result.cooldownRemainingMs != null
           ? { cooldownRemainingMs: result.cooldownRemainingMs }
           : {}),
@@ -346,10 +325,7 @@ async function writeRunLog(
     // Kept separate from last-run.json so skipped/error runs don't overwrite
     // the success timestamp.
     if (entry.status === "success") {
-      await fs.writeFile(
-        join(stateDir, "last-success.json"),
-        entry.completedAt,
-      );
+      await fs.writeFile(join(stateDir, "last-success.json"), entry.completedAt);
     }
   } catch {
     // Run log write failures are non-fatal
@@ -383,7 +359,7 @@ async function checkCooldown(
 
   const elapsed = now() - completedAtMs;
   const remaining = cooldownMs - elapsed;
-  return Math.max(remaining , 0);
+  return Math.max(remaining, 0);
 }
 
 /**

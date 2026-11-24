@@ -16,9 +16,7 @@ export interface ClaudeHookOptions {
 const EVENT_NAME = "SessionEnd";
 const SOURCE = "claude-code";
 
-export async function installClaudeHook(
-  opts: ClaudeHookOptions,
-): Promise<NotifierOperationResult> {
+export async function installClaudeHook(opts: ClaudeHookOptions): Promise<NotifierOperationResult> {
   const fs = opts.fs ?? { readFile, writeFile, mkdir };
   const command = buildClaudeHookCommand(opts.notifyPath);
   const loaded = await loadSettings(opts.settingsPath, fs);
@@ -194,7 +192,9 @@ function normalizeObject(value: unknown): Record<string, unknown> {
 
 function normalizeArray(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
-    ? value.filter((entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === "object"))
+    ? value.filter((entry): entry is Record<string, unknown> =>
+        Boolean(entry && typeof entry === "object"),
+      )
     : [];
 }
 
@@ -257,13 +257,13 @@ async function writeSettings(
       ? `${settingsPath}.bak.${new Date().toISOString().replace(/[:.]/g, "-")}`
       : null;
 
-  await fs.mkdir(new URL(".", `file://${settingsPath}`).pathname, { recursive: true }).catch(
-    async () => {
+  await fs
+    .mkdir(new URL(".", `file://${settingsPath}`).pathname, { recursive: true })
+    .catch(async () => {
       const lastSlash = settingsPath.lastIndexOf("/");
       const dir = lastSlash >= 0 ? settingsPath.slice(0, lastSlash) : ".";
       await fs.mkdir(dir, { recursive: true });
-    },
-  );
+    });
 
   if (backupPath && previousRaw !== null) {
     await fs.writeFile(backupPath, previousRaw, "utf8");

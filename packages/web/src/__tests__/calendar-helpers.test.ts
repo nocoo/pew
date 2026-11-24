@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { getYearWeeks, getColorIndex, formatDateISO, computePercentileBoundaries } from "@/lib/calendar-helpers";
+import {
+  getYearWeeks,
+  getColorIndex,
+  formatDateISO,
+  computePercentileBoundaries,
+} from "@/lib/calendar-helpers";
 
 // ---------------------------------------------------------------------------
 // getYearWeeks

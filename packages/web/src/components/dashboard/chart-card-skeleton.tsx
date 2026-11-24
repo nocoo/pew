@@ -15,10 +15,7 @@ interface ChartCardSkeletonProps {
  * Donut cards, stat grids, hero composites, and any nested-grid composites
  * have their own shapes and stay inline.
  */
-export function ChartCardSkeleton({
-  titleWidth = "w-24",
-  chartHeight,
-}: ChartCardSkeletonProps) {
+export function ChartCardSkeleton({ titleWidth = "w-24", chartHeight }: ChartCardSkeletonProps) {
   return (
     <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
       <Skeleton style={{ width: undefined }} className={`h-3 ${titleWidth} mb-4`} />

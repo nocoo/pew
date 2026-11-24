@@ -49,30 +49,31 @@ Triggers do not call parsers or write cursors directly. They only submit events 
 
 ### Coordinator Layer — DONE (except Run Log)
 
-| Capability | Status | Details |
-|-----------|--------|---------|
-| File-lock mutex (`sync.lock`) | DONE | `flock(LOCK_EX)` via `FileHandle.lock()`, non-blocking attempt first, then blocking with timeout |
-| Signal-based debounce (`notify.signal`) | DONE | Waiters append to signal file; holder truncates before each cycle |
-| Dirty follow-up | DONE | After sync, check signal size; if > 0, run another cycle (up to `maxFollowUps=3`) |
-| runId generation | DONE | `ISO-timestamp-randomSuffix` format |
-| Graceful degradation | DONE | Falls back to unlocked sync when `FileHandle.lock()` unavailable |
-| Lock timeout | DONE | Configurable (default 60s), returns `skippedSync: true` on timeout |
-| **Run Log** | **DONE** | Phase 2 (docs/11): `writeRunLog` + `deriveStatus` + `last-run.json` |
+| Capability                              | Status   | Details                                                                                          |
+| --------------------------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| File-lock mutex (`sync.lock`)           | DONE     | `flock(LOCK_EX)` via `FileHandle.lock()`, non-blocking attempt first, then blocking with timeout |
+| Signal-based debounce (`notify.signal`) | DONE     | Waiters append to signal file; holder truncates before each cycle                                |
+| Dirty follow-up                         | DONE     | After sync, check signal size; if > 0, run another cycle (up to `maxFollowUps=3`)                |
+| runId generation                        | DONE     | `ISO-timestamp-randomSuffix` format                                                              |
+| Graceful degradation                    | DONE     | Falls back to unlocked sync when `FileHandle.lock()` unavailable                                 |
+| Lock timeout                            | DONE     | Configurable (default 60s), returns `skippedSync: true` on timeout                               |
+| **Run Log**                             | **DONE** | Phase 2 (docs/11): `writeRunLog` + `deriveStatus` + `last-run.json`                              |
 
 **Files**: `packages/cli/src/notifier/coordinator.ts`
 **Tests**: `packages/cli/src/__tests__/coordinator.test.ts` (30 tests)
 
 ### Notifier Hooks — DONE (all 5 sources)
 
-| Source | Mechanism | Driver |
-|--------|-----------|--------|
-| Claude Code | `settings.json` SessionEnd hook | `claude-hook.ts` |
-| Gemini CLI | `settings.json` SessionEnd hook + `enableHooks` | `gemini-hook.ts` |
-| OpenCode | JS plugin (`pew-tracker.js`) listening to `session.updated` | `opencode-plugin.ts` |
-| OpenClaw | Full plugin scaffold + `openclaw plugins install --link` | `openclaw-hook.ts` |
-| Codex CLI | TOML `config.toml` notify field, with original-notify backup/chain | `codex-notifier.ts` |
+| Source      | Mechanism                                                          | Driver               |
+| ----------- | ------------------------------------------------------------------ | -------------------- |
+| Claude Code | `settings.json` SessionEnd hook                                    | `claude-hook.ts`     |
+| Gemini CLI  | `settings.json` SessionEnd hook + `enableHooks`                    | `gemini-hook.ts`     |
+| OpenCode    | JS plugin (`pew-tracker.js`) listening to `session.updated`        | `opencode-plugin.ts` |
+| OpenClaw    | Full plugin scaffold + `openclaw plugins install --link`           | `openclaw-hook.ts`   |
+| Codex CLI   | TOML `config.toml` notify field, with original-notify backup/chain | `codex-notifier.ts`  |
 
 Supporting infrastructure:
+
 - `notify-handler.ts` — generates shared `notify.cjs` CJS script invoked by all hooks
 - `registry.ts` — driver registry with `installAll`, `uninstallAll`, `statusAll`
 - `paths.ts` — resolves all notifier paths with env var overrides
@@ -84,14 +85,14 @@ Full implementation details: docs/11.
 
 ### CLI Commands — DONE
 
-| Command | Description | Status |
-|---------|-------------|--------|
-| `pew sync` | Full token + session sync, optional auto-upload | DONE |
-| `pew status` | Show tracked files, last sync, pending uploads, hook status | DONE |
-| `pew login` | Browser-based OAuth, saves API key | DONE |
-| `pew notify` | Coordinated sync from AI tool hooks | DONE |
-| `pew init` | Install notifier hooks for all/specific sources | DONE |
-| `pew uninstall` | Remove notifier hooks | DONE |
+| Command         | Description                                                 | Status |
+| --------------- | ----------------------------------------------------------- | ------ |
+| `pew sync`      | Full token + session sync, optional auto-upload             | DONE   |
+| `pew status`    | Show tracked files, last sync, pending uploads, hook status | DONE   |
+| `pew login`     | Browser-based OAuth, saves API key                          | DONE   |
+| `pew notify`    | Coordinated sync from AI tool hooks                         | DONE   |
+| `pew init`      | Install notifier hooks for all/specific sources             | DONE   |
+| `pew uninstall` | Remove notifier hooks                                       | DONE   |
 
 ### Parsers — DONE (all 5 sources, tokens + sessions)
 
@@ -133,13 +134,13 @@ These issues were identified during Phase 1 and have been resolved in docs/11 (P
 
 Detailed plans will be written when each phase begins.
 
-| Phase | Focus | Status |
-|-------|-------|--------|
-| **Phase 2** | Run Log + notify session sync fix | **COMPLETED** (docs/11) |
-| **Phase 3** | Shared Discovery / Plan Builder | Planned |
-| **Phase 4** | Unified Source Registry (`SourceDriver`) | Planned |
-| **Phase 5** | Staged Queue + at-least-once semantics | Planned |
-| **Phase 6** | Tracker-driven default + diagnostic commands (`pew runs`, `pew doctor`) | Planned |
+| Phase       | Focus                                                                   | Status                  |
+| ----------- | ----------------------------------------------------------------------- | ----------------------- |
+| **Phase 2** | Run Log + notify session sync fix                                       | **COMPLETED** (docs/11) |
+| **Phase 3** | Shared Discovery / Plan Builder                                         | Planned                 |
+| **Phase 4** | Unified Source Registry (`SourceDriver`)                                | Planned                 |
+| **Phase 5** | Staged Queue + at-least-once semantics                                  | Planned                 |
+| **Phase 6** | Tracker-driven default + diagnostic commands (`pew runs`, `pew doctor`) | Planned                 |
 
 ### Phase 3: Discovery / Plan Layer
 

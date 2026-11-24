@@ -10,11 +10,7 @@
  * The full URL is persisted in the logo_url column.
  */
 
-import {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -100,10 +96,7 @@ export function logoUrlToKey(url: string): string | null {
  * Store a team logo JPG in R2 with immutable caching.
  * Returns the full CDN URL.
  */
-export async function putTeamLogo(
-  teamId: string,
-  data: Buffer,
-): Promise<string> {
+export async function putTeamLogo(teamId: string, data: Buffer): Promise<string> {
   const { client, bucket } = getClient();
   const key = generateLogoKey(teamId);
 
@@ -150,10 +143,7 @@ export function generateOrgLogoKey(orgId: string): string {
  * Store an organization logo JPG in R2 with immutable caching.
  * Returns the full CDN URL.
  */
-export async function putOrgLogo(
-  orgId: string,
-  data: Buffer,
-): Promise<string> {
+export async function putOrgLogo(orgId: string, data: Buffer): Promise<string> {
   const { client, bucket } = getClient();
   const key = generateOrgLogoKey(orgId);
 

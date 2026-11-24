@@ -341,8 +341,12 @@ export async function writeNotifyHandler(
 export async function repairRetiredNotifyHandler(stateDir: string): Promise<boolean> {
   const binDir = join(stateDir, "bin");
   let existing: string;
-  try { existing = await readFile(join(binDir, "notify.cjs"), "utf8"); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+  try {
+    existing = await readFile(join(binDir, "notify.cjs"), "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
   if (!existing.startsWith(`#!/usr/bin/env node\n// ${NOTIFY_HANDLER_MARKER}`)) return false;
   const path = /^const STATE_DIR = ("(?:[^"\\]|\\.)*");$/m.exec(existing);
   const binary = /^const PEW_BIN = ("(?:[^"\\]|\\.)*");$/m.exec(existing);
@@ -352,7 +356,9 @@ export async function repairRetiredNotifyHandler(stateDir: string): Promise<bool
     if (resolve(JSON.parse(path[1])) !== resolve(stateDir)) return false;
     pewBin = JSON.parse(binary[1]);
     if (!pewBin) return false;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
   const source = buildNotifyHandler({ stateDir, pewBin });
   const legacy = source.replace(/^if \(\["gemini-cli".*process.exit\(0\);\n/m, "");
   if (existing !== source && existing !== legacy) return false;

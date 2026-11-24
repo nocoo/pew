@@ -44,11 +44,7 @@ export async function generateMetadata({
 // Page (Server Component shell → Client Component body)
 // ---------------------------------------------------------------------------
 
-export default async function PublicProfilePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function PublicProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   return <PublicProfileView slug={slug} />;
 }

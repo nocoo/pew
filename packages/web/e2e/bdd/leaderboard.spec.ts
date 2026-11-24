@@ -1,4 +1,10 @@
-import { test, expect, mockDashboardApis, DASHBOARD_PRICING_FIXTURE, watchPageReadiness } from "./fixtures";
+import {
+  test,
+  expect,
+  mockDashboardApis,
+  DASHBOARD_PRICING_FIXTURE,
+  watchPageReadiness,
+} from "./fixtures";
 
 test("period and harness navigation refetch populated rankings", async ({ page }) => {
   const health = watchPageReadiness(page);
@@ -16,7 +22,9 @@ test("period and harness navigation refetch populated rankings", async ({ page }
   await expect(page.getByText("900,000", { exact: true })).toHaveCount(2);
 });
 
-test("Antigravity is selectable with its own source filter on desktop and mobile", async ({ page }) => {
+test("Antigravity is selectable with its own source filter on desktop and mobile", async ({
+  page,
+}) => {
   for (const width of [1440]) {
     await page.setViewportSize({ width, height: 900 });
     const health = watchPageReadiness(page);
@@ -25,14 +33,23 @@ test("Antigravity is selectable with its own source filter on desktop and mobile
     await expect(page.getByRole("button", { name: "Antigravity" })).toBeVisible();
     await page.getByRole("button", { name: "Antigravity" }).click();
     await expect(page.getByRole("menuitem")).toHaveCount(15);
-    for (const name of ["Gemini CLI", "Kosmos", "Oh My Pi", "ZCode", "PM Studio", "VS Code Copilot"]) {
+    for (const name of [
+      "Gemini CLI",
+      "Kosmos",
+      "Oh My Pi",
+      "ZCode",
+      "PM Studio",
+      "VS Code Copilot",
+    ]) {
       await expect(page.getByRole("menuitem", { name, exact: true })).toBeVisible();
     }
     await page.keyboard.press("Escape");
     await page.goto("/leaderboard/harness?source=zcode");
     await health.ready(["/api/leaderboard?source=zcode"]);
     await expect(page.getByRole("button", { name: "ZCode", exact: true })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
     health.dispose();
   }
 });
@@ -40,7 +57,14 @@ test("Antigravity is selectable with its own source filter on desktop and mobile
 test("landing page advertises only the nine active collectors", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Antigravity", { exact: true })).toBeVisible();
-  for (const name of ["Gemini CLI", "Kosmos", "Oh My Pi", "ZCode", "PM Studio", "VS Code Copilot"]) {
+  for (const name of [
+    "Gemini CLI",
+    "Kosmos",
+    "Oh My Pi",
+    "ZCode",
+    "PM Studio",
+    "VS Code Copilot",
+  ]) {
     await expect(page.getByText(name, { exact: true })).toHaveCount(0);
   }
 });

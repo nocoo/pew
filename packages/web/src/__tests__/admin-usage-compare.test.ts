@@ -78,25 +78,19 @@ describe("GET /api/admin/usage/compare", () => {
   });
 
   it("returns 400 for invalid date format", async () => {
-    const res = await GET(
-      makeGetRequest(BASE_PATH, { userIds: "u1,u2", from: "not-a-date" }),
-    );
+    const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2", from: "not-a-date" }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/date/i);
   });
 
   it("returns 400 for invalid tzOffset", async () => {
-    const res = await GET(
-      makeGetRequest(BASE_PATH, { userIds: "u1,u2", tzOffset: "9999" }),
-    );
+    const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2", tzOffset: "9999" }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/tzOffset/);
   });
 
   it("returns 400 for NaN tzOffset", async () => {
-    const res = await GET(
-      makeGetRequest(BASE_PATH, { userIds: "u1,u2", tzOffset: "abc" }),
-    );
+    const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2", tzOffset: "abc" }));
     expect(res.status).toBe(400);
   });
 
@@ -108,8 +102,20 @@ describe("GET /api/admin/usage/compare", () => {
       { id: "u2", name: "Bob", email: "b@b.com", image: null, slug: "bob" },
     ]);
     mockDbRead.getAdminUsageComparison.mockResolvedValueOnce([
-      { date: "2026-04-01", user_id: "u1", total_tokens: 100, source: "claude-code", model: "opus" },
-      { date: "2026-04-01", user_id: "u2", total_tokens: 200, source: "claude-code", model: "opus" },
+      {
+        date: "2026-04-01",
+        user_id: "u1",
+        total_tokens: 100,
+        source: "claude-code",
+        model: "opus",
+      },
+      {
+        date: "2026-04-01",
+        user_id: "u2",
+        total_tokens: 200,
+        source: "claude-code",
+        model: "opus",
+      },
     ]);
 
     const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2" }));
@@ -130,9 +136,7 @@ describe("GET /api/admin/usage/compare", () => {
     ]);
     mockDbRead.getAdminUsageComparison.mockResolvedValueOnce([]);
 
-    const res = await GET(
-      makeGetRequest(BASE_PATH, { userIds: "u1,u2,u1" }),
-    );
+    const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2,u1" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.users).toHaveLength(2);
@@ -177,9 +181,7 @@ describe("GET /api/admin/usage/compare", () => {
     ]);
     mockDbRead.getAdminUsageComparison.mockResolvedValueOnce([]);
 
-    const res = await GET(
-      makeGetRequest(BASE_PATH, { userIds: "u1,u2", tzOffset: "480" }),
-    );
+    const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2", tzOffset: "480" }));
     expect(res.status).toBe(200);
     // Check that the usage query includes the offset param
     const usageCall = mockDbRead.getAdminUsageComparison.mock.calls[0];

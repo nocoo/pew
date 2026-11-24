@@ -1,24 +1,13 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS, chartMuted } from "@/lib/palette";
 import type { DailyPoint } from "@/hooks/use-usage-data";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // Safe color references (CHART_COLORS is guaranteed 8 elements)
 const colorOutput = CHART_COLORS[1] as string;
@@ -103,7 +92,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No usage data yet
@@ -115,14 +104,12 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs md:text-sm text-basalt-muted-foreground">
-            Daily Usage
-          </p>
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">Daily Usage</p>
         </div>
         <div className="flex items-center gap-4">
           {[
@@ -131,10 +118,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
             { key: "cached", label: "Cached", color: chartMuted },
           ].map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ background: color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ background: color }} />
               <span className="text-xs text-basalt-muted-foreground">{label}</span>
             </div>
           ))}
@@ -153,28 +137,12 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
                 <stop offset="100%" stopColor={chart.violet} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gradUsageOutput" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="0%"
-                  stopColor={colorOutput}
-                  stopOpacity={0.3}
-                />
-                <stop
-                  offset="100%"
-                  stopColor={colorOutput}
-                  stopOpacity={0}
-                />
+                <stop offset="0%" stopColor={colorOutput} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={colorOutput} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gradUsageCached" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="0%"
-                  stopColor={chartMuted}
-                  stopOpacity={0.3}
-                />
-                <stop
-                  offset="100%"
-                  stopColor={chartMuted}
-                  stopOpacity={0}
-                />
+                <stop offset="0%" stopColor={chartMuted} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={chartMuted} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid

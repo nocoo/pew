@@ -5,20 +5,14 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { VALID_SOURCES } from "@pew/core";
 import { agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/hooks/use-usage-data";
-import {
-  useLeaderboard,
-  type LeaderboardPeriod,
-} from "@/hooks/use-leaderboard";
+import { useLeaderboard, type LeaderboardPeriod } from "@/hooks/use-leaderboard";
 import { useLeaderboardScope } from "@/hooks/use-leaderboard-scope";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { LeaderboardPageTitle } from "@/components/leaderboard/leaderboard-page-title";
 import { PeriodTabs } from "@/components/leaderboard/period-tabs";
 import { ScopeDropdown } from "@/components/leaderboard/scope-dropdown";
 import { LeaderboardPageShell } from "@/components/leaderboard/leaderboard-page-shell";
-import {
-  FilterDropdown,
-  type FilterDropdownItem,
-} from "@/components/leaderboard/filter-dropdown";
+import { FilterDropdown, type FilterDropdownItem } from "@/components/leaderboard/filter-dropdown";
 import { PAGE_SIZE } from "@/lib/leaderboard-constants";
 
 // ---------------------------------------------------------------------------
@@ -85,22 +79,15 @@ function HarnessLeaderboardContent() {
     [searchParams, router],
   );
 
-  const {
-    entries,
-    loading,
-    loadingMore,
-    error,
-    hasMore,
-    loadMore,
-    animationStartIndex,
-  } = useLeaderboard({
-    period,
-    teamId,
-    orgId,
-    source: selectedAgent,
-    limit: PAGE_SIZE,
-    enabled: scopeInitialized && !isSessionLoading,
-  });
+  const { entries, loading, loadingMore, error, hasMore, loadMore, animationStartIndex } =
+    useLeaderboard({
+      period,
+      teamId,
+      orgId,
+      source: selectedAgent,
+      limit: PAGE_SIZE,
+      enabled: scopeInitialized && !isSessionLoading,
+    });
 
   return (
     <>
@@ -121,11 +108,7 @@ function HarnessLeaderboardContent() {
           style={{ animationDelay: "180ms" }}
         >
           {/* Agent selector */}
-          <FilterDropdown
-            value={selectedAgent}
-            items={AGENT_ITEMS}
-            onChange={handleAgentChange}
-          />
+          <FilterDropdown value={selectedAgent} items={AGENT_ITEMS} onChange={handleAgentChange} />
 
           {/* Period tabs */}
           <PeriodTabs value={period} onChange={setPeriod} />

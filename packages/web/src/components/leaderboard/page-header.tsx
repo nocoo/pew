@@ -23,19 +23,9 @@ export function PageHeader({ children }: { children: React.ReactNode }) {
             "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--basalt-primary) / 0.08) 0%, transparent 70%)",
         }}
       />
-      <div
-        className="relative flex items-center gap-5 animate-fade-up"
-      >
-        <Link
-          href="/"
-          className="shrink-0 hover:opacity-80 transition-opacity"
-        >
-          <Image
-            src="/logo-80.png"
-            alt="pew"
-            width={48}
-            height={48}
-          />
+      <div className="relative flex items-center gap-5 animate-fade-up">
+        <Link href="/" className="shrink-0 hover:opacity-80 transition-opacity">
+          <Image src="/logo-80.png" alt="pew" width={48} height={48} />
         </Link>
         <div className="flex flex-col min-w-0">{children}</div>
       </div>

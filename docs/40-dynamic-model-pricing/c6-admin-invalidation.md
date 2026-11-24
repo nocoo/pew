@@ -54,7 +54,7 @@ export interface RebuildDynamicPricingResponse {
   ok: boolean;
   entriesWritten: number;
   warnings: string[];
-  errors: Array<{ source: 'openrouter' | 'models.dev' | 'd1' | 'kv'; message: string }>;
+  errors: Array<{ source: "openrouter" | "models.dev" | "d1" | "kv"; message: string }>;
   meta: DynamicPricingMeta;
 }
 ```
@@ -67,6 +67,7 @@ Behavior:
 4. Returns the full `SyncOutcome` so the UI can surface partial-failure diagnostics inline.
 
 The `forceRefetch` parameter is passed to the orchestrator via the existing `options` argument C3 already defined. Concrete plumbing:
+
 - Admin CRUD invalidation path → `forceRefetch: false` (cheap, no upstream calls — D1 is the source of truth being mutated).
 - "Force sync now" button → `forceRefetch: true` (operator just wants fresh upstream).
 
@@ -86,6 +87,7 @@ await Promise.allSettled([
 ```
 
 Rules:
+
 - **`Promise.allSettled`, not `Promise.all`** — a transient KV/RPC failure must not flip a successful 201/200 into a 500. The DB write already succeeded; the side effects are best-effort.
 - Each rejected settled result is logged with a source tag (`pricing:all` or `rebuildDynamicPricing`). No retry — next admin write or next cron will heal it.
 - Write verbs that return 4xx (validation failure, conflict, not-found) **skip** side effects — nothing to invalidate.
@@ -100,6 +102,7 @@ export async function POST(request: Request): Promise<Response>;
 ```
 
 Behavior:
+
 1. `const admin = await resolveAdmin(request);` — null → 403 (matches sibling `route.ts`).
 2. `const dbRead = await getDbRead();`
 3. `const outcome = await dbRead.rebuildDynamicPricing({ forceRefetch: true });`
@@ -117,7 +120,7 @@ Method is `POST` (not `GET`) because it has side effects (KV writes, possible up
 "use client";
 
 export function ForceSyncButton({ onComplete }: { onComplete?: (outcome: SyncOutcome) => void }) {
-  const [state, setState] = useState<'idle' | 'syncing' | 'ok' | 'error'>('idle');
+  const [state, setState] = useState<"idle" | "syncing" | "ok" | "error">("idle");
   const [outcome, setOutcome] = useState<SyncOutcome | null>(null);
   // POST /api/admin/pricing/rebuild; on success setState('ok'); render outcome below button
   // (entries written, per-source error chips). 30s debounce — disabled while in-flight.

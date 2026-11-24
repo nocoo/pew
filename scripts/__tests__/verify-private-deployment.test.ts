@@ -2,10 +2,16 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
-const workflow = readFileSync(new URL("../../.github/workflows/release.yml", import.meta.url), "utf8");
+const workflow = readFileSync(
+  new URL("../../.github/workflows/release.yml", import.meta.url),
+  "utf8",
+);
 const block = workflow.match(/ {8}python3 - <<'PY'\n([\s\S]*?)\n {8}PY/);
 if (!block?.[1]) throw new Error("Private deployment verifier not found");
-const verifier = block[1].split("\n").map((line) => line.slice(8)).join("\n");
+const verifier = block[1]
+  .split("\n")
+  .map((line) => line.slice(8))
+  .join("\n");
 
 const fixture = `
 import io, json, os, subprocess, sys, time, urllib.error, urllib.request
@@ -92,7 +98,11 @@ if scenario == 'valid':
 `;
 
 function run(code: string, scenario: string) {
-  return spawnSync("python3", ["-c", fixture, scenario], { input: code, encoding: "utf8", timeout: 10_000 });
+  return spawnSync("python3", ["-c", fixture, scenario], {
+    input: code,
+    encoding: "utf8",
+    timeout: 10_000,
+  });
 }
 
 describe("private deployment verifier behavior", () => {
@@ -105,14 +115,44 @@ describe("private deployment verifier behavior", () => {
     expect(result.stdout).toContain("Private Pew acceptance passed");
   });
 
-  it.each(["valid", "manifest", "service", "source", "mutable", "empty", "malformed", "sha", "digest", "id", "repo-digest", "revision", "source-label", "stopped", "e2e-env", "e2e-empty", "node-options", "package", "redirect", "json", "timeout", "version", "component", "health", "database", "cache", "status", "page", "asset", "leaderboard", "private", "write"])(
-    "fails closed for %s unless every private-origin check passes",
-    (scenario) => {
-      const result = run(verifier, scenario);
-      expect(result.error).toBeUndefined();
-      expect(result.status === 0).toBe(scenario === "valid");
-      expect(result.stdout.includes("Private Pew acceptance passed")).toBe(scenario === "valid");
-      expect(result.stdout + result.stderr).not.toContain("sensitive fixture body or env");
-    },
-  );
+  it.each([
+    "valid",
+    "manifest",
+    "service",
+    "source",
+    "mutable",
+    "empty",
+    "malformed",
+    "sha",
+    "digest",
+    "id",
+    "repo-digest",
+    "revision",
+    "source-label",
+    "stopped",
+    "e2e-env",
+    "e2e-empty",
+    "node-options",
+    "package",
+    "redirect",
+    "json",
+    "timeout",
+    "version",
+    "component",
+    "health",
+    "database",
+    "cache",
+    "status",
+    "page",
+    "asset",
+    "leaderboard",
+    "private",
+    "write",
+  ])("fails closed for %s unless every private-origin check passes", (scenario) => {
+    const result = run(verifier, scenario);
+    expect(result.error).toBeUndefined();
+    expect(result.status === 0).toBe(scenario === "valid");
+    expect(result.stdout.includes("Private Pew acceptance passed")).toBe(scenario === "valid");
+    expect(result.stdout + result.stderr).not.toContain("sensitive fixture body or env");
+  });
 });

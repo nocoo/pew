@@ -69,7 +69,7 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No data yet
@@ -81,7 +81,7 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-3",
-        className
+        className,
       )}
     >
       <p className="text-xs text-basalt-muted-foreground mb-2">{title}</p>
@@ -115,10 +115,7 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
         <div className="flex-1 min-w-0 space-y-1">
           {data.slice(0, 5).map((item) => (
             <div key={item.name} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: item.color }}
-              />
+              <div className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
               <span className="text-xs text-basalt-muted-foreground truncate flex-1">
                 {item.name}
               </span>
@@ -127,8 +124,14 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
               </span>
             </div>
           ))}
-          <ChartLegendMore items={data.map((item) => ({ key: item.name, label: item.name, color: item.color,
-            value: `${formatTokens(item.value)} (${(item.percent * 100).toFixed(1)}%)` }))} />
+          <ChartLegendMore
+            items={data.map((item) => ({
+              key: item.name,
+              label: item.name,
+              color: item.color,
+              value: `${formatTokens(item.value)} (${(item.percent * 100).toFixed(1)}%)`,
+            }))}
+          />
         </div>
       </div>
     </div>

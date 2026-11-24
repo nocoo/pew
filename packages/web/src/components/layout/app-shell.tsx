@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { AppHeader, AppHeaderMenuButton } from "@nocoo/basalt/components/app-header";
-import { AppMain, AppShell as BasaltAppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
+import {
+  AppMain,
+  AppShell as BasaltAppShell,
+  AppSkipLink,
+} from "@nocoo/basalt/components/app-shell";
 import { Button, ContentIsland, Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt";
 import { SidebarDrawer, SidebarProvider } from "@nocoo/basalt/components/sidebar";
 import { ShieldCheck } from "@nocoo/basalt/icons";
@@ -27,11 +31,14 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const prevPathname = useRef(pathname);
   const pauseCharts = usePauseChartsForSidebar();
-  const changeMobileOpen = useCallback((open: boolean) => {
-    if (open === mobileOpen) return;
-    pauseCharts();
-    setMobileOpen(open);
-  }, [mobileOpen, pauseCharts]);
+  const changeMobileOpen = useCallback(
+    (open: boolean) => {
+      if (open === mobileOpen) return;
+      pauseCharts();
+      setMobileOpen(open);
+    },
+    [mobileOpen, pauseCharts],
+  );
 
   useEffect(() => {
     if (prevPathname.current !== pathname) {

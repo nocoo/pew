@@ -205,28 +205,40 @@ export function PricingTable({ entries }: Props) {
                 key={`${e.provider}/${e.model}`}
                 className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
               >
-                <td className="px-4 py-3 text-sm font-mono text-basalt-foreground" title={e.aliases?.join(", ")}>
+                <td
+                  className="px-4 py-3 text-sm font-mono text-basalt-foreground"
+                  title={e.aliases?.join(", ")}
+                >
                   <div className="flex items-start justify-between gap-2">
-                  <span>{e.model}</span>
-                  {(e.contextTiers?.length || Object.keys(e.routePrices ?? {}).length > 0) ? (
-                    <InfoTooltip label={`Additional prices for ${e.model}`}>
+                    <span>{e.model}</span>
+                    {e.contextTiers?.length || Object.keys(e.routePrices ?? {}).length > 0 ? (
+                      <InfoTooltip label={`Additional prices for ${e.model}`}>
                         <p>Prices vary with provider and input length.</p>
-                        {e.contextTiers?.map((t) => <p key={t.minInputTokens}>
-                          {`Input ≥ ${t.minInputTokens.toLocaleString()}: input ${formatPrice(t.inputPerMillion)}, output ${formatPrice(t.outputPerMillion)}, read ${formatPrice(t.cachedPerMillion)}, write ${formatPrice(t.cacheWritePerMillion ?? null)}, write 1h ${formatPrice(t.cacheWrite1hPerMillion ?? null)}`}
-                        </p>)}
-                        {Object.entries(e.routePrices ?? {}).map(([route, p]) => <div key={route}>
-                          <p>{`${route}: input ${formatPrice(p.inputPerMillion)}, output ${formatPrice(p.outputPerMillion)}, read ${formatPrice(p.cachedPerMillion)}, write ${formatPrice(p.cacheWritePerMillion ?? null)}, write 1h ${formatPrice(p.cacheWrite1hPerMillion ?? null)}`}</p>
-                          {p.contextTiers?.map((t) => <p key={t.minInputTokens}>{`${route}, input ≥ ${t.minInputTokens.toLocaleString()}: input ${formatPrice(t.inputPerMillion)}, output ${formatPrice(t.outputPerMillion)}, read ${formatPrice(t.cachedPerMillion)}, write ${formatPrice(t.cacheWritePerMillion ?? null)}`}</p>)}
-                        </div>)}
-                    </InfoTooltip>
-                  ) : null}
+                        {e.contextTiers?.map((t) => (
+                          <p key={t.minInputTokens}>
+                            {`Input ≥ ${t.minInputTokens.toLocaleString()}: input ${formatPrice(t.inputPerMillion)}, output ${formatPrice(t.outputPerMillion)}, read ${formatPrice(t.cachedPerMillion)}, write ${formatPrice(t.cacheWritePerMillion ?? null)}, write 1h ${formatPrice(t.cacheWrite1hPerMillion ?? null)}`}
+                          </p>
+                        ))}
+                        {Object.entries(e.routePrices ?? {}).map(([route, p]) => (
+                          <div key={route}>
+                            <p>{`${route}: input ${formatPrice(p.inputPerMillion)}, output ${formatPrice(p.outputPerMillion)}, read ${formatPrice(p.cachedPerMillion)}, write ${formatPrice(p.cacheWritePerMillion ?? null)}, write 1h ${formatPrice(p.cacheWrite1hPerMillion ?? null)}`}</p>
+                            {p.contextTiers?.map((t) => (
+                              <p
+                                key={t.minInputTokens}
+                              >{`${route}, input ≥ ${t.minInputTokens.toLocaleString()}: input ${formatPrice(t.inputPerMillion)}, output ${formatPrice(t.outputPerMillion)}, read ${formatPrice(t.cachedPerMillion)}, write ${formatPrice(t.cacheWritePerMillion ?? null)}`}</p>
+                            ))}
+                          </div>
+                        ))}
+                      </InfoTooltip>
+                    ) : null}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <span className="inline-flex items-center gap-1.5">
                     {(() => {
-                      const icon = providerIconPath(e.provider)
-                        ?? (e.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
+                      const icon =
+                        providerIconPath(e.provider) ??
+                        (e.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
                       return icon ? (
                         // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
                         <img
@@ -239,7 +251,9 @@ export function PricingTable({ entries }: Props) {
                     {e.provider ?? "—"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-basalt-muted-foreground">{e.displayName ?? "—"}</td>
+                <td className="px-4 py-3 text-sm text-basalt-muted-foreground">
+                  {e.displayName ?? "—"}
+                </td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
                   {formatPrice(e.inputPerMillion)}
                 </td>
@@ -249,8 +263,12 @@ export function PricingTable({ entries }: Props) {
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
                   {formatPrice(e.cachedPerMillion)}
                 </td>
-                <td className="px-4 py-3 text-sm text-right tabular-nums">{formatPrice(e.cacheWritePerMillion ?? null)}</td>
-                <td className="px-4 py-3 text-sm text-right tabular-nums">{formatPrice(e.cacheWrite1hPerMillion ?? null)}</td>
+                <td className="px-4 py-3 text-sm text-right tabular-nums">
+                  {formatPrice(e.cacheWritePerMillion ?? null)}
+                </td>
+                <td className="px-4 py-3 text-sm text-right tabular-nums">
+                  {formatPrice(e.cacheWrite1hPerMillion ?? null)}
+                </td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
                   {formatContext(e.contextWindow)}
                 </td>
@@ -264,7 +282,10 @@ export function PricingTable({ entries }: Props) {
                     {e.origin}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-basalt-muted-foreground whitespace-nowrap" title={e.updatedAt}>
+                <td
+                  className="px-4 py-3 text-xs text-basalt-muted-foreground whitespace-nowrap"
+                  title={e.updatedAt}
+                >
                   {e.updatedAt.slice(0, 10)}
                 </td>
               </tr>

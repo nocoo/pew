@@ -54,13 +54,9 @@ export function createOpenCodeSqliteSessionDriver(
 
       // If inode changed (DB recreated), reset cursor
       const lastTimeUpdated =
-        prevCursor && prevCursor.inode === dbInode
-          ? prevCursor.lastTimeUpdated
-          : 0;
+        prevCursor && prevCursor.inode === dbInode ? prevCursor.lastTimeUpdated : 0;
       const prevProcessedIds = new Set(
-        prevCursor && prevCursor.inode === dbInode
-          ? (prevCursor.lastProcessedIds ?? [])
-          : [],
+        prevCursor && prevCursor.inode === dbInode ? (prevCursor.lastProcessedIds ?? []) : [],
       );
 
       const handle = opts.openSessionDb(opts.dbPath);

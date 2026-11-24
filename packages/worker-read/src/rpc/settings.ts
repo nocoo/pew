@@ -54,10 +54,7 @@ export type SettingsRpcRequest =
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handleGetAppSetting(
-  req: GetAppSettingRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetAppSetting(req: GetAppSettingRequest, db: D1Database): Promise<Response> {
   if (!req.key) {
     return Response.json({ error: "key is required" }, { status: 400 });
   }
@@ -78,15 +75,9 @@ async function handleGetAllAppSettings(db: D1Database): Promise<Response> {
   return Response.json({ result: results.results });
 }
 
-async function handleGetUserSetting(
-  req: GetUserSettingRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetUserSetting(req: GetUserSettingRequest, db: D1Database): Promise<Response> {
   if (!req.userId || !req.key) {
-    return Response.json(
-      { error: "userId and key are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId and key are required" }, { status: 400 });
   }
 
   const result = await db
@@ -99,7 +90,7 @@ async function handleGetUserSetting(
 
 async function handleGetAllUserSettings(
   req: GetAllUserSettingsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
@@ -119,7 +110,7 @@ async function handleGetAllUserSettings(
 
 export async function handleSettingsRpc(
   request: SettingsRpcRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   switch (request.method) {
     case "settings.getApp":
@@ -133,7 +124,7 @@ export async function handleSettingsRpc(
     default:
       return Response.json(
         { error: `Unknown settings method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

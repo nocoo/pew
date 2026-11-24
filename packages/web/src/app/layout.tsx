@@ -96,11 +96,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning style={{
-      "--chart-animation-duration": `${CHART_ANIMATION.animationDuration}ms`,
-      "--chart-animation-easing": CHART_ANIMATION.animationEasing,
-      "--chart-animation-delay": `${CHART_ANIMATION.animationBegin}ms`,
-    } as CSSProperties}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      style={
+        {
+          "--chart-animation-duration": `${CHART_ANIMATION.animationDuration}ms`,
+          "--chart-animation-easing": CHART_ANIMATION.animationEasing,
+          "--chart-animation-delay": `${CHART_ANIMATION.animationBegin}ms`,
+        } as CSSProperties
+      }
+    >
       <head>
         {/* Apply dark class before first paint to prevent FOUC */}
         <script
@@ -110,9 +116,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body
-        className={`${inter.variable} ${spaceGrotesk.variable} ${caveat.variable} antialiased`}
-      >
+      <body className={`${inter.variable} ${spaceGrotesk.variable} ${caveat.variable} antialiased`}>
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

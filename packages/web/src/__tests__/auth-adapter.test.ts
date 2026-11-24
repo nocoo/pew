@@ -158,10 +158,7 @@ describe("D1AuthAdapter", () => {
         image: null,
         emailVerified: null,
       });
-      expect(mockDbRead.getUserByOAuthAccount).toHaveBeenCalledWith(
-        "google",
-        "google-123"
-      );
+      expect(mockDbRead.getUserByOAuthAccount).toHaveBeenCalledWith("google", "google-123");
     });
 
     it("should return null when no linked account", async () => {
@@ -346,9 +343,9 @@ describe("D1AuthAdapter", () => {
       });
       vi.mocked(mockDbRead.getUserById).mockResolvedValueOnce(null);
 
-      await expect(
-        adapter.updateUser!({ id: "u1", name: "Ghost" })
-      ).rejects.toThrow("User u1 not found after update");
+      await expect(adapter.updateUser!({ id: "u1", name: "Ghost" })).rejects.toThrow(
+        "User u1 not found after update",
+      );
     });
   });
 });

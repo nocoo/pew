@@ -22,9 +22,7 @@ function createMockKV(overrides?: {
     get: overrides?.get ?? vi.fn().mockResolvedValue(null),
     put: overrides?.put ?? vi.fn().mockResolvedValue(undefined),
     delete: overrides?.delete ?? vi.fn().mockResolvedValue(undefined),
-    list:
-      overrides?.list ??
-      vi.fn().mockResolvedValue({ keys: [], list_complete: true }),
+    list: overrides?.list ?? vi.fn().mockResolvedValue({ keys: [], list_complete: true }),
     getWithMetadata: vi.fn().mockResolvedValue({ value: null, metadata: null }),
   } as unknown as KVNamespace;
 }
@@ -93,7 +91,7 @@ describe("withCache", () => {
     expect(fetcher).toHaveBeenCalledOnce();
     expect(consoleSpy).toHaveBeenCalledWith(
       '[cache] read error for "test-key":',
-      expect.any(Error)
+      expect.any(Error),
     );
 
     consoleSpy.mockRestore();
@@ -113,7 +111,7 @@ describe("withCache", () => {
     expect(result.cached).toBe(false);
     expect(consoleSpy).toHaveBeenCalledWith(
       '[cache] write error for "test-key":',
-      expect.any(Error)
+      expect.any(Error),
     );
 
     consoleSpy.mockRestore();
@@ -125,11 +123,7 @@ describe("withCache", () => {
 
     await withCache(kv, "key-24h", fetcher, { ttlSeconds: TTL_24H });
 
-    expect(kv.put).toHaveBeenCalledWith(
-      "key-24h",
-      expect.any(String),
-      { expirationTtl: 86400 }
-    );
+    expect(kv.put).toHaveBeenCalledWith("key-24h", expect.any(String), { expirationTtl: 86400 });
   });
 });
 

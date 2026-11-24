@@ -68,10 +68,7 @@ export function isNonNegativeInteger(n: unknown): n is number {
  * Check if value is a non-empty string within length limit.
  * @param maxLength - max allowed length (default MAX_STRING_LENGTH)
  */
-export function isNonEmptyString(
-  s: unknown,
-  maxLength: number = MAX_STRING_LENGTH,
-): s is string {
+export function isNonEmptyString(s: unknown, maxLength: number = MAX_STRING_LENGTH): s is string {
   return typeof s === "string" && s.length > 0 && s.length <= maxLength;
 }
 
@@ -137,9 +134,7 @@ export interface SessionIngestRequest {
 // Validation result type
 // ---------------------------------------------------------------------------
 
-export type ValidationResult<T> =
-  | { valid: true; record: T }
-  | { valid: false; error: string };
+export type ValidationResult<T> = { valid: true; record: T } | { valid: false; error: string };
 
 // ---------------------------------------------------------------------------
 // Record validators (type-safe narrowing)
@@ -149,10 +144,7 @@ export type ValidationResult<T> =
  * Validate a single token ingest record.
  * Returns a discriminated union: { valid: true, record } or { valid: false, error }.
  */
-export function validateIngestRecord(
-  r: unknown,
-  index: number,
-): ValidationResult<IngestRecord> {
+export function validateIngestRecord(r: unknown, index: number): ValidationResult<IngestRecord> {
   if (typeof r !== "object" || r === null) {
     return { valid: false, error: `record[${index}]: must be an object` };
   }
@@ -166,15 +158,24 @@ export function validateIngestRecord(
     };
   }
   if (!isNonEmptyString(rec.model)) {
-    return { valid: false, error: `record[${index}]: model is required (non-empty string, max ${MAX_STRING_LENGTH} chars)` };
+    return {
+      valid: false,
+      error: `record[${index}]: model is required (non-empty string, max ${MAX_STRING_LENGTH} chars)`,
+    };
   }
   if (!isValidISODate(rec.hour_start)) {
-    return { valid: false, error: `record[${index}]: invalid hour_start format (ISO 8601 required)` };
+    return {
+      valid: false,
+      error: `record[${index}]: invalid hour_start format (ISO 8601 required)`,
+    };
   }
 
   // Optional device_id (backward compat: old CLIs don't send it)
   if (rec.device_id !== undefined && !isNonEmptyString(rec.device_id)) {
-    return { valid: false, error: `record[${index}]: device_id must be a non-empty string if provided` };
+    return {
+      valid: false,
+      error: `record[${index}]: device_id must be a non-empty string if provided`,
+    };
   }
 
   const tokenFields = [
@@ -195,13 +196,20 @@ export function validateIngestRecord(
   }
 
   const record = rec as unknown as IngestRecord;
-  return { valid: true, record: {
-    source: record.source, model: record.model, hour_start: record.hour_start,
-    ...(record.device_id !== undefined ? { device_id: record.device_id } : {}),
-    input_tokens: record.input_tokens, cached_input_tokens: record.cached_input_tokens,
-    output_tokens: record.output_tokens, reasoning_output_tokens: record.reasoning_output_tokens,
-    total_tokens: record.total_tokens,
-  } };
+  return {
+    valid: true,
+    record: {
+      source: record.source,
+      model: record.model,
+      hour_start: record.hour_start,
+      ...(record.device_id !== undefined ? { device_id: record.device_id } : {}),
+      input_tokens: record.input_tokens,
+      cached_input_tokens: record.cached_input_tokens,
+      output_tokens: record.output_tokens,
+      reasoning_output_tokens: record.reasoning_output_tokens,
+      total_tokens: record.total_tokens,
+    },
+  };
 }
 
 /**
@@ -272,11 +280,21 @@ export function validateSessionIngestRecord(
   }
 
   const record = rec as unknown as SessionIngestRecord;
-  return { valid: true, record: {
-    session_key: record.session_key, source: record.source, kind: record.kind,
-    started_at: record.started_at, last_message_at: record.last_message_at,
-    duration_seconds: record.duration_seconds, user_messages: record.user_messages,
-    assistant_messages: record.assistant_messages, total_messages: record.total_messages,
-    project_ref: record.project_ref, model: record.model, snapshot_at: record.snapshot_at,
-  } };
+  return {
+    valid: true,
+    record: {
+      session_key: record.session_key,
+      source: record.source,
+      kind: record.kind,
+      started_at: record.started_at,
+      last_message_at: record.last_message_at,
+      duration_seconds: record.duration_seconds,
+      user_messages: record.user_messages,
+      assistant_messages: record.assistant_messages,
+      total_messages: record.total_messages,
+      project_ref: record.project_ref,
+      model: record.model,
+      snapshot_at: record.snapshot_at,
+    },
+  };
 }

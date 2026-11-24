@@ -30,13 +30,11 @@ export function ChartTooltip({ title, children, className }: ChartTooltipProps) 
     <div
       className={cn(
         "rounded-[var(--radius-widget)] bg-basalt-popover p-2.5 shadow-lg ring-1 ring-basalt-border/50",
-        className
+        className,
       )}
     >
       {title && (
-        <p className="mb-1.5 text-xs font-medium text-basalt-popover-foreground">
-          {title}
-        </p>
+        <p className="mb-1.5 text-xs font-medium text-basalt-popover-foreground">{title}</p>
       )}
       {children}
     </div>
@@ -69,15 +67,14 @@ export function ChartTooltipRow({
 }: ChartTooltipRowProps) {
   return (
     <div className="flex items-center gap-2 text-xs">
-      <div
-        className="h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: color }}
-      />
-      <span className="min-w-0 truncate text-basalt-muted-foreground" title={label}>{label}</span>
+      <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+      <span className="min-w-0 truncate text-basalt-muted-foreground" title={label}>
+        {label}
+      </span>
       <span
         className={cn(
           "ml-auto shrink-0 font-medium text-basalt-popover-foreground",
-          tabularNums && "tabular-nums"
+          tabularNums && "tabular-nums",
         )}
       >
         {value}
@@ -117,9 +114,7 @@ export function ChartTooltipSummary({ label, value }: ChartTooltipSummaryProps) 
       <ChartTooltipDivider />
       <div className="flex items-center gap-2 text-xs">
         <span className="text-basalt-muted-foreground">{label}</span>
-        <span className="ml-auto font-medium text-basalt-popover-foreground">
-          {value}
-        </span>
+        <span className="ml-auto font-medium text-basalt-popover-foreground">{value}</span>
       </div>
     </>
   );
@@ -137,7 +132,5 @@ interface ChartTooltipSubtitleProps {
  * A subtitle line for additional context (e.g., source info).
  */
 export function ChartTooltipSubtitle({ children }: ChartTooltipSubtitleProps) {
-  return (
-    <p className="mb-1 text-xs text-basalt-muted-foreground">{children}</p>
-  );
+  return <p className="mb-1 text-xs text-basalt-muted-foreground">{children}</p>;
 }

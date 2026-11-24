@@ -116,9 +116,7 @@ describe("ConfigManager", () => {
       const manager = new ConfigManager(tempDir);
       const id = await manager.ensureDeviceId();
 
-      expect(id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-      );
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 
       // Verify device.json was written
       const raw = await readFile(join(tempDir, "device.json"), "utf-8");
@@ -185,10 +183,7 @@ describe("ConfigManager", () => {
       expect(JSON.parse(deviceRaw).deviceId).toBe(legacyId);
 
       // config.dev.json cleaned
-      const configRaw = await readFile(
-        join(tempDir, "config.dev.json"),
-        "utf-8",
-      );
+      const configRaw = await readFile(join(tempDir, "config.dev.json"), "utf-8");
       const config = JSON.parse(configRaw);
       expect(config.token).toBe("tk_dev");
       expect(config.deviceId).toBeUndefined();
@@ -197,10 +192,7 @@ describe("ConfigManager", () => {
     it("should prefer existing device.json over legacy config deviceId", async () => {
       // device.json already exists
       const sharedId = "shared-device-id";
-      await writeFile(
-        join(tempDir, "device.json"),
-        JSON.stringify({ deviceId: sharedId }),
-      );
+      await writeFile(join(tempDir, "device.json"), JSON.stringify({ deviceId: sharedId }));
 
       // Legacy config also has a (different) deviceId
       await writeFile(
@@ -221,9 +213,7 @@ describe("ConfigManager", () => {
       const id = await manager.ensureDeviceId();
 
       // Should generate a new ID (no legacy config to migrate from)
-      expect(id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-      );
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     });
 
     it("should create directory when writing device.json to nested path", async () => {

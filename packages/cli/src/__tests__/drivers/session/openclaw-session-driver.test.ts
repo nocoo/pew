@@ -76,7 +76,10 @@ describe("openClawSessionDriver", () => {
       const sessionsDir = join(tempDir, "agents", "my-agent", "sessions");
       await mkdir(sessionsDir, { recursive: true });
       const filePath = join(sessionsDir, "session.jsonl");
-      await writeFile(filePath, `${openClawLine()}\n${openClawLine({ timestamp: "2026-03-07T10:05:00.000Z" })}\n`);
+      await writeFile(
+        filePath,
+        `${openClawLine()}\n${openClawLine({ timestamp: "2026-03-07T10:05:00.000Z" })}\n`,
+      );
 
       const snapshots = await openClawSessionDriver.parse(filePath);
       expect(snapshots).toHaveLength(1);

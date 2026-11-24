@@ -8,7 +8,12 @@ import { useUsageData } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
 import { formatCost, usePricingMap } from "@/hooks/use-pricing";
 import { sourceLabel } from "@/hooks/use-usage-data";
-import { deviceLabel, shortDeviceId, toDeviceAgentBreakdown, toDeviceModelBreakdown } from "@/lib/device-helpers";
+import {
+  deviceLabel,
+  shortDeviceId,
+  toDeviceAgentBreakdown,
+  toDeviceModelBreakdown,
+} from "@/lib/device-helpers";
 import { toSourceTrendPoints } from "@/lib/usage-helpers";
 import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
@@ -26,7 +31,12 @@ import { ModelEvolutionChart } from "@/components/dashboard/model-evolution-char
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { FilterDropdown } from "@/components/dashboard/filter-dropdown";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
-import { periodToDateRange, periodLabel, getLocalToday, fillTimelineGaps } from "@/lib/date-helpers";
+import {
+  periodToDateRange,
+  periodLabel,
+  getLocalToday,
+  fillTimelineGaps,
+} from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
 import type { DeviceAggregate } from "@pew/core";
 
@@ -40,8 +50,11 @@ function DevicesSkeleton() {
       {/* Stat grid (3 cols) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-          <div key={`slot-${i}`} className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-2">
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            key={`slot-${i}`}
+            className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-2"
+          >
             <Skeleton style={{ width: undefined }} className="h-3 w-20" />
             <Skeleton style={{ width: undefined }} className="h-7 w-24" />
           </div>
@@ -50,8 +63,12 @@ function DevicesSkeleton() {
 
       <div className="grid gap-4 md:gap-6">
         {Array.from({ length: 2 }).map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-          <ChartCardSkeleton key={`slot-${i}`} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
+          <ChartCardSkeleton
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            key={`slot-${i}`}
+            titleWidth="w-24"
+            chartHeight="h-[240px] md:h-[280px]"
+          />
         ))}
       </div>
 
@@ -63,30 +80,66 @@ function DevicesSkeleton() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-basalt-border">
-              <th className="px-4 py-3 text-left"><Skeleton style={{ width: undefined }} className="h-3 w-14" /></th>
-              <th className="px-4 py-3 text-left hidden lg:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10" /></th>
-              <th className="px-4 py-3 text-left hidden xl:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-12" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-14 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-left">
+                <Skeleton style={{ width: undefined }} className="h-3 w-14" />
+              </th>
+              <th className="px-4 py-3 text-left hidden lg:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10" />
+              </th>
+              <th className="px-4 py-3 text-left hidden xl:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-12" />
+              </th>
+              <th className="px-4 py-3 text-right">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right hidden md:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right hidden sm:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-14 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right hidden md:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 4 }).map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
               <tr key={`slot-${i}`} className="border-b border-basalt-border/50 last:border-0">
-                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-28" /></td>
-                <td className="px-4 py-3 hidden lg:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-16" /></td>
-                <td className="px-4 py-3 hidden xl:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-16" /></td>
-                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-2 w-full rounded-full" /></td>
+                <td className="px-4 py-3">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-28" />
+                </td>
+                <td className="px-4 py-3 hidden lg:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-16" />
+                </td>
+                <td className="px-4 py-3 hidden xl:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-16" />
+                </td>
+                <td className="px-4 py-3">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3 hidden md:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3 hidden sm:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3 hidden md:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-2 w-full rounded-full" />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -108,8 +161,12 @@ function DevicesSkeleton() {
         </div>
         <div className="grid gap-4 md:gap-6">
           {Array.from({ length: 2 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <ChartCardSkeleton key={`slot-${i}`} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
+            <ChartCardSkeleton
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              key={`slot-${i}`}
+              titleWidth="w-24"
+              chartHeight="h-[240px] md:h-[280px]"
+            />
           ))}
         </div>
       </div>
@@ -128,9 +185,7 @@ function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
   const recentCutoff = new Date();
   recentCutoff.setDate(recentCutoff.getDate() - recentDays);
   const recentCutoffStr = recentCutoff.toISOString();
-  const recentlyActive = devices.filter(
-    (d) => d.last_seen >= recentCutoffStr
-  ).length;
+  const recentlyActive = devices.filter((d) => d.last_seen >= recentCutoffStr).length;
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -146,9 +201,7 @@ function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
       </div>
       <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
         <p className="text-xs text-basalt-muted-foreground">Active (7d)</p>
-        <p className="mt-1 text-2xl font-bold tabular-nums">
-          {recentlyActive}
-        </p>
+        <p className="mt-1 text-2xl font-bold tabular-nums">{recentlyActive}</p>
       </div>
     </div>
   );
@@ -179,24 +232,24 @@ export default function ByDevicePage() {
     const raw = data?.timeline ?? [];
     if (raw.length === 0) return raw;
     const deviceIds = [...new Set(raw.map((r) => r.device_id))];
-    return fillTimelineGaps(raw, "date", (d) =>
-      deviceIds.map((id) => ({
-        date: d,
-        device_id: id,
-        total_tokens: 0,
-        input_tokens: 0,
-        output_tokens: 0,
-        cached_input_tokens: 0,
-        reasoning_output_tokens: 0,
-      })),
+    return fillTimelineGaps(
+      raw,
+      "date",
+      (d) =>
+        deviceIds.map((id) => ({
+          date: d,
+          device_id: id,
+          total_tokens: 0,
+          input_tokens: 0,
+          output_tokens: 0,
+          cached_input_tokens: 0,
+          reasoning_output_tokens: 0,
+        })),
       today,
     );
   }, [data, today]);
 
-  const grandTotal = useMemo(
-    () => devices.reduce((sum, d) => sum + d.total_tokens, 0),
-    [devices],
-  );
+  const grandTotal = useMemo(() => devices.reduce((sum, d) => sum + d.total_tokens, 0), [devices]);
 
   // Deep Dive: device dropdown options
   const deviceOptions = useMemo(
@@ -220,22 +273,13 @@ export default function ByDevicePage() {
   const deviceDetails = useMemo(() => data?.deviceDetails ?? [], [data]);
 
   const filteredDetails = useMemo(
-    () =>
-      effectiveDevice
-        ? deviceDetails.filter((d) => d.device_id === effectiveDevice)
-        : [],
+    () => (effectiveDevice ? deviceDetails.filter((d) => d.device_id === effectiveDevice) : []),
     [deviceDetails, effectiveDevice],
   );
 
-  const agentBreakdown = useMemo(
-    () => toDeviceAgentBreakdown(filteredDetails),
-    [filteredDetails],
-  );
+  const agentBreakdown = useMemo(() => toDeviceAgentBreakdown(filteredDetails), [filteredDetails]);
 
-  const modelBreakdown = useMemo(
-    () => toDeviceModelBreakdown(filteredDetails),
-    [filteredDetails],
-  );
+  const modelBreakdown = useMemo(() => toDeviceModelBreakdown(filteredDetails), [filteredDetails]);
 
   // Deep Dive: time-series data for selected device (reuse usage.get with deviceId filter)
   const { data: deviceUsage, error: deviceUsageError } = useUsageData({
@@ -257,7 +301,16 @@ export default function ByDevicePage() {
       <PageHeader
         title="By Device"
         description={`Compare usage across your devices (${subtitle}).`}
-        actions={<><PeriodSelector value={period} onChange={setPeriod} /><UsageInformation records={deviceDetails} pricingMap={pricingMap} loading={pricingLoading} /></>}
+        actions={
+          <>
+            <PeriodSelector value={period} onChange={setPeriod} />
+            <UsageInformation
+              records={deviceDetails}
+              pricingMap={pricingMap}
+              loading={pricingLoading}
+            />
+          </>
+        }
       />
 
       {/* Error */}
@@ -267,206 +320,203 @@ export default function ByDevicePage() {
       {loading && <DevicesSkeleton />}
 
       {/* Content */}
-      {!loading && data && (
-        devices.length === 0 ? (
-            <Empty
-              title="No device data yet."
-              description="Sync from multiple devices to compare usage."
-              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-            />
-          ) : (
-            <>
-              {/* Overview */}
-              <DashboardSegment title="Overview">
-                <StatGrid devices={devices} />
-              </DashboardSegment>
+      {!loading &&
+        data &&
+        (devices.length === 0 ? (
+          <Empty
+            title="No device data yet."
+            description="Sync from multiple devices to compare usage."
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+          />
+        ) : (
+          <>
+            {/* Overview */}
+            <DashboardSegment title="Overview">
+              <StatGrid devices={devices} />
+            </DashboardSegment>
 
-              {/* Trend & Share */}
-              <DashboardSegment title="Trend & Share">
-                <div className="grid gap-4 md:gap-6">
-                  <DeviceTrendChart timeline={timeline} devices={devices} />
-                  <DeviceShareChart timeline={timeline} devices={devices} />
-                </div>
-              </DashboardSegment>
+            {/* Trend & Share */}
+            <DashboardSegment title="Trend & Share">
+              <div className="grid gap-4 md:gap-6">
+                <DeviceTrendChart timeline={timeline} devices={devices} />
+                <DeviceShareChart timeline={timeline} devices={devices} />
+              </div>
+            </DashboardSegment>
 
-              {/* Breakdown */}
-              <DashboardSegment title="Breakdown">
-                <DeviceBreakdownChart devices={devices} />
-              </DashboardSegment>
+            {/* Breakdown */}
+            <DashboardSegment title="Breakdown">
+              <DeviceBreakdownChart devices={devices} />
+            </DashboardSegment>
 
-              {/* Summary table */}
-              <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-basalt-border">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                        Device
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">
-                        Tools
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden xl:table-cell">
-                        Models
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                        Input
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                        Output
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
-                        Cached
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                        Total
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
-                        Est. Cost
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32 hidden md:table-cell">
-                        Share
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {devices.map((device, i) => {
-                      const pct =
-                        grandTotal > 0
-                          ? (device.total_tokens / grandTotal) * 100
-                          : 0;
-                      return (
-                        <tr
-                          key={device.device_id}
-                          className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
+            {/* Summary table */}
+            <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-basalt-border">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                      Device
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">
+                      Tools
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden xl:table-cell">
+                      Models
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                      Input
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                      Output
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
+                      Cached
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
+                      Est. Cost
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32 hidden md:table-cell">
+                      Share
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {devices.map((device, i) => {
+                    const pct = grandTotal > 0 ? (device.total_tokens / grandTotal) * 100 : 0;
+                    return (
+                      <tr
+                        key={device.device_id}
+                        className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="h-2.5 w-2.5 rounded-full shrink-0"
+                              style={{
+                                backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+                              }}
+                            />
+                            <div>
+                              <span className="text-sm font-medium text-basalt-foreground">
+                                {deviceLabel(device)}
+                              </span>
+                              {device.device_id !== "default" && (
+                                <span className="ml-2 text-[10px] font-mono text-basalt-muted-foreground/60">
+                                  {shortDeviceId(device.device_id)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 hidden lg:table-cell">
+                          <div className="flex gap-1.5">
+                            {device.sources.map((s) => (
+                              <span
+                                key={s}
+                                className="rounded-full bg-basalt-accent px-2 py-0.5 text-[10px] font-medium text-basalt-muted-foreground"
+                              >
+                                {sourceLabel(s)}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 hidden xl:table-cell">
+                          <span className="text-xs text-basalt-muted-foreground truncate block max-w-[200px]">
+                            {device.models.length > 0 ? device.models.join(", ") : "—"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right tabular-nums">
+                          {formatTokens(device.input_tokens)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right tabular-nums">
+                          {formatTokens(device.output_tokens + device.reasoning_output_tokens)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right tabular-nums hidden md:table-cell">
+                          {formatTokens(device.cached_input_tokens)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right tabular-nums font-medium">
+                          {formatTokens(device.total_tokens)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right tabular-nums hidden sm:table-cell">
+                          {formatCost(device.estimated_cost)}
+                          {device.estimated_cost_complete !== true && (
+                            <span className="block text-[10px] text-basalt-muted-foreground">
+                              Includes assumptions
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 rounded-full bg-basalt-background overflow-hidden">
                               <div
-                                className="h-2.5 w-2.5 rounded-full shrink-0"
+                                key={pct}
+                                className="chart-animate chart-grow-x h-full rounded-full"
                                 style={{
-                                  backgroundColor:
-                                    CHART_COLORS[i % CHART_COLORS.length],
+                                  width: `${pct}%`,
+                                  backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
                                 }}
                               />
-                              <div>
-                                <span className="text-sm font-medium text-basalt-foreground">
-                                  {deviceLabel(device)}
-                                </span>
-                                {device.device_id !== "default" && (
-                                  <span className="ml-2 text-[10px] font-mono text-basalt-muted-foreground/60">
-                                    {shortDeviceId(device.device_id)}
-                                  </span>
-                                )}
-                              </div>
                             </div>
-                          </td>
-                          <td className="px-4 py-3 hidden lg:table-cell">
-                            <div className="flex gap-1.5">
-                              {device.sources.map((s) => (
-                                <span
-                                  key={s}
-                                  className="rounded-full bg-basalt-accent px-2 py-0.5 text-[10px] font-medium text-basalt-muted-foreground"
-                                >
-                                  {sourceLabel(s)}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 hidden xl:table-cell">
-                            <span className="text-xs text-basalt-muted-foreground truncate block max-w-[200px]">
-                              {device.models.length > 0
-                                ? device.models.join(", ")
-                                : "—"}
+                            <span className="text-[10px] tabular-nums text-basalt-muted-foreground w-8 text-right">
+                              {pct.toFixed(0)}%
                             </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right tabular-nums">
-                            {formatTokens(device.input_tokens)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right tabular-nums">
-                            {formatTokens(device.output_tokens + device.reasoning_output_tokens)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right tabular-nums hidden md:table-cell">
-                            {formatTokens(device.cached_input_tokens)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right tabular-nums font-medium">
-                            {formatTokens(device.total_tokens)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right tabular-nums hidden sm:table-cell">
-                            {formatCost(device.estimated_cost)}
-                            {device.estimated_cost_complete !== true && (
-                              <span className="block text-[10px] text-basalt-muted-foreground">Includes assumptions</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 hidden md:table-cell">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 rounded-full bg-basalt-background overflow-hidden">
-                                <div
-                                  key={pct}
-                                  className="chart-animate chart-grow-x h-full rounded-full"
-                                  style={{
-                                    width: `${pct}%`,
-                                    backgroundColor:
-                                      CHART_COLORS[i % CHART_COLORS.length],
-                                  }}
-                                />
-                              </div>
-                              <span className="text-[10px] tabular-nums text-basalt-muted-foreground w-8 text-right">
-                                {pct.toFixed(0)}%
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t border-basalt-border">
-                      <td className="px-4 py-3 text-sm font-medium" colSpan={3}>
-                        Total
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium" />
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium" />
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden md:table-cell" />
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-bold">
-                        {formatTokens(grandTotal)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden sm:table-cell">
-                        {formatCost(
-                          devices.reduce((s, d) => s + d.estimated_cost, 0),
-                        )}
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell" />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-basalt-border">
+                    <td className="px-4 py-3 text-sm font-medium" colSpan={3}>
+                      Total
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-medium" />
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-medium" />
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden md:table-cell" />
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-bold">
+                      {formatTokens(grandTotal)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden sm:table-cell">
+                      {formatCost(devices.reduce((s, d) => s + d.estimated_cost, 0))}
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell" />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
 
-              {/* Deep Dive — agent × model drill-down */}
-              <DashboardSegment
-                title="Deep Dive"
-                action={
-                  <FilterDropdown
-                    label="Device"
-                    value={effectiveDevice}
-                    onChange={setSelectedDevice}
-                    options={deviceOptions}
-                    allLabel="All Devices"
-                  />
-                }
-              >
-                <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-                  <DeviceAgentChart data={agentBreakdown} />
-                  <DeviceModelChart data={modelBreakdown} />
-                </div>
-                <ErrorBanner messagePrefix="Failed to load device trends" error={deviceUsageError} />
-                <div className="grid gap-4 md:gap-6">
-                  <SourceTrendChart data={agentTrend} title="Agent Trend" />
-                  <ModelEvolutionChart records={deviceUsage?.records ?? []} tzOffset={tzOffset} title="Model Mix" />
-                </div>
-              </DashboardSegment>
-            </>
-          )
-      )}
+            {/* Deep Dive — agent × model drill-down */}
+            <DashboardSegment
+              title="Deep Dive"
+              action={
+                <FilterDropdown
+                  label="Device"
+                  value={effectiveDevice}
+                  onChange={setSelectedDevice}
+                  options={deviceOptions}
+                  allLabel="All Devices"
+                />
+              }
+            >
+              <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+                <DeviceAgentChart data={agentBreakdown} />
+                <DeviceModelChart data={modelBreakdown} />
+              </div>
+              <ErrorBanner messagePrefix="Failed to load device trends" error={deviceUsageError} />
+              <div className="grid gap-4 md:gap-6">
+                <SourceTrendChart data={agentTrend} title="Agent Trend" />
+                <ModelEvolutionChart
+                  records={deviceUsage?.records ?? []}
+                  tzOffset={tzOffset}
+                  title="Model Mix"
+                />
+              </div>
+            </DashboardSegment>
+          </>
+        ))}
     </div>
   );
 }

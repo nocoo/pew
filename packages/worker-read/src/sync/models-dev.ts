@@ -104,11 +104,17 @@ export function parseModelsDev(json: unknown, now: string): ParseResult {
         const minInputTokens = Number(threshold[1]) * 1000 + 1;
         if (!Number.isSafeInteger(minInputTokens)) continue;
         const tier = raw as Record<string, unknown>;
-        const ti = nonNegativeNumber(tier.input); const to = nonNegativeNumber(tier.output);
+        const ti = nonNegativeNumber(tier.input);
+        const to = nonNegativeNumber(tier.output);
         if (ti === null || to === null) continue;
-        contextTiers.push({ minInputTokens, inputPerMillion: ti, outputPerMillion: to,
-          cachedPerMillion: nonNegativeNumber(tier.cache_read), cacheWritePerMillion: nonNegativeNumber(tier.cache_write),
-          cacheWrite1hPerMillion: nonNegativeNumber(tier.cache_write_1h) });
+        contextTiers.push({
+          minInputTokens,
+          inputPerMillion: ti,
+          outputPerMillion: to,
+          cachedPerMillion: nonNegativeNumber(tier.cache_read),
+          cacheWritePerMillion: nonNegativeNumber(tier.cache_write),
+          cacheWrite1hPerMillion: nonNegativeNumber(tier.cache_write_1h),
+        });
       }
       const ctx =
         typeof m.limit?.context === "number" && Number.isFinite(m.limit.context)
@@ -126,7 +132,9 @@ export function parseModelsDev(json: unknown, now: string): ParseResult {
         cacheWritePerMillion: nonNegativeNumber(cost.cache_write),
         cacheWrite1hPerMillion: nonNegativeNumber(cost.cache_write_1h),
         route: "direct",
-        ...(contextTiers.length ? { contextTiers: contextTiers.sort((a, b) => a.minInputTokens - b.minInputTokens) } : {}),
+        ...(contextTiers.length
+          ? { contextTiers: contextTiers.sort((a, b) => a.minInputTokens - b.minInputTokens) }
+          : {}),
         contextWindow: ctx,
         origin: "models.dev",
         updatedAt: now,

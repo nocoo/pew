@@ -10,14 +10,26 @@ const executeSyncMock = vi.hoisted(() =>
     totalDeltas: 0,
     totalRecords: 0,
     sources: {
-      claude: 0, codex: 0, grok: 0, opencode: 0,
-      openclaw: 0, pi: 0, copilotCli: 0,
-      hermes: 0, antigravity: 0,
+      claude: 0,
+      codex: 0,
+      grok: 0,
+      opencode: 0,
+      openclaw: 0,
+      pi: 0,
+      copilotCli: 0,
+      hermes: 0,
+      antigravity: 0,
     },
     filesScanned: {
-      claude: 0, codex: 0, grok: 0, opencode: 0,
-      openclaw: 0, pi: 0, copilotCli: 0,
-      hermes: 0, antigravity: 0,
+      claude: 0,
+      codex: 0,
+      grok: 0,
+      opencode: 0,
+      openclaw: 0,
+      pi: 0,
+      copilotCli: 0,
+      hermes: 0,
+      antigravity: 0,
     },
     dbsScanned: { opencode: 0, hermes: 0, antigravity: 0 },
   })),
@@ -27,10 +39,24 @@ const executeSessionSyncMock = vi.hoisted(() =>
     totalSnapshots: 0,
     totalRecords: 0,
     sources: {
-      claude: 0, codex: 0, copilotCli: 0, grok: 0, opencode: 0, openclaw: 0, pi: 0, antigravity: 0,
+      claude: 0,
+      codex: 0,
+      copilotCli: 0,
+      grok: 0,
+      opencode: 0,
+      openclaw: 0,
+      pi: 0,
+      antigravity: 0,
     },
     filesScanned: {
-      claude: 0, codex: 0, copilotCli: 0, grok: 0, opencode: 0, openclaw: 0, pi: 0, antigravity: 0,
+      claude: 0,
+      codex: 0,
+      copilotCli: 0,
+      grok: 0,
+      opencode: 0,
+      openclaw: 0,
+      pi: 0,
+      antigravity: 0,
     },
     dbsScanned: { opencode: 0, antigravity: 0 },
   })),
@@ -88,35 +114,65 @@ describe("syncCommand.run() forwarding", () => {
       join(homedir(), ".gemini", "antigravity-cli", "conversations"),
       join(homedir(), ".gemini", "antigravity", "conversations"),
     ];
-    expect(executeSyncMock).toHaveBeenCalledWith(expect.objectContaining({ antigravityDirs: roots }));
-    expect(executeSessionSyncMock).toHaveBeenCalledWith(expect.objectContaining({ antigravityDirs: roots }));
+    expect(executeSyncMock).toHaveBeenCalledWith(
+      expect.objectContaining({ antigravityDirs: roots }),
+    );
+    expect(executeSessionSyncMock).toHaveBeenCalledWith(
+      expect.objectContaining({ antigravityDirs: roots }),
+    );
   });
 
   it("labels Antigravity token, session and database summaries", async () => {
     const tokenResult = await executeSyncMock();
     const sessionResult = await executeSessionSyncMock();
-    executeSyncMock.mockResolvedValueOnce({ ...tokenResult, totalDeltas: 1, totalRecords: 1,
-      sources: { ...tokenResult.sources, antigravity: 1 }, dbsScanned: { ...tokenResult.dbsScanned, antigravity: 2 } });
-    executeSessionSyncMock.mockResolvedValueOnce({ ...sessionResult, totalSnapshots: 1, totalRecords: 1,
-      sources: { ...sessionResult.sources, antigravity: 1 }, dbsScanned: { ...sessionResult.dbsScanned, antigravity: 2 } });
+    executeSyncMock.mockResolvedValueOnce({
+      ...tokenResult,
+      totalDeltas: 1,
+      totalRecords: 1,
+      sources: { ...tokenResult.sources, antigravity: 1 },
+      dbsScanned: { ...tokenResult.dbsScanned, antigravity: 2 },
+    });
+    executeSessionSyncMock.mockResolvedValueOnce({
+      ...sessionResult,
+      totalSnapshots: 1,
+      totalRecords: 1,
+      sources: { ...sessionResult.sources, antigravity: 1 },
+      dbsScanned: { ...sessionResult.dbsScanned, antigravity: 2 },
+    });
     const text = vi.spyOn(log, "text").mockImplementation(() => {});
     try {
       await syncCommand.run!({ args: { upload: false, dev: false } as never });
       expect(text.mock.calls.filter(([line]) => line.includes("Antigravity: 1"))).toHaveLength(2);
-      expect(text.mock.calls.filter(([line]) => line.includes("Antigravity: 2 dbs"))).toHaveLength(2);
-    } finally { text.mockRestore(); }
+      expect(text.mock.calls.filter(([line]) => line.includes("Antigravity: 2 dbs"))).toHaveLength(
+        2,
+      );
+    } finally {
+      text.mockRestore();
+    }
   });
 
   it("accepts Antigravity for accounting details and forwards the conversations roots", async () => {
     const output = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     try {
-      await enrichCommand.run!({ args: { source: "antigravity", from: "2026-09-01", to: "2026-09-02", apply: false } as never });
-      expect(executeEnrichMock).toHaveBeenCalledWith(expect.objectContaining({ source: "antigravity",
-        antigravityDirs: [
-          join(homedir(), ".gemini", "antigravity-cli", "conversations"),
-          join(homedir(), ".gemini", "antigravity", "conversations"),
-        ] }));
-    } finally { output.mockRestore(); }
+      await enrichCommand.run!({
+        args: {
+          source: "antigravity",
+          from: "2026-09-01",
+          to: "2026-09-02",
+          apply: false,
+        } as never,
+      });
+      expect(executeEnrichMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: "antigravity",
+          antigravityDirs: [
+            join(homedir(), ".gemini", "antigravity-cli", "conversations"),
+            join(homedir(), ".gemini", "antigravity", "conversations"),
+          ],
+        }),
+      );
+    } finally {
+      output.mockRestore();
+    }
   });
-
 });

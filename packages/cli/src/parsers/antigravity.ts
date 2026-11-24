@@ -3,7 +3,12 @@ import { chmod, copyFile, lstat, mkdtemp, readFile, readdir, rm } from "node:fs/
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import type { AccountingGroup, AntigravityCachedDelta, AntigravityDbCache, SessionSnapshot } from "@pew/core";
+import type {
+  AccountingGroup,
+  AntigravityCachedDelta,
+  AntigravityDbCache,
+  SessionSnapshot,
+} from "@pew/core";
 import { inclusiveAccounting, mergeAccountingGroups } from "../utils/accounting.js";
 import { toUtcHalfHourStart } from "../utils/buckets.js";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
@@ -41,7 +46,15 @@ export class UnstableAntigravityError extends Error {
 }
 
 type Field = { number: number; value: bigint | Uint8Array | null };
-type Usage = { modelEnum: number | null; input: number; output: number; read: number; write: number; reasoning: number; visible: number };
+type Usage = {
+  modelEnum: number | null;
+  input: number;
+  output: number;
+  read: number;
+  write: number;
+  reasoning: number;
+  visible: number;
+};
 type Step = { idx: number; step_type: number; status: number; metadata: Uint8Array | null };
 const esmRequire = createRequire(import.meta.url);
 
@@ -58,7 +71,8 @@ function varint(data: Uint8Array, offset: number): [bigint, number] {
   let value = 0n;
   for (let i = 0; ; i++) {
     const byte = data[offset++];
-    if (byte === undefined || (i === 9 && byte > 1)) throw new Error("Invalid Antigravity Protobuf varint");
+    if (byte === undefined || (i === 9 && byte > 1))
+      throw new Error("Invalid Antigravity Protobuf varint");
     value |= BigInt(byte & 127) << BigInt(i * 7);
     if (byte < 128) return [value, offset];
   }
@@ -80,7 +94,8 @@ function fields(data: Uint8Array): Field[] {
       result.push({ number, value });
     } else if (wire === 2) {
       const [length, start] = varint(data, offset);
-      if (length > BigInt(data.length - start)) throw new Error("Truncated Antigravity Protobuf bytes");
+      if (length > BigInt(data.length - start))
+        throw new Error("Truncated Antigravity Protobuf bytes");
       offset = start + Number(length);
       result.push({ number, value: data.subarray(start, offset) });
     } else if (wire === 1 || wire === 5) {
@@ -102,13 +117,15 @@ function singular(data: Field[], number: number): Field["value"] | undefined {
 
 function message(value: Field["value"] | undefined): Field[] | null {
   if (value === undefined) return null;
-  if (!(value instanceof Uint8Array)) throw new Error("Invalid Antigravity Protobuf message wire type");
+  if (!(value instanceof Uint8Array))
+    throw new Error("Invalid Antigravity Protobuf message wire type");
   return fields(value);
 }
 
 function integer(value: Field["value"] | undefined, limit: bigint): number | null {
   if (value === undefined) return null;
-  if (typeof value !== "bigint" || value < 0n || value > limit) throw new Error("Unsafe Antigravity Protobuf integer");
+  if (typeof value !== "bigint" || value < 0n || value > limit)
+    throw new Error("Unsafe Antigravity Protobuf integer");
   return Number(value);
 }
 
@@ -118,12 +135,17 @@ function timestamp(data: Field[] | null): string | null {
   const rawSeconds = value === undefined ? 0n : value;
   if (typeof rawSeconds !== "bigint") throw new Error("Invalid Antigravity Timestamp seconds");
   const seconds = BigInt.asIntN(64, rawSeconds);
-  if (seconds < -62_135_596_800n || seconds > 253_402_300_799n) throw new Error("Invalid Antigravity Timestamp range");
+  if (seconds < -62_135_596_800n || seconds > 253_402_300_799n)
+    throw new Error("Invalid Antigravity Timestamp range");
   const nanos = integer(singular(data, 2), 999_999_999n) ?? 0;
   return new Date(Number(seconds) * 1000 + Math.floor(nanos / 1_000_000)).toISOString();
 }
 
-export function decodeAntigravityMetadata(blob: Uint8Array): { timestamp: string | null; turnId: string | null; usage: Usage | null } {
+export function decodeAntigravityMetadata(blob: Uint8Array): {
+  timestamp: string | null;
+  turnId: string | null;
+  usage: Usage | null;
+} {
   const data = fields(blob);
   const time = timestamp(message(singular(data, 1)));
   const rawTurn = singular(data, 12);
@@ -145,9 +167,15 @@ export function decodeAntigravityMetadata(blob: Uint8Array): { timestamp: string
   const reasoning = count(9) ?? 0;
   const visible = count(10) ?? output - reasoning;
   if (write !== 0) throw new Error("Unknown Antigravity nonzero cache-write accounting");
-  if (reasoning > output || visible !== output - reasoning) throw new Error("Contradictory Antigravity output counters");
-  if (input + read + output > 1_000_000_000) throw new Error("Unsafe Antigravity combined token count");
-  return { timestamp: time, turnId, usage: { modelEnum, input, output, read, write, reasoning, visible } };
+  if (reasoning > output || visible !== output - reasoning)
+    throw new Error("Contradictory Antigravity output counters");
+  if (input + read + output > 1_000_000_000)
+    throw new Error("Unsafe Antigravity combined token count");
+  return {
+    timestamp: time,
+    turnId,
+    usage: { modelEnum, input, output, read, write, reasoning, visible },
+  };
 }
 
 function modelAssociations(rows: unknown[]): Map<number, string> {
@@ -156,8 +184,12 @@ function modelAssociations(rows: unknown[]): Map<number, string> {
     const data = fields(row.data);
     const chat = message(singular(data, 1));
     const response = chat ? singular(chat, 19) : undefined;
-    if (response !== undefined && !(response instanceof Uint8Array)) throw new Error("Invalid Antigravity response model wire type");
-    const model = response === undefined ? null : new TextDecoder("utf-8", { fatal: true }).decode(response).trim();
+    if (response !== undefined && !(response instanceof Uint8Array))
+      throw new Error("Invalid Antigravity response model wire type");
+    const model =
+      response === undefined
+        ? null
+        : new TextDecoder("utf-8", { fatal: true }).decode(response).trim();
     const indices: number[] = [];
     for (const field of data.filter((field) => field.number === 2)) {
       if (typeof field.value === "bigint") {
@@ -174,9 +206,11 @@ function modelAssociations(rows: unknown[]): Map<number, string> {
       }
     }
     if (!model) continue;
-    if (usageLabel(model) !== model || model === "unknown") throw new Error("Invalid Antigravity response model");
+    if (usageLabel(model) !== model || model === "unknown")
+      throw new Error("Invalid Antigravity response model");
     for (const index of indices) {
-      if (models.has(index) && models.get(index) !== model) throw new Error("Conflicting Antigravity model attribution");
+      if (models.has(index) && models.get(index) !== model)
+        throw new Error("Conflicting Antigravity model attribution");
       models.set(index, model);
     }
   }
@@ -216,7 +250,9 @@ async function statIdentity(path: string): Promise<string | null> {
 async function fingerprint(path: string): Promise<{ stat: string | null; sig: string | null }> {
   const before = await statIdentity(path);
   if (!before) return { stat: null, sig: null };
-  const digest = createHash("sha256").update(await readFile(path)).digest("hex");
+  const digest = createHash("sha256")
+    .update(await readFile(path))
+    .digest("hex");
   const after = await statIdentity(path);
   if (before !== after) throw new UnstableAntigravityError("Unstable Antigravity source snapshot");
   return { stat: after, sig: `${after}:${digest}` };
@@ -225,20 +261,35 @@ async function fingerprint(path: string): Promise<{ stat: string | null; sig: st
 export function validateAntigravitySession(snapshot: SessionSnapshot): SessionSnapshot {
   const dates = [snapshot.startedAt, snapshot.lastMessageAt, snapshot.snapshotAt];
   const counters = [snapshot.userMessages, snapshot.assistantMessages, snapshot.totalMessages];
-  if (typeof snapshot.sessionKey !== "string" || snapshot.sessionKey.length > 1024 || !snapshot.sessionKey.trim() ||
-    (snapshot.model !== null && (typeof snapshot.model !== "string" || snapshot.model.length > 1024)) ||
-    dates.some((date) => !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(date) || !Number.isFinite(Date.parse(date))) ||
-    !Number.isSafeInteger(snapshot.durationSeconds) || snapshot.durationSeconds < 0 || snapshot.durationSeconds > 315_576_000 ||
+  if (
+    typeof snapshot.sessionKey !== "string" ||
+    snapshot.sessionKey.length > 1024 ||
+    !snapshot.sessionKey.trim() ||
+    (snapshot.model !== null &&
+      (typeof snapshot.model !== "string" || snapshot.model.length > 1024)) ||
+    dates.some(
+      (date) =>
+        !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(date) ||
+        !Number.isFinite(Date.parse(date)),
+    ) ||
+    !Number.isSafeInteger(snapshot.durationSeconds) ||
+    snapshot.durationSeconds < 0 ||
+    snapshot.durationSeconds > 315_576_000 ||
     counters.some((n) => !Number.isSafeInteger(n) || n < 0 || n > 100_000_000) ||
     snapshot.totalMessages !== snapshot.userMessages + snapshot.assistantMessages ||
-    Date.parse(snapshot.lastMessageAt) < Date.parse(snapshot.startedAt)) throw new Error("Invalid Antigravity session snapshot");
+    Date.parse(snapshot.lastMessageAt) < Date.parse(snapshot.startedAt)
+  )
+    throw new Error("Invalid Antigravity session snapshot");
   return snapshot;
 }
 
 function collapseDbDeltas(
   items: Array<{ model: string; hourStart: string; accounting: AccountingGroup }>,
 ): AntigravityCachedDelta[] {
-  const buckets = new Map<string, { model: string; hourStart: string; groups: AccountingGroup[] }>();
+  const buckets = new Map<
+    string,
+    { model: string; hourStart: string; groups: AccountingGroup[] }
+  >();
   for (const item of items) {
     const key = `${item.model}\0${item.hourStart}`;
     let entry = buckets.get(key);
@@ -283,10 +334,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isTokenDelta(value: unknown): value is AntigravityCachedDelta["tokens"] {
   if (!isRecord(value)) return false;
-  return ["inputTokens", "cachedInputTokens", "outputTokens", "reasoningOutputTokens"].every((key) => {
-    const n = value[key];
-    return typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
-  });
+  return ["inputTokens", "cachedInputTokens", "outputTokens", "reasoningOutputTokens"].every(
+    (key) => {
+      const n = value[key];
+      return typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
+    },
+  );
 }
 
 function isValidDbCache(entry: unknown): entry is AntigravityDbCache {
@@ -327,7 +380,9 @@ function isValidDbCache(entry: unknown): entry is AntigravityDbCache {
 async function readDatabase(path: string, opener: (path: string) => SqliteDb, snapshotAt: string) {
   const [mainFp, walFp] = await Promise.all([fingerprint(path), fingerprint(`${path}-wal`)]);
   if (!mainFp.stat || !mainFp.sig) {
-    throw new UnstableAntigravityError("Unstable Antigravity source snapshot: database disappeared");
+    throw new UnstableAntigravityError(
+      "Unstable Antigravity source snapshot: database disappeared",
+    );
   }
   const dir = await mkdtemp(join(tmpdir(), "pew-antigravity-"));
   let db: SqliteDb | undefined;
@@ -348,7 +403,9 @@ async function readDatabase(path: string, opener: (path: string) => SqliteDb, sn
     }
     await verify();
     db = opener(copy);
-    const steps = db.prepare("SELECT idx, step_type, status, metadata FROM steps ORDER BY idx").all() as Step[];
+    const steps = db
+      .prepare("SELECT idx, step_type, status, metadata FROM steps ORDER BY idx")
+      .all() as Step[];
     const models = modelAssociations(db.prepare("SELECT data FROM gen_metadata").all());
     const projectRef = workspace(db.prepare("SELECT data FROM trajectory_metadata_blob").all());
 
@@ -360,12 +417,18 @@ async function readDatabase(path: string, opener: (path: string) => SqliteDb, sn
     const dbEnumModels = new Map<number, Set<string>>();
 
     for (const step of steps) {
-      if (!Number.isSafeInteger(step.idx) || step.idx < 0 || !Number.isInteger(step.step_type) || !Number.isInteger(step.status)) {
+      if (
+        !Number.isSafeInteger(step.idx) ||
+        step.idx < 0 ||
+        !Number.isInteger(step.step_type) ||
+        !Number.isInteger(step.status)
+      ) {
         throw new Error("Invalid Antigravity step row");
       }
-      const decoded = step.metadata === null
-        ? { timestamp: null, turnId: null, usage: null }
-        : decodeAntigravityMetadata(step.metadata);
+      const decoded =
+        step.metadata === null
+          ? { timestamp: null, turnId: null, usage: null }
+          : decodeAntigravityMetadata(step.metadata);
       decodedSteps.push({ step, decoded });
       const directModel = models.get(step.idx);
       const modelEnum = decoded.usage?.modelEnum ?? null;
@@ -388,7 +451,11 @@ async function readDatabase(path: string, opener: (path: string) => SqliteDb, sn
       }
     }
 
-    const resolveStepModel = (stepIdx: number, turnId: string | null, modelEnum: number | null): string | null => {
+    const resolveStepModel = (
+      stepIdx: number,
+      turnId: string | null,
+      modelEnum: number | null,
+    ): string | null => {
       const direct = models.get(stepIdx);
       if (direct) return direct;
       if (modelEnum === null) return null;
@@ -402,7 +469,8 @@ async function readDatabase(path: string, opener: (path: string) => SqliteDb, sn
     };
 
     const deltas: ParsedDelta[] = [];
-    const collapseItems: Array<{ model: string; hourStart: string; accounting: AccountingGroup }> = [];
+    const collapseItems: Array<{ model: string; hourStart: string; accounting: AccountingGroup }> =
+      [];
     const times: number[] = [];
     let userMessages = 0;
     let assistantMessages = 0;
@@ -411,28 +479,65 @@ async function readDatabase(path: string, opener: (path: string) => SqliteDb, sn
       if (decoded.timestamp) times.push(new Date(decoded.timestamp).getTime());
       if (step.step_type === 14) userMessages++;
       if (step.step_type === 15) assistantMessages++;
-      const resolvedModel = resolveStepModel(step.idx, decoded.turnId, decoded.usage?.modelEnum ?? null);
+      const resolvedModel = resolveStepModel(
+        step.idx,
+        decoded.turnId,
+        decoded.usage?.modelEnum ?? null,
+      );
       if (resolvedModel) lastModel = resolvedModel;
       if (step.status !== 3 || !decoded.usage) continue;
       const usage = decoded.usage;
-      const tokens = { inputTokens: usage.input, cachedInputTokens: usage.read,
-        outputTokens: usage.visible, reasoningOutputTokens: usage.reasoning };
+      const tokens = {
+        inputTokens: usage.input,
+        cachedInputTokens: usage.read,
+        outputTokens: usage.visible,
+        reasoningOutputTokens: usage.reasoning,
+      };
       if (isAllZero(tokens)) continue;
       if (!resolvedModel) throw new Error("Missing Antigravity usage model attribution");
       if (!decoded.timestamp) throw new Error("Missing Antigravity usage timestamp");
-      const accounting = inclusiveAccounting(tokens, { input: usage.input + usage.read, read: usage.read,
-        write: usage.write, output: usage.output, reasoning: usage.reasoning }, { origin: "antigravity:step", model: resolvedModel });
-      deltas.push({ source: "antigravity", model: resolvedModel, timestamp: decoded.timestamp, tokens, accounting });
-      collapseItems.push({ model: resolvedModel, hourStart: toUtcHalfHourStart(decoded.timestamp) as string, accounting });
+      const accounting = inclusiveAccounting(
+        tokens,
+        {
+          input: usage.input + usage.read,
+          read: usage.read,
+          write: usage.write,
+          output: usage.output,
+          reasoning: usage.reasoning,
+        },
+        { origin: "antigravity:step", model: resolvedModel },
+      );
+      deltas.push({
+        source: "antigravity",
+        model: resolvedModel,
+        timestamp: decoded.timestamp,
+        tokens,
+        accounting,
+      });
+      collapseItems.push({
+        model: resolvedModel,
+        hourStart: toUtcHalfHourStart(decoded.timestamp) as string,
+        accounting,
+      });
     }
     let snapshot: SessionSnapshot | null = null;
     if (times.length) {
       const start = times.reduce((a, b) => Math.min(a, b));
       const end = times.reduce((a, b) => Math.max(a, b));
-      snapshot = validateAntigravitySession({ sessionKey: `antigravity:${basename(path, ".db")}`, source: "antigravity", kind: "human",
-        startedAt: new Date(start).toISOString(), lastMessageAt: new Date(end).toISOString(),
-        durationSeconds: Math.floor((end - start) / 1000), userMessages, assistantMessages, totalMessages: userMessages + assistantMessages,
-        projectRef, model: lastModel, snapshotAt });
+      snapshot = validateAntigravitySession({
+        sessionKey: `antigravity:${basename(path, ".db")}`,
+        source: "antigravity",
+        kind: "human",
+        startedAt: new Date(start).toISOString(),
+        lastMessageAt: new Date(end).toISOString(),
+        durationSeconds: Math.floor((end - start) / 1000),
+        userMessages,
+        assistantMessages,
+        totalMessages: userMessages + assistantMessages,
+        projectRef,
+        model: lastModel,
+        snapshotAt,
+      });
     }
     await verify();
     return {
@@ -447,7 +552,11 @@ async function readDatabase(path: string, opener: (path: string) => SqliteDb, sn
       },
     };
   } finally {
-    try { db?.close(); } finally { await rm(dir, { recursive: true, force: true }); }
+    try {
+      db?.close();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   }
 }
 
@@ -501,9 +610,17 @@ export async function readAntigravitySource(
   for (const [, dbPath] of sortedEntries) {
     const cached = opts.cache?.[dbPath];
     const validCache = isValidDbCache(cached) ? cached : undefined;
-    const [dbStat, walStat] = await Promise.all([statIdentity(dbPath), statIdentity(`${dbPath}-wal`)]);
+    const [dbStat, walStat] = await Promise.all([
+      statIdentity(dbPath),
+      statIdentity(`${dbPath}-wal`),
+    ]);
 
-    if (dbStat !== null && validCache && validCache.dbStat === dbStat && validCache.walStat === walStat) {
+    if (
+      dbStat !== null &&
+      validCache &&
+      validCache.dbStat === dbStat &&
+      validCache.walStat === walStat
+    ) {
       appendEntry(validCache);
       nextDbs[dbPath] = validCache;
       continue;
@@ -511,7 +628,9 @@ export async function readAntigravitySource(
 
     try {
       if (dbStat === null) {
-        throw new UnstableAntigravityError("Unstable Antigravity source snapshot: database disappeared");
+        throw new UnstableAntigravityError(
+          "Unstable Antigravity source snapshot: database disappeared",
+        );
       }
       const result = await readDatabase(dbPath, opener, snapshotAt);
       appendEntry(result.cacheEntry, result.deltas);

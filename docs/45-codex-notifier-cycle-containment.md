@@ -9,12 +9,12 @@
 >
 > **Implementation trail on main (2026-07-15)**：
 >
-> | Commit | 内容 |
-> |---|---|
-> | `742f6a24` fix(notifier): pre-spawn chain guard + dual bucket admission | notify.cjs 重写：INSTANCE_ID + PEW_NOTIFY_CHAIN；两把 wx gate；post-create expiry check；saved-original 竞争后再读 backup；14 个 VM harness runtime tests |
+> | Commit                                                                          | 内容                                                                                                                                                                                             |
+> | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+> | `742f6a24` fix(notifier): pre-spawn chain guard + dual bucket admission         | notify.cjs 重写：INSTANCE_ID + PEW_NOTIFY_CHAIN；两把 wx gate；post-create expiry check；saved-original 竞争后再读 backup；14 个 VM harness runtime tests                                        |
 > | `95d86b47` fix(notifier): worker debounces to bucket end, cleans up before sync | notify 命令新增 `--not-before`；worker 先 delay 到 bucket 结束、再 cleanup `notify-admission/` 中早于 `current - GATE_GRACE_BUCKETS` 的 gate、最后进 coordinatedSync；5 个 debounce/cleanup 单测 |
-> | `d868b7ff` fix(codex): ownership hardening + runtime-path command | codex-notifier 改用注入的 runtimePath（默认 `process.execPath`）；install ownership_conflict；uninstall cycle validation + 保留 backup；legacy `/usr/bin/env node` 识别；7 个 hardening 单测 |
-> | `eeef54c2` test(notifier): cross-process wx primitive + Windows CI matrix | 32-worker 真跨进程 wx 单测；`admission-primitive.yml` ubuntu/macos/windows 只跑该 test file |
+> | `d868b7ff` fix(codex): ownership hardening + runtime-path command               | codex-notifier 改用注入的 runtimePath（默认 `process.execPath`）；install ownership_conflict；uninstall cycle validation + 保留 backup；legacy `/usr/bin/env node` 识别；7 个 hardening 单测     |
+> | `eeef54c2` test(notifier): cross-process wx primitive + Windows CI matrix       | 32-worker 真跨进程 wx 单测；`admission-primitive.yml` ubuntu/macos/windows 只跑该 test file                                                                                                      |
 >
 > **实测常量**：`ADMISSION_WINDOW_MS = 2_000`，`GATE_GRACE_BUCKETS = 2`，
 > `CHAIN_MAX_LENGTH = 2_048`。L1 从 4305 → 4332 tests (+27)。所有 pre-commit /
@@ -119,13 +119,13 @@ Pew handler
 
 ### 2.3 现有保护为什么无效
 
-| 保护 | 当前发生位置 | 无法 containment 的原因 |
-|---|---|---|
-| `isSelfNotify()` | handler 转发前 | 只比较当前 `notify.cjs` 的精确路径，看不见 `Pew → A → Pew` |
-| `sync.lock` | Pew worker 内 | worker 已经被创建，只能串行 sync，不能限制进程创建 |
-| cooldown | worker 获得协调状态后 | worker 已存在，handler 也已转发 original |
-| `notify.signal` | handler 开头 | 当前只是 size-based dirty marker，不是 worker admission gate |
-| `trailing.lock` | cooldown skip 后 | 只限制 trailing sleeper，不限制 handler/worker 创建 |
+| 保护             | 当前发生位置          | 无法 containment 的原因                                      |
+| ---------------- | --------------------- | ------------------------------------------------------------ |
+| `isSelfNotify()` | handler 转发前        | 只比较当前 `notify.cjs` 的精确路径，看不见 `Pew → A → Pew`   |
+| `sync.lock`      | Pew worker 内         | worker 已经被创建，只能串行 sync，不能限制进程创建           |
+| cooldown         | worker 获得协调状态后 | worker 已存在，handler 也已转发 original                     |
+| `notify.signal`  | handler 开头          | 当前只是 size-based dirty marker，不是 worker admission gate |
+| `trailing.lock`  | cooldown skip 后      | 只限制 trailing sleeper，不限制 handler/worker 创建          |
 
 因此，只修改 coordinator 的锁或 cooldown 不能解决 Issue #318。保护必须前移到
 生成的 handler，并位于**两个 spawn 之前**。
@@ -138,8 +138,8 @@ Pew handler
 2. 每个 admission window、每个 Pew state directory 中：
    - 至多一个 handler 成为 **sync gate owner**（负责创建 Pew worker）；
    - 至多一个 handler 成为 **Codex forward gate owner**（负责调用 saved-original）。
-   两个 gate 的胜负相互独立：同一个 Codex handler 可以在 sync gate 输、forward gate
-   赢，或反之。
+     两个 gate 的胜负相互独立：同一个 Codex handler 可以在 sync gate 输、forward gate
+     赢，或反之。
 3. 每个 gate 的 loser 不做对应 spawn：
    - sync gate loser：**不**创建 Pew worker；
    - forward gate loser：**不**调用 saved-original；
@@ -537,16 +537,7 @@ gate 失败的同一底层原因下（例如 `EACCES` / `EROFS` / `EIO`）可能
 上限。实现时应把生成脚本组织为自包含、可注入依赖的 `main()`：
 
 ```js
-function main({
-  fs,
-  path,
-  spawn,
-  now,
-  argv,
-  env,
-  platform,
-  exit,
-}) {
+function main({ fs, path, spawn, now, argv, env, platform, exit }) {
   // production handler state machine
 }
 ```
@@ -561,33 +552,33 @@ function main({
 形参），不允许依赖真实 timer；否则 test 会 flaky 且不能证明"同 bucket 内合并"这
 个具体不变量。跨 bucket 的测试改成显式两次注入 `now = T` 和 `now = T + W + 1`。
 
-| Case | 必须断言 |
-|---|---|
-| 100 次调用、同一 bucket（固定 now=T） | signal append 100；Pew spawn 1；Codex saved-original spawn = 1（backup 存在且非 self） |
-| 100 次 Codex 调用、同一 bucket、backup 读取次数 | backup JSON read + parse **恰好 1 次**（仅 forward-gate winner 读）；loser 不接触 backup 文件 |
-| 100 次调用、同一 bucket、original backup 缺失/损坏 | Pew spawn 1；saved-original spawn = 0 |
-| 不同 source 同一 bucket、Claude 先到、Codex 后到 | Pew spawn 1（Claude 赢 sync gate）；saved-original spawn = 1（Codex 独立赢 forward gate） |
-| 不同 source 同一 bucket、Codex 先到、Claude 后到 | Pew spawn 1（Codex 赢 sync gate）；saved-original spawn = 1（Codex 同时赢 forward gate） |
-| sync gate EEXIST + forward gate success | Pew spawn = 0；saved-original spawn = 1 |
-| sync gate success + forward gate 非-EEXIST 错误 | Pew spawn = 1；saved-original spawn = 0；尝试写诊断 |
-| sync gate 非-EEXIST 错误 + forward gate success | Pew spawn = 0；saved-original spawn = 1；尝试写诊断 |
-| 两个 gate 都 EEXIST | Pew spawn 0；saved-original spawn 0 |
-| 两个 gate 都非-EEXIST 错误 | Pew spawn 0；saved-original spawn 0；尝试写诊断（诊断文件可能因同一底层错误而未写出，测试断言"尝试写"即可，不断言文件存在） |
-| 下一 bucket（now=T+W+1） | 允许一个新 sync owner + 一个新 forward owner |
-| bucket 边界两侧 | 最多两个相邻 bucket 各自一个 sync/forward owner；无同 bucket 双 winner |
-| post-create expiry check：采样 bucket B 后 handler 暂停，B 的 worker 完成但 grace-period 未删（正常路径 EEXIST） | Pew spawn 0；handler 走 EEXIST loser |
-| post-create expiry check：暂停时间超 `GATE_GRACE_BUCKETS × W`，B gate 已被清理，handler 恢复后 wx create 成功但 `now2` 已进入新 bucket | Pew spawn 0；不 spawn 旧 bucket 的 worker；signal 由下一 bucket 消费 |
-| direct self chain | signal 0；child spawn 0 |
-| `Pew → A → Pew`，A 保留 env | 第二次 Pew child spawn 0 |
-| chain 长度超 2048 bytes | child spawn 0；尝试写诊断 |
-| chain 超长/格式异常 | fail-closed；child spawn 0 |
-| gate `EEXIST` | 正常 loser 路径，无错误日志风暴 |
-| gate `EACCES` / `EIO` / `EPERM` / `EBUSY` | 该 gate 对应 spawn = 0；另一 gate 独立参与竞争；尝试写诊断（诊断本身 best-effort，测试断言"handler 调用了 diagnostic 写入路径"，不要求文件持久化） |
-| Pew worker spawn 抛错 | 不尝试第二个 worker 补偿；尝试写诊断；同 bucket 后续 loser 仍零 Pew spawn；下一 bucket 恢复 |
-| saved-original spawn 抛错 | 不尝试第二次 forward 补偿；同 bucket 后续 Codex handler 撞 forward gate EEXIST 或过期检查，仍零 forward spawn；下一 bucket 恢复 |
-| gate cleanup 失败 | sync 结果不受影响；后续 bucket 仍可运行 |
-| Windows 路径大小写/分隔符 | 相同 stateDir 生成相同 instance ID（`resolve()` 后 lowercase） |
-| 路径/参数含空格 | spawn 使用 argv array，不经过 shell |
+| Case                                                                                                                                   | 必须断言                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 100 次调用、同一 bucket（固定 now=T）                                                                                                  | signal append 100；Pew spawn 1；Codex saved-original spawn = 1（backup 存在且非 self）                                                             |
+| 100 次 Codex 调用、同一 bucket、backup 读取次数                                                                                        | backup JSON read + parse **恰好 1 次**（仅 forward-gate winner 读）；loser 不接触 backup 文件                                                      |
+| 100 次调用、同一 bucket、original backup 缺失/损坏                                                                                     | Pew spawn 1；saved-original spawn = 0                                                                                                              |
+| 不同 source 同一 bucket、Claude 先到、Codex 后到                                                                                       | Pew spawn 1（Claude 赢 sync gate）；saved-original spawn = 1（Codex 独立赢 forward gate）                                                          |
+| 不同 source 同一 bucket、Codex 先到、Claude 后到                                                                                       | Pew spawn 1（Codex 赢 sync gate）；saved-original spawn = 1（Codex 同时赢 forward gate）                                                           |
+| sync gate EEXIST + forward gate success                                                                                                | Pew spawn = 0；saved-original spawn = 1                                                                                                            |
+| sync gate success + forward gate 非-EEXIST 错误                                                                                        | Pew spawn = 1；saved-original spawn = 0；尝试写诊断                                                                                                |
+| sync gate 非-EEXIST 错误 + forward gate success                                                                                        | Pew spawn = 0；saved-original spawn = 1；尝试写诊断                                                                                                |
+| 两个 gate 都 EEXIST                                                                                                                    | Pew spawn 0；saved-original spawn 0                                                                                                                |
+| 两个 gate 都非-EEXIST 错误                                                                                                             | Pew spawn 0；saved-original spawn 0；尝试写诊断（诊断文件可能因同一底层错误而未写出，测试断言"尝试写"即可，不断言文件存在）                        |
+| 下一 bucket（now=T+W+1）                                                                                                               | 允许一个新 sync owner + 一个新 forward owner                                                                                                       |
+| bucket 边界两侧                                                                                                                        | 最多两个相邻 bucket 各自一个 sync/forward owner；无同 bucket 双 winner                                                                             |
+| post-create expiry check：采样 bucket B 后 handler 暂停，B 的 worker 完成但 grace-period 未删（正常路径 EEXIST）                       | Pew spawn 0；handler 走 EEXIST loser                                                                                                               |
+| post-create expiry check：暂停时间超 `GATE_GRACE_BUCKETS × W`，B gate 已被清理，handler 恢复后 wx create 成功但 `now2` 已进入新 bucket | Pew spawn 0；不 spawn 旧 bucket 的 worker；signal 由下一 bucket 消费                                                                               |
+| direct self chain                                                                                                                      | signal 0；child spawn 0                                                                                                                            |
+| `Pew → A → Pew`，A 保留 env                                                                                                            | 第二次 Pew child spawn 0                                                                                                                           |
+| chain 长度超 2048 bytes                                                                                                                | child spawn 0；尝试写诊断                                                                                                                          |
+| chain 超长/格式异常                                                                                                                    | fail-closed；child spawn 0                                                                                                                         |
+| gate `EEXIST`                                                                                                                          | 正常 loser 路径，无错误日志风暴                                                                                                                    |
+| gate `EACCES` / `EIO` / `EPERM` / `EBUSY`                                                                                              | 该 gate 对应 spawn = 0；另一 gate 独立参与竞争；尝试写诊断（诊断本身 best-effort，测试断言"handler 调用了 diagnostic 写入路径"，不要求文件持久化） |
+| Pew worker spawn 抛错                                                                                                                  | 不尝试第二个 worker 补偿；尝试写诊断；同 bucket 后续 loser 仍零 Pew spawn；下一 bucket 恢复                                                        |
+| saved-original spawn 抛错                                                                                                              | 不尝试第二次 forward 补偿；同 bucket 后续 Codex handler 撞 forward gate EEXIST 或过期检查，仍零 forward spawn；下一 bucket 恢复                    |
+| gate cleanup 失败                                                                                                                      | sync 结果不受影响；后续 bucket 仍可运行                                                                                                            |
+| Windows 路径大小写/分隔符                                                                                                              | 相同 stateDir 生成相同 instance ID（`resolve()` 后 lowercase）                                                                                     |
+| 路径/参数含空格                                                                                                                        | spawn 使用 argv array，不经过 shell                                                                                                                |
 
 对每条断言，测试都必须**精确**报告两个 gate 各自的 spawn 次数：`Pew spawn = 1`
 或 `= 0`、`saved-original spawn = 1` 或 `= 0`，不允许 `≤ 1`——模糊上界让实现和
@@ -712,31 +703,31 @@ runtime containment 是 P0；同时做两项低成本防止再次持久化明显
 
 预计修改：
 
-| 文件 | 变更 |
-|---|---|
-| `packages/cli/src/notifier/notify-handler.ts` | 生成 self-contained handler main；chain guard；bucket gate；两个 spawn admission |
-| `packages/cli/src/commands/notify.ts` | 支持短 `notBefore` debounce，再进入现有 coordinator |
-| `packages/cli/src/notifier/codex-notifier.ts` | 跨平台 runtime command；legacy ownership recognition；conflict handling |
-| `packages/cli/src/commands/uninstall.ts` | 仅在 Codex restore 成功后删除 original backup |
-| `packages/cli/src/__tests__/notify-handler.test.ts` | VM 行为测试、spawn 上限、chain、gate error |
-| `packages/cli/src/__tests__/codex-notifier.test.ts` | ownership conflict、legacy migration、Windows command |
-| `packages/cli/src/__tests__/notify-command.test.ts` | deterministic debounce/notBefore tests |
-| `packages/cli/src/__tests__/uninstall-command.test.ts` | restore 失败保留 backup |
-| 新 integration test | 32-process `wx` admission，三平台 CI |
-| `.github/workflows/ci.yml` | focused admission primitive OS matrix |
+| 文件                                                   | 变更                                                                             |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `packages/cli/src/notifier/notify-handler.ts`          | 生成 self-contained handler main；chain guard；bucket gate；两个 spawn admission |
+| `packages/cli/src/commands/notify.ts`                  | 支持短 `notBefore` debounce，再进入现有 coordinator                              |
+| `packages/cli/src/notifier/codex-notifier.ts`          | 跨平台 runtime command；legacy ownership recognition；conflict handling          |
+| `packages/cli/src/commands/uninstall.ts`               | 仅在 Codex restore 成功后删除 original backup                                    |
+| `packages/cli/src/__tests__/notify-handler.test.ts`    | VM 行为测试、spawn 上限、chain、gate error                                       |
+| `packages/cli/src/__tests__/codex-notifier.test.ts`    | ownership conflict、legacy migration、Windows command                            |
+| `packages/cli/src/__tests__/notify-command.test.ts`    | deterministic debounce/notBefore tests                                           |
+| `packages/cli/src/__tests__/uninstall-command.test.ts` | restore 失败保留 backup                                                          |
+| 新 integration test                                    | 32-process `wx` admission，三平台 CI                                             |
+| `.github/workflows/ci.yml`                             | focused admission primitive OS matrix                                            |
 
 必须按 TDD 拆 commit：
 
-| # | Commit | 内容 |
-|---|---|---|
-| 1 | `test(notifier): specify chain and bucket admission behavior` | VM L1 测试先红 |
-| 2 | `fix(notifier): add pre-spawn chain and bucket containment` | handler 最小实现 |
-| 3 | `test(notifier): cover debounced worker handoff` | notBefore / boundary / cleanup 测试先红 |
-| 4 | `fix(notifier): coalesce admitted batch before sync` | worker 窗口末尾执行 |
-| 5 | `test(codex): specify ownership and cross-platform command migration` | installer/uninstaller 测试先红 |
-| 6 | `fix(codex): harden ownership and Windows runtime command` | installer/uninstaller 实现 |
-| 7 | `test(notifier): verify exclusive admission across OS processes` | focused integration + CI matrix |
-| 8 | `docs(45): mark notifier containment implemented` | 回填常量、commit、验证结果 |
+| #   | Commit                                                                | 内容                                    |
+| --- | --------------------------------------------------------------------- | --------------------------------------- |
+| 1   | `test(notifier): specify chain and bucket admission behavior`         | VM L1 测试先红                          |
+| 2   | `fix(notifier): add pre-spawn chain and bucket containment`           | handler 最小实现                        |
+| 3   | `test(notifier): cover debounced worker handoff`                      | notBefore / boundary / cleanup 测试先红 |
+| 4   | `fix(notifier): coalesce admitted batch before sync`                  | worker 窗口末尾执行                     |
+| 5   | `test(codex): specify ownership and cross-platform command migration` | installer/uninstaller 测试先红          |
+| 6   | `fix(codex): harden ownership and Windows runtime command`            | installer/uninstaller 实现              |
+| 7   | `test(notifier): verify exclusive admission across OS processes`      | focused integration + CI matrix         |
+| 8   | `docs(45): mark notifier containment implemented`                     | 回填常量、commit、验证结果              |
 
 每个实现 commit 都必须独立通过 G1；最终运行完整 L1/L2/G2，涉及真实 HOME 的测试
 一律使用临时目录。

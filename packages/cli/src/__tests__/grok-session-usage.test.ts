@@ -13,9 +13,7 @@ import {
 } from "../parsers/grok-session-usage.js";
 import type { SessionUsageSnapshot } from "../parsers/grok-session-usage.js";
 
-function snap(
-  overrides: Partial<SessionUsageSnapshot> = {},
-): SessionUsageSnapshot {
+function snap(overrides: Partial<SessionUsageSnapshot> = {}): SessionUsageSnapshot {
   return {
     inputTokens: 100,
     cachedReadTokens: 40,
@@ -83,24 +81,53 @@ describe("toSessionUsageDelta", () => {
 
 describe("Grok accounting details", () => {
   it("keeps inclusive ACP inputs, creation tokens, per-model groups and exact server ticks", () => {
-    const a = { inputTokens: 100, cachedReadTokens: 40, cacheCreationTokens: 20, outputTokens: 20, reasoningTokens: 5, modelCalls: 1, costUsdTicks: "123456789" };
+    const a = {
+      inputTokens: 100,
+      cachedReadTokens: 40,
+      cacheCreationTokens: 20,
+      outputTokens: 20,
+      reasoningTokens: 5,
+      modelCalls: 1,
+      costUsdTicks: "123456789",
+    };
     const b = { ...a, costUsdTicks: "100000001" };
-    const usage = { inputTokens: 200, cachedReadTokens: 80, cacheCreationTokens: 40, outputTokens: 40, reasoningTokens: 10, modelCalls: 2,
-      costUsdTicks: "223456790", modelUsage: { "grok-4.6": a, "grok-4.6-mini": b } };
+    const usage = {
+      inputTokens: 200,
+      cachedReadTokens: 80,
+      cacheCreationTokens: 40,
+      outputTokens: 40,
+      reasoningTokens: 10,
+      modelCalls: 2,
+      costUsdTicks: "223456790",
+      modelUsage: { "grok-4.6": a, "grok-4.6-mini": b },
+    };
     const event = parseTurnCompletedLine(turnLine({ usage, eventId: "stable" }), true);
     if (!event) throw new Error("Expected turn");
     const deltas = accumulateSessionUsage([event, event]);
     expect(deltas).toHaveLength(2);
     expect(deltas.map((d) => d.model)).toEqual(["grok-4.6", "grok-4.6"]);
     expect(deltas.map((d) => d.accounting?.model)).toEqual(["grok-4.6", "grok-4.6-mini"]);
-    expect(deltas[0].accounting).toMatchObject({ counts: { input_total_tokens: 100, cache_write_input_tokens: 20, output_total_tokens: 20 },
-      reported_costs: [{ units: "123456789", scale: 10, kind: "actual", status: "complete" }] });
+    expect(deltas[0].accounting).toMatchObject({
+      counts: { input_total_tokens: 100, cache_write_input_tokens: 20, output_total_tokens: 20 },
+      reported_costs: [{ units: "123456789", scale: 10, kind: "actual", status: "complete" }],
+    });
     expect(sessionUsageToIngestRecords(deltas, { deviceId: "test" })[0].total_tokens).toBe(240);
   });
 
   it("does not claim partial server costs are complete or missing writes are zero", () => {
-    const event = parseTurnCompletedLine(turnLine({ usage: { inputTokens: 100, outputTokens: 10, cachedReadTokens: 20,
-      modelCalls: 2, costUsdTicks: 100, cost_is_partial: true } }), true);
+    const event = parseTurnCompletedLine(
+      turnLine({
+        usage: {
+          inputTokens: 100,
+          outputTokens: 10,
+          cachedReadTokens: 20,
+          modelCalls: 2,
+          costUsdTicks: 100,
+          cost_is_partial: true,
+        },
+      }),
+      true,
+    );
     if (!event) throw new Error("Expected turn");
     const [d] = accumulateSessionUsage([event]);
     expect(d.accounting?.counts?.cache_write_input_tokens).toBeNull();
@@ -114,94 +141,221 @@ describe("Grok accounting details", () => {
       const file = join(dir, "updates.jsonl");
       const line = turnLine({ usage: { inputTokens: 100, outputTokens: 10 }, eventId: "one" });
       await writeFile(file, `${line}\n${line}`);
-      expect(await parseGrokSessionUsageFile(file, new Set(), { includeAccounting: true })).toHaveLength(1);
-      expect(await parseGrokSessionUsageFile(file, new Set(), { includeAccounting: true, endBound: 1 })).toHaveLength(0);
-    } finally { await rm(dir, { recursive: true, force: true }); }
+      expect(
+        await parseGrokSessionUsageFile(file, new Set(), { includeAccounting: true }),
+      ).toHaveLength(1);
+      expect(
+        await parseGrokSessionUsageFile(file, new Set(), { includeAccounting: true, endBound: 1 }),
+      ).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("retains nested and envelope completeness flags", () => {
-    const counts = { inputTokens: 100, cachedReadTokens: 40, cacheCreationTokens: 20, outputTokens: 20, reasoningTokens: 5, modelCalls: 1, costUsdTicks: 100 };
-    const nested = parseTurnCompletedLine(turnLine({ usage: { ...counts, modelUsage: { "grok-4.6": { ...counts, usageIsIncomplete: true } } } }), true);
+    const counts = {
+      inputTokens: 100,
+      cachedReadTokens: 40,
+      cacheCreationTokens: 20,
+      outputTokens: 20,
+      reasoningTokens: 5,
+      modelCalls: 1,
+      costUsdTicks: 100,
+    };
+    const nested = parseTurnCompletedLine(
+      turnLine({
+        usage: { ...counts, modelUsage: { "grok-4.6": { ...counts, usageIsIncomplete: true } } },
+      }),
+      true,
+    );
     expect(nested?.accounting?.[0].reported_costs[0].status).toBe("partial");
     const envelope = JSON.parse(turnLine({ usage: counts }));
     envelope.params.update.costIsPartial = true;
-    expect(parseTurnCompletedLine(JSON.stringify(envelope), true)?.accounting?.[0].reported_costs[0].status).toBe("partial");
+    expect(
+      parseTurnCompletedLine(JSON.stringify(envelope), true)?.accounting?.[0].reported_costs[0]
+        .status,
+    ).toBe("partial");
   });
 
   it("deduplicates compatible fork copies but refuses conflicting cache splits for the whole bucket", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pew-grok-forks-"));
     try {
-      const a = join(dir, "a"); const b = join(dir, "b");
-      await mkdir(a); await mkdir(b);
-      const usage = { inputTokens: 100, cachedReadTokens: 40, cacheCreationTokens: 20, outputTokens: 20, reasoningTokens: 5, modelCalls: 1 };
+      const a = join(dir, "a");
+      const b = join(dir, "b");
+      await mkdir(a);
+      await mkdir(b);
+      const usage = {
+        inputTokens: 100,
+        cachedReadTokens: 40,
+        cacheCreationTokens: 20,
+        outputTokens: 20,
+        reasoningTokens: 5,
+        modelCalls: 1,
+      };
       await writeFile(join(a, "updates.jsonl"), `${turnLine({ usage, eventId: "shared" })}\n`);
-      await writeFile(join(b, "updates.jsonl"), `${turnLine({ usage: { ...usage, costUsdTicks: 100 }, eventId: "shared" })}\n`);
+      await writeFile(
+        join(b, "updates.jsonl"),
+        `${turnLine({ usage: { ...usage, costUsdTicks: 100 }, eventId: "shared" })}\n`,
+      );
       const compatible = await readGrokAccountingSnapshots(dir);
       expect(compatible).toHaveLength(1);
       expect(compatible[0].accounting?.reported_costs[0].units).toBe("100");
-      await writeFile(join(b, "updates.jsonl"), `${turnLine({ usage: { ...usage, cacheCreationTokens: 30 }, eventId: "shared" })}\n`);
+      await writeFile(
+        join(b, "updates.jsonl"),
+        `${turnLine({ usage: { ...usage, cacheCreationTokens: 30 }, eventId: "shared" })}\n`,
+      );
       expect(await readGrokAccountingSnapshots(dir)).toEqual([]);
-    } finally { await rm(dir, { recursive: true, force: true }); }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("enriches a matching identified update from usage.json without adding inherited totals", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pew-grok-money-"));
     try {
-      const usage = { inputTokens: 100, cachedReadTokens: 40, cacheCreationTokens: 20, outputTokens: 20, reasoningTokens: 5, modelCalls: 1 };
+      const usage = {
+        inputTokens: 100,
+        cachedReadTokens: 40,
+        cacheCreationTokens: 20,
+        outputTokens: 20,
+        reasoningTokens: 5,
+        modelCalls: 1,
+      };
       const file = join(dir, "updates.jsonl");
       const time = Date.parse("2026-09-01T00:00:01.000Z");
       await writeFile(file, `${turnLine({ usage, eventId: "one", agentTimestampMs: time })}\n`);
-      const amount = { ...usage, costUsdTicks: "123456789", endedAt: new Date(time).toISOString(), modelUsage: { "grok-4.6": { ...usage, costUsdTicks: "123456789" } } };
-      await writeFile(join(dir, "usage.json"), JSON.stringify({ totals: { inputTokens: 999999 }, turns: [amount, { ...amount, endedAt: new Date(time + 1).toISOString() }] }));
+      const amount = {
+        ...usage,
+        costUsdTicks: "123456789",
+        endedAt: new Date(time).toISOString(),
+        modelUsage: { "grok-4.6": { ...usage, costUsdTicks: "123456789" } },
+      };
+      await writeFile(
+        join(dir, "usage.json"),
+        JSON.stringify({
+          totals: { inputTokens: 999999 },
+          turns: [amount, { ...amount, endedAt: new Date(time + 1).toISOString() }],
+        }),
+      );
       const deltas = await readGrokAccountingSnapshots(dir);
       expect(deltas).toHaveLength(1);
       expect(deltas[0].accounting?.reported_costs[0].units).toBe("123456789");
       await writeFile(file, "");
       expect(await readGrokAccountingSnapshots(dir)).toEqual([]);
-    } finally { await rm(dir, { recursive: true, force: true }); }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("keeps nested incomplete status when usage.json supplies a missing amount", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pew-grok-partial-money-"));
     try {
-      const counts = { inputTokens: 100, cachedReadTokens: 40, cacheCreationTokens: 20, outputTokens: 20, reasoningTokens: 5, modelCalls: 1 };
+      const counts = {
+        inputTokens: 100,
+        cachedReadTokens: 40,
+        cacheCreationTokens: 20,
+        outputTokens: 20,
+        reasoningTokens: 5,
+        modelCalls: 1,
+      };
       const time = Date.parse("2026-09-01T00:00:01.000Z");
-      await writeFile(join(dir, "updates.jsonl"), `${turnLine({ usage: { ...counts, modelUsage: { "grok-4.6": { ...counts, usageIsIncomplete: true } } }, eventId: "partial", agentTimestampMs: time })}\n`);
+      await writeFile(
+        join(dir, "updates.jsonl"),
+        `${turnLine({ usage: { ...counts, modelUsage: { "grok-4.6": { ...counts, usageIsIncomplete: true } } }, eventId: "partial", agentTimestampMs: time })}\n`,
+      );
       const paid = { ...counts, costUsdTicks: "123456789" };
-      await writeFile(join(dir, "usage.json"), JSON.stringify({ turns: [{ ...paid, endedAt: new Date(time).toISOString(), modelUsage: { "grok-4.6": paid } }] }));
+      await writeFile(
+        join(dir, "usage.json"),
+        JSON.stringify({
+          turns: [
+            { ...paid, endedAt: new Date(time).toISOString(), modelUsage: { "grok-4.6": paid } },
+          ],
+        }),
+      );
       const deltas = await readGrokAccountingSnapshots(dir);
       expect(deltas).toHaveLength(1);
-      expect(deltas[0].accounting?.reported_costs).toMatchObject([{ units: "123456789", status: "partial" }]);
-    } finally { await rm(dir, { recursive: true, force: true }); }
+      expect(deltas[0].accounting?.reported_costs).toMatchObject([
+        { units: "123456789", status: "partial" },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
-  it.each([true, false])("preserves incomplete status across matching fork copies (partial first=%s)", async (partialFirst) => {
-    const dir = await mkdtemp(join(tmpdir(), "pew-grok-partial-forks-"));
-    try {
-      const usage = { inputTokens: 100, cachedReadTokens: 40, cacheCreationTokens: 20, outputTokens: 20, reasoningTokens: 5, modelCalls: 1 };
-      for (const [name, partial] of [["a", partialFirst], ["b", !partialFirst]] as const) {
-        const path = join(dir, name); await mkdir(path);
-        await writeFile(join(path, "updates.jsonl"), `${turnLine({ usage: { ...usage, ...(partial ? { usageIsIncomplete: true } : { costUsdTicks: 100 }) }, eventId: "shared" })}\n`);
+  it.each([true, false])(
+    "preserves incomplete status across matching fork copies (partial first=%s)",
+    async (partialFirst) => {
+      const dir = await mkdtemp(join(tmpdir(), "pew-grok-partial-forks-"));
+      try {
+        const usage = {
+          inputTokens: 100,
+          cachedReadTokens: 40,
+          cacheCreationTokens: 20,
+          outputTokens: 20,
+          reasoningTokens: 5,
+          modelCalls: 1,
+        };
+        for (const [name, partial] of [
+          ["a", partialFirst],
+          ["b", !partialFirst],
+        ] as const) {
+          const path = join(dir, name);
+          await mkdir(path);
+          await writeFile(
+            join(path, "updates.jsonl"),
+            `${turnLine({ usage: { ...usage, ...(partial ? { usageIsIncomplete: true } : { costUsdTicks: 100 }) }, eventId: "shared" })}\n`,
+          );
+        }
+        const deltas = await readGrokAccountingSnapshots(dir);
+        expect(deltas).toHaveLength(1);
+        expect(deltas[0].accounting?.reported_costs).toMatchObject([
+          { units: "100", status: "partial" },
+        ]);
+      } finally {
+        await rm(dir, { recursive: true, force: true });
       }
-      const deltas = await readGrokAccountingSnapshots(dir);
-      expect(deltas).toHaveLength(1);
-      expect(deltas[0].accounting?.reported_costs).toMatchObject([{ units: "100", status: "partial" }]);
-    } finally { await rm(dir, { recursive: true, force: true }); }
-  });
+    },
+  );
 
   it("requires one unambiguous turn with the same canonical cache split before attaching ledger money", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pew-grok-ledger-match-"));
     try {
-      const counts = { inputTokens: 100, cachedReadTokens: 40, cacheCreationTokens: 20, outputTokens: 20, reasoningTokens: 5, modelCalls: 1 };
+      const counts = {
+        inputTokens: 100,
+        cachedReadTokens: 40,
+        cacheCreationTokens: 20,
+        outputTokens: 20,
+        reasoningTokens: 5,
+        modelCalls: 1,
+      };
       const time = Date.parse("2026-09-01T00:00:01.000Z");
-      await writeFile(join(dir, "updates.jsonl"), `${turnLine({ usage: counts, eventId: "one", agentTimestampMs: time })}\n`);
+      await writeFile(
+        join(dir, "updates.jsonl"),
+        `${turnLine({ usage: counts, eventId: "one", agentTimestampMs: time })}\n`,
+      );
       const paid = { ...counts, costUsdTicks: "123456789" };
       const candidate = { ...paid, endedAt: time, modelUsage: { "grok-4.6": paid } };
-      for (const body of ["invalid JSON", JSON.stringify(null), JSON.stringify({ turns: {} }),
-        JSON.stringify({ turns: [null, { ...candidate, endedAt: "bad" }, { ...candidate, endedAt: null }] }),
+      for (const body of [
+        "invalid JSON",
+        JSON.stringify(null),
+        JSON.stringify({ turns: {} }),
+        JSON.stringify({
+          turns: [null, { ...candidate, endedAt: "bad" }, { ...candidate, endedAt: null }],
+        }),
         JSON.stringify({ turns: [candidate, candidate] }),
-        JSON.stringify({ turns: [{ ...candidate, cacheCreationTokens: 30, modelUsage: { "grok-4.6": { ...paid, cacheCreationTokens: 30 } } }] }),
-        JSON.stringify({ turns: [{ ...counts, endedAt: time, modelUsage: { "grok-4.6": counts } }] })]) {
+        JSON.stringify({
+          turns: [
+            {
+              ...candidate,
+              cacheCreationTokens: 30,
+              modelUsage: { "grok-4.6": { ...paid, cacheCreationTokens: 30 } },
+            },
+          ],
+        }),
+        JSON.stringify({
+          turns: [{ ...counts, endedAt: time, modelUsage: { "grok-4.6": counts } }],
+        }),
+      ]) {
         await writeFile(join(dir, "usage.json"), body);
         const deltas = await readGrokAccountingSnapshots(dir);
         expect(deltas).toHaveLength(1);
@@ -209,8 +363,12 @@ describe("Grok accounting details", () => {
         expect(deltas[0]?.accounting?.counts?.cache_write_input_tokens).toBe(20);
       }
       await writeFile(join(dir, "usage.json"), JSON.stringify({ turns: [candidate] }));
-      expect((await readGrokAccountingSnapshots(dir))[0]?.accounting?.reported_costs).toMatchObject([{ units: "123456789", status: "complete" }]);
-    } finally { await rm(dir, { recursive: true, force: true }); }
+      expect((await readGrokAccountingSnapshots(dir))[0]?.accounting?.reported_costs).toMatchObject(
+        [{ units: "123456789", status: "complete" }],
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -244,7 +402,9 @@ describe("parseTurnCompletedLine", () => {
   });
 
   it("ignores non turn_completed lines", () => {
-    expect(parseTurnCompletedLine('{"params":{"update":{"sessionUpdate":"agent_thought_chunk"}}}')).toBeNull();
+    expect(
+      parseTurnCompletedLine('{"params":{"update":{"sessionUpdate":"agent_thought_chunk"}}}'),
+    ).toBeNull();
     expect(parseTurnCompletedLine("not json")).toBeNull();
     expect(parseTurnCompletedLine("null")).toBeNull();
     expect(parseTurnCompletedLine("[]")).toBeNull();
@@ -258,9 +418,7 @@ describe("parseTurnCompletedLine", () => {
       ),
     ).toBeNull();
     expect(
-      parseTurnCompletedLine(
-        '{"params":{"update":{"sessionUpdate":"turn_completed","usage":[]}}}',
-      ),
+      parseTurnCompletedLine('{"params":{"update":{"sessionUpdate":"turn_completed","usage":[]}}}'),
     ).toBeNull();
   });
 
@@ -528,10 +686,7 @@ describe("excludeOccupiedBuckets", () => {
         total_tokens: 9,
       },
     ];
-    const kept = excludeOccupiedBuckets(
-      records,
-      new Set(["grok-4.6|2026-09-03T15:30:00.000Z"]),
-    );
+    const kept = excludeOccupiedBuckets(records, new Set(["grok-4.6|2026-09-03T15:30:00.000Z"]));
     expect(kept).toHaveLength(1);
     expect(kept[0]?.hour_start).toBe("2026-09-03T16:00:00.000Z");
   });

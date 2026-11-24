@@ -47,16 +47,12 @@ const VALID_VERSION = "3.0.0";
 
 /** Stub a successful Worker response */
 function stubWorkerOk(ingested = 1) {
-  mockFetch.mockResolvedValueOnce(
-    new Response(JSON.stringify({ ingested }), { status: 200 }),
-  );
+  mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ ingested }), { status: 200 }));
 }
 
 /** Stub a failed Worker response */
 function stubWorkerError(status = 500, error = "D1 batch failed") {
-  mockFetch.mockResolvedValueOnce(
-    new Response(JSON.stringify({ error }), { status }),
-  );
+  mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ error }), { status }));
 }
 
 describe("POST /api/ingest", () => {
@@ -149,7 +145,7 @@ describe("POST /api/ingest", () => {
 
     it("should reject records with invalid source", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_RECORD, source: "invalid-tool" }], undefined, VALID_VERSION)
+        makeRequest([{ ...VALID_RECORD, source: "invalid-tool" }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(400);
@@ -166,7 +162,7 @@ describe("POST /api/ingest", () => {
 
     it("should reject records with invalid hour_start format", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_RECORD, hour_start: "not-a-date" }], undefined, VALID_VERSION)
+        makeRequest([{ ...VALID_RECORD, hour_start: "not-a-date" }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(400);
@@ -174,7 +170,7 @@ describe("POST /api/ingest", () => {
 
     it("should reject records with negative token values", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_RECORD, input_tokens: -1 }], undefined, VALID_VERSION)
+        makeRequest([{ ...VALID_RECORD, input_tokens: -1 }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(400);
@@ -297,16 +293,19 @@ describe("POST /api/ingest", () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it.each(["1.5.1", "1.6.0", "2.28.1", "2.29.2", "2.29.5"])("rejects CLI %s before forwarding any data", async (version) => {
-      const res = await POST(makeRequest([VALID_RECORD], undefined, version));
+    it.each(["1.5.1", "1.6.0", "2.28.1", "2.29.2", "2.29.5"])(
+      "rejects CLI %s before forwarding any data",
+      async (version) => {
+        const res = await POST(makeRequest([VALID_RECORD], undefined, version));
 
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.error).toContain("Client version too old");
-      expect(body.error).toContain(version);
-      expect(body.error).toContain("3.0.0");
-      expect(mockFetch).not.toHaveBeenCalled();
-    });
+        expect(res.status).toBe(400);
+        const body = await res.json();
+        expect(body.error).toContain("Client version too old");
+        expect(body.error).toContain(version);
+        expect(body.error).toContain("3.0.0");
+        expect(mockFetch).not.toHaveBeenCalled();
+      },
+    );
 
     it("should accept requests with version equal to MIN_CLIENT_VERSION", async () => {
       stubWorkerOk();

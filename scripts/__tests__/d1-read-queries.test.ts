@@ -19,7 +19,15 @@ describe("D1 read queries against real SQLite", () => {
     vi.mocked(kv.get).mockReset();
     vi.mocked(kv.get).mockResolvedValue(null);
     sqlite = new DatabaseSync(":memory:");
-    for (const name of ["001-init", "009-device-aliases", "019-organizations", "022-usage-evidence", "026-usage-accounting", "029-leaderboard-revision", "030-device-revocations"]) {
+    for (const name of [
+      "001-init",
+      "009-device-aliases",
+      "019-organizations",
+      "022-usage-evidence",
+      "026-usage-accounting",
+      "029-leaderboard-revision",
+      "030-device-revocations",
+    ]) {
       sqlite.exec(readFileSync(`scripts/migrations/${name}.sql`, "utf8"));
     }
     sqlite.exec(`INSERT INTO users(id,email,name,is_public) VALUES ('u1','a@test.invalid','A',1), ('u2','b@test.invalid','B',1), ('private','c@test.invalid','C',0);
@@ -40,27 +48,52 @@ describe("D1 read queries against real SQLite", () => {
       bind: (...values: unknown[]) => prepare(sql, values),
       all: async () => {
         queries.push({ sql, params });
-        return { success: true, results: sqlite.prepare(sql).all(...params as never[]) };
+        return { success: true, results: sqlite.prepare(sql).all(...(params as never[])) };
       },
-      first: async () => { queries.push({ sql, params }); return sqlite.prepare(sql).get(...params as never[]) ?? null; },
+      first: async () => {
+        queries.push({ sql, params });
+        return sqlite.prepare(sql).get(...(params as never[])) ?? null;
+      },
     });
-    db = { prepare, batch: async (statements: ReturnType<typeof prepare>[]) => Promise.all(statements.map((s) => s.all())) } as unknown as D1Database;
+    db = {
+      prepare,
+      batch: async (statements: ReturnType<typeof prepare>[]) =>
+        Promise.all(statements.map((s) => s.all())),
+    } as unknown as D1Database;
   });
   afterEach(() => sqlite.close());
 
   it("ranks additive legacy and evidence counters without reading accounting details", async () => {
-    const body = await (await handleLeaderboardRpc({ method: "leaderboard.getSnapshot" }, db, kv)).json();
-    expect(body.result.rows.map((r: { user_id: string; total_tokens: number }) => [r.user_id, r.total_tokens])).toEqual([["u1", 1182], ["u2", 200]]);
+    const body = await (
+      await handleLeaderboardRpc({ method: "leaderboard.getSnapshot" }, db, kv)
+    ).json();
+    expect(
+      body.result.rows.map((r: { user_id: string; total_tokens: number }) => [
+        r.user_id,
+        r.total_tokens,
+      ]),
+    ).toEqual([
+      ["u1", 1182],
+      ["u2", 200],
+    ]);
     const { sql, params } = queries.find((q) => q.sql.includes("WITH totals"))!;
-    const plan = sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params as never[]);
+    const plan = sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...(params as never[]));
     expect(JSON.stringify(plan)).not.toMatch(/usage_details|SEARCH d /);
-    const filtered = await (await handleLeaderboardRpc({ method: "leaderboard.getSnapshot", source: "codex", model: "m1", fromDate }, db, kv)).json();
+    const filtered = await (
+      await handleLeaderboardRpc(
+        { method: "leaderboard.getSnapshot", source: "codex", model: "m1", fromDate },
+        db,
+        kv,
+      )
+    ).json();
     expect(filtered.result.rows.slice(1, 2)).toMatchObject([{ user_id: "u2", total_tokens: 200 }]);
   });
 
   it("paginates current public users after a cached-page user becomes private or is deleted", async () => {
     const insert = sqlite.prepare("INSERT INTO users(id,email,name,is_public) VALUES (?,?,?,1)");
-    const usage = sqlite.prepare("INSERT INTO usage_records(user_id,device_id,source,model,hour_start,input_tokens,cached_input_tokens,output_tokens,reasoning_output_tokens,total_tokens) VALUES (?,'d','codex','m',?, ?,0,0,0,?)");
+    const usage = sqlite.prepare(
+      "INSERT INTO usage_records(user_id,device_id,source,model,hour_start,input_tokens,cached_input_tokens,output_tokens,reasoning_output_tokens,total_tokens) VALUES (?,'d','codex','m',?, ?,0,0,0,?)",
+    );
     for (let i = 0; i < 101; i++) {
       insert.run(`page${i}`, `page${i}@test.invalid`, `Page ${i}`);
       usage.run(`page${i}`, fromDate, 10000 - i, 10000 - i);
@@ -74,11 +107,15 @@ describe("D1 read queries against real SQLite", () => {
     expect(first.result.rows.slice(0, 21)).toHaveLength(21);
     expect(first.result.rows[0].user_id).toBe("page1");
     expect(next.result.rows[20].user_id).toBe("page21");
-    sqlite.exec("DELETE FROM usage_records WHERE user_id='page1'; DELETE FROM users WHERE id='page1'");
+    sqlite.exec(
+      "DELETE FROM usage_records WHERE user_id='page1'; DELETE FROM users WHERE id='page1'",
+    );
     const full = await (await handleLeaderboardRpc(request, db, kv)).json();
     expect(full.result.rows).toHaveLength(101);
     expect(full.result.rows[0].user_id).toBe("page2");
-    expect(full.result.rows.some((row: { user_id: string }) => ["page0", "page1"].includes(row.user_id))).toBe(false);
+    expect(
+      full.result.rows.some((row: { user_id: string }) => ["page0", "page1"].includes(row.user_id)),
+    ).toBe(false);
     expect(queries.every(({ params }) => params.length <= 100)).toBe(true);
   });
 
@@ -87,8 +124,13 @@ describe("D1 read queries against real SQLite", () => {
       INSERT INTO team_members(id,team_id,user_id,joined_at) VALUES ('tm1','t1','u2','${fromDate}'), ('tm2','t1','private','${fromDate}');
       INSERT INTO organizations(id,name,slug,created_by) VALUES ('o1','O','o','u1');
       INSERT INTO organization_members(id,org_id,user_id) VALUES ('om1','o1','u1'), ('om2','o1','private');`);
-    for (const [scope, user] of [[{ teamId: "t1" }, "u2"], [{ orgId: "o1" }, "u1"]] as const) {
-      const body = await (await handleLeaderboardRpc({ method: "leaderboard.getSnapshot", ...scope }, db, kv)).json();
+    for (const [scope, user] of [
+      [{ teamId: "t1" }, "u2"],
+      [{ orgId: "o1" }, "u1"],
+    ] as const) {
+      const body = await (
+        await handleLeaderboardRpc({ method: "leaderboard.getSnapshot", ...scope }, db, kv)
+      ).json();
       expect(body.result.rows.map((r: { user_id: string }) => r.user_id)).toEqual([user]);
     }
   });
@@ -99,32 +141,81 @@ describe("D1 read queries against real SQLite", () => {
     { method: "usage.getDeviceSummary" },
     { method: "usage.getDeviceCostDetails" },
     { method: "usage.getDeviceTimeline", granularity: "day", tzOffset: -480 },
-  ] as const)("preserves accounting and uses user/time indexes for $method $granularity", async (options) => {
-    const req: UsageRpcRequest = { ...options, userId: "u1", fromDate, toDate };
-    const body = await (await handleUsageRpc(req, db)).json();
-    const totals = body.result.reduce((n: number, r: { input_tokens: number; cached_input_tokens: number; output_tokens: number; reasoning_output_tokens: number }) =>
-      n + r.input_tokens + r.cached_input_tokens + r.output_tokens + r.reasoning_output_tokens, 0);
-    expect(totals).toBe("deviceId" in options ? 83 : 183);
-    const annotations = body.result.flatMap((r: { accounting?: unknown[] }) => r.accounting ?? []);
-    const reference = withAccounting(sqlite.prepare("SELECT json_group_array(json(accounting_json)) AS accounting_json FROM usage_totals WHERE user_id='u1' AND device_id='d1' AND hour_start >= ? AND hour_start < ?").get(fromDate, toDate) as { accounting_json: string });
-    expect(annotations).toEqual(expect.arrayContaining(reference.accounting!));
-    expect(annotations).toHaveLength(2);
-    const { sql, params } = queries[0];
-    const plan = JSON.stringify(sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params as never[]));
-    expect(plan).toContain("SEARCH usage_records USING INDEX idx_usage_user_time");
-    expect(plan).toContain("SEARCH usage_evidence USING INDEX idx_evidence_user_time");
-  });
+  ] as const)(
+    "preserves accounting and uses user/time indexes for $method $granularity",
+    async (options) => {
+      const req: UsageRpcRequest = { ...options, userId: "u1", fromDate, toDate };
+      const body = await (await handleUsageRpc(req, db)).json();
+      const totals = body.result.reduce(
+        (
+          n: number,
+          r: {
+            input_tokens: number;
+            cached_input_tokens: number;
+            output_tokens: number;
+            reasoning_output_tokens: number;
+          },
+        ) =>
+          n + r.input_tokens + r.cached_input_tokens + r.output_tokens + r.reasoning_output_tokens,
+        0,
+      );
+      expect(totals).toBe("deviceId" in options ? 83 : 183);
+      const annotations = body.result.flatMap(
+        (r: { accounting?: unknown[] }) => r.accounting ?? [],
+      );
+      const reference = withAccounting(
+        sqlite
+          .prepare(
+            "SELECT json_group_array(json(accounting_json)) AS accounting_json FROM usage_totals WHERE user_id='u1' AND device_id='d1' AND hour_start >= ? AND hour_start < ?",
+          )
+          .get(fromDate, toDate) as { accounting_json: string },
+      );
+      expect(annotations).toEqual(expect.arrayContaining(reference.accounting!));
+      expect(annotations).toHaveLength(2);
+      const { sql, params } = queries[0];
+      const plan = JSON.stringify(
+        sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...(params as never[])),
+      );
+      expect(plan).toContain("SEARCH usage_records USING INDEX idx_usage_user_time");
+      expect(plan).toContain("SEARCH usage_evidence USING INDEX idx_evidence_user_time");
+    },
+  );
 
   it("keeps zero legacy buckets and alias-only devices, but excludes evidence checkpoints", async () => {
-    const body = await (await handleDevicesRpc({ method: "devices.list", userId: "u1" }, db)).json();
-    expect(body.result.map((r: { device_id: string }) => r.device_id)).toEqual(["d1", "d2", "alias-only", "zero"]);
-    for (const [deviceId, expected] of [["zero", true], ["checkpoint", false], ["alias-only", false]] as const) {
-      expect(await (await handleDevicesRpc({ method: "devices.hasRecords", userId: "u1", deviceId }, db)).json()).toEqual({ result: { hasRecords: expected } });
+    const body = await (
+      await handleDevicesRpc({ method: "devices.list", userId: "u1" }, db)
+    ).json();
+    expect(body.result.map((r: { device_id: string }) => r.device_id)).toEqual([
+      "d1",
+      "d2",
+      "alias-only",
+      "zero",
+    ]);
+    for (const [deviceId, expected] of [
+      ["zero", true],
+      ["checkpoint", false],
+      ["alias-only", false],
+    ] as const) {
+      expect(
+        await (
+          await handleDevicesRpc({ method: "devices.hasRecords", userId: "u1", deviceId }, db)
+        ).json(),
+      ).toEqual({ result: { hasRecords: expected } });
     }
-    for (const [deviceId, exists] of [["zero", true], ["checkpoint", false], ["alias-only", true]] as const) {
-      expect(await (await handleDevicesRpc({ method: "devices.exists", userId: "u1", deviceId }, db)).json()).toEqual({ result: { exists } });
+    for (const [deviceId, exists] of [
+      ["zero", true],
+      ["checkpoint", false],
+      ["alias-only", true],
+    ] as const) {
+      expect(
+        await (
+          await handleDevicesRpc({ method: "devices.exists", userId: "u1", deviceId }, db)
+        ).json(),
+      ).toEqual({ result: { exists } });
     }
-    const plan = JSON.stringify(sqlite.prepare(`EXPLAIN QUERY PLAN ${queries[0].sql}`).all(...queries[0].params as never[]));
+    const plan = JSON.stringify(
+      sqlite.prepare(`EXPLAIN QUERY PLAN ${queries[0].sql}`).all(...(queries[0].params as never[])),
+    );
     expect(plan).not.toContain("usage_details");
   });
 });

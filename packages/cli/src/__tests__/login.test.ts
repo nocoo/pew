@@ -69,9 +69,7 @@ describe("executeLogin", () => {
     expect(result.email).toBe("test@example.com");
 
     // Verify config was saved
-    const config = JSON.parse(
-      await readFile(join(tempDir, "config.json"), "utf-8")
-    );
+    const config = JSON.parse(await readFile(join(tempDir, "config.json"), "utf-8"));
     expect(config.token).toBe("pk_test123abc");
   });
 
@@ -79,10 +77,7 @@ describe("executeLogin", () => {
     // Pre-save a config
     const { writeFile, mkdir } = await import("node:fs/promises");
     await mkdir(tempDir, { recursive: true });
-    await writeFile(
-      join(tempDir, "config.json"),
-      JSON.stringify({ token: "pk_existing" })
-    );
+    await writeFile(join(tempDir, "config.json"), JSON.stringify({ token: "pk_existing" }));
 
     const result = await executeLogin({
       configDir: tempDir,
@@ -101,10 +96,7 @@ describe("executeLogin", () => {
     // Pre-save a config
     const { writeFile, mkdir } = await import("node:fs/promises");
     await mkdir(tempDir, { recursive: true });
-    await writeFile(
-      join(tempDir, "config.json"),
-      JSON.stringify({ token: "pk_old_key" })
-    );
+    await writeFile(join(tempDir, "config.json"), JSON.stringify({ token: "pk_old_key" }));
 
     const loginPromise = executeLogin({
       configDir: tempDir,
@@ -131,9 +123,7 @@ describe("executeLogin", () => {
     expect(result.success).toBe(true);
     expect(result.email).toBe("new@example.com");
 
-    const config = JSON.parse(
-      await readFile(join(tempDir, "config.json"), "utf-8")
-    );
+    const config = JSON.parse(await readFile(join(tempDir, "config.json"), "utf-8"));
     expect(config.token).toBe("pk_new_key");
   });
 
@@ -347,10 +337,13 @@ describe("executeLogin", () => {
         const body = JSON.parse(init?.body as string);
         expect(body.code).toBe("ABCD-1234");
 
-        return new Response(JSON.stringify({
-          api_key: "pk_from_code",
-          email: "headless@example.com",
-        }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            api_key: "pk_from_code",
+            email: "headless@example.com",
+          }),
+          { status: 200 },
+        );
       };
 
       const result = await executeLogin({
@@ -367,17 +360,18 @@ describe("executeLogin", () => {
       expect(result.email).toBe("headless@example.com");
 
       // Verify config was saved
-      const config = JSON.parse(
-        await readFile(join(tempDir, "config.json"), "utf-8")
-      );
+      const config = JSON.parse(await readFile(join(tempDir, "config.json"), "utf-8"));
       expect(config.token).toBe("pk_from_code");
     });
 
     it("should fail with invalid code", async () => {
       const mockFetch = async () => {
-        return new Response(JSON.stringify({
-          error: "Invalid code",
-        }), { status: 401 });
+        return new Response(
+          JSON.stringify({
+            error: "Invalid code",
+          }),
+          { status: 401 },
+        );
       };
 
       const result = await executeLogin({
@@ -396,9 +390,12 @@ describe("executeLogin", () => {
 
     it("should fail with expired code", async () => {
       const mockFetch = async () => {
-        return new Response(JSON.stringify({
-          error: "Code expired",
-        }), { status: 401 });
+        return new Response(
+          JSON.stringify({
+            error: "Code expired",
+          }),
+          { status: 401 },
+        );
       };
 
       const result = await executeLogin({
@@ -417,9 +414,12 @@ describe("executeLogin", () => {
 
     it("should fail with already-used code", async () => {
       const mockFetch = async () => {
-        return new Response(JSON.stringify({
-          error: "Code already used",
-        }), { status: 401 });
+        return new Response(
+          JSON.stringify({
+            error: "Code already used",
+          }),
+          { status: 401 },
+        );
       };
 
       const result = await executeLogin({
@@ -459,10 +459,13 @@ describe("executeLogin", () => {
       let browserOpened = false;
 
       const mockFetch = async () => {
-        return new Response(JSON.stringify({
-          api_key: "pk_code_only",
-          email: "code@example.com",
-        }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            api_key: "pk_code_only",
+            email: "code@example.com",
+          }),
+          { status: 200 },
+        );
       };
 
       const result = await executeLogin({
@@ -483,10 +486,7 @@ describe("executeLogin", () => {
       // Pre-save a config
       const { writeFile, mkdir } = await import("node:fs/promises");
       await mkdir(tempDir, { recursive: true });
-      await writeFile(
-        join(tempDir, "config.json"),
-        JSON.stringify({ token: "pk_existing" })
-      );
+      await writeFile(join(tempDir, "config.json"), JSON.stringify({ token: "pk_existing" }));
 
       const result = await executeLogin({
         configDir: tempDir,
@@ -543,16 +543,16 @@ describe("executeLogin", () => {
       // Pre-save a config
       const { writeFile, mkdir } = await import("node:fs/promises");
       await mkdir(tempDir, { recursive: true });
-      await writeFile(
-        join(tempDir, "config.json"),
-        JSON.stringify({ token: "pk_old" })
-      );
+      await writeFile(join(tempDir, "config.json"), JSON.stringify({ token: "pk_old" }));
 
       const mockFetch = async () => {
-        return new Response(JSON.stringify({
-          api_key: "pk_new_from_code",
-          email: "new@example.com",
-        }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            api_key: "pk_new_from_code",
+            email: "new@example.com",
+          }),
+          { status: 200 },
+        );
       };
 
       const result = await executeLogin({
@@ -569,17 +569,18 @@ describe("executeLogin", () => {
       expect(result.success).toBe(true);
       expect(result.email).toBe("new@example.com");
 
-      const config = JSON.parse(
-        await readFile(join(tempDir, "config.json"), "utf-8")
-      );
+      const config = JSON.parse(await readFile(join(tempDir, "config.json"), "utf-8"));
       expect(config.token).toBe("pk_new_from_code");
     });
 
     it("should fail when response has no api_key", async () => {
       const mockFetch = async () => {
-        return new Response(JSON.stringify({
-          email: "nokey@example.com",
-        }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            email: "nokey@example.com",
+          }),
+          { status: 200 },
+        );
       };
 
       const result = await executeLogin({
@@ -629,10 +630,13 @@ describe("executeLogin", () => {
       const logMessages: string[] = [];
 
       const mockFetch = async () => {
-        return new Response(JSON.stringify({
-          api_key: "pk_log_test",
-          email: "log@example.com",
-        }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            api_key: "pk_log_test",
+            email: "log@example.com",
+          }),
+          { status: 200 },
+        );
       };
 
       const result = await executeLogin({

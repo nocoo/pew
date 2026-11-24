@@ -39,12 +39,7 @@ function createMockDB() {
   return { prepare } as unknown as D1Database;
 }
 
-function makeRequest(
-  method: string,
-  path: string,
-  body?: unknown,
-  token?: string,
-): Request {
+function makeRequest(method: string, path: string, body?: unknown, token?: string): Request {
   const url = `https://pew.test.workers.dev${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -86,15 +81,27 @@ describe("pew read Worker", () => {
     env = createEnv();
   });
 
-  it.each([undefined, null, "", "   "])("rejects an unconfigured secret (%s) before touching bindings", async (secret) => {
-    Object.assign(env, { WORKER_READ_SECRET: secret });
-    const res = await callWorker(makeRequest("POST", "/api/rpc", {
-      method: "users.getById", id: "dummy-private-user",
-    }, String(secret)), env);
-    expect(res.status).toBe(503);
-    expect(env.DB.prepare).not.toHaveBeenCalled();
-    expect(env.CACHE.get).not.toHaveBeenCalled();
-  });
+  it.each([undefined, null, "", "   "])(
+    "rejects an unconfigured secret (%s) before touching bindings",
+    async (secret) => {
+      Object.assign(env, { WORKER_READ_SECRET: secret });
+      const res = await callWorker(
+        makeRequest(
+          "POST",
+          "/api/rpc",
+          {
+            method: "users.getById",
+            id: "dummy-private-user",
+          },
+          String(secret),
+        ),
+        env,
+      );
+      expect(res.status).toBe(503);
+      expect(env.DB.prepare).not.toHaveBeenCalled();
+      expect(env.CACHE.get).not.toHaveBeenCalled();
+    },
+  );
 
   // -----------------------------------------------------------------------
   // GET /api/live
@@ -105,13 +112,11 @@ describe("pew read Worker", () => {
       const res = await callWorker(makeRequest("GET", "/api/live"), env);
       expect(res.status).toBe(200);
 
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.status).toBe("ok");
       expect(body.version).toBe(WORKER_VERSION);
       expect(body.component).toBe("worker-read");
-      expect(body.database).toEqual(
-        expect.objectContaining({ connected: true }),
-      );
+      expect(body.database).toEqual(expect.objectContaining({ connected: true }));
       expect(body.timestamp).toBeDefined();
       expect(typeof body.uptime).toBe("number");
     });
@@ -127,7 +132,7 @@ describe("pew read Worker", () => {
       const res = await callWorker(makeRequest("GET", "/api/live"), badEnv);
       expect(res.status).toBe(503);
 
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.status).toBe("error");
       expect((body.database as Record<string, unknown>).connected).toBe(false);
       // D1 error messages are sanitized to a generic string to avoid info disclosure.
@@ -145,7 +150,7 @@ describe("pew read Worker", () => {
       const res = await callWorker(makeRequest("GET", "/api/live"), badEnv);
       expect(res.status).toBe(503);
 
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.status).toBe("error");
       const database = body.database as Record<string, unknown>;
       expect(database.error).toBe("Internal server error");
@@ -181,7 +186,7 @@ describe("pew read Worker", () => {
 
       const res = await callWorker(req, env);
       expect(res.status).toBe(401);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.error).toBe("Unauthorized");
     });
 
@@ -217,26 +222,17 @@ describe("pew read Worker", () => {
 
   describe("router", () => {
     it("should return 404 for unknown path", async () => {
-      const res = await callWorker(
-        makeRequest("GET", "/unknown", undefined, SECRET),
-        env,
-      );
+      const res = await callWorker(makeRequest("GET", "/unknown", undefined, SECRET), env);
       expect(res.status).toBe(404);
     });
 
     it("should return 404 for GET on /api/query", async () => {
-      const res = await callWorker(
-        makeRequest("GET", "/api/query", undefined, SECRET),
-        env,
-      );
+      const res = await callWorker(makeRequest("GET", "/api/query", undefined, SECRET), env);
       expect(res.status).toBe(404);
     });
 
     it("should return 405 for GET on /api/rpc", async () => {
-      const res = await callWorker(
-        makeRequest("GET", "/api/rpc", undefined, SECRET),
-        env,
-      );
+      const res = await callWorker(makeRequest("GET", "/api/rpc", undefined, SECRET), env);
       expect(res.status).toBe(405);
     });
   });
@@ -258,12 +254,9 @@ describe("pew read Worker", () => {
     });
 
     it("should return 400 for missing method", async () => {
-      const res = await callWorker(
-        makeRequest("POST", "/api/rpc", { id: "usr_123" }, SECRET),
-        env,
-      );
+      const res = await callWorker(makeRequest("POST", "/api/rpc", { id: "usr_123" }, SECRET), env);
       expect(res.status).toBe(400);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.error).toContain("method");
     });
 
@@ -273,7 +266,7 @@ describe("pew read Worker", () => {
         env,
       );
       expect(res.status).toBe(400);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.error).toContain("Unknown RPC domain");
     });
 
@@ -299,7 +292,7 @@ describe("pew read Worker", () => {
       );
 
       expect(res.status).toBe(200);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.result).toEqual(mockUser);
     });
 
@@ -314,30 +307,40 @@ describe("pew read Worker", () => {
       });
       const res = await callWorker(req, env);
       expect(res.status).toBe(400);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.error).toContain("JSON");
     });
   });
 
   describe("scheduled handler", () => {
     it("is exported and callable; logs success path", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(JSON.stringify({ data: [] }), { status: 200 })
-      );
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify({ data: [] }), { status: 200 }));
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
       try {
         expect(typeof worker.scheduled).toBe("function");
         await worker.scheduled!(
-          { cron: "0 3 * * *", scheduledTime: Date.now(), type: "scheduled" } as unknown as ScheduledController,
+          {
+            cron: "0 3 * * *",
+            scheduledTime: Date.now(),
+            type: "scheduled",
+          } as unknown as ScheduledController,
           createEnv(),
-          { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext
+          {
+            waitUntil: () => undefined,
+            passThroughOnException: () => undefined,
+          } as unknown as ExecutionContext,
         );
-        expect(logSpy.mock.calls.flat().some((arg) =>
-          typeof arg === "string" && arg.startsWith("dynamic pricing sync")
-        ) || errSpy.mock.calls.flat().some((arg) =>
-          typeof arg === "string" && arg.startsWith("dynamic pricing sync")
-        )).toBe(true);
+        expect(
+          logSpy.mock.calls
+            .flat()
+            .some((arg) => typeof arg === "string" && arg.startsWith("dynamic pricing sync")) ||
+            errSpy.mock.calls
+              .flat()
+              .some((arg) => typeof arg === "string" && arg.startsWith("dynamic pricing sync")),
+        ).toBe(true);
       } finally {
         fetchSpy.mockRestore();
         logSpy.mockRestore();
@@ -347,20 +350,29 @@ describe("pew read Worker", () => {
   });
 });
 
-
 describe("RPC count precision boundary", () => {
   it("rejects rounded aggregate results from domain handlers", async () => {
     const env = createEnv();
-    vi.mocked(env.DB.prepare).mockReturnValue({ first: vi.fn().mockResolvedValue({ total_tokens: Number.MAX_SAFE_INTEGER + 1 }) } as unknown as D1PreparedStatement);
-    const response = await callWorker(makeRequest("POST", "/api/rpc", { method: "admin.getSystemStats" }, SECRET), env);
+    vi.mocked(env.DB.prepare).mockReturnValue({
+      first: vi.fn().mockResolvedValue({ total_tokens: Number.MAX_SAFE_INTEGER + 1 }),
+    } as unknown as D1PreparedStatement);
+    const response = await callWorker(
+      makeRequest("POST", "/api/rpc", { method: "admin.getSystemStats" }, SECRET),
+      env,
+    );
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Count exceeds supported integer range" });
   });
 
   it("catches asynchronous SQLite overflow without exposing queries or partial results", async () => {
     const env = createEnv();
-    vi.mocked(env.DB.prepare).mockReturnValue({ first: vi.fn().mockRejectedValue(new Error("integer overflow PRIVATE")) } as unknown as D1PreparedStatement);
-    const response = await callWorker(makeRequest("POST", "/api/rpc", { method: "admin.getSystemStats" }, SECRET), env);
+    vi.mocked(env.DB.prepare).mockReturnValue({
+      first: vi.fn().mockRejectedValue(new Error("integer overflow PRIVATE")),
+    } as unknown as D1PreparedStatement);
+    const response = await callWorker(
+      makeRequest("POST", "/api/rpc", { method: "admin.getSystemStats" }, SECRET),
+      env,
+    );
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Internal server error" });
   });

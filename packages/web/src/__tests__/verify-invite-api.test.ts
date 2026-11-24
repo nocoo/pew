@@ -45,9 +45,7 @@ describe("POST /api/auth/verify-invite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as any
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as any);
   });
 
   afterEach(() => {

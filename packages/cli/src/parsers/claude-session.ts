@@ -51,9 +51,7 @@ function extractProjectRef(filePath: string): string | null {
  * - last seen model
  * - project ref from file path
  */
-export async function collectClaudeSessions(
-  filePath: string,
-): Promise<SessionSnapshot[]> {
+export async function collectClaudeSessions(filePath: string): Promise<SessionSnapshot[]> {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile() || st.size === 0) return [];
 
@@ -139,8 +137,7 @@ export async function collectClaudeSessions(
 
     const startedAt = accum.minTimestamp;
     const lastMessageAt = accum.maxTimestamp ?? accum.minTimestamp;
-    const durationMs =
-      new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
+    const durationMs = new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
 
     results.push({
       sessionKey: `claude:${accum.sessionId}`,

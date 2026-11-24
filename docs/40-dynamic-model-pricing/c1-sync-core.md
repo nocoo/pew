@@ -37,8 +37,8 @@ export interface DynamicPricingEntry {
   outputPerMillion: number;
   cachedPerMillion: number | null;
   contextWindow: number | null;
-  origin: 'baseline' | 'openrouter' | 'models.dev' | 'admin';
-  updatedAt: string;       // ISO-8601
+  origin: "baseline" | "openrouter" | "models.dev" | "admin";
+  updatedAt: string; // ISO-8601
   aliases?: string[];
 }
 
@@ -49,19 +49,23 @@ export interface DynamicPricingMeta {
   openRouterCount: number;
   modelsDevCount: number;
   adminOverrideCount: number;
-  lastErrors?: Array<{ source: 'openrouter' | 'models.dev' | 'd1' | 'kv'; at: string; message: string }> | null;
+  lastErrors?: Array<{
+    source: "openrouter" | "models.dev" | "d1" | "kv";
+    at: string;
+    message: string;
+  }> | null;
 }
 
 /** Admin override row consumed by merge. Mirrors model_pricing schema. */
 export interface AdminPricingRow {
   model: string;
-  source: string | null;     // usage/tool source — orthogonal to entry.origin
+  source: string | null; // usage/tool source — orthogonal to entry.origin
   input: number;
   output: number;
   cached: number | null;
 }
 
-export const PRICING_ORIGINS = ['baseline', 'openrouter', 'models.dev', 'admin'] as const;
+export const PRICING_ORIGINS = ["baseline", "openrouter", "models.dev", "admin"] as const;
 ```
 
 `types.ts` exports types only — no runtime values besides the const array.
@@ -71,11 +75,11 @@ export const PRICING_ORIGINS = ['baseline', 'openrouter', 'models.dev', 'admin']
 ```typescript
 export interface OpenRouterApiResponse {
   data: Array<{
-    id: string;                   // "anthropic/claude-sonnet-4"
+    id: string; // "anthropic/claude-sonnet-4"
     name?: string;
     context_length?: number | null;
     pricing: {
-      prompt: string;             // per-token, decimal string
+      prompt: string; // per-token, decimal string
       completion: string;
       input_cache_read?: string;
     };
@@ -84,7 +88,7 @@ export interface OpenRouterApiResponse {
 
 export interface ParseResult {
   entries: DynamicPricingEntry[];
-  warnings: string[];             // skipped entries with reason
+  warnings: string[]; // skipped entries with reason
 }
 
 /**
@@ -109,7 +113,7 @@ export interface ModelsDevApiResponse {
       [modelId: string]: {
         name?: string;
         cost?: {
-          input?: number;          // per-million
+          input?: number; // per-million
           output?: number;
           cache_read?: number;
         };
@@ -123,16 +127,17 @@ export function parseModelsDev(json: unknown, now: string): ParseResult;
 ```
 
 Provider mapping lives in this module:
+
 ```typescript
 const PROVIDERS: Record<string, string> = {
-  anthropic: 'Anthropic',
-  openai: 'OpenAI',
-  google: 'Google',
-  deepseek: 'DeepSeek',
-  mistral: 'Mistral',
-  xai: 'xAI',
-  'github-copilot': 'GitHub Copilot',
-  alibaba: 'Alibaba',
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  google: "Google",
+  deepseek: "DeepSeek",
+  mistral: "Mistral",
+  xai: "xAI",
+  "github-copilot": "GitHub Copilot",
+  alibaba: "Alibaba",
 };
 ```
 Unknown providers are skipped with a warning (we only ship pricing for providers we display).
@@ -141,7 +146,7 @@ Unknown providers are skipped with a warning (we only ship pricing for providers
 
 ```typescript
 export interface MergeInput {
-  baseline: DynamicPricingEntry[];     // bundled JSON
+  baseline: DynamicPricingEntry[]; // bundled JSON
   openRouter: DynamicPricingEntry[];
   modelsDev: DynamicPricingEntry[];
   admin: AdminPricingRow[];
@@ -155,9 +160,9 @@ export interface MergeResult {
   sourceOverrides: Array<{
     source: string;
     pricing: { input: number; output: number; cached: number | null };
-    model: string;            // the row.model that triggered this override (for traceability)
+    model: string; // the row.model that triggered this override (for traceability)
   }>;
-  meta: Omit<DynamicPricingMeta, 'lastSyncedAt' | 'lastErrors'> & { lastSyncedAt: string };
+  meta: Omit<DynamicPricingMeta, "lastSyncedAt" | "lastErrors"> & { lastSyncedAt: string };
   warnings: string[];
 }
 
@@ -178,10 +183,12 @@ export function mergePricingSources(input: MergeInput): MergeResult;
 5. **Alias expansion (last step)**: for each canonical entry whose ID contains `/`, compute the bare-name suffix; record it on `entry.aliases` only when no other entry already claims that bare name.
 
 **Output shape:**
+
 - `entries` — final canonical list, sorted by `[provider, model]` for deterministic diffs and stable JSON output (essential for git-checked baseline). Excludes admin source-specific overrides.
 - `sourceOverrides` — admin rows with `source != null`. C5's `buildPricingMap` writes them into `PricingMap.sourceDefaults` and (per existing behavior) also into `PricingMap.models[model]`. The merge layer is intentionally ignorant of `PricingMap` — it just reports what admin rows asked for, in a structure the consumer can apply.
 
 **Counts in `meta`:**
+
 - `baselineCount` / `openRouterCount` / `modelsDevCount` — number of entries whose final `origin` matches that source after merge (i.e. how many survived).
 - `adminOverrideCount` — total admin rows applied (both `source=null` and `source!=null`).
 - `modelCount` — `entries.length`.
@@ -191,6 +198,7 @@ export function mergePricingSources(input: MergeInput): MergeResult;
 ### `openrouter.test.ts`
 
 Fixture covers:
+
 - Valid Anthropic / OpenAI / Google entries.
 - Entry with missing `name` (displayName falls back to ID-derived).
 - Entry with `pricing.prompt = "0"` and `pricing.completion = "0"` (free tier; preserved as zero, NOT skipped — zero-price protection lives in merge, not parse).
@@ -199,6 +207,7 @@ Fixture covers:
 - Entry with `context_length: null`.
 
 Assertions:
+
 - Per-token `1.5e-6` becomes `1.5` per million (multiplication).
 - displayName "Anthropic: Claude Sonnet 4" becomes "Claude Sonnet 4".
 - Provider "anthropic" maps to "Anthropic".
@@ -208,6 +217,7 @@ Assertions:
 ### `models-dev.test.ts`
 
 Fixture covers:
+
 - Multiple providers, each with multiple models.
 - Model with missing `cost.cache_read` (cachedPerMillion = null).
 - Model with missing `cost.input` (skipped + warning — can't compute cost without input price).
@@ -217,6 +227,7 @@ Fixture covers:
 ### `merge.test.ts`
 
 Cases:
+
 1. **Baseline only** → entries unchanged; counts correct.
 2. **Baseline + openRouter** → openRouter wins for overlapping IDs; baseline-only entries retained.
 3. **Zero-price protection** → baseline has $3/$15; openRouter has $0/$0 → baseline retained, no warning needed (silent skip).

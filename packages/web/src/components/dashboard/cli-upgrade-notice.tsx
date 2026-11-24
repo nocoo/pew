@@ -5,7 +5,13 @@ import { useSession } from "next-auth/react";
 import { MIN_CLIENT_VERSION } from "@pew/core";
 import { Button } from "@nocoo/basalt/components/button";
 import {
-  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@nocoo/basalt/components/dialog";
 import { ChevronDown, Terminal, X } from "@nocoo/basalt/icons";
 import { CopyButton } from "@/components/copy-button";
@@ -22,7 +28,10 @@ const mirrors = [
 
 function Command({ label, command }: { label: string; command: string }) {
   return (
-    <fieldset aria-label={label} className="min-w-0 rounded-basalt border border-basalt-border bg-basalt-muted/40 p-3">
+    <fieldset
+      aria-label={label}
+      className="min-w-0 rounded-basalt border border-basalt-border bg-basalt-muted/40 p-3"
+    >
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-xs font-medium text-basalt-muted-foreground">{label}</span>
         <CopyButton text={command}>复制</CopyButton>
@@ -47,8 +56,12 @@ function UpgradeDialog() {
     request.current ??= fetch("/api/cli-upgrade-notice", { method: "POST" })
       .then(async (response) => response.ok && (await response.json()).show === true)
       .catch(() => false);
-    void request.current.then((show) => { if (active) setOpen(show); });
-    return () => { active = false; };
+    void request.current.then((show) => {
+      if (active) setOpen(show);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -57,10 +70,18 @@ function UpgradeDialog() {
         size="lg"
         showCloseButton={false}
         onCloseAutoFocus={restoreFocus}
-        onOpenAutoFocus={(event) => { event.preventDefault(); titleRef.current?.focus(); }}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          titleRef.current?.focus();
+        }}
       >
         <DialogClose asChild>
-          <Button variant="ghost" size="icon" className="absolute right-3 top-3" aria-label="关闭升级提醒">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-3 top-3"
+            aria-label="关闭升级提醒"
+          >
             <X aria-hidden="true" strokeWidth={1.5} />
           </Button>
         </DialogClose>
@@ -72,25 +93,39 @@ function UpgradeDialog() {
             升级 Pew CLI 至 3.0
           </DialogTitle>
           <DialogDescription className="pt-1 text-sm leading-relaxed">
-            低于 {MIN_CLIENT_VERSION} 的版本将无法上传用量。请在每台运行 Pew 同步的设备上升级，确保 Dashboard 持续更新。
+            低于 {MIN_CLIENT_VERSION} 的版本将无法上传用量。请在每台运行 Pew 同步的设备上升级，确保
+            Dashboard 持续更新。
           </DialogDescription>
         </DialogHeader>
 
         <div className="mt-5 space-y-3">
-          <p className="text-sm text-basalt-muted-foreground">按原来的安装方式，选择 npm 或 Bun 中的一种即可。</p>
-          {installers.map(({ name, command }) => <Command key={name} label={name} command={command} />)}
+          <p className="text-sm text-basalt-muted-foreground">
+            按原来的安装方式，选择 npm 或 Bun 中的一种即可。
+          </p>
+          {installers.map(({ name, command }) => (
+            <Command key={name} label={name} command={command} />
+          ))}
           <details className="group rounded-basalt border border-basalt-border p-3">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
               主镜像连接不畅？使用国内镜像
-              <ChevronDown className="h-4 w-4 shrink-0 text-basalt-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+              <ChevronDown
+                className="h-4 w-4 shrink-0 text-basalt-muted-foreground transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
             </summary>
             <div className="mt-3 space-y-4">
-              <p className="text-xs leading-relaxed text-basalt-muted-foreground">以下命令仅在本次升级使用镜像，无需修改默认镜像设置。</p>
+              <p className="text-xs leading-relaxed text-basalt-muted-foreground">
+                以下命令仅在本次升级使用镜像，无需修改默认镜像设置。
+              </p>
               {mirrors.map(({ name, registry }) => (
                 <div key={name} className="space-y-2">
                   <p className="text-sm font-medium">{name}</p>
                   {installers.map((installer) => (
-                    <Command key={installer.name} label={`${name} · ${installer.name}`} command={`${installer.command} --registry=${registry}`} />
+                    <Command
+                      key={installer.name}
+                      label={`${name} · ${installer.name}`}
+                      command={`${installer.command} --registry=${registry}`}
+                    />
                   ))}
                 </div>
               ))}
@@ -103,7 +138,9 @@ function UpgradeDialog() {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>跳过且以后不再显示</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            跳过且以后不再显示
+          </Button>
           <Button onClick={() => setOpen(false)}>我已升级</Button>
         </DialogFooter>
       </DialogContent>

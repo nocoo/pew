@@ -1,24 +1,13 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import type { DeviceAgentBreakdownRow } from "@/lib/device-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // Safe color references
 const colorOutput = CHART_COLORS[1] as string;
@@ -63,7 +52,12 @@ function AgentTooltip({
 
   const rowData = payload[0]?.payload;
   const total = rowData?.total_tokens ?? 0;
-  const orderedKeys = ["input_tokens", "output_tokens", "cached_input_tokens", "reasoning_output_tokens"] as const;
+  const orderedKeys = [
+    "input_tokens",
+    "output_tokens",
+    "cached_input_tokens",
+    "reasoning_output_tokens",
+  ] as const;
 
   return (
     <ChartTooltip title={label}>
@@ -92,10 +86,7 @@ function AgentTooltip({
  * Horizontal stacked bar chart showing token breakdown by agent (source)
  * for a single device. Stacked segments: input / output / cached.
  */
-export function DeviceAgentChart({
-  data,
-  className,
-}: DeviceAgentChartProps) {
+export function DeviceAgentChart({ data, className }: DeviceAgentChartProps) {
   if (!data.length) {
     return (
       <div
@@ -137,10 +128,7 @@ export function DeviceAgentChart({
             { key: "reasoning", label: "Reasoning", color: colorReasoning },
           ].map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ background: color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ background: color }} />
               <span className="text-xs text-basalt-muted-foreground">{label}</span>
             </div>
           ))}

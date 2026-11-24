@@ -31,37 +31,81 @@ export interface SessionUsageEvent {
   costsPartial?: boolean;
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
-const partialFlag = (usage: Record<string, unknown>) => ["cost_is_partial", "costIsPartial", "usage_is_incomplete", "usageIsIncomplete"].some((key) => usage[key] === true);
-const partialUsage = (usage: Record<string, unknown>) => partialFlag(usage) ||
-  (isObject(usage.modelUsage) && Object.values(usage.modelUsage).some((raw) => isObject(raw) && partialFlag(raw)));
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+const partialFlag = (usage: Record<string, unknown>) =>
+  ["cost_is_partial", "costIsPartial", "usage_is_incomplete", "usageIsIncomplete"].some(
+    (key) => usage[key] === true,
+  );
+const partialUsage = (usage: Record<string, unknown>) =>
+  partialFlag(usage) ||
+  (isObject(usage.modelUsage) &&
+    Object.values(usage.modelUsage).some((raw) => isObject(raw) && partialFlag(raw)));
 
 /** ACP and persisted turn ledgers use inclusive input; headless result fields must not enter here. */
 function usageGroups(usage: Record<string, unknown>, legacyModel: string): AccountingGroup[] {
   const partial = partialUsage(usage);
   const make = (raw: Record<string, unknown>, model: string) => {
     const snapshot = readSnapshot(raw);
-    const cost = reportedCost(raw.costUsdTicks, 10, "grok-server", "actual", partial ? "partial" : "complete");
-    const group = inclusiveAccounting(toSessionUsageDelta(snapshot), { input: raw.inputTokens, read: raw.cachedReadTokens,
-      write: raw.cacheCreationTokens, output: raw.outputTokens, reasoning: raw.reasoningTokens }, {
-      origin: "grok:turn_usage", model, provider: "xai", aggregate: raw.modelCalls !== 1, rawTotal: raw.totalTokens,
-      reportedCosts: cost ? [cost] : [],
-    });
+    const cost = reportedCost(
+      raw.costUsdTicks,
+      10,
+      "grok-server",
+      "actual",
+      partial ? "partial" : "complete",
+    );
+    const group = inclusiveAccounting(
+      toSessionUsageDelta(snapshot),
+      {
+        input: raw.inputTokens,
+        read: raw.cachedReadTokens,
+        write: raw.cacheCreationTokens,
+        output: raw.outputTokens,
+        reasoning: raw.reasoningTokens,
+      },
+      {
+        origin: "grok:turn_usage",
+        model,
+        provider: "xai",
+        aggregate: raw.modelCalls !== 1,
+        rawTotal: raw.totalTokens,
+        reportedCosts: cost ? [cost] : [],
+      },
+    );
     group.request_count = optionalToken(raw.modelCalls);
     return group;
   };
   const overall = make(usage, legacyModel);
   const rawModels = usage.modelUsage;
-  const entries = isObject(rawModels) ? Object.entries(rawModels).filter((entry): entry is [string, Record<string, unknown>] => isObject(entry[1])) : [];
+  const entries = isObject(rawModels)
+    ? Object.entries(rawModels).filter((entry): entry is [string, Record<string, unknown>] =>
+        isObject(entry[1]),
+      )
+    : [];
   const groups = entries.map(([model, raw]) => make(raw, model));
   if (!groups.length) return [overall];
-  const countFields = ["input_total_tokens", "cache_read_input_tokens", "cache_write_input_tokens", "output_total_tokens", "reasoning_output_tokens"] as const;
-  const partition = groups.every((g) => g.counts !== null) && overall.counts && countFields.every((key) =>
-    overall.counts?.[key] === null ? groups.every((g) => g.counts?.[key] === null) :
-      groups.every((g) => g.counts?.[key] !== null) && groups.reduce((n, g) => n + (g.counts?.[key] ?? 0), 0) === overall.counts?.[key]);
+  const countFields = [
+    "input_total_tokens",
+    "cache_read_input_tokens",
+    "cache_write_input_tokens",
+    "output_total_tokens",
+    "reasoning_output_tokens",
+  ] as const;
+  const partition =
+    groups.every((g) => g.counts !== null) &&
+    overall.counts &&
+    countFields.every((key) =>
+      overall.counts?.[key] === null
+        ? groups.every((g) => g.counts?.[key] === null)
+        : groups.every((g) => g.counts?.[key] !== null) &&
+          groups.reduce((n, g) => n + (g.counts?.[key] ?? 0), 0) === overall.counts?.[key],
+    );
   const amount = overall.reported_costs[0];
-  const costsPartition = !amount || groups.every((g) => g.reported_costs[0]) &&
-    groups.reduce((n, g) => n + BigInt(g.reported_costs[0].units), BigInt(0)) === BigInt(amount.units);
+  const costsPartition =
+    !amount ||
+    (groups.every((g) => g.reported_costs[0]) &&
+      groups.reduce((n, g) => n + BigInt(g.reported_costs[0].units), BigInt(0)) ===
+        BigInt(amount.units));
   if (partition && costsPartition) return groups;
   // Keep the complete turn amount once when it cannot be assigned to models.
   // The unresolved actual model prevents a mixed turn being priced as its first model.
@@ -98,9 +142,7 @@ function readModel(usage: Record<string, unknown>): string {
   return "grok-unknown";
 }
 
-function readMeta(
-  params: Record<string, unknown>,
-): Record<string, unknown> | null {
+function readMeta(params: Record<string, unknown>): Record<string, unknown> | null {
   const meta = params._meta;
   if (meta === null || typeof meta !== "object" || Array.isArray(meta)) {
     return null;
@@ -129,12 +171,13 @@ function readTimestampMs(
 function readEventId(params: Record<string, unknown>): string | null {
   const meta = readMeta(params);
   if (!meta) return null;
-  return typeof meta.eventId === "string" && meta.eventId.length > 0
-    ? meta.eventId
-    : null;
+  return typeof meta.eventId === "string" && meta.eventId.length > 0 ? meta.eventId : null;
 }
 
-export function parseTurnCompletedLine(line: string, includeAccounting = false): SessionUsageEvent | null {
+export function parseTurnCompletedLine(
+  line: string,
+  includeAccounting = false,
+): SessionUsageEvent | null {
   let obj: unknown;
   try {
     obj = JSON.parse(line) as unknown;
@@ -166,9 +209,15 @@ export function parseTurnCompletedLine(line: string, includeAccounting = false):
     model: readModel(usageObj),
     eventId: readEventId(paramsObj),
     snapshot: readSnapshot(usageObj),
-    ...(includeAccounting ? { costsPartial: partialUsage(usageObj) || partialUsage(updateObj), accounting: usageGroups({ ...usageObj,
-      cost_is_partial: partialUsage(usageObj) || partialUsage(updateObj),
-    }, readModel(usageObj)) } : {}),
+    ...(includeAccounting
+      ? {
+          costsPartial: partialUsage(usageObj) || partialUsage(updateObj),
+          accounting: usageGroups(
+            { ...usageObj, cost_is_partial: partialUsage(usageObj) || partialUsage(updateObj) },
+            readModel(usageObj),
+          ),
+        }
+      : {}),
   };
 }
 
@@ -185,10 +234,19 @@ export function accumulateSessionUsage(
     const tokens = toSessionUsageDelta(event.snapshot);
     if (isAllZero(tokens)) continue;
     if (event.accounting) {
-      for (const accounting of event.accounting) deltas.push({ source: GROK_SOURCE, model: event.model,
-        timestamp: new Date(event.timestampMs).toISOString(), tokens: { inputTokens: accounting.basis.input_tokens,
-          cachedInputTokens: accounting.basis.cached_input_tokens, outputTokens: accounting.basis.output_tokens,
-          reasoningOutputTokens: accounting.basis.reasoning_output_tokens }, accounting });
+      for (const accounting of event.accounting)
+        deltas.push({
+          source: GROK_SOURCE,
+          model: event.model,
+          timestamp: new Date(event.timestampMs).toISOString(),
+          tokens: {
+            inputTokens: accounting.basis.input_tokens,
+            cachedInputTokens: accounting.basis.cached_input_tokens,
+            outputTokens: accounting.basis.output_tokens,
+            reasoningOutputTokens: accounting.basis.reasoning_output_tokens,
+          },
+          accounting,
+        });
       continue;
     }
     deltas.push({
@@ -222,25 +280,41 @@ async function readGrokSessionEvents(
     input: stream,
     crlfDelay: Infinity,
   });
-  try { for await (const line of rl) {
-    if (!line.includes("turn_completed")) continue;
-    const parsed = parseTurnCompletedLine(line, opts.includeAccounting);
-    if (parsed && (!opts.requireEventId || parsed.eventId)) events.push(parsed);
-  } } finally { rl.close(); stream.destroy(); }
-  if (opts.includeAccounting) await enrichFromUsageFile(join(dirname(filePath), "usage.json"), events);
+  try {
+    for await (const line of rl) {
+      if (!line.includes("turn_completed")) continue;
+      const parsed = parseTurnCompletedLine(line, opts.includeAccounting);
+      if (parsed && (!opts.requireEventId || parsed.eventId)) events.push(parsed);
+    }
+  } finally {
+    rl.close();
+    stream.destroy();
+  }
+  if (opts.includeAccounting)
+    await enrichFromUsageFile(join(dirname(filePath), "usage.json"), events);
   return events;
 }
 
 /** A usage.json turn may enrich an identified update, but never becomes independent token usage. */
 async function enrichFromUsageFile(path: string, events: SessionUsageEvent[]): Promise<void> {
   let data: unknown;
-  try { data = JSON.parse(await readFile(path, "utf8")); } catch { return; }
+  try {
+    data = JSON.parse(await readFile(path, "utf8"));
+  } catch {
+    return;
+  }
   if (!isObject(data) || !Array.isArray(data.turns)) return;
-  const key = (event: SessionUsageEvent) => JSON.stringify([event.timestampMs, event.model, toSessionUsageDelta(event.snapshot)]);
+  const key = (event: SessionUsageEvent) =>
+    JSON.stringify([event.timestampMs, event.model, toSessionUsageDelta(event.snapshot)]);
   const turns = new Map<string, AccountingGroup[] | null>();
   for (const raw of data.turns) {
     if (!isObject(raw)) continue;
-    const time = typeof raw.endedAt === "string" ? Date.parse(raw.endedAt) : typeof raw.endedAt === "number" ? raw.endedAt : NaN;
+    const time =
+      typeof raw.endedAt === "string"
+        ? Date.parse(raw.endedAt)
+        : typeof raw.endedAt === "number"
+          ? raw.endedAt
+          : NaN;
     if (!Number.isFinite(time)) continue;
     const model = readModel(raw);
     const id = key({ timestampMs: time, model, eventId: null, snapshot: readSnapshot(raw) });
@@ -254,7 +328,12 @@ async function enrichFromUsageFile(path: string, events: SessionUsageEvent[]): P
     // cache split to agree before replacing any details.
     const counts = (groups: AccountingGroup[]) => groups.map((g) => [g.model, g.counts]);
     if (JSON.stringify(counts(candidate)) === JSON.stringify(counts(event.accounting ?? []))) {
-      event.accounting = event.costsPartial ? candidate.map((g) => ({ ...g, reported_costs: g.reported_costs.map((c) => ({ ...c, status: "partial" })) })) : candidate;
+      event.accounting = event.costsPartial
+        ? candidate.map((g) => ({
+            ...g,
+            reported_costs: g.reported_costs.map((c) => ({ ...c, status: "partial" })),
+          }))
+        : candidate;
     }
   }
 }
@@ -263,18 +342,40 @@ async function enrichFromUsageFile(path: string, events: SessionUsageEvent[]): P
 export async function readGrokAccountingSnapshots(sessionsDir: string): Promise<ParsedDelta[]> {
   const events = new Map<string, SessionUsageEvent | null>();
   const blockedBuckets = new Set<string>();
-  const bucket = (event: SessionUsageEvent) => occupiedBucketKey(event.model, toUtcHalfHourStart(new Date(event.timestampMs).toISOString()) ?? "");
+  const bucket = (event: SessionUsageEvent) =>
+    occupiedBucketKey(
+      event.model,
+      toUtcHalfHourStart(new Date(event.timestampMs).toISOString()) ?? "",
+    );
   for (const file of await discoverGrokUsageFiles(sessionsDir)) {
     try {
-      for (const event of await readGrokSessionEvents(file, { includeAccounting: true, requireEventId: true })) {
+      for (const event of await readGrokSessionEvents(file, {
+        includeAccounting: true,
+        requireEventId: true,
+      })) {
         if (!event.eventId) continue;
         const prior = events.get(event.eventId);
-        if (prior === undefined) { events.set(event.eventId, event); continue; }
-        const identity = (e: SessionUsageEvent) => JSON.stringify([e.timestampMs, e.model, e.snapshot,
-          e.accounting?.map(({ reported_costs: _costs, ...group }) => group)]);
-        const compatible = prior && identity(prior) === identity(event) && prior.accounting?.every((g, i) =>
-          !g.reported_costs.length || !event.accounting?.[i]?.reported_costs.length ||
-          JSON.stringify(g.reported_costs) === JSON.stringify(event.accounting[i].reported_costs));
+        if (prior === undefined) {
+          events.set(event.eventId, event);
+          continue;
+        }
+        const identity = (e: SessionUsageEvent) =>
+          JSON.stringify([
+            e.timestampMs,
+            e.model,
+            e.snapshot,
+            e.accounting?.map(({ reported_costs: _costs, ...group }) => group),
+          ]);
+        const compatible =
+          prior &&
+          identity(prior) === identity(event) &&
+          prior.accounting?.every(
+            (g, i) =>
+              !g.reported_costs.length ||
+              !event.accounting?.[i]?.reported_costs.length ||
+              JSON.stringify(g.reported_costs) ===
+                JSON.stringify(event.accounting[i].reported_costs),
+          );
         if (!compatible) {
           blockedBuckets.add(bucket(event));
           if (prior) blockedBuckets.add(bucket(prior));
@@ -285,14 +386,27 @@ export async function readGrokAccountingSnapshots(sessionsDir: string): Promise<
         // once; conflicting counts or money invalidate the affected bucket.
         prior.costsPartial = Boolean(prior.costsPartial || event.costsPartial);
         prior.accounting = prior.accounting?.map((g, i) => {
-          const merged = g.reported_costs.length ? g : event.accounting?.[i] ?? g;
-          return prior.costsPartial ? { ...merged, reported_costs: merged.reported_costs.map((cost) => ({ ...cost, status: "partial" as const })) } : merged;
+          const merged = g.reported_costs.length ? g : (event.accounting?.[i] ?? g);
+          return prior.costsPartial
+            ? {
+                ...merged,
+                reported_costs: merged.reported_costs.map((cost) => ({
+                  ...cost,
+                  status: "partial" as const,
+                })),
+              }
+            : merged;
         });
       }
+    } catch {
+      /* Unreadable history cannot authorize a bucket replacement. */
     }
-    catch { /* Unreadable history cannot authorize a bucket replacement. */ }
   }
-  return accumulateSessionUsage([...events.values()].filter((e): e is SessionUsageEvent => e !== null && !blockedBuckets.has(bucket(e))));
+  return accumulateSessionUsage(
+    [...events.values()].filter(
+      (e): e is SessionUsageEvent => e !== null && !blockedBuckets.has(bucket(e)),
+    ),
+  );
 }
 
 export function occupiedBucketKey(model: string, hourStart: string): string {
@@ -346,7 +460,5 @@ export function excludeOccupiedBuckets(
   records: QueueRecord[],
   occupied: ReadonlySet<string>,
 ): QueueRecord[] {
-  return records.filter(
-    (r) => !occupied.has(occupiedBucketKey(r.model, r.hour_start)),
-  );
+  return records.filter((r) => !occupied.has(occupiedBucketKey(r.model, r.hour_start)));
 }

@@ -57,16 +57,10 @@ export async function GET(request: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Season tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Season tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to list seasons:", err);
-    return NextResponse.json(
-      { error: "Failed to list seasons" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list seasons" }, { status: 500 });
   }
 }
 
@@ -101,17 +95,14 @@ export async function POST(request: Request) {
 
   // Validate name
   if (!name || typeof name !== "string" || name.length < 1 || name.length > 64) {
-    return NextResponse.json(
-      { error: "name must be 1-64 characters" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "name must be 1-64 characters" }, { status: 400 });
   }
 
   // Validate slug
   if (!slug || typeof slug !== "string" || !SLUG_RE.test(slug)) {
     return NextResponse.json(
       { error: "slug must be 1-32 lowercase alphanumeric or hyphens" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -119,20 +110,17 @@ export async function POST(request: Request) {
   if (!start_date || typeof start_date !== "string" || !isValidDatetime(start_date)) {
     return NextResponse.json(
       { error: "start_date must be ISO 8601 UTC format (YYYY-MM-DDTHH:mmZ)" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   if (!end_date || typeof end_date !== "string" || !isValidDatetime(end_date)) {
     return NextResponse.json(
       { error: "end_date must be ISO 8601 UTC format (YYYY-MM-DDTHH:mmZ)" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   if (new Date(end_date).getTime() < new Date(start_date).getTime()) {
-    return NextResponse.json(
-      { error: "end_date must be >= start_date" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "end_date must be >= start_date" }, { status: 400 });
   }
 
   const dbRead = await getDbRead();
@@ -144,7 +132,7 @@ export async function POST(request: Request) {
     if (existing) {
       return NextResponse.json(
         { error: "A season with this slug already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -152,7 +140,17 @@ export async function POST(request: Request) {
     await dbWrite.execute(
       `INSERT INTO seasons (id, name, slug, start_date, end_date, created_by, allow_late_registration, allow_roster_changes, allow_late_withdrawal)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, name, slug, start_date, end_date, admin.userId, allow_late_registration ? 1 : 0, allow_roster_changes ? 1 : 0, allow_late_withdrawal ? 1 : 0]
+      [
+        id,
+        name,
+        slug,
+        start_date,
+        end_date,
+        admin.userId,
+        allow_late_registration ? 1 : 0,
+        allow_roster_changes ? 1 : 0,
+        allow_late_withdrawal ? 1 : 0,
+      ],
     );
 
     // Auto-register teams that have opted in (best-effort, don't fail the request)
@@ -181,20 +179,14 @@ export async function POST(request: Request) {
         allow_late_withdrawal,
         auto_registered_teams: autoRegistered,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Season tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Season tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to create season:", err);
-    return NextResponse.json(
-      { error: "Failed to create season" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create season" }, { status: 500 });
   }
 }

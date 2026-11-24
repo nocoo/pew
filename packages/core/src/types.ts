@@ -51,7 +51,14 @@ export interface UsageEvidence {
   /** SHA-256 identities; never raw session, request, route or profile strings. */
   eventId: string;
   groupId: string;
-  callType: "compaction" | "background_review" | "approval" | "compression" | "title_generation" | "vision" | "auxiliary";
+  callType:
+    | "compaction"
+    | "background_review"
+    | "approval"
+    | "compression"
+    | "title_generation"
+    | "vision"
+    | "auxiliary";
   origin: "pi-session" | "hermes-review-log" | "hermes-aux-ledger" | "hermes-acp-ledger";
   provider: string;
   granularity: "call" | "operation" | "session";
@@ -172,7 +179,11 @@ export const ACCOUNTING_SCHEMA_VERSION = 2 as const;
 /** Cursor for Codex CLI (byte offset + cumulative edge-dedup state) */
 export interface CodexCursor extends FileCursorBase {
   /** Only source-serialized billing labels; never today's user configuration. */
-  accountingContext?: { provider?: string | null; route?: string | null; service_tier?: string | null };
+  accountingContext?: {
+    provider?: string | null;
+    route?: string | null;
+    service_tier?: string | null;
+  };
   /** Byte offset where we last stopped reading */
   offset: number;
   /** Last seen cumulative token totals (for diff computation) */
@@ -215,13 +226,16 @@ export interface OpenCodeSqliteCursor {
 /** Cursor for Hermes Agent SQLite database (session-level diff model) */
 export interface HermesSqliteCursor {
   /** Map of session_id → last known token totals */
-  sessionTotals: Record<string, {
-    input: number;
-    output: number;
-    cacheRead: number;
-    cacheWrite: number;
-    reasoning: number;
-  }>;
+  sessionTotals: Record<
+    string,
+    {
+      input: number;
+      output: number;
+      cacheRead: number;
+      cacheWrite: number;
+      reasoning: number;
+    }
+  >;
   /** DB file inode (detect file replacement) */
   inode: number;
   /** ISO 8601 timestamp of last update */
@@ -229,11 +243,7 @@ export interface HermesSqliteCursor {
 }
 
 /** Union of all cursor types, keyed by absolute file path */
-export type FileCursor =
-  | ByteOffsetCursor
-  | ClaudeCursor
-  | CodexCursor
-  | OpenCodeCursor;
+export type FileCursor = ByteOffsetCursor | ClaudeCursor | CodexCursor | OpenCodeCursor;
 
 /**
  * Cross-rollout dedup state for one Codex cumulative-counter scope.

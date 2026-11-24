@@ -29,7 +29,8 @@ import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
   const [expanded, setExpanded] = useState(true);
-  const pct = (v: number) => (group.totalTokens > 0 ? ((v / group.totalTokens) * 100).toFixed(1) : "0");
+  const pct = (v: number) =>
+    group.totalTokens > 0 ? ((v / group.totalTokens) * 100).toFixed(1) : "0";
 
   return (
     <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card overflow-hidden">
@@ -40,10 +41,7 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
         onClick={() => setExpanded(!expanded)}
         className="flex h-auto w-full items-center gap-4 rounded-none px-5 py-4 text-left hover:bg-basalt-accent/50"
       >
-        <div
-          className="h-3 w-3 rounded-full shrink-0"
-          style={{ backgroundColor: color }}
-        />
+        <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-basalt-foreground">{group.label}</h3>
           <p className="text-xs text-basalt-muted-foreground mt-0.5">
@@ -56,18 +54,31 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
           <p className="text-xs text-basalt-muted-foreground">total</p>
         </div>
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-basalt-muted-foreground shrink-0" strokeWidth={1.5} />
+          <ChevronDown
+            className="h-4 w-4 text-basalt-muted-foreground shrink-0"
+            strokeWidth={1.5}
+          />
         ) : (
-          <ChevronRight className="h-4 w-4 text-basalt-muted-foreground shrink-0" strokeWidth={1.5} />
+          <ChevronRight
+            className="h-4 w-4 text-basalt-muted-foreground shrink-0"
+            strokeWidth={1.5}
+          />
         )}
       </Button>
 
       {/* Usage bar */}
       <div className="px-5 pb-2">
-        <div key={`${group.inputTokens}-${group.outputTokens}-${group.cachedTokens}`} className="chart-animate chart-grow-x flex h-2 rounded-full overflow-hidden bg-basalt-background">
+        <div
+          key={`${group.inputTokens}-${group.outputTokens}-${group.cachedTokens}`}
+          className="chart-animate chart-grow-x flex h-2 rounded-full overflow-hidden bg-basalt-background"
+        >
           <div
             className="h-full"
-            style={{ width: `${pct(group.inputTokens - group.cachedTokens)}%`, backgroundColor: color, opacity: 0.8 }}
+            style={{
+              width: `${pct(group.inputTokens - group.cachedTokens)}%`,
+              backgroundColor: color,
+              opacity: 0.8,
+            }}
             title={`Input: ${formatTokens(group.inputTokens - group.cachedTokens)}`}
           />
           <div
@@ -95,12 +106,24 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-basalt-border/50">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">Model</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">Input</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">Output</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider hidden md:table-cell">Cached</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">Total</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider hidden sm:table-cell">Cost</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">
+                    Model
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">
+                    Input
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">
+                    Output
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                    Cached
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider hidden sm:table-cell">
+                    Cost
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -113,11 +136,21 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
                       <span className="align-middle">{row.model}</span>
                       <ModelInfoTooltip model={row.model} className="ml-1.5" />
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">{formatTokens(row.input)}</td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">{formatTokens(row.output)}</td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground hidden md:table-cell">{formatTokens(row.cached)}</td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums font-medium">{formatTokens(row.total)}</td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground hidden sm:table-cell">{formatCost(row.cost)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">
+                      {formatTokens(row.input)}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">
+                      {formatTokens(row.output)}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground hidden md:table-cell">
+                      {formatTokens(row.cached)}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums font-medium">
+                      {formatTokens(row.total)}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground hidden sm:table-cell">
+                      {formatCost(row.cost)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -139,8 +172,11 @@ function AgentsSkeleton() {
       <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
       <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[240px]" />
       {Array.from({ length: 3 }).map((_, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-        <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-5">
+        <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          key={`slot-${i}`}
+          className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-5"
+        >
           <div className="flex items-center gap-4">
             <Skeleton style={{ width: undefined }} className="h-3 w-3 rounded-full" />
             <div className="flex-1">
@@ -174,7 +210,9 @@ export default function AgentsPage() {
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
   const trend = useMemo(() => {
     const sparse = toSourceTrendPoints(data?.records ?? [], tzOffset);
-    const zero = Object.fromEntries(Object.keys(sparse[0]?.sources ?? {}).map((source) => [source, 0]));
+    const zero = Object.fromEntries(
+      Object.keys(sparse[0]?.sources ?? {}).map((source) => [source, 0]),
+    );
     return fillDateRange(sparse, "date", (date) => ({ date, sources: { ...zero } }), today);
   }, [data, tzOffset, today]);
 
@@ -190,7 +228,16 @@ export default function AgentsPage() {
       <PageHeader
         title="By Agent"
         description={`Token usage grouped by AI coding tool (${subtitle}).`}
-        actions={<><PeriodSelector value={period} onChange={setPeriod} /><UsageInformation records={data?.records ?? []} pricingMap={pricingMap} loading={pricingLoading} /></>}
+        actions={
+          <>
+            <PeriodSelector value={period} onChange={setPeriod} />
+            <UsageInformation
+              records={data?.records ?? []}
+              pricingMap={pricingMap}
+              loading={pricingLoading}
+            />
+          </>
+        }
       />
 
       {/* Error */}
@@ -200,27 +247,23 @@ export default function AgentsPage() {
       {loading && <AgentsSkeleton />}
 
       {/* Content */}
-      {!loading && data && (
-        agentGroups.length === 0 ? (
-            <Empty
-              title="No usage data yet."
-              description="Start using your AI coding tools and sync with pew!"
-              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-            />
-          ) : (
-            <div className="space-y-4">
-              <SourceTrendChart data={trend} />
-              <SourceDonutChart data={sources} />
-              {agentGroups.map((group) => (
-                <AgentCard
-                  key={group.source}
-                  group={group}
-                  color={agentColor(group.source).color}
-                />
-              ))}
-            </div>
-          )
-      )}
+      {!loading &&
+        data &&
+        (agentGroups.length === 0 ? (
+          <Empty
+            title="No usage data yet."
+            description="Start using your AI coding tools and sync with pew!"
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+          />
+        ) : (
+          <div className="space-y-4">
+            <SourceTrendChart data={trend} />
+            <SourceDonutChart data={sources} />
+            {agentGroups.map((group) => (
+              <AgentCard key={group.source} group={group} color={agentColor(group.source).color} />
+            ))}
+          </div>
+        ))}
     </div>
   );
 }

@@ -27,42 +27,88 @@ interface Completion {
 }
 type LogEntry = { type: "call"; value: HermesReviewCall } | { type: "complete"; value: Completion };
 
-export const hermesSessionKey = (profile: string, sessionId: string) => evidenceId(["hermes", profile, sessionId]);
+export const hermesSessionKey = (profile: string, sessionId: string) =>
+  evidenceId(["hermes", profile, sessionId]);
 
 /** Only fixed numeric logging templates are projected; never return a log line or raw ID. */
 function projectLine(line: string, profile: string, utcOffsetMinutes?: number): LogEntry | null {
-  const prefix = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]\d{3}) INFO \[([^\]\r\n]{1,256})\] (agent\.(?:conversation_loop|background_review)): (.*)$/.exec(line);
+  const prefix =
+    /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]\d{3}) INFO \[([^\]\r\n]{1,256})\] (agent\.(?:conversation_loop|background_review)): (.*)$/.exec(
+      line,
+    );
   if (!prefix) return null;
   const wall = prefix[1].replace(" ", "T").replace(",", ".");
   // Python's asctime is local wall time. Use the host's historical timezone
   // rules (including DST); an explicit fixed offset is available to fixtures.
-  const time = utcOffsetMinutes === undefined ? Date.parse(wall) : Date.parse(`${wall}Z`) - utcOffsetMinutes * 60_000;
+  const time =
+    utcOffsetMinutes === undefined
+      ? Date.parse(wall)
+      : Date.parse(`${wall}Z`) - utcOffsetMinutes * 60_000;
   if (!Number.isFinite(time)) return null;
   const timestamp = new Date(time).toISOString();
   const sessionKey = hermesSessionKey(profile, prefix[2]);
   const text = prefix[4];
   if (prefix[3] === "agent.background_review") {
-    const m = /^Background review complete: thread=bg-review calls=(\d+) in=(\d+) out=(\d+) cache_read=(\d+) result=(?:none|skill|memory|skill\+memory)$/.exec(text);
+    const m =
+      /^Background review complete: thread=bg-review calls=(\d+) in=(\d+) out=(\d+) cache_read=(\d+) result=(?:none|skill|memory|skill\+memory)$/.exec(
+        text,
+      );
     if (!m) return null;
-    return { type: "complete", value: { sessionKey, timestamp, calls: Number(m[1]), input: Number(m[2]), output: Number(m[3]), cacheRead: Number(m[4]) } };
+    return {
+      type: "complete",
+      value: {
+        sessionKey,
+        timestamp,
+        calls: Number(m[1]),
+        input: Number(m[2]),
+        output: Number(m[3]),
+        cacheRead: Number(m[4]),
+      },
+    };
   }
-  const m = /^API call #(\d+): model=(\S+) provider=(\S+) in=(\d+) out=(\d+) total=(\d+) latency=\d+(?:\.\d+)?s(.*)$/.exec(text);
+  const m =
+    /^API call #(\d+): model=(\S+) provider=(\S+) in=(\d+) out=(\d+) total=(\d+) latency=\d+(?:\.\d+)?s(.*)$/.exec(
+      text,
+    );
   if (!m) return null; // usage=unavailable is not billable evidence
   const cacheRead = Number(/(?:^| )cache=(\d+)\/\d+ \(\d+%\)/.exec(m[7])?.[1] ?? 0);
   const cacheWrite = Number(/(?:^| )write=(\d+)(?: |$)/.exec(m[7])?.[1] ?? 0);
   const prompt = Number(m[4]);
   const output = Number(m[5]);
-  if (![prompt, output, cacheRead, cacheWrite, Number(m[1])].every((n) => Number.isSafeInteger(n) && n >= 0) ||
-    prompt < cacheRead + cacheWrite || Number(m[6]) !== prompt + output) return null;
+  if (
+    ![prompt, output, cacheRead, cacheWrite, Number(m[1])].every(
+      (n) => Number.isSafeInteger(n) && n >= 0,
+    ) ||
+    prompt < cacheRead + cacheWrite ||
+    Number(m[6]) !== prompt + output
+  )
+    return null;
   const model = usageLabel(m[2]);
   const provider = usageLabel(m[3]);
   const requestId = /(?:^| )id=(\S+)/.exec(m[7])?.[1];
-  return { type: "call", value: {
-    eventId: evidenceId(["hermes-review", sessionKey, provider, requestId ?? [prefix[1], Number(m[1])]]),
-    sessionKey, model, provider, timestamp, call: Number(m[1]), cacheRead,
-    tokens: { inputTokens: prompt - cacheRead - cacheWrite, cachedInputTokens: cacheRead + cacheWrite,
-      outputTokens: output, reasoningOutputTokens: 0 },
-  } };
+  return {
+    type: "call",
+    value: {
+      eventId: evidenceId([
+        "hermes-review",
+        sessionKey,
+        provider,
+        requestId ?? [prefix[1], Number(m[1])],
+      ]),
+      sessionKey,
+      model,
+      provider,
+      timestamp,
+      call: Number(m[1]),
+      cacheRead,
+      tokens: {
+        inputTokens: prompt - cacheRead - cacheWrite,
+        cachedInputTokens: cacheRead + cacheWrite,
+        outputTokens: output,
+        reasoningOutputTokens: 0,
+      },
+    },
+  };
 }
 
 /** A matching call counter alone is insufficient: require one unique numeric sequence. */
@@ -76,14 +122,23 @@ function uniqueSequence(calls: HermesReviewCall[], done: Completion): HermesRevi
   function search(start: number, input: number, output: number, cache: number): void {
     if (++steps > 20_000 || matches.length > 1) return;
     if (chosen.length === done.calls) {
-      if (input === done.input && output === done.output && cache === done.cacheRead) matches.push([...chosen]);
+      if (input === done.input && output === done.output && cache === done.cacheRead)
+        matches.push([...chosen]);
       return;
     }
     for (let i = start; i < calls.length; i++) {
       if (++steps > 20_000) return; // Count rejected candidates too, not just recursion.
       const c = calls[i];
-      if (c.call !== chosen.length + 1 || (chosen[0] && (c.model !== chosen[0].model || c.provider !== chosen[0].provider))) continue;
-      const next = [input + c.tokens.inputTokens, output + c.tokens.outputTokens, cache + c.cacheRead];
+      if (
+        c.call !== chosen.length + 1 ||
+        (chosen[0] && (c.model !== chosen[0].model || c.provider !== chosen[0].provider))
+      )
+        continue;
+      const next = [
+        input + c.tokens.inputTokens,
+        output + c.tokens.outputTokens,
+        cache + c.cacheRead,
+      ];
       if (next[0] > done.input || next[1] > done.output || next[2] > done.cacheRead) continue;
       chosen.push(c);
       search(i + 1, next[0], next[1], next[2]);
@@ -101,7 +156,9 @@ function matchEntries(entries: LogEntry[]): HermesReviewCall[] {
     const key = e.type === "call" ? e.value.eventId : evidenceId(["complete", e.value]);
     distinct.set(key, e);
   }
-  const ordered = [...distinct.values()].sort((a, b) => Date.parse(a.value.timestamp) - Date.parse(b.value.timestamp));
+  const ordered = [...distinct.values()].sort(
+    (a, b) => Date.parse(a.value.timestamp) - Date.parse(b.value.timestamp),
+  );
   const buffers = new Map<string, HermesReviewCall[]>();
   const matched = new Map<string, HermesReviewCall>();
   for (const e of ordered) {
@@ -119,7 +176,11 @@ function matchEntries(entries: LogEntry[]): HermesReviewCall[] {
 }
 
 /** Pure entry point for synthetic fixtures and sanitized in-memory verification. */
-export function parseHermesReviewLines(lines: Iterable<string>, profile: string, utcOffsetMinutes?: number): HermesReviewCall[] {
+export function parseHermesReviewLines(
+  lines: Iterable<string>,
+  profile: string,
+  utcOffsetMinutes?: number,
+): HermesReviewCall[] {
   const entries: LogEntry[] = [];
   for (const line of lines) {
     const entry = projectLine(line, profile, utcOffsetMinutes);
@@ -128,7 +189,11 @@ export function parseHermesReviewLines(lines: Iterable<string>, profile: string,
   return matchEntries(entries);
 }
 
-export async function readHermesReviewCalls(dbPath: string, profile: string, utcOffsetMinutes?: number): Promise<HermesReviewCall[]> {
+export async function readHermesReviewCalls(
+  dbPath: string,
+  profile: string,
+  utcOffsetMinutes?: number,
+): Promise<HermesReviewCall[]> {
   const root = join(dirname(dbPath), "logs");
   const files = await readdir(root).catch(() => []);
   const entries: LogEntry[] = [];
@@ -145,7 +210,10 @@ export async function readHermesReviewCalls(dbPath: string, profile: string, utc
         const entry = projectLine(line, profile, utcOffsetMinutes);
         if (entry) entries.push(entry);
       }
-    } finally { reader.close(); stream.destroy(); }
+    } finally {
+      reader.close();
+      stream.destroy();
+    }
   }
   return matchEntries(entries);
 }

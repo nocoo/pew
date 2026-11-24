@@ -45,16 +45,10 @@ export async function GET(request: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Organization tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Organization tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to list organizations:", err);
-    return NextResponse.json(
-      { error: "Failed to list organizations" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list organizations" }, { status: 500 });
   }
 }
 
@@ -82,17 +76,14 @@ export async function POST(request: Request) {
 
   // Validate name
   if (!name || typeof name !== "string" || name.length < 1 || name.length > 64) {
-    return NextResponse.json(
-      { error: "name must be 1-64 characters" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "name must be 1-64 characters" }, { status: 400 });
   }
 
   // Validate slug
   if (!slug || typeof slug !== "string" || !SLUG_RE.test(slug)) {
     return NextResponse.json(
       { error: "slug must be 1-32 lowercase alphanumeric or hyphens" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -105,7 +96,7 @@ export async function POST(request: Request) {
     if (existing) {
       return NextResponse.json(
         { error: "An organization with this slug already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -115,7 +106,7 @@ export async function POST(request: Request) {
     await dbWrite.execute(
       `INSERT INTO organizations (id, name, slug, created_by, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, name, slug, admin.userId, now, now]
+      [id, name, slug, admin.userId, now, now],
     );
 
     return NextResponse.json(
@@ -129,20 +120,14 @@ export async function POST(request: Request) {
         updatedAt: now,
         memberCount: 0,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Organization tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Organization tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to create organization:", err);
-    return NextResponse.json(
-      { error: "Failed to create organization" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create organization" }, { status: 500 });
   }
 }

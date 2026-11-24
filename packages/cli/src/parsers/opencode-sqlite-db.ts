@@ -133,9 +133,7 @@ export type QuerySessionMessagesFn = (sessionIds: string[]) => SessionMessageRow
  *
  * Returns null if the database cannot be opened.
  */
-export function openSessionDb(
-  dbPath: string,
-): {
+export function openSessionDb(dbPath: string): {
   querySessions: QuerySessionsFn;
   querySessionMessages: QuerySessionMessagesFn;
   close: () => void;
@@ -158,8 +156,7 @@ export function openSessionDb(
   );
 
   return {
-    querySessions: (lastTimeUpdated: number) =>
-      sessionStmt.all(lastTimeUpdated) as SessionRow[],
+    querySessions: (lastTimeUpdated: number) => sessionStmt.all(lastTimeUpdated) as SessionRow[],
 
     querySessionMessages: (sessionIds: string[]) => {
       if (sessionIds.length === 0) return [];

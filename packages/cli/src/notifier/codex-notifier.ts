@@ -55,7 +55,11 @@ export async function installCodexNotifier(
         detail: "Codex notifier already installed",
       };
     }
-    if (existingNotify && existingNotify.length > 0 && !isPewOwnedCommand(existingNotify, opts.notifyPath)) {
+    if (
+      existingNotify &&
+      existingNotify.length > 0 &&
+      !isPewOwnedCommand(existingNotify, opts.notifyPath)
+    ) {
       // Only capture a non-Pew original; a legacy /usr/bin/env node pew
       // command is an in-place migration, not a foreign notifier.
       await fs.mkdir(dirname(opts.originalBackupPath), { recursive: true });
@@ -152,17 +156,16 @@ export async function uninstallCodexNotifier(
   if (originalBackup !== null) {
     try {
       const parsed = JSON.parse(originalBackup) as { notify?: string[] };
-      if (
-        Array.isArray(parsed.notify) &&
-        parsed.notify.every((v) => typeof v === "string")
-      ) {
+      if (Array.isArray(parsed.notify) && parsed.notify.every((v) => typeof v === "string")) {
         originalNotify = parsed.notify;
       } else {
         backupParseError = "backup missing valid `notify` string[] field";
       }
     } catch (err) {
       backupParseError =
-        err instanceof Error ? `backup JSON parse failed: ${err.message}` : "backup JSON parse failed";
+        err instanceof Error
+          ? `backup JSON parse failed: ${err.message}`
+          : "backup JSON parse failed";
     }
   }
 
@@ -222,9 +225,7 @@ export async function uninstallCodexNotifier(
   };
 }
 
-export async function getCodexNotifierStatus(
-  opts: CodexNotifierOptions,
-): Promise<NotifierStatus> {
+export async function getCodexNotifierStatus(opts: CodexNotifierOptions): Promise<NotifierStatus> {
   const fs = opts.fs ?? { readFile, writeFile, mkdir, unlink };
   const text = await readOptional(opts.configPath, fs);
   if (text === null) return "not-installed";
@@ -251,20 +252,13 @@ function isPewOwnedCommand(cmd: readonly string[], notifyPath: string): boolean 
   // New runtime shape: [runtime, notifyPath, --source=codex, ...]
   if (findIndex === 1) return true;
   // Legacy shape: [/usr/bin/env, node, notifyPath, --source=codex, ...]
-  if (
-    findIndex === 2 &&
-    cmd[0] === LEGACY_ENV_PREFIX[0] &&
-    cmd[1] === LEGACY_ENV_PREFIX[1]
-  ) {
+  if (findIndex === 2 && cmd[0] === LEGACY_ENV_PREFIX[0] && cmd[1] === LEGACY_ENV_PREFIX[1]) {
     return true;
   }
   return false;
 }
 
-async function readOptional(
-  filePath: string,
-  fs: CodexNotifierFs,
-): Promise<string | null> {
+async function readOptional(filePath: string, fs: CodexNotifierFs): Promise<string | null> {
   try {
     return await fs.readFile(filePath, "utf8");
   } catch (err) {
@@ -366,13 +360,41 @@ function parseTomlStringArray(text: string): string[] | null {
     // Handle backslash escapes in double-quoted strings only
     if (quote === '"' && char === "\\") {
       const next = inner[i + 1];
-      if (next === '"') { current += '"'; i++; continue; }
-      if (next === "\\") { current += "\\"; i++; continue; }
-      if (next === "n") { current += "\n"; i++; continue; }
-      if (next === "t") { current += "\t"; i++; continue; }
-      if (next === "r") { current += "\r"; i++; continue; }
-      if (next === "b") { current += "\b"; i++; continue; }
-      if (next === "f") { current += "\f"; i++; continue; }
+      if (next === '"') {
+        current += '"';
+        i++;
+        continue;
+      }
+      if (next === "\\") {
+        current += "\\";
+        i++;
+        continue;
+      }
+      if (next === "n") {
+        current += "\n";
+        i++;
+        continue;
+      }
+      if (next === "t") {
+        current += "\t";
+        i++;
+        continue;
+      }
+      if (next === "r") {
+        current += "\r";
+        i++;
+        continue;
+      }
+      if (next === "b") {
+        current += "\b";
+        i++;
+        continue;
+      }
+      if (next === "f") {
+        current += "\f";
+        i++;
+        continue;
+      }
 
       // \uXXXX — 4-digit Unicode escape
       if (next === "u") {
@@ -389,7 +411,7 @@ function parseTomlStringArray(text: string): string[] | null {
         const hex = inner.slice(i + 2, i + 10);
         if (/^[0-9a-fA-F]{8}$/.test(hex)) {
           const codePoint = parseInt(hex, 16);
-          if (codePoint <= 0x10FFFF) {
+          if (codePoint <= 0x10ffff) {
             current += String.fromCodePoint(codePoint);
             i += 9; // skip \UXXXXXXXX
             continue;
@@ -419,11 +441,7 @@ function formatTomlStringArray(values: string[]): string {
   return `[${values.map((value) => JSON.stringify(value)).join(", ")}]`;
 }
 
-function readTomlArrayLiteral(
-  lines: string[],
-  startIndex: number,
-  rhs: string,
-): string | null {
+function readTomlArrayLiteral(lines: string[], startIndex: number, rhs: string): string | null {
   if (!rhs.startsWith("[")) return null;
 
   let depth = 0;

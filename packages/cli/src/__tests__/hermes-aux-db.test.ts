@@ -13,8 +13,13 @@ const sessionSchema = `CREATE TABLE sessions (id TEXT PRIMARY KEY, model TEXT, s
 describe("Hermes auxiliary SQLite projection", () => {
   let dir: string;
   let path: string;
-  beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), "pew-hermes-aux-db-")); path = join(dir, "state.db"); });
-  afterEach(async () => { await rm(dir, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "pew-hermes-aux-db-"));
+    path = join(dir, "state.db");
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
 
   it("reads only auxiliary accounting columns and hashes private billing routes without changing the DB", async () => {
     const db = new DatabaseSync(path);
@@ -32,12 +37,19 @@ describe("Hermes auxiliary SQLite projection", () => {
     try {
       const rows = handle?.queryAuxiliaryUsage?.();
       expect(rows).toHaveLength(1);
-      expect(rows?.[0]).toMatchObject({ task: "background_review", input_tokens: 300, api_call_count: 2, source: "acp" });
+      expect(rows?.[0]).toMatchObject({
+        task: "background_review",
+        input_tokens: 300,
+        api_call_count: 2,
+        source: "acp",
+      });
       expect(rows?.[0].route_key).toMatch(/^[a-f0-9]{64}$/);
       expect(JSON.stringify(rows)).not.toContain("PRIVATE_FIXTURE_BODY");
       expect(JSON.stringify(rows)).not.toContain("billing_base_url");
       expect(handle?.querySessions()).toMatchObject([{ input_tokens: 1000, output_tokens: 100 }]);
-    } finally { handle?.close(); }
+    } finally {
+      handle?.close();
+    }
     expect(await readFile(path)).toEqual(before);
   });
 
@@ -49,14 +61,19 @@ describe("Hermes auxiliary SQLite projection", () => {
     try {
       expect(handle?.querySessions()).toHaveLength(1);
       expect(handle?.queryAuxiliaryUsage).toBeUndefined();
-    } finally { handle?.close(); }
+    } finally {
+      handle?.close();
+    }
     const check = new DatabaseSync(path, { readOnly: true });
-    expect(check.prepare("SELECT name FROM sqlite_schema WHERE name='session_model_usage'").all()).toEqual([]);
+    expect(
+      check.prepare("SELECT name FROM sqlite_schema WHERE name='session_model_usage'").all(),
+    ).toEqual([]);
     check.close();
   });
 
   it("projects persisted billing status and safe route classes for main model accounting", () => {
-    const db = new DatabaseSync(path); db.exec(sessionSchema);
+    const db = new DatabaseSync(path);
+    db.exec(sessionSchema);
     db.exec(`ALTER TABLE sessions ADD COLUMN billing_provider TEXT;
       ALTER TABLE sessions ADD COLUMN billing_base_url TEXT;
       ALTER TABLE sessions ADD COLUMN actual_cost_usd REAL;
@@ -70,10 +87,19 @@ describe("Hermes auxiliary SQLite projection", () => {
     const handle = openHermesDb(path);
     try {
       const rows = handle?.querySessions();
-      expect(rows).toMatchObject([{ billing_provider: "openrouter", billing_route: "openrouter", actual_cost_usd: "0.125", cost_status: "actual" }]);
+      expect(rows).toMatchObject([
+        {
+          billing_provider: "openrouter",
+          billing_route: "openrouter",
+          actual_cost_usd: "0.125",
+          cost_status: "actual",
+        },
+      ]);
       expect(handle?.queryMainModelUsage?.()).toMatchObject([{ task: "", has_cache_write: false }]);
       expect(JSON.stringify(rows)).not.toMatch(/PRIVATE_FIXTURE_BODY|billing_base_url|https:/);
-    } finally { handle?.close(); }
+    } finally {
+      handle?.close();
+    }
   });
 
   it("labels missing optional timestamps as unknown rather than synthesizing a collection time", () => {
@@ -84,7 +110,17 @@ describe("Hermes auxiliary SQLite projection", () => {
     db.close();
     const handle = openHermesDb(path);
     try {
-      expect(handle?.queryAuxiliaryUsage?.()).toMatchObject([{ first_seen: null, last_seen: null, api_call_count: null, input_tokens: 30, output_tokens: 3 }]);
-    } finally { handle?.close(); }
+      expect(handle?.queryAuxiliaryUsage?.()).toMatchObject([
+        {
+          first_seen: null,
+          last_seen: null,
+          api_call_count: null,
+          input_tokens: 30,
+          output_tokens: 3,
+        },
+      ]);
+    } finally {
+      handle?.close();
+    }
   });
 });

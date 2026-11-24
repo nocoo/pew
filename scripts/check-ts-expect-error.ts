@@ -152,9 +152,7 @@ async function main(): Promise<void> {
   for (const root of ROOTS) await walk(root);
 
   if (scannedCount === 0) {
-    console.error(
-      `FATAL: scanned 0 files under ${ROOTS.join(", ")} — misconfigured?`,
-    );
+    console.error(`FATAL: scanned 0 files under ${ROOTS.join(", ")} — misconfigured?`);
     process.exit(1);
   }
 
@@ -165,23 +163,21 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  console.error(
-    `✗ ts directive violations (${violations.length}):\n`,
-  );
+  console.error(`✗ ts directive violations (${violations.length}):\n`);
   for (const v of violations) {
     console.error(`  ${v.path}:${v.line}  [${v.reason}]`);
     if (v.reason === "too_short") {
       console.error(`    found: "${v.found}" (${v.found.length} chars)`);
     } else if (v.reason === "ts_nocheck") {
-      console.error(`    @ts-nocheck disables all type-checking for the whole file — use targeted @ts-expect-error instead`);
+      console.error(
+        `    @ts-nocheck disables all type-checking for the whole file — use targeted @ts-expect-error instead`,
+      );
     }
   }
   console.error(
     `\n  For @ts-expect-error, add a short reason: \`// @ts-expect-error - <why, ≥${MIN_LENGTH} chars>\``,
   );
-  console.error(
-    "  @ts-nocheck is banned outright.",
-  );
+  console.error("  @ts-nocheck is banned outright.");
   process.exit(1);
 }
 

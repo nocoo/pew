@@ -57,9 +57,13 @@ describe("parseModelsDev", () => {
       NOW,
     );
     expect(entries).toEqual([]);
-    expect(warnings.some((w) => w.includes("non-object-entry") && w.includes("non-object"))).toBe(true);
+    expect(warnings.some((w) => w.includes("non-object-entry") && w.includes("non-object"))).toBe(
+      true,
+    );
     expect(warnings.some((w) => w.includes("no-cost") && w.includes("missing cost"))).toBe(true);
-    expect(warnings.some((w) => w.includes("bad-output") && w.includes("invalid output cost"))).toBe(true);
+    expect(
+      warnings.some((w) => w.includes("bad-output") && w.includes("invalid output cost")),
+    ).toBe(true);
     expect(warnings.some((w) => w.includes("openai") && w.includes("no models"))).toBe(true);
   });
 

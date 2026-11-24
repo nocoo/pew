@@ -18,11 +18,7 @@ vi.mock("@/auth", () => ({
 }));
 
 import { GET, POST } from "@/app/api/admin/organizations/route";
-import {
-  GET as GET_ONE,
-  PATCH,
-  DELETE,
-} from "@/app/api/admin/organizations/[orgId]/route";
+import { GET as GET_ONE, PATCH, DELETE } from "@/app/api/admin/organizations/[orgId]/route";
 import { createMockDbRead, createMockDbWrite, makeJsonRequest } from "./test-utils";
 import * as dbModule from "@/lib/db";
 
@@ -36,11 +32,7 @@ const { resolveAdmin } = (await import("@/lib/admin")) as unknown as {
 
 const ADMIN = { userId: "admin-1", email: "admin@test.com" };
 
-function makeOrgRequest(
-  method: string,
-  orgId: string,
-  body?: Record<string, unknown>
-) {
+function makeOrgRequest(method: string, orgId: string, body?: Record<string, unknown>) {
   const url = `http://localhost:7020/api/admin/organizations/${orgId}`;
   const init: RequestInit = { method };
   if (body) {
@@ -116,7 +108,9 @@ describe("GET /api/admin/organizations", () => {
 
   it("should handle no-such-table gracefully", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.listOrganizationsWithCount.mockRejectedValueOnce(new Error("no such table: organizations"));
+    mockDbRead.listOrganizationsWithCount.mockRejectedValueOnce(
+      new Error("no such table: organizations"),
+    );
 
     const res = await GET(makeJsonRequest("GET", "/api/admin/organizations"));
     expect(res.status).toBe(503);
@@ -160,7 +154,7 @@ describe("POST /api/admin/organizations", () => {
       makeJsonRequest("POST", "/api/admin/organizations", {
         name: "Anthropic",
         slug: "anthropic",
-      })
+      }),
     );
     expect(res.status).toBe(201);
     const json = await res.json();
@@ -178,7 +172,7 @@ describe("POST /api/admin/organizations", () => {
       makeJsonRequest("POST", "/api/admin/organizations", {
         name: "Test",
         slug: "test",
-      })
+      }),
     );
     expect(res.status).toBe(403);
   });
@@ -198,9 +192,7 @@ describe("POST /api/admin/organizations", () => {
 
   it("should reject missing name", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    const res = await POST(
-      makeJsonRequest("POST", "/api/admin/organizations", { slug: "test" })
-    );
+    const res = await POST(makeJsonRequest("POST", "/api/admin/organizations", { slug: "test" }));
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain("name");
@@ -212,7 +204,7 @@ describe("POST /api/admin/organizations", () => {
       makeJsonRequest("POST", "/api/admin/organizations", {
         name: "Test",
         slug: "INVALID_SLUG!",
-      })
+      }),
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -221,13 +213,21 @@ describe("POST /api/admin/organizations", () => {
 
   it("should reject duplicate slug", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.getOrganizationBySlug.mockResolvedValueOnce({ id: "existing", name: "Existing Org", slug: "existing-slug", logo_url: null, created_by: "admin-1", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" });
+    mockDbRead.getOrganizationBySlug.mockResolvedValueOnce({
+      id: "existing",
+      name: "Existing Org",
+      slug: "existing-slug",
+      logo_url: null,
+      created_by: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    });
 
     const res = await POST(
       makeJsonRequest("POST", "/api/admin/organizations", {
         name: "Test",
         slug: "existing-slug",
-      })
+      }),
     );
     expect(res.status).toBe(409);
     const json = await res.json();
@@ -243,7 +243,7 @@ describe("POST /api/admin/organizations", () => {
       makeJsonRequest("POST", "/api/admin/organizations", {
         name: "Test",
         slug: "test",
-      })
+      }),
     );
     expect(res.status).toBe(500);
     const json = await res.json();
@@ -252,13 +252,15 @@ describe("POST /api/admin/organizations", () => {
 
   it("should handle no-such-table on create", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.getOrganizationBySlug.mockRejectedValueOnce(new Error("no such table: organizations"));
+    mockDbRead.getOrganizationBySlug.mockRejectedValueOnce(
+      new Error("no such table: organizations"),
+    );
 
     const res = await POST(
       makeJsonRequest("POST", "/api/admin/organizations", {
         name: "Test",
         slug: "test",
-      })
+      }),
     );
     expect(res.status).toBe(503);
   });

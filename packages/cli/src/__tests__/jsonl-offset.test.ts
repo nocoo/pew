@@ -320,9 +320,7 @@ describe("lastCompleteJsonlOffset", () => {
   it("scans backward in chunks instead of allocating the unread range", async () => {
     const first = '{"id":"a"}\n';
     await writeFile(filePath, `${first}${"x".repeat(70 * 1024)}`);
-    expect(
-      await lastCompleteJsonlOffset(filePath, 0, first.length + 70 * 1024),
-    ).toBe(first.length);
+    expect(await lastCompleteJsonlOffset(filePath, 0, first.length + 70 * 1024)).toBe(first.length);
   });
 
   it("returns null when the file cannot be read", async () => {

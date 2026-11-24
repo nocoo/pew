@@ -58,9 +58,7 @@ export function hashRecord(recordWithTerminator: Uint8Array): string {
   let end = recordWithTerminator.length;
   if (end > 0 && recordWithTerminator[end - 1] === 0x0a) end -= 1;
   if (end > 0 && recordWithTerminator[end - 1] === 0x0d) end -= 1;
-  return createHash("sha256")
-    .update(recordWithTerminator.subarray(0, end))
-    .digest("hex");
+  return createHash("sha256").update(recordWithTerminator.subarray(0, end)).digest("hex");
 }
 
 export async function readContinuityAnchors(
@@ -169,10 +167,7 @@ async function anchorsMatchAt(
     let pos = 0;
     for (const anchor of anchors) {
       const slice = buf.subarray(pos, pos + anchor.length);
-      if (
-        slice.length !== anchor.length ||
-        hashRecord(slice) !== anchor.sha256
-      ) {
+      if (slice.length !== anchor.length || hashRecord(slice) !== anchor.sha256) {
         return false;
       }
       pos += anchor.length;
@@ -204,12 +199,7 @@ async function findLastAnchorEnd(
       for (let i = 0; i < needed; i++) {
         const entry = ring[i];
         const anchor = anchors[i];
-        if (
-          !entry ||
-          !anchor ||
-          entry.sha256 !== anchor.sha256 ||
-          entry.length !== anchor.length
-        ) {
+        if (!entry || !anchor || entry.sha256 !== anchor.sha256 || entry.length !== anchor.length) {
           matched = false;
           break;
         }
@@ -221,9 +211,7 @@ async function findLastAnchorEnd(
 
   try {
     for await (const chunk of stream) {
-      const piece: Uint8Array = Buffer.isBuffer(chunk)
-        ? chunk
-        : Buffer.from(chunk as string);
+      const piece: Uint8Array = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
       if (pending.length === 0) {
         pending = piece;
       } else {

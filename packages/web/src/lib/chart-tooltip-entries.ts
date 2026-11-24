@@ -1,7 +1,8 @@
 const TOOLTIP_ENTRY_LIMIT = 20;
 
 export function summarizeTooltipEntries<T extends { value: number }>(entries: readonly T[]) {
-  const active = entries.filter((entry) => Number.isFinite(entry.value) && entry.value > 0)
+  const active = entries
+    .filter((entry) => Number.isFinite(entry.value) && entry.value > 0)
     .sort((a, b) => b.value - a.value);
   return {
     visible: active.slice(0, TOOLTIP_ENTRY_LIMIT),

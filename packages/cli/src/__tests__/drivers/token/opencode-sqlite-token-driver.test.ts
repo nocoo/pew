@@ -94,7 +94,9 @@ describe("openCodeSqliteTokenDriver", () => {
       dbPath,
       openMessageDb: () => ({
         queryMessages: (_lastTime: number) => rows,
-        close: () => { closeCalled = true; },
+        close: () => {
+          closeCalled = true;
+        },
       }),
     });
 

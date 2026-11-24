@@ -2,7 +2,12 @@
 
 import { useMemo, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { getYearWeeks, getColorIndex, formatDateISO, computePercentileBoundaries } from "@/lib/calendar-helpers";
+import {
+  getYearWeeks,
+  getColorIndex,
+  formatDateISO,
+  computePercentileBoundaries,
+} from "@/lib/calendar-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,10 +50,7 @@ const heatmapColorScales = {
 const defaultColorScale = heatmapColorScales.green;
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -144,7 +146,11 @@ export function HeatmapCalendar({
           {/* Month labels */}
           <div
             className="grid h-4 text-xs text-basalt-muted-foreground mb-1"
-            style={{ marginLeft: labelWidth + 4, gap: cellGap, gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)` }}
+            style={{
+              marginLeft: labelWidth + 4,
+              gap: cellGap,
+              gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)`,
+            }}
           >
             {monthLabels.map((label) => (
               <div
@@ -178,7 +184,13 @@ export function HeatmapCalendar({
             </div>
 
             {/* Heatmap grid */}
-            <div className="grid" style={{ gap: cellGap, gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)` }}>
+            <div
+              className="grid"
+              style={{
+                gap: cellGap,
+                gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)`,
+              }}
+            >
               {weeks.map((week, weekIndex) => (
                 <div
                   // biome-ignore lint/suspicious/noArrayIndexKey: weeks are computed from a fixed year, positional order is authoritative.
@@ -190,11 +202,7 @@ export function HeatmapCalendar({
                     const dateStr = formatDateISO(date);
                     const value = dataMap.get(dateStr) ?? 0;
                     const isCurrentYear = date.getFullYear() === year;
-                    const colorIndex = getColorIndex(
-                      value,
-                      boundaries,
-                      colorScale
-                    );
+                    const colorIndex = getColorIndex(value, boundaries, colorScale);
 
                     if (!isCurrentYear) {
                       return (
@@ -240,10 +248,7 @@ export function HeatmapCalendar({
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple; positional key is authoritative.
                 key={`legend-${i}`}
-                className={cn(
-                  "rounded-full",
-                  i === 0 && "border border-basalt-border/60",
-                )}
+                className={cn("rounded-full", i === 0 && "border border-basalt-border/60")}
                 style={{
                   width: cellSize,
                   height: cellSize,

@@ -90,11 +90,7 @@ describe("BaseQueue", () => {
 
   it("should create directory if it does not exist", async () => {
     const nestedDir = join(tempDir, "deep", "nested");
-    const queue = new BaseQueue<TestRecord>(
-      nestedDir,
-      "test.jsonl",
-      "test.state.json",
-    );
+    const queue = new BaseQueue<TestRecord>(nestedDir, "test.jsonl", "test.state.json");
     await queue.append(makeRecord(1));
 
     const raw = await readFile(join(nestedDir, "test.jsonl"), "utf-8");
@@ -272,10 +268,7 @@ describe("BaseQueue", () => {
   it("defaults missing offset to 0 when state JSON omits the field", async () => {
     // Cover the `state.offset ?? 0` branch in loadState() when the persisted
     // JSON is well-formed but lacks an explicit offset field.
-    await writeFile(
-      join(tempDir, "test.state.json"),
-      JSON.stringify({ dirtyKeys: ["bucket-1"] }),
-    );
+    await writeFile(join(tempDir, "test.state.json"), JSON.stringify({ dirtyKeys: ["bucket-1"] }));
     const queue = createQueue(tempDir);
     const offset = await queue.loadOffset();
     expect(offset).toBe(0);
@@ -347,11 +340,7 @@ describe("BaseQueue", () => {
 
   it("should create directory on overwrite if it does not exist", async () => {
     const nestedDir = join(tempDir, "deep", "nested2");
-    const queue = new BaseQueue<TestRecord>(
-      nestedDir,
-      "test.jsonl",
-      "test.state.json",
-    );
+    const queue = new BaseQueue<TestRecord>(nestedDir, "test.jsonl", "test.state.json");
     await queue.overwrite([makeRecord(42)]);
 
     const raw = await readFile(join(nestedDir, "test.jsonl"), "utf-8");

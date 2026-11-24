@@ -13,13 +13,16 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
-import { MAX_INGEST_BATCH_SIZE, MAX_INGEST_BODY_BYTES, MIN_CLIENT_VERSION, BodyTooLargeError, readBoundedJson, isRetiredSourceRecord } from "@pew/core";
-import type { AccountingAck, ValidationResult } from "@pew/core";
 import {
-  INGEST_RATE_LIMIT,
-  getClientIp,
-  inMemoryRateLimiter,
-} from "@/lib/rate-limit";
+  MAX_INGEST_BATCH_SIZE,
+  MAX_INGEST_BODY_BYTES,
+  MIN_CLIENT_VERSION,
+  BodyTooLargeError,
+  readBoundedJson,
+  isRetiredSourceRecord,
+} from "@pew/core";
+import type { AccountingAck, ValidationResult } from "@pew/core";
+import { INGEST_RATE_LIMIT, getClientIp, inMemoryRateLimiter } from "@/lib/rate-limit";
 
 // ---------------------------------------------------------------------------
 // Factory config
@@ -44,7 +47,10 @@ export interface IngestHandlerConfig<T> {
   maxBodyBytes?: number;
   maxBatchSize?: number;
   /** A versioned route can project an explicit receipt instead of legacy {ingested}. */
-  acknowledgment?: (body: unknown, records: T[]) => { details_version: 1; acknowledgments: AccountingAck[] } | null;
+  acknowledgment?: (
+    body: unknown,
+    records: T[],
+  ) => { details_version: 1; acknowledgments: AccountingAck[] } | null;
   retiredAcknowledgment?: (record: unknown) => AccountingAck | null;
 }
 
@@ -75,10 +81,7 @@ export function createIngestHandler<T>(
     // 2. Rate limit: 300 per minute per user
     // (falls back to client IP if userId is somehow empty)
     const rateKey = userId || `ip:${getClientIp(request)}`;
-    const rl = inMemoryRateLimiter.check(
-      `ingest:${rateKey}`,
-      INGEST_RATE_LIMIT,
-    );
+    const rl = inMemoryRateLimiter.check(`ingest:${rateKey}`, INGEST_RATE_LIMIT);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },
@@ -102,26 +105,18 @@ export function createIngestHandler<T>(
     try {
       const body = await readBoundedJson(request, config.maxBodyBytes ?? MAX_INGEST_BODY_BYTES);
       if (!Array.isArray(body)) {
-        return NextResponse.json(
-          { error: "Request body must be an array" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Request body must be an array" }, { status: 400 });
       }
       records = body;
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return NextResponse.json({ error: error.message }, { status: 413 });
-      return NextResponse.json(
-        { error: "Invalid JSON body" },
-        { status: 400 },
-      );
+      if (error instanceof BodyTooLargeError)
+        return NextResponse.json({ error: error.message }, { status: 413 });
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
     // 5. Validate batch constraints
     if (records.length === 0) {
-      return NextResponse.json(
-        { error: "Request body must not be empty" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Request body must not be empty" }, { status: 400 });
     }
 
     const maxBatchSize = config.maxBatchSize ?? MAX_INGEST_BATCH_SIZE;
@@ -153,14 +148,22 @@ export function createIngestHandler<T>(
     }
 
     const counts = { ingested: validated.length, ...(ignored ? { ignored } : {}) };
-    const withRetiredReceipts = (receipt: { details_version: 1; acknowledgments: AccountingAck[] }) => ({
+    const withRetiredReceipts = (receipt: {
+      details_version: 1;
+      acknowledgments: AccountingAck[];
+    }) => ({
       ...receipt,
-      acknowledgments: acknowledgmentOrder.flatMap((slot) => slot === null ? [] : typeof slot === "number" ? [receipt.acknowledgments[slot]] : [slot]),
+      acknowledgments: acknowledgmentOrder.flatMap((slot) =>
+        slot === null ? [] : typeof slot === "number" ? [receipt.acknowledgments[slot]] : [slot],
+      ),
       ...(ignored ? counts : {}),
     });
     if (validated.length === 0) {
-      return NextResponse.json(config.acknowledgment
-        ? withRetiredReceipts({ details_version: 1, acknowledgments: [] }) : counts);
+      return NextResponse.json(
+        config.acknowledgment
+          ? withRetiredReceipts({ details_version: 1, acknowledgments: [] })
+          : counts,
+      );
     }
 
     // 7. Forward to Worker for atomic batch upsert
@@ -181,22 +184,20 @@ export function createIngestHandler<T>(
         // Upstream bodies/exceptions can include credentials or submitted
         // values. A fixed category and HTTP status are sufficient here.
         console.error(`Worker ${entityName} ingest failed (${res.status})`);
-        return NextResponse.json(
-          { error: `Failed to ingest ${entityName}` },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: `Failed to ingest ${entityName}` }, { status: 500 });
       }
       if (config.acknowledgment) {
         const receipt = config.acknowledgment(await res.json().catch(() => null), validated);
-        if (!receipt) return NextResponse.json({ error: "Worker did not acknowledge this accounting protocol" }, { status: 502 });
+        if (!receipt)
+          return NextResponse.json(
+            { error: "Worker did not acknowledge this accounting protocol" },
+            { status: 502 },
+          );
         return NextResponse.json(withRetiredReceipts(receipt));
       }
     } catch {
       console.error(`Failed to ingest ${entityName}`);
-      return NextResponse.json(
-        { error: `Failed to ingest ${entityName}` },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: `Failed to ingest ${entityName}` }, { status: 500 });
     }
 
     return NextResponse.json(counts);

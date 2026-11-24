@@ -5,10 +5,7 @@
  * pulling in @testing-library/react (not a dep of @pew/web).
  */
 
-import type {
-  DynamicPricingEntryDto,
-  DynamicPricingOrigin,
-} from "@/lib/rpc-types";
+import type { DynamicPricingEntryDto, DynamicPricingOrigin } from "@/lib/rpc-types";
 
 export type SortKey =
   | "model"

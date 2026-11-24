@@ -41,10 +41,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ devices });
   } catch (err) {
     console.error("Failed to query devices:", err);
-    return NextResponse.json(
-      { error: "Failed to query devices" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to query devices" }, { status: 500 });
   }
 }
 
@@ -69,25 +66,16 @@ export async function PUT(request: Request) {
   // Validate device_id
   const deviceId = body.device_id;
   if (!deviceId || typeof deviceId !== "string" || !deviceId.trim()) {
-    return NextResponse.json(
-      { error: "device_id is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "device_id is required" }, { status: 400 });
   }
 
   // Validate alias
   const alias = typeof body.alias === "string" ? body.alias.trim() : "";
   if (!alias) {
-    return NextResponse.json(
-      { error: "alias must be a non-empty string" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "alias must be a non-empty string" }, { status: 400 });
   }
   if (alias.length > 50) {
-    return NextResponse.json(
-      { error: "alias must be 50 characters or fewer" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "alias must be 50 characters or fewer" }, { status: 400 });
   }
 
   const dbRead = await getDbRead();
@@ -98,10 +86,7 @@ export async function PUT(request: Request) {
     const deviceExists = await dbRead.checkDeviceExists(userId, deviceId);
 
     if (!deviceExists) {
-      return NextResponse.json(
-        { error: "device_id not found" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "device_id not found" }, { status: 400 });
     }
 
     // 2. Check for duplicate alias (case-insensitive, different device)
@@ -110,7 +95,7 @@ export async function PUT(request: Request) {
     if (duplicate) {
       return NextResponse.json(
         { error: "Alias already in use by another device" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -120,16 +105,13 @@ export async function PUT(request: Request) {
        VALUES (?, ?, ?, datetime('now'))
        ON CONFLICT (user_id, device_id) DO UPDATE
          SET alias = excluded.alias, updated_at = excluded.updated_at`,
-      [userId, deviceId, alias]
+      [userId, deviceId, alias],
     );
 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Failed to update device alias:", err);
-    return NextResponse.json(
-      { error: "Failed to update device alias" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update device alias" }, { status: 500 });
   }
 }
 
@@ -153,7 +135,10 @@ export async function PATCH(request: Request) {
 
   const deviceId = body?.device_id;
   if (!isNonEmptyString(deviceId, MAX_STRING_LENGTH)) {
-    return NextResponse.json({ error: `device_id must be a non-empty string of at most ${MAX_STRING_LENGTH} characters` }, { status: 400 });
+    return NextResponse.json(
+      { error: `device_id must be a non-empty string of at most ${MAX_STRING_LENGTH} characters` },
+      { status: 400 },
+    );
   }
   if (typeof body?.revoked !== "boolean") {
     return NextResponse.json({ error: "revoked must be a boolean" }, { status: 400 });
@@ -170,10 +155,10 @@ export async function PATCH(request: Request) {
         [userId, deviceId],
       );
     } else {
-      await dbWrite.execute(
-        `DELETE FROM device_revocations WHERE user_id = ? AND device_id = ?`,
-        [userId, deviceId],
-      );
+      await dbWrite.execute(`DELETE FROM device_revocations WHERE user_id = ? AND device_id = ?`, [
+        userId,
+        deviceId,
+      ]);
     }
     return NextResponse.json({ success: true, revoked: body.revoked });
   } catch (err) {
@@ -204,7 +189,7 @@ export async function DELETE(request: Request) {
   if (!isNonEmptyString(deviceId, MAX_STRING_LENGTH)) {
     return NextResponse.json(
       { error: `device_id must be a non-empty string of at most ${MAX_STRING_LENGTH} characters` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -212,15 +197,15 @@ export async function DELETE(request: Request) {
 
   try {
     await dbWrite.batch([
-      { sql: `DELETE FROM device_records WHERE user_id = ? AND device_id = ?`, params: [userId, deviceId] },
+      {
+        sql: `DELETE FROM device_records WHERE user_id = ? AND device_id = ?`,
+        params: [userId, deviceId],
+      },
     ]);
 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Failed to delete device:", err);
-    return NextResponse.json(
-      { error: "Failed to delete device" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to delete device" }, { status: 500 });
   }
 }

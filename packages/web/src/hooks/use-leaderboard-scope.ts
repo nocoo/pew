@@ -57,10 +57,16 @@ export function useLeaderboardScope(): UseLeaderboardScopeReturn {
   const orgsKey = isAuthenticated ? "/api/organizations/mine" : null;
   const teamsKey = isAuthenticated ? "/api/teams" : null;
 
-  const { data: orgsData, isLoading: orgsLoading, error: orgsError } =
-    useSWR<OrgsResponse>(orgsKey, fetcher);
-  const { data: teamsData, isLoading: teamsLoading, error: teamsError } =
-    useSWR<TeamsResponse>(teamsKey, fetcher);
+  const {
+    data: orgsData,
+    isLoading: orgsLoading,
+    error: orgsError,
+  } = useSWR<OrgsResponse>(orgsKey, fetcher);
+  const {
+    data: teamsData,
+    isLoading: teamsLoading,
+    error: teamsError,
+  } = useSWR<TeamsResponse>(teamsKey, fetcher);
 
   const organizations = useMemo(() => orgsData?.organizations ?? [], [orgsData]);
   const teams = useMemo(() => teamsData?.teams ?? [], [teamsData]);
@@ -93,8 +99,8 @@ export function useLeaderboardScope(): UseLeaderboardScopeReturn {
     saveScopeToStorage(newScope);
   }, []);
 
-  const teamId = scope.type === "team" ? scope.id ?? null : null;
-  const orgId = scope.type === "org" ? scope.id ?? null : null;
+  const teamId = scope.type === "team" ? (scope.id ?? null) : null;
+  const orgId = scope.type === "org" ? (scope.id ?? null) : null;
 
   return {
     scope,

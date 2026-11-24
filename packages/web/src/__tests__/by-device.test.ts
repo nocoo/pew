@@ -33,27 +33,72 @@ describe("GET /api/usage/by-device", () => {
     vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as any);
   });
 
-  it.each([null, 90])("retains raw bases and exposes estimate assumptions (write=%s)", async (write) => {
-    vi.mocked(resolveUser).mockResolvedValue({ userId: "u1", email: "test@example.com" });
-    const r = accountingFixture();
-    const accounting = [{ status: "matched", basis: r.basis, groups: [{ ...r.groups[0],
-      counts: { ...r.groups[0]!.counts, cache_write_input_tokens: write } }] }];
-    const row = { ...r.basis, source: r.source, model: r.model, device_id: r.device_id, accounting };
-    mockDbRead.getDeviceSummary.mockResolvedValue([{ ...row, alias: null, first_seen: r.hour_start, last_seen: r.hour_start,
-      sources: r.source, models: r.model }]);
-    mockDbRead.getDeviceCostDetails.mockResolvedValue([row]);
-    mockDbRead.getDeviceTimeline.mockResolvedValue([{ ...row, date: "2026-09-01" }]);
-    mockDbRead.getDynamicPricing.mockResolvedValue({ servedFrom: "kv", entries: [{ model: "openai/gpt-6-astra", provider: "OpenAI",
-      displayName: "GPT-6 Astra", inputPerMillion: 10, outputPerMillion: 50, cachedPerMillion: 1, cacheWritePerMillion: 12.5,
-      route: "direct", contextWindow: 1000000, origin: "models.dev", updatedAt: r.hour_start }] });
-    const response = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-09-01", to: "2026-09-02" }));
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.devices[0]).toMatchObject({ ...r.basis, accounting, estimated_cost_complete: write !== null });
-    expect(body.devices[0].estimated_cost).toBeGreaterThan(0);
-    expect(body.timeline[0]).toMatchObject({ ...r.basis, accounting });
-    expect(body.deviceDetails[0]).toMatchObject({ ...r.basis, accounting });
-  });
+  it.each([null, 90])(
+    "retains raw bases and exposes estimate assumptions (write=%s)",
+    async (write) => {
+      vi.mocked(resolveUser).mockResolvedValue({ userId: "u1", email: "test@example.com" });
+      const r = accountingFixture();
+      const accounting = [
+        {
+          status: "matched",
+          basis: r.basis,
+          groups: [
+            { ...r.groups[0], counts: { ...r.groups[0]!.counts, cache_write_input_tokens: write } },
+          ],
+        },
+      ];
+      const row = {
+        ...r.basis,
+        source: r.source,
+        model: r.model,
+        device_id: r.device_id,
+        accounting,
+      };
+      mockDbRead.getDeviceSummary.mockResolvedValue([
+        {
+          ...row,
+          alias: null,
+          first_seen: r.hour_start,
+          last_seen: r.hour_start,
+          sources: r.source,
+          models: r.model,
+        },
+      ]);
+      mockDbRead.getDeviceCostDetails.mockResolvedValue([row]);
+      mockDbRead.getDeviceTimeline.mockResolvedValue([{ ...row, date: "2026-09-01" }]);
+      mockDbRead.getDynamicPricing.mockResolvedValue({
+        servedFrom: "kv",
+        entries: [
+          {
+            model: "openai/gpt-6-astra",
+            provider: "OpenAI",
+            displayName: "GPT-6 Astra",
+            inputPerMillion: 10,
+            outputPerMillion: 50,
+            cachedPerMillion: 1,
+            cacheWritePerMillion: 12.5,
+            route: "direct",
+            contextWindow: 1000000,
+            origin: "models.dev",
+            updatedAt: r.hour_start,
+          },
+        ],
+      });
+      const response = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-09-01", to: "2026-09-02" }),
+      );
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.devices[0]).toMatchObject({
+        ...r.basis,
+        accounting,
+        estimated_cost_complete: write !== null,
+      });
+      expect(body.devices[0].estimated_cost).toBeGreaterThan(0);
+      expect(body.timeline[0]).toMatchObject({ ...r.basis, accounting });
+      expect(body.deviceDetails[0]).toMatchObject({ ...r.basis, accounting });
+    },
+  );
 
   describe("authentication", () => {
     it("should reject unauthenticated requests", async () => {
@@ -83,21 +128,35 @@ describe("GET /api/usage/by-device", () => {
     });
 
     it("should return 400 for invalid to date format", async () => {
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "bad" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "bad" }),
+      );
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("Invalid date format");
     });
 
     it("should return 400 for invalid tzOffset (NaN)", async () => {
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11", tzOffset: "abc" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", {
+          from: "2026-03-01",
+          to: "2026-03-11",
+          tzOffset: "abc",
+        }),
+      );
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("Invalid tzOffset value");
     });
 
     it("should return 400 for tzOffset > 840", async () => {
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11", tzOffset: "900" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", {
+          from: "2026-03-01",
+          to: "2026-03-11",
+          tzOffset: "900",
+        }),
+      );
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("Invalid tzOffset value");
@@ -119,7 +178,13 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11", granularity: "half-hour" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", {
+          from: "2026-03-01",
+          to: "2026-03-11",
+          granularity: "half-hour",
+        }),
+      );
       expect(res.status).toBe(200);
       expect(mockDbRead.getDeviceTimeline).toHaveBeenCalledWith(
         "u1",
@@ -134,7 +199,9 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-10" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-10" }),
+      );
       expect(res.status).toBe(200);
     });
 
@@ -143,7 +210,9 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-10T23:59:59Z" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-10T23:59:59Z" }),
+      );
       expect(res.status).toBe(200);
     });
   });
@@ -184,7 +253,9 @@ describe("GET /api/usage/by-device", () => {
       ]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }),
+      );
       const body = await res.json();
 
       expect(res.status).toBe(200);
@@ -216,7 +287,9 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }),
+      );
       const body = await res.json();
 
       expect(res.status).toBe(200);
@@ -305,7 +378,7 @@ describe("GET /api/usage/by-device", () => {
       // Pricing RPC (no overrides)
 
       const res = await GET(
-        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" })
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }),
       );
 
       expect(res.status).toBe(200);
@@ -344,7 +417,9 @@ describe("GET /api/usage/by-device", () => {
       ]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }),
+      );
       const body = await res.json();
 
       expect(body.devices[0].estimated_cost).toBeTypeOf("number");
@@ -383,7 +458,9 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }),
+      );
       const body = await res.json();
 
       expect(body.devices[0].alias).toBe("MacBook");
@@ -418,7 +495,9 @@ describe("GET /api/usage/by-device", () => {
       ]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-01-01", to: "2026-03-01" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-01-01", to: "2026-03-01" }),
+      );
       const body = await res.json();
 
       expect(body.devices).toHaveLength(1);
@@ -444,7 +523,9 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }),
+      );
       const body = await res.json();
 
       expect(Array.isArray(body.devices[0].sources)).toBe(true);
@@ -456,7 +537,9 @@ describe("GET /api/usage/by-device", () => {
     it("should return 500 on D1 error", async () => {
       mockDbRead.getDeviceSummary.mockRejectedValueOnce(new Error("D1 down"));
 
-      const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
+      const res = await GET(
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }),
+      );
 
       expect(res.status).toBe(500);
       const body = await res.json();
@@ -504,7 +587,7 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
 
       const res = await GET(
-        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" })
+        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }),
       );
       const body = await res.json();
 

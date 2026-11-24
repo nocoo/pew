@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  inMemoryRateLimiter,
-  getClientIp,
-  type RateLimitConfig,
-} from "@/lib/rate-limit";
+import { inMemoryRateLimiter, getClientIp, type RateLimitConfig } from "@/lib/rate-limit";
 
 // ---------------------------------------------------------------------------
 // InMemoryRateLimiter

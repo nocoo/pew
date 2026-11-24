@@ -44,9 +44,7 @@ export function generateInviteCode(): string {
 // Validation
 // ---------------------------------------------------------------------------
 
-const INVITE_CODE_RE = new RegExp(
-  `^[${INVITE_ALPHABET}]{${INVITE_CODE_LENGTH}}$`
-);
+const INVITE_CODE_RE = new RegExp(`^[${INVITE_ALPHABET}]{${INVITE_CODE_LENGTH}}$`);
 
 /**
  * Validate that a string matches the invite code format.
@@ -95,7 +93,7 @@ export async function handleInviteGate(
   req: InviteGateRequest | undefined | null,
   account: InviteGateAccount | null,
   dbReadOverride?: DbRead,
-  dbWriteOverride?: DbWrite
+  dbWriteOverride?: DbWrite,
 ): Promise<true | string> {
   // E2E test bypass
   if (
@@ -116,7 +114,10 @@ export async function handleInviteGate(
   const dbWrite = dbWriteOverride ?? (await getDbWrite());
 
   // Check if user already exists (existing users bypass invite check)
-  const existingUser = await dbRead.getUserByOAuthAccount(account.provider, account.providerAccountId);
+  const existingUser = await dbRead.getUserByOAuthAccount(
+    account.provider,
+    account.providerAccountId,
+  );
 
   if (existingUser) return true;
 
@@ -141,7 +142,7 @@ export async function handleInviteGate(
     `UPDATE invite_codes
      SET used_by = ?, used_at = datetime('now')
      WHERE code = ? AND used_by IS NULL`,
-    [`pending:${pendingLabel}`, inviteCode]
+    [`pending:${pendingLabel}`, inviteCode],
   );
 
   if (meta.changes === 0) {

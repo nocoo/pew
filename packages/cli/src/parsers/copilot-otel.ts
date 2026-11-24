@@ -60,12 +60,9 @@ function extractUsageDelta(span: Record<string, unknown>): ParsedDelta | null {
 
   const timestamp = timestampFromSpan(span);
   if (!timestamp) return null;
-  const fallbackName = typeof span.name === "string"
-    ? span.name.replace(/^chat\s+/i, "")
-    : "unknown";
-  const model = attrs["gen_ai.response.model"]
-    ?? attrs["gen_ai.request.model"]
-    ?? fallbackName;
+  const fallbackName =
+    typeof span.name === "string" ? span.name.replace(/^chat\s+/i, "") : "unknown";
+  const model = attrs["gen_ai.response.model"] ?? attrs["gen_ai.request.model"] ?? fallbackName;
   return {
     source: "copilot-cli" as Source,
     model: typeof model === "string" && model.length > 0 ? model : "unknown",
@@ -135,9 +132,7 @@ export async function parseCopilotOtelFile(opts: {
 
   try {
     for await (const chunk of stream) {
-      const piece: Uint8Array = Buffer.isBuffer(chunk)
-        ? chunk
-        : Buffer.from(chunk as string);
+      const piece: Uint8Array = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
       if (pending.length === 0) {
         pending = piece;
       } else {
@@ -157,9 +152,10 @@ export async function parseCopilotOtelFile(opts: {
         offset = nl + 1;
 
         // Trim a CR so CRLF files parse, while its byte stays counted above.
-        const end = lineBuf.length > 0 && lineBuf[lineBuf.length - 1] === 0x0d
-          ? lineBuf.length - 1
-          : lineBuf.length;
+        const end =
+          lineBuf.length > 0 && lineBuf[lineBuf.length - 1] === 0x0d
+            ? lineBuf.length - 1
+            : lineBuf.length;
         if (end === 0) continue;
         consume(Buffer.from(lineBuf.subarray(0, end)).toString("utf8"));
       }

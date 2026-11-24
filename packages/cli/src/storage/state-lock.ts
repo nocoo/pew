@@ -11,7 +11,13 @@ export async function withStateLock<T>(stateDir: string, action: () => Promise<T
   // ponytail: fail closed on stale locks; remove state.lock only after verifying
   // its process has exited. Automatic stale reclamation needs an OS lock/CAS,
   // otherwise two reclaimers can delete a newly acquired lock.
-  if (!await acquireLock(path, opts)) throw new Error("Pew state is busy; retry after the active operation finishes. After a crash, verify the owner stopped before removing state.lock.");
-  try { return await action(); }
-  finally { await releaseLock(path, opts); }
+  if (!(await acquireLock(path, opts)))
+    throw new Error(
+      "Pew state is busy; retry after the active operation finishes. After a crash, verify the owner stopped before removing state.lock.",
+    );
+  try {
+    return await action();
+  } finally {
+    await releaseLock(path, opts);
+  }
 }

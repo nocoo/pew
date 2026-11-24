@@ -71,7 +71,7 @@ describe("sidebar navigation", () => {
 
     it("should not mark other items as external", () => {
       const nonExternal = BASE_NAV_GROUPS.flatMap((g) => g.items).filter(
-        (i) => i.label !== "Leaderboard"
+        (i) => i.label !== "Leaderboard",
       );
       for (const item of nonExternal) {
         expect(item.external).toBeUndefined();
@@ -148,18 +148,14 @@ describe("sidebar navigation", () => {
     });
 
     it("should link Invite Codes to /admin/invites", () => {
-      const inviteItem = ADMIN_NAV_GROUP.items.find(
-        (i) => i.label === "Invite Codes"
-      );
+      const inviteItem = ADMIN_NAV_GROUP.items.find((i) => i.label === "Invite Codes");
       expect(inviteItem).toBeDefined();
       expect(inviteItem!.href).toBe("/admin/invites");
       expect(inviteItem!.icon).toBe("Ticket");
     });
 
     it("should include Storage nav item", () => {
-      const storageItem = ADMIN_NAV_GROUP.items.find(
-        (i) => i.label === "Storage"
-      );
+      const storageItem = ADMIN_NAV_GROUP.items.find((i) => i.label === "Storage");
       expect(storageItem).toBeDefined();
       expect(storageItem!.href).toBe("/admin/storage");
       expect(storageItem!.icon).toBe("Database");
@@ -238,10 +234,7 @@ describe("breadcrumbsFromPathname", () => {
 
   it("should return breadcrumbs for /teams", () => {
     const crumbs = breadcrumbsFromPathname("/teams");
-    expect(crumbs).toEqual([
-      { label: "Home", href: "/dashboard" },
-      { label: "Teams" },
-    ]);
+    expect(crumbs).toEqual([{ label: "Home", href: "/dashboard" }, { label: "Teams" }]);
   });
 
   it("should return breadcrumbs for nested admin routes with non-clickable Admin", () => {
@@ -255,10 +248,7 @@ describe("breadcrumbsFromPathname", () => {
 
   it("should return breadcrumbs for /model-prices (top-level, non-admin)", () => {
     const crumbs = breadcrumbsFromPathname("/model-prices");
-    expect(crumbs).toEqual([
-      { label: "Home", href: "/dashboard" },
-      { label: "Model Prices" },
-    ]);
+    expect(crumbs).toEqual([{ label: "Home", href: "/dashboard" }, { label: "Model Prices" }]);
   });
 
   it("should return breadcrumbs for /admin/seasons", () => {
@@ -281,10 +271,7 @@ describe("breadcrumbsFromPathname", () => {
 
   it("should use route label for known segments", () => {
     const crumbs = breadcrumbsFromPathname("/daily-usage");
-    expect(crumbs).toEqual([
-      { label: "Home", href: "/dashboard" },
-      { label: "Daily Usage" },
-    ]);
+    expect(crumbs).toEqual([{ label: "Home", href: "/dashboard" }, { label: "Daily Usage" }]);
   });
 
   it("should truncate unknown segment labels to 8 chars", () => {
@@ -294,18 +281,11 @@ describe("breadcrumbsFromPathname", () => {
 
   it("should return breadcrumbs for /devices", () => {
     const crumbs = breadcrumbsFromPathname("/devices");
-    expect(crumbs).toEqual([
-      { label: "Home", href: "/dashboard" },
-      { label: "By Device" },
-    ]);
+    expect(crumbs).toEqual([{ label: "Home", href: "/dashboard" }, { label: "By Device" }]);
   });
 
   it("should return breadcrumbs for /manage-devices", () => {
     const crumbs = breadcrumbsFromPathname("/manage-devices");
-    expect(crumbs).toEqual([
-      { label: "Home", href: "/dashboard" },
-      { label: "Devices" },
-    ]);
+    expect(crumbs).toEqual([{ label: "Home", href: "/dashboard" }, { label: "Devices" }]);
   });
-
 });

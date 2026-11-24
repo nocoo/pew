@@ -14,11 +14,7 @@
 // ---------------------------------------------------------------------------
 
 export interface LockFsOps {
-  writeFile(
-    path: string,
-    data: string,
-    options?: { flag?: string },
-  ): Promise<void>;
+  writeFile(path: string, data: string, options?: { flag?: string }): Promise<void>;
   readFile(path: string): Promise<string>;
   unlink(path: string): Promise<void>;
 }
@@ -163,8 +159,7 @@ export async function waitForLock(
     now?: () => number;
   },
 ): Promise<WaitForLockResult> {
-  const sleep =
-    opts.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  const sleep = opts.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
   const now = opts.now ?? Date.now;
   const startTime = now();
   let backoff = 100;

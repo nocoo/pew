@@ -5,16 +5,16 @@
 
 ## Status
 
-| # | Commit | Description | Status |
-|---|--------|-------------|--------|
-| 1 | `docs: add token queue full re-upload plan` | This document | done |
-| 2 | `test: add dirty-keys tracking tests for sync` | L1 failing tests | done |
-| 3 | `feat: add dirtyKeys to queue state schema` | Extend state | done |
-| 4 | `feat: track dirty bucket keys during sync` | Modify sync.ts merge logic | done |
-| 5 | `test: add dirty-keys filtering tests for upload-engine` | L1 failing tests | done |
-| 6 | `feat: upload only dirty records in upload-engine` | Filter by dirtyKeys | done |
-| 7 | `test: verify reset triggers full re-upload` | Ensure reset marks all dirty | done |
-| 8 | `refactor: remove offset-reset-to-0 in sync.ts` | Clean up legacy offset | done |
+| #   | Commit                                                   | Description                  | Status |
+| --- | -------------------------------------------------------- | ---------------------------- | ------ |
+| 1   | `docs: add token queue full re-upload plan`              | This document                | done   |
+| 2   | `test: add dirty-keys tracking tests for sync`           | L1 failing tests             | done   |
+| 3   | `feat: add dirtyKeys to queue state schema`              | Extend state                 | done   |
+| 4   | `feat: track dirty bucket keys during sync`              | Modify sync.ts merge logic   | done   |
+| 5   | `test: add dirty-keys filtering tests for upload-engine` | L1 failing tests             | done   |
+| 6   | `feat: upload only dirty records in upload-engine`       | Filter by dirtyKeys          | done   |
+| 7   | `test: verify reset triggers full re-upload`             | Ensure reset marks all dirty | done   |
+| 8   | `refactor: remove offset-reset-to-0 in sync.ts`          | Clean up legacy offset       | done   |
 
 ## Problem
 
@@ -55,8 +55,7 @@ the file. The upload engine (`upload-engine.ts:115-117`) then reads from offset
 
 ```typescript
 const currentOffset = await queue.loadOffset();
-const { records: rawRecords, newOffset } =
-  await queue.readFromOffset(currentOffset);  // currentOffset = 0, reads ALL
+const { records: rawRecords, newOffset } = await queue.readFromOffset(currentOffset); // currentOffset = 0, reads ALL
 ```
 
 ### Why It Triggers Every Run
@@ -93,11 +92,13 @@ subset that changed.
 ### Data Structures
 
 **Current `queue.state.json`:**
+
 ```json
 { "offset": 0 }
 ```
 
 **New `queue.state.json`:**
+
 ```json
 {
   "offset": 0,
@@ -109,6 +110,7 @@ subset that changed.
 ```
 
 The bucket key format matches `aggregateRecords()` at `upload.ts:63`:
+
 ```typescript
 const key = `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`;
 ```
@@ -118,11 +120,13 @@ const key = `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`;
 #### Sync (sync.ts)
 
 **Full scan** (empty cursors / after reset):
+
 1. Overwrite queue with complete snapshot
 2. Set `dirtyKeys` = ALL keys in the snapshot (marks everything for upload)
 3. Set `offset` = 0
 
 **Incremental** (cursors exist, records.length > 0):
+
 1. Read existing queue from offset 0
 2. Compute keys of new `records` (the delta)
 3. Merge old + new via `aggregateRecords()`
@@ -131,6 +135,7 @@ const key = `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`;
 6. Set `offset` = 0 (queue was rewritten, byte offsets are invalid)
 
 **Incremental with no new data** (records.length === 0):
+
 - No change to queue or dirtyKeys (preserve existing state)
 
 #### Upload (upload-engine.ts)
@@ -153,32 +158,32 @@ handling needed -- the existing reset behavior already clears all state files.
 
 ### Crash Safety Analysis
 
-| Crash point | State after restart | Behavior |
-|---|---|---|
-| After queue overwrite, before dirtyKeys save | Queue has merged data, dirtyKeys stale (may be empty from last upload) | Next sync re-parses deltas, re-merges, re-adds dirty keys. Worst case: one sync cycle where changed buckets aren't uploaded. Self-healing on next run. |
-| After dirtyKeys save, before cursor save | Queue + dirtyKeys correct, cursors stale | Next sync re-parses from old cursors, produces superset of deltas. aggregateRecords() with overwrite upsert = idempotent. dirtyKeys union includes all changed keys. Safe. |
-| During upload, after some batches sent | dirtyKeys still contains all keys (cleared only after ALL batches succeed) | Next upload re-sends all dirty records. Server overwrite upsert = idempotent. Safe. |
+| Crash point                                  | State after restart                                                        | Behavior                                                                                                                                                                   |
+| -------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| After queue overwrite, before dirtyKeys save | Queue has merged data, dirtyKeys stale (may be empty from last upload)     | Next sync re-parses deltas, re-merges, re-adds dirty keys. Worst case: one sync cycle where changed buckets aren't uploaded. Self-healing on next run.                     |
+| After dirtyKeys save, before cursor save     | Queue + dirtyKeys correct, cursors stale                                   | Next sync re-parses from old cursors, produces superset of deltas. aggregateRecords() with overwrite upsert = idempotent. dirtyKeys union includes all changed keys. Safe. |
+| During upload, after some batches sent       | dirtyKeys still contains all keys (cleared only after ALL batches succeed) | Next upload re-sends all dirty records. Server overwrite upsert = idempotent. Safe.                                                                                        |
 
 ### Expected Improvement
 
-| Metric | Before | After |
-|---|---|---|
+| Metric                     | Before             | After                      |
+| -------------------------- | ------------------ | -------------------------- |
 | Records per sync (typical) | ~3057 (full queue) | ~5-50 (dirty buckets only) |
-| HTTP batches per sync | ~62 | ~1 |
-| D1 write operations | ~3057 | ~5-50 |
-| Sync duration | ~30s | ~1-2s |
+| HTTP batches per sync      | ~62                | ~1                         |
+| D1 write operations        | ~3057              | ~5-50                      |
+| Sync duration              | ~30s               | ~1-2s                      |
 
 ## Files to Modify
 
-| File | Change |
-|---|---|
-| `packages/cli/src/storage/base-queue.ts` | Add `saveDirtyKeys()`, `loadDirtyKeys()`, `clearDirtyKeys()` methods |
-| `packages/cli/src/commands/sync.ts` | Track dirty keys during merge; save after queue overwrite |
-| `packages/cli/src/commands/upload-engine.ts` | Filter by dirty keys; clear after successful upload |
-| `packages/cli/src/commands/upload.ts` | Pass dirty key extraction logic to engine (bucket key function) |
-| `packages/cli/src/__tests__/upload.test.ts` | Add dirty-key filtering tests |
-| `packages/cli/src/__tests__/upload-engine.test.ts` | Add dirty-key filtering tests |
-| New: `packages/cli/src/__tests__/sync-dirty-keys.test.ts` | Dedicated dirty-keys tracking tests for sync |
+| File                                                      | Change                                                               |
+| --------------------------------------------------------- | -------------------------------------------------------------------- |
+| `packages/cli/src/storage/base-queue.ts`                  | Add `saveDirtyKeys()`, `loadDirtyKeys()`, `clearDirtyKeys()` methods |
+| `packages/cli/src/commands/sync.ts`                       | Track dirty keys during merge; save after queue overwrite            |
+| `packages/cli/src/commands/upload-engine.ts`              | Filter by dirty keys; clear after successful upload                  |
+| `packages/cli/src/commands/upload.ts`                     | Pass dirty key extraction logic to engine (bucket key function)      |
+| `packages/cli/src/__tests__/upload.test.ts`               | Add dirty-key filtering tests                                        |
+| `packages/cli/src/__tests__/upload-engine.test.ts`        | Add dirty-key filtering tests                                        |
+| New: `packages/cli/src/__tests__/sync-dirty-keys.test.ts` | Dedicated dirty-keys tracking tests for sync                         |
 
 ## Implementation Notes
 

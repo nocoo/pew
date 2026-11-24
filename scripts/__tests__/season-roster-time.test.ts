@@ -16,12 +16,25 @@ describe("roster synchronization time bounds", () => {
         CREATE TABLE season_teams(season_id TEXT, team_id TEXT);
         INSERT INTO seasons VALUES ('s1','2026-09-25T02:11:00Z','2026-09-25T02:11:00Z',1);
         INSERT INTO season_teams VALUES ('s1','t1');`);
-      const db = { prepare: (sql: string) => ({ bind: (teamId: string) => ({
-        all: async () => ({ results: sqlite.prepare(sql.replaceAll("datetime('now')", "datetime(?)")).all(teamId, now, now) }),
-      }) }) } as unknown as D1Database;
-      const response = await handleSeasonsRpc({ method: "seasons.listRosterSyncSeasons", teamId: "t1" }, db, {} as KVNamespace);
+      const db = {
+        prepare: (sql: string) => ({
+          bind: (teamId: string) => ({
+            all: async () => ({
+              results: sqlite
+                .prepare(sql.replaceAll("datetime('now')", "datetime(?)"))
+                .all(teamId, now, now),
+            }),
+          }),
+        }),
+      } as unknown as D1Database;
+      const response = await handleSeasonsRpc(
+        { method: "seasons.listRosterSyncSeasons", teamId: "t1" },
+        db,
+        {} as KVNamespace,
+      );
       expect(await response.json()).toEqual({ result: expected });
-    } finally { sqlite.close(); }
+    } finally {
+      sqlite.close();
+    }
   });
-
 });

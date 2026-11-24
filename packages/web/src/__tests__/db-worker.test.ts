@@ -35,29 +35,51 @@ describe("createWorkerDbRead", () => {
   });
 
   it("reads the authoritative leaderboard revision", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ result: "42" }));
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json({ result: "42" }));
     expect(await createWorkerDbRead().getLeaderboardRevision()).toBe("42");
-    expect(JSON.parse(fetchSpy.mock.calls[0]![1]!.body as string)).toEqual({ method: "leaderboard.getRevision" });
+    expect(JSON.parse(fetchSpy.mock.calls[0]![1]!.body as string)).toEqual({
+      method: "leaderboard.getRevision",
+    });
   });
 
-  it.each([{}, { fromDate: "2026-09-01T00:00:00Z", teamId: "t1", source: "codex" }, { orgId: "o1", model: "o3" }])(
-    "requests a full leaderboard snapshot with filters %j",
-    async (options) => {
-      const snapshot = { key: "opaque", revision: "42", id: "snapshot-42", generatedAt: 1, expiresAt: 600001, rows: [] };
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ result: snapshot }));
-      expect(await createWorkerDbRead().getLeaderboardSnapshot(options)).toEqual(snapshot);
-      expect(JSON.parse(fetchSpy.mock.calls[0]![1]!.body as string)).toEqual({ method: "leaderboard.getSnapshot", ...options });
-    },
-  );
+  it.each([
+    {},
+    { fromDate: "2026-09-01T00:00:00Z", teamId: "t1", source: "codex" },
+    { orgId: "o1", model: "o3" },
+  ])("requests a full leaderboard snapshot with filters %j", async (options) => {
+    const snapshot = {
+      key: "opaque",
+      revision: "42",
+      id: "snapshot-42",
+      generatedAt: 1,
+      expiresAt: 600001,
+      rows: [],
+    };
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json({ result: snapshot }));
+    expect(await createWorkerDbRead().getLeaderboardSnapshot(options)).toEqual(snapshot);
+    expect(JSON.parse(fetchSpy.mock.calls[0]![1]!.body as string)).toEqual({
+      method: "leaderboard.getSnapshot",
+      ...options,
+    });
+  });
 
   it.each(["getLeaderboardRevision", "getLeaderboardSnapshot"] as const)(
     "%s uses a 15-second transport deadline and bypasses the fetch cache",
     async (method) => {
       const deadline = vi.spyOn(AbortSignal, "timeout");
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ result: null }));
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(Response.json({ result: null }));
       await createWorkerDbRead()[method]({});
       expect(deadline).toHaveBeenCalledExactlyOnceWith(15_000);
-      expect(fetchSpy.mock.calls[0]![1]).toMatchObject({ cache: "no-store", signal: deadline.mock.results[0]!.value });
+      expect(fetchSpy.mock.calls[0]![1]).toMatchObject({
+        cache: "no-store",
+        signal: deadline.mock.results[0]!.value,
+      });
     },
   );
 
@@ -79,9 +101,12 @@ describe("createWorkerDbRead", () => {
           signal.addEventListener("abort", () => reject(signal.reason), { once: true });
         });
       }
-      vi.spyOn(response, "json").mockImplementation(() => new Promise((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
-      }));
+      vi.spyOn(response, "json").mockImplementation(
+        () =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+          }),
+      );
       return response;
     });
     const pending = createWorkerDbRead()[method]({});
@@ -94,16 +119,26 @@ describe("createWorkerDbRead", () => {
 
   it("sends only method parameters to the RPC endpoint", async () => {
     const deadline = vi.spyOn(AbortSignal, "timeout");
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      Response.json({ result: [] }),
-    );
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ result: [] }));
     const db = createWorkerDbRead();
-    await db.getAdminUsageComparison(["u1", "u2"], "2026-01-01", "2026-02-01", { tzOffset: -480, source: "s", model: "m" });
+    await db.getAdminUsageComparison(["u1", "u2"], "2026-01-01", "2026-02-01", {
+      tzOffset: -480,
+      source: "s",
+      model: "m",
+    });
     expect(fetchSpy).toHaveBeenCalledWith("https://pew.test.workers.dev/api/rpc", {
       method: "POST",
       cache: "no-store",
       headers: { "Content-Type": "application/json", Authorization: "Bearer test-secret" },
-      body: JSON.stringify({ method: "admin.getUsageComparison", userIds: ["u1", "u2"], fromDate: "2026-01-01", toDate: "2026-02-01", tzOffset: -480, source: "s", model: "m" }),
+      body: JSON.stringify({
+        method: "admin.getUsageComparison",
+        userIds: ["u1", "u2"],
+        fromDate: "2026-01-01",
+        toDate: "2026-02-01",
+        tzOffset: -480,
+        source: "s",
+        model: "m",
+      }),
     });
     expect(deadline).not.toHaveBeenCalled();
   });
@@ -116,7 +151,11 @@ describe("createWorkerDbRead", () => {
     ["listAutoRegisterTeams", ["s1"], { method: "seasons.listAutoRegisterTeams", seasonId: "s1" }],
     ["listRosterSyncSeasons", ["t1"], { method: "seasons.listRosterSyncSeasons", teamId: "t1" }],
     ["getRegisteredTeamIds", ["s1"], { method: "seasons.getRegisteredTeamIds", seasonId: "s1" }],
-    ["getRosterUserIds", ["s1", "t1"], { method: "seasons.getRosterUserIds", seasonId: "s1", teamId: "t1" }],
+    [
+      "getRosterUserIds",
+      ["s1", "t1"],
+      { method: "seasons.getRosterUserIds", seasonId: "s1", teamId: "t1" },
+    ],
     ["getAdminUsersByIds", [["u1"]], { method: "admin.getUsersByIds", userIds: ["u1"] }],
   ] as const)("%s forwards typed identifiers", async (method, args, request) => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ result: [] }));

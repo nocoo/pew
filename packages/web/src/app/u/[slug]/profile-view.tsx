@@ -1,11 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Calendar,
-  ArrowLeft,
-  ShieldCheck,
-} from "@nocoo/basalt/icons";
+import { Calendar, ArrowLeft, ShieldCheck } from "@nocoo/basalt/icons";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -57,12 +53,8 @@ function PewPageHeader() {
   return (
     <PageHeader>
       <h1 className="tracking-tight text-basalt-foreground">
-        <span className="text-[36px] font-bold font-handwriting leading-none mr-2">
-          pew
-        </span>
-        <span className="text-[19px] font-normal text-basalt-muted-foreground">
-          Profile
-        </span>
+        <span className="text-[36px] font-bold font-handwriting leading-none mr-2">pew</span>
+        <span className="text-[19px] font-normal text-basalt-muted-foreground">Profile</span>
       </h1>
     </PageHeader>
   );
@@ -92,10 +84,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
           <PewPageHeader />
           <main className="flex-1 py-8">
             <div className="text-center space-y-4">
-              <Empty
-                title="404"
-                description={`No public profile found for “${slug}”`}
-              />
+              <Empty title="404" description={`No public profile found for “${slug}”`} />
               <Link
                 href="/leaderboard"
                 className="inline-flex items-center gap-2 text-sm text-basalt-primary hover:underline"
@@ -157,9 +146,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
             user && (
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  {user.image && (
-                    <AvatarImage src={user.image} alt={user.name ?? slug} />
-                  )}
+                  {user.image && <AvatarImage src={user.image} alt={user.name ?? slug} />}
                   <AvatarFallback className="text-lg bg-basalt-primary text-basalt-primary-foreground">
                     {(user.name ?? slug)[0]?.toUpperCase() ?? "?"}
                   </AvatarFallback>

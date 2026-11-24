@@ -1,25 +1,14 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
 import { fmtHour } from "@/lib/date-helpers";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import { deviceLabel as getDeviceLabel } from "@/lib/device-helpers";
 import type { HourlyByDevicePoint } from "@/lib/usage-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -130,7 +119,12 @@ export function HourlyDeviceChart({
         className,
       )}
     >
-      <div className={cn("flex flex-wrap items-center justify-between gap-2", compact ? "mb-2" : "mb-4")}>
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-2",
+          compact ? "mb-2" : "mb-4",
+        )}
+      >
         <p className="text-xs md:text-sm text-basalt-muted-foreground">
           {compact ? "By Device" : "Hourly By Device"}
         </p>
@@ -138,10 +132,7 @@ export function HourlyDeviceChart({
           <div className="flex flex-wrap items-center gap-3">
             {legendItems.slice(0, 6).map(({ key, label, color }) => (
               <div key={key} className="flex items-center gap-1.5">
-                <div
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: color }}
-                />
+                <div className="h-2 w-2 rounded-full" style={{ background: color }} />
                 <span className="text-xs text-basalt-muted-foreground truncate max-w-[100px]">
                   {label}
                 </span>
@@ -153,10 +144,7 @@ export function HourlyDeviceChart({
 
       <div style={{ height: compact ? 160 : 280 }}>
         <DashboardResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={chartAxis}

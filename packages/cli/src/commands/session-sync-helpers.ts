@@ -2,11 +2,7 @@
  * Pure helpers extracted from session-sync.ts. Keeps the orchestrator file
  * under the 400-LOC complexity guideline. No runtime behavior change.
  */
-import type {
-  SessionQueueRecord,
-  SessionSnapshot,
-  Source,
-} from "@pew/core";
+import type { SessionQueueRecord, SessionSnapshot, Source } from "@pew/core";
 
 /** Result key map for executeSessionSync (kept in sync with SessionSyncResult.sources). */
 export type SessionSyncSourceKey =
@@ -51,21 +47,31 @@ export function toQueueRecord(snap: SessionSnapshot): SessionQueueRecord {
  */
 export function sourceKey(source: Source): SessionSyncSourceKey | null {
   switch (source) {
-    case "antigravity": return "antigravity";
-    case "claude-code": return "claude";
-    case "codex": return "codex";
-    case "copilot-cli": return "copilotCli";
-    case "grok": return "grok";
-    case "opencode": return "opencode";
-    case "openclaw": return "openclaw";
-    case "pi": return "pi";
+    case "antigravity":
+      return "antigravity";
+    case "claude-code":
+      return "claude";
+    case "codex":
+      return "codex";
+    case "copilot-cli":
+      return "copilotCli";
+    case "grok":
+      return "grok";
+    case "opencode":
+      return "opencode";
+    case "openclaw":
+      return "openclaw";
+    case "pi":
+      return "pi";
     case "gemini-cli":
     case "kosmos":
     case "omp":
     case "pmstudio":
     case "vscode-copilot":
-    case "zcode": return null;
-    case "hermes": return null;
+    case "zcode":
+      return null;
+    case "hermes":
+      return null;
     default: {
       // Exhaustiveness check — if Source adds a new value, this will fail to compile
       const _exhaustive: never = source;

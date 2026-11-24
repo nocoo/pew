@@ -4,10 +4,7 @@
   "finishing": "04",
   "archiveRepository": "https://github.com/nocoo/hexly.ai",
   "archiveRevision": "dbde89154844529f77422fde391c06e012b8b08f",
-  "nativeSize": [
-    2048,
-    2048
-  ],
+  "nativeSize": [2048, 2048],
   "rawImageSha256": "efa6aff9f478cb56ac3bcb390dc935aa6a6f7b9f56b5e98c7df4a1ea11a2746b",
   "previousLogoSha256": "2b94fa9b0b0521008a08caa3bae34552f68785fd591c8dc578ceee943addc35e",
   "approval": {

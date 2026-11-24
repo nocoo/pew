@@ -4,20 +4,14 @@ import { Suspense, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
-import {
-  useLeaderboard,
-  type LeaderboardPeriod,
-} from "@/hooks/use-leaderboard";
+import { useLeaderboard, type LeaderboardPeriod } from "@/hooks/use-leaderboard";
 import { useLeaderboardScope } from "@/hooks/use-leaderboard-scope";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { LeaderboardPageTitle } from "@/components/leaderboard/leaderboard-page-title";
 import { PeriodTabs } from "@/components/leaderboard/period-tabs";
 import { ScopeDropdown } from "@/components/leaderboard/scope-dropdown";
 import { LeaderboardPageShell } from "@/components/leaderboard/leaderboard-page-shell";
-import {
-  FilterDropdown,
-  type FilterDropdownItem,
-} from "@/components/leaderboard/filter-dropdown";
+import { FilterDropdown, type FilterDropdownItem } from "@/components/leaderboard/filter-dropdown";
 import { PAGE_SIZE } from "@/lib/leaderboard-constants";
 
 // ---------------------------------------------------------------------------
@@ -109,22 +103,15 @@ function ModelsLeaderboardContent() {
     [searchParams, router],
   );
 
-  const {
-    entries,
-    loading,
-    loadingMore,
-    error,
-    hasMore,
-    loadMore,
-    animationStartIndex,
-  } = useLeaderboard({
-    period,
-    teamId,
-    orgId,
-    model: selectedModel,
-    limit: PAGE_SIZE,
-    enabled: scopeInitialized && !isSessionLoading,
-  });
+  const { entries, loading, loadingMore, error, hasMore, loadMore, animationStartIndex } =
+    useLeaderboard({
+      period,
+      teamId,
+      orgId,
+      model: selectedModel,
+      limit: PAGE_SIZE,
+      enabled: scopeInitialized && !isSessionLoading,
+    });
 
   return (
     <>

@@ -54,10 +54,7 @@ describe("piSessionDriver", () => {
     it("discovers JSONL files under piSessionsDir", async () => {
       const sessDir = join(tempDir, "--Users-test-project--");
       await mkdir(sessDir, { recursive: true });
-      await writeFile(
-        join(sessDir, "session.jsonl"),
-        `${piSessionLine()}\n${piAssistantLine()}\n`,
-      );
+      await writeFile(join(sessDir, "session.jsonl"), `${piSessionLine()}\n${piAssistantLine()}\n`);
 
       const files = await piSessionDriver.discover({ piSessionsDir: tempDir });
       expect(files).toHaveLength(1);
@@ -106,10 +103,7 @@ describe("piSessionDriver", () => {
       const sessDir = join(tempDir, "--Users-test-project--");
       await mkdir(sessDir, { recursive: true });
       const filePath = join(sessDir, "session.jsonl");
-      await writeFile(
-        filePath,
-        `${piSessionLine()}\n${piAssistantLine()}\n`,
-      );
+      await writeFile(filePath, `${piSessionLine()}\n${piAssistantLine()}\n`);
 
       const result = await piSessionDriver.parse(filePath);
       expect(result.length).toBeGreaterThanOrEqual(1);

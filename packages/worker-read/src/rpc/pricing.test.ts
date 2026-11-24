@@ -12,10 +12,7 @@ import {
   KEY_LAST_FETCH_OPENROUTER,
   KEY_LAST_FETCH_MODELS_DEV,
 } from "../sync/kv-store";
-import {
-  OPENROUTER_URL,
-  type SyncOutcome,
-} from "../sync/orchestrator";
+import { OPENROUTER_URL, type SyncOutcome } from "../sync/orchestrator";
 import type { DynamicPricingEntry, DynamicPricingMeta } from "../sync/types";
 import type { D1Database } from "@cloudflare/workers-types";
 import { memoryKv } from "../__test-helpers__/memory-kv";
@@ -89,7 +86,9 @@ describe("pricing RPC handlers", () => {
       });
       const req: GetDynamicPricingRequest = { method: "pricing.getDynamicPricing" };
       const res = await handlePricingRpc(req, db, kv);
-      const body = (await res.json()) as { result: { entries: DynamicPricingEntry[]; servedFrom: string } };
+      const body = (await res.json()) as {
+        result: { entries: DynamicPricingEntry[]; servedFrom: string };
+      };
       expect(res.status).toBe(200);
       expect(body.result.servedFrom).toBe("kv");
       expect(body.result.entries).toEqual(entries);
@@ -98,7 +97,9 @@ describe("pricing RPC handlers", () => {
     it("falls back to bundled baseline with servedFrom='baseline' on KV miss", async () => {
       const req: GetDynamicPricingRequest = { method: "pricing.getDynamicPricing" };
       const res = await handlePricingRpc(req, db, kv);
-      const body = (await res.json()) as { result: { entries: DynamicPricingEntry[]; servedFrom: string } };
+      const body = (await res.json()) as {
+        result: { entries: DynamicPricingEntry[]; servedFrom: string };
+      };
       expect(res.status).toBe(200);
       expect(body.result.servedFrom).toBe("baseline");
       expect(body.result.entries).toEqual(baseline);
@@ -231,12 +232,7 @@ describe("pricing RPC handlers", () => {
 
     it("undefined forceRefetch (cron default) fetches upstream with cache fallback", async () => {
       const fetchSpy = vi.fn(async (url: string | URL | Request) => {
-        const u =
-          typeof url === "string"
-            ? url
-            : url instanceof URL
-              ? url.toString()
-              : url.url;
+        const u = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
         const body = u === OPENROUTER_URL ? OPENROUTER_OK : MODELS_DEV_OK;
         return new Response(JSON.stringify(body), {
           status: 200,
@@ -261,12 +257,7 @@ describe("pricing RPC handlers", () => {
 
     it("forceRefetch=true hits upstream and refreshes per-source caches", async () => {
       const fetchSpy = vi.fn(async (url: string | URL | Request) => {
-        const u =
-          typeof url === "string"
-            ? url
-            : url instanceof URL
-              ? url.toString()
-              : url.url;
+        const u = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
         const body = u === OPENROUTER_URL ? OPENROUTER_OK : MODELS_DEV_OK;
         return new Response(JSON.stringify(body), {
           status: 200,
@@ -295,12 +286,7 @@ describe("pricing RPC handlers", () => {
 
     it("forceRefetch=true with one upstream failure → ok=false propagates partial failure", async () => {
       const fetchSpy = vi.fn(async (url: string | URL | Request) => {
-        const u =
-          typeof url === "string"
-            ? url
-            : url instanceof URL
-              ? url.toString()
-              : url.url;
+        const u = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
         if (u === OPENROUTER_URL) {
           return new Response("boom", { status: 500 });
         }
@@ -320,9 +306,7 @@ describe("pricing RPC handlers", () => {
       const body = (await res.json()) as { result: SyncOutcome };
 
       expect(body.result.ok).toBe(false);
-      expect(body.result.errors.some((e) => e.source === "openrouter")).toBe(
-        true,
-      );
+      expect(body.result.errors.some((e) => e.source === "openrouter")).toBe(true);
       // models.dev still parsed → entries written includes it + baseline
       expect(body.result.entriesWritten).toBeGreaterThanOrEqual(
         (baseline as DynamicPricingEntry[]).length,

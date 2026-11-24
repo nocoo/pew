@@ -144,17 +144,11 @@ describe("executeSync jsonl snapshot race", () => {
 
     const cursorsPath = join(stateDir, "cursors.json");
     const before = JSON.parse(await readFile(cursorsPath, "utf8")) as {
-      files: Record<
-        string,
-        { offset: number; continuityAnchors?: unknown[]; size: number }
-      >;
+      files: Record<string, { offset: number; continuityAnchors?: unknown[]; size: number }>;
     };
     const beforeCursor = before.files[grokLog];
 
-    await writeFile(
-      grokLog,
-      `${firstBody}${grokLine("2026-03-07T10:02:00.000Z", 400)}\n`,
-    );
+    await writeFile(grokLog, `${firstBody}${grokLine("2026-03-07T10:02:00.000Z", 400)}\n`);
     race.paths.add(grokLog);
     race.enabled = true;
     const second = await executeSync({
@@ -166,16 +160,11 @@ describe("executeSync jsonl snapshot race", () => {
     expect(await grokQueueInput(stateDir)).toBe(300);
 
     const after = JSON.parse(await readFile(cursorsPath, "utf8")) as {
-      files: Record<
-        string,
-        { offset: number; continuityAnchors?: unknown[]; size: number }
-      >;
+      files: Record<string, { offset: number; continuityAnchors?: unknown[]; size: number }>;
     };
     expect(after.files[grokLog]?.offset).toBe(beforeCursor?.offset);
     expect(after.files[grokLog]?.size).toBe(beforeCursor?.size);
-    expect(after.files[grokLog]?.continuityAnchors).toEqual(
-      beforeCursor?.continuityAnchors,
-    );
+    expect(after.files[grokLog]?.continuityAnchors).toEqual(beforeCursor?.continuityAnchors);
   });
 
   it("rolls back Codex shared scope state when a child parse is discarded", async () => {
@@ -185,14 +174,8 @@ describe("executeSync jsonl snapshot race", () => {
     const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
     const parentThreadId = "019fbeda-8b7d-7b13-9eb3-87cecc4607e9";
     const childThreadId = "019fbf71-32f5-70d3-9113-2f8b4430656e";
-    const parentPath = join(
-      dayDir,
-      `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`,
-    );
-    const childPath = join(
-      dayDir,
-      `rollout-2026-03-07T10-30-00-${childThreadId}.jsonl`,
-    );
+    const parentPath = join(dayDir, `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`);
+    const childPath = join(dayDir, `rollout-2026-03-07T10-30-00-${childThreadId}.jsonl`);
     const parentBody = `${[
       codexGoalSessionMeta(goalId),
       codexTokenLine({

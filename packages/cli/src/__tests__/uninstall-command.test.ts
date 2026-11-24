@@ -73,10 +73,11 @@ describe("executeUninstall", () => {
       dryRun: true,
       sources: ["claude-code" as Source], // partial — not all sources
       resolveNotifierPathsFn: createPaths,
-      getAllDriversFn: () => [
-        { source: "claude-code", displayName: "Claude Code" },
-        { source: "codex", displayName: "Codex" },
-      ] as Array<{ source: Source; displayName: string }>,
+      getAllDriversFn: () =>
+        [
+          { source: "claude-code", displayName: "Claude Code" },
+          { source: "codex", displayName: "Codex" },
+        ] as Array<{ source: Source; displayName: string }>,
     });
     // Partial dry-run → "shared artifact kept" / "not selected" detail strings.
     expect(result.notifyHandler.detail).toBe("shared artifact kept");
@@ -92,10 +93,11 @@ describe("executeUninstall", () => {
       dryRun: true,
       sources: ["codex" as Source],
       resolveNotifierPathsFn: createPaths,
-      getAllDriversFn: () => [
-        { source: "claude-code", displayName: "Claude Code" },
-        { source: "codex", displayName: "Codex" },
-      ] as Array<{ source: Source; displayName: string }>,
+      getAllDriversFn: () =>
+        [
+          { source: "claude-code", displayName: "Claude Code" },
+          { source: "codex", displayName: "Codex" },
+        ] as Array<{ source: Source; displayName: string }>,
     });
     // shouldRemoveCodexBackup is true → dry-run; not fullUninstall → shared kept.
     expect(result.codexBackup.detail).toBe("dry-run");
@@ -113,10 +115,11 @@ describe("executeUninstall", () => {
       home: "/tmp",
       dryRun: true,
       resolveNotifierPathsFn: createPaths,
-      getAllDriversFn: () => [
-        { source: "claude-code", displayName: "Claude Code" },
-        { source: "codex", displayName: "Codex" },
-      ] as Array<{ source: Source; displayName: string }>,
+      getAllDriversFn: () =>
+        [
+          { source: "claude-code", displayName: "Claude Code" },
+          { source: "codex", displayName: "Codex" },
+        ] as Array<{ source: Source; displayName: string }>,
       uninstallAllFn,
       uninstallDriverFn,
       removeNotifyHandlerFn,

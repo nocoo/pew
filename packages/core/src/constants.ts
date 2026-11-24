@@ -26,17 +26,19 @@ export const SOURCES: readonly Source[] = Object.freeze([
 ] as const);
 
 export const RETIRED_SOURCES: readonly Source[] = Object.freeze([
-  "gemini-cli", "kosmos", "omp", "pmstudio", "vscode-copilot", "zcode",
+  "gemini-cli",
+  "kosmos",
+  "omp",
+  "pmstudio",
+  "vscode-copilot",
+  "zcode",
 ]);
 
 /** Historical identities remain readable after collection stops. */
 export const VALID_SOURCES: ReadonlySet<string> = new Set<string>([...SOURCES, ...RETIRED_SOURCES]);
 
 /** All session kinds (runtime array) */
-export const SESSION_KINDS: readonly SessionKind[] = Object.freeze([
-  "human",
-  "automated",
-] as const);
+export const SESSION_KINDS: readonly SessionKind[] = Object.freeze(["human", "automated"] as const);
 
 /** Set form for O(1) membership checks */
 export const VALID_SESSION_KINDS: ReadonlySet<string> = new Set<string>(SESSION_KINDS);

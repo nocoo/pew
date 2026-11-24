@@ -76,9 +76,17 @@ describe("toModelEvolutionPoints", () => {
 
   it("should group by date and model", () => {
     const rows = [
-      makeRow({ model: "claude-sonnet-4-20250514", hour_start: "2026-03-07T10:00:00Z", total_tokens: 3000 }),
+      makeRow({
+        model: "claude-sonnet-4-20250514",
+        hour_start: "2026-03-07T10:00:00Z",
+        total_tokens: 3000,
+      }),
       makeRow({ model: "gemini-2.5-pro", hour_start: "2026-03-07T14:00:00Z", total_tokens: 2000 }),
-      makeRow({ model: "claude-sonnet-4-20250514", hour_start: "2026-03-08T09:00:00Z", total_tokens: 4000 }),
+      makeRow({
+        model: "claude-sonnet-4-20250514",
+        hour_start: "2026-03-08T09:00:00Z",
+        total_tokens: 4000,
+      }),
     ];
     const result = toModelEvolutionPoints(rows);
     expect(result).toHaveLength(2);
@@ -117,7 +125,9 @@ describe("toModelEvolutionPoints", () => {
     ];
     const result = toModelEvolutionPoints(rows, 1);
     expect(result.map((point) => point.models)).toEqual([
-      { current: 300, Other: 100_000 }, { current: 200, Other: 0 }, { current: 100, Other: 0 },
+      { current: 300, Other: 100_000 },
+      { current: 200, Other: 0 },
+      { current: 100, Other: 0 },
     ]);
     expect(toModelEvolutionPoints([...rows].reverse(), 1)).toEqual(result);
   });
@@ -174,8 +184,16 @@ describe("toModelEvolutionPoints", () => {
   it("should shift records across midnight with positive tzOffset (UTC-8)", () => {
     // 2026-03-08T03:00Z → 2026-03-07T19:00 PST → local date 2026-03-07
     const rows = [
-      makeRow({ model: "claude-sonnet-4-20250514", hour_start: "2026-03-07T20:00:00Z", total_tokens: 3000 }),
-      makeRow({ model: "claude-sonnet-4-20250514", hour_start: "2026-03-08T03:00:00Z", total_tokens: 2000 }),
+      makeRow({
+        model: "claude-sonnet-4-20250514",
+        hour_start: "2026-03-07T20:00:00Z",
+        total_tokens: 3000,
+      }),
+      makeRow({
+        model: "claude-sonnet-4-20250514",
+        hour_start: "2026-03-08T03:00:00Z",
+        total_tokens: 2000,
+      }),
     ];
     const result = toModelEvolutionPoints(rows, 5, 480); // UTC-8
 
@@ -187,7 +205,11 @@ describe("toModelEvolutionPoints", () => {
   it("should shift records across midnight with negative tzOffset (UTC+9)", () => {
     // 2026-03-07T20:00Z → 2026-03-08T05:00 JST → local date 2026-03-08
     const rows = [
-      makeRow({ model: "claude-sonnet-4-20250514", hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 }),
+      makeRow({
+        model: "claude-sonnet-4-20250514",
+        hour_start: "2026-03-07T10:00:00Z",
+        total_tokens: 1000,
+      }),
       makeRow({ model: "gemini-2.5-pro", hour_start: "2026-03-07T20:00:00Z", total_tokens: 2000 }),
     ];
     const result = toModelEvolutionPoints(rows, 5, -540); // UTC+9

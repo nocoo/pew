@@ -225,11 +225,9 @@ describe("parseClaudeFile", () => {
 
   it("should skip malformed JSON lines gracefully", async () => {
     const filePath = join(tempDir, "session.jsonl");
-    const content = `${[
-      "not valid json{{{",
-      claudeLine(),
-      '{"broken": true, "usage": "fake"',
-    ].join("\n")}\n`;
+    const content = `${["not valid json{{{", claudeLine(), '{"broken": true, "usage": "fake"'].join(
+      "\n",
+    )}\n`;
     await writeFile(filePath, content);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });

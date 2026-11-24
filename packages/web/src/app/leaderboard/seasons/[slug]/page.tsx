@@ -2,12 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import {
-  Users,
-  ChevronDown,
-  Zap,
-  Camera,
-} from "@nocoo/basalt/icons";
+import { Users, ChevronDown, Zap, Camera } from "@nocoo/basalt/icons";
 import { Badge } from "@nocoo/basalt/components/badge";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
@@ -107,10 +102,7 @@ function TeamRow({
   };
 
   return (
-    <div
-      className="animate-fade-up"
-      style={{ animationDelay: `${index * 40}ms` }}
-    >
+    <div className="animate-fade-up" style={{ animationDelay: `${index * 40}ms` }}>
       <Button
         type="button"
         variant="ghost"
@@ -155,8 +147,7 @@ function TeamRow({
             </div>
             {hasMembers && (
               <span className="text-[10px] text-basalt-muted-foreground">
-                {members.length}{" "}
-                {members.length === 1 ? "member" : "members"}
+                {members.length} {members.length === 1 ? "member" : "members"}
               </span>
             )}
           </div>
@@ -200,76 +191,69 @@ function TeamRow({
           {membersLoading ? (
             <div className="flex items-center justify-center py-4">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-basalt-muted-foreground border-t-transparent" />
-              <span className="ml-2 text-sm text-basalt-muted-foreground">
-                Loading members...
-              </span>
+              <span className="ml-2 text-sm text-basalt-muted-foreground">Loading members...</span>
             </div>
           ) : hasMembers ? (
             members.map((member) => {
-            const displayName = member.name ?? "Anonymous";
-            const initial = displayName[0]?.toUpperCase() ?? "?";
-            return (
-              <div
-                key={member.user_id}
-                className="flex items-center gap-3 py-1.5"
-              >
-                {/* Rank spacer — matches team row w-8 rank column */}
-                <div className="w-8 shrink-0" />
+              const displayName = member.name ?? "Anonymous";
+              const initial = displayName[0]?.toUpperCase() ?? "?";
+              return (
+                <div key={member.user_id} className="flex items-center gap-3 py-1.5">
+                  {/* Rank spacer — matches team row w-8 rank column */}
+                  <div className="w-8 shrink-0" />
 
-                {/* Avatar + name — aligned with team icon + name */}
-                <div className="flex flex-1 items-center gap-3 min-w-0">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMemberClick(member);
-                    }}
-                    className="flex h-auto min-w-0 items-center gap-3 px-0 py-0 hover:bg-transparent hover:opacity-80"
-                  >
-                    <Avatar className="h-8 w-8 shrink-0">
-                      {member.image && (
-                        <AvatarImage src={member.image} alt={displayName} />
-                      )}
-                      <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
-                        {initial}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm text-basalt-muted-foreground truncate">
-                        {displayName}
-                      </span>
-                      <TokenTierBadge totalTokens={member.total_tokens} />
-                    </div>
-                  </Button>
+                  {/* Avatar + name — aligned with team icon + name */}
+                  <div className="flex flex-1 items-center gap-3 min-w-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMemberClick(member);
+                      }}
+                      className="flex h-auto min-w-0 items-center gap-3 px-0 py-0 hover:bg-transparent hover:opacity-80"
+                    >
+                      <Avatar className="h-8 w-8 shrink-0">
+                        {member.image && <AvatarImage src={member.image} alt={displayName} />}
+                        <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
+                          {initial}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm text-basalt-muted-foreground truncate">
+                          {displayName}
+                        </span>
+                        <TokenTierBadge totalTokens={member.total_tokens} />
+                      </div>
+                    </Button>
+                  </div>
+
+                  {/* Session count — same width as team row */}
+                  <div className="hidden sm:block w-24 shrink-0 text-right">
+                    <span className="text-xs tabular-nums text-chart-2">
+                      {member.session_count.toLocaleString("en-US")}
+                    </span>
+                  </div>
+
+                  {/* Duration — same width as team row */}
+                  <div className="hidden sm:block w-24 shrink-0 text-right">
+                    <span className="text-xs tabular-nums text-chart-7">
+                      {formatDuration(member.total_duration_seconds)}
+                    </span>
+                  </div>
+
+                  {/* Tokens — same width and font size as team row */}
+                  <div className="relative z-10 w-[160px] sm:w-[280px] shrink-0 text-right flex items-center justify-end">
+                    <span className="font-handwriting text-[32px] sm:text-[39px] leading-none tracking-tight text-basalt-muted-foreground whitespace-nowrap">
+                      {formatTokensFull(member.total_tokens)}
+                    </span>
+                  </div>
+
+                  {/* Chevron spacer — matches team row expand indicator */}
+                  <div className="w-4 shrink-0" />
                 </div>
-
-                {/* Session count — same width as team row */}
-                <div className="hidden sm:block w-24 shrink-0 text-right">
-                  <span className="text-xs tabular-nums text-chart-2">
-                    {member.session_count.toLocaleString("en-US")}
-                  </span>
-                </div>
-
-                {/* Duration — same width as team row */}
-                <div className="hidden sm:block w-24 shrink-0 text-right">
-                  <span className="text-xs tabular-nums text-chart-7">
-                    {formatDuration(member.total_duration_seconds)}
-                  </span>
-                </div>
-
-                {/* Tokens — same width and font size as team row */}
-                <div className="relative z-10 w-[160px] sm:w-[280px] shrink-0 text-right flex items-center justify-end">
-                  <span className="font-handwriting text-[32px] sm:text-[39px] leading-none tracking-tight text-basalt-muted-foreground whitespace-nowrap">
-                    {formatTokensFull(member.total_tokens)}
-                  </span>
-                </div>
-
-                {/* Chevron spacer — matches team row expand indicator */}
-                <div className="w-4 shrink-0" />
-              </div>
-            );
-          })
+              );
+            })
           ) : (
             <Empty title="No members to display" />
           )}
@@ -351,9 +335,7 @@ export default function SeasonLeaderboardPage() {
         <Breadcrumb seasonName={data?.season.name} />
 
         {/* Error */}
-        {error && (
-          <Banner tone="danger" description={error} />
-        )}
+        {error && <Banner tone="danger" description={error} />}
 
         {/* Loading */}
         {isLoading && <LeaderboardSkeleton count={5} />}
@@ -364,10 +346,7 @@ export default function SeasonLeaderboardPage() {
         {/* Content */}
         {data && (
           <div
-            className={cn(
-              "space-y-2 transition-opacity duration-200",
-              refreshing && "opacity-60",
-            )}
+            className={cn("space-y-2 transition-opacity duration-200", refreshing && "opacity-60")}
           >
             {data.entries.length === 0 ? (
               <Empty

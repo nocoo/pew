@@ -68,10 +68,7 @@ describe("copilotCliTokenDriver", () => {
       await writeFile(join(tempDir, "process-789-012.log"), buildUsageBlock());
       await writeFile(join(tempDir, "other.txt"), "ignore");
 
-      const files = await copilotCliTokenDriver.discover(
-        { copilotCliLogsDir: tempDir },
-        ctx,
-      );
+      const files = await copilotCliTokenDriver.discover({ copilotCliLogsDir: tempDir }, ctx);
       expect(files).toHaveLength(2);
       expect(files.every((f) => f.endsWith(".log"))).toBe(true);
     });
@@ -245,10 +242,14 @@ describe("copilotCliTokenDriver", () => {
       const block1 = buildUsageBlock(1000, 100);
       await writeFile(filePath, block1);
 
-      const r1 = await copilotCliTokenDriver.parse(filePath, {
-        kind: "byte-offset",
-        startOffset: 0,
-      }, ctx);
+      const r1 = await copilotCliTokenDriver.parse(
+        filePath,
+        {
+          kind: "byte-offset",
+          startOffset: 0,
+        },
+        ctx,
+      );
       expect(r1.deltas).toHaveLength(1);
 
       const endOffset = (r1 as unknown as { endOffset: number }).endOffset;
@@ -256,10 +257,14 @@ describe("copilotCliTokenDriver", () => {
       const block2 = buildUsageBlock(2000, 200);
       await writeFile(filePath, block1 + block2);
 
-      const r2 = await copilotCliTokenDriver.parse(filePath, {
-        kind: "byte-offset",
-        startOffset: endOffset,
-      }, ctx);
+      const r2 = await copilotCliTokenDriver.parse(
+        filePath,
+        {
+          kind: "byte-offset",
+          startOffset: endOffset,
+        },
+        ctx,
+      );
       expect(r2.deltas).toHaveLength(1);
       expect(r2.deltas[0]!.tokens.inputTokens).toBe(2000);
     });

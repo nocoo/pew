@@ -27,10 +27,7 @@ function totalOf(d: TokenDelta): number {
  * Returns null if no change, or the full current if totals reset (decreased).
  * Used for cumulative OpenCode totals.
  */
-export function diffTotals(
-  current: TokenDelta,
-  previous: TokenDelta | null,
-): TokenDelta | null {
+export function diffTotals(current: TokenDelta, previous: TokenDelta | null): TokenDelta | null {
   if (!previous) return current;
 
   // Same → no change
@@ -48,10 +45,7 @@ export function diffTotals(
 
   const delta: TokenDelta = {
     inputTokens: Math.max(0, current.inputTokens - previous.inputTokens),
-    cachedInputTokens: Math.max(
-      0,
-      current.cachedInputTokens - previous.cachedInputTokens,
-    ),
+    cachedInputTokens: Math.max(0, current.cachedInputTokens - previous.cachedInputTokens),
     outputTokens: Math.max(0, current.outputTokens - previous.outputTokens),
     reasoningOutputTokens: Math.max(
       0,

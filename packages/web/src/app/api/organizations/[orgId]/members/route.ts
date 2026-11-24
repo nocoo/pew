@@ -9,10 +9,7 @@ import { resolveUser } from "@/lib/auth-helpers";
 import { unauthorizedResponse } from "@/lib/api-responses";
 import { getDbRead } from "@/lib/db";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const authResult = await resolveUser(request);
   if (!authResult) {
     return unauthorizedResponse();
@@ -49,15 +46,9 @@ export async function GET(
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Organization tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Organization tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to list organization members:", err);
-    return NextResponse.json(
-      { error: "Failed to list members" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list members" }, { status: 500 });
   }
 }

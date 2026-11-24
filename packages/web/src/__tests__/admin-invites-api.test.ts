@@ -188,9 +188,7 @@ describe("POST /api/admin/invites", () => {
   it("should retry on code collision and succeed", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin-1", email: "admin@test.com" });
     // First call: collision (code exists), second call: no collision
-    mockDbRead.checkInviteCodeExists
-      .mockResolvedValueOnce({ id: 1 })
-      .mockResolvedValueOnce(null);
+    mockDbRead.checkInviteCodeExists.mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce(null);
     mockDbWrite.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
 
     const res = await POST(makeJsonRequest("POST", "/api/admin/invites", { count: 1 }));
@@ -246,9 +244,7 @@ describe("DELETE /api/admin/invites", () => {
 
   it("should return 403 for non-admin", async () => {
     resolveAdmin.mockResolvedValueOnce(null);
-    const res = await DELETE(
-      makeJsonRequest("DELETE", "/api/admin/invites?id=1")
-    );
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/admin/invites?id=1"));
     expect(res.status).toBe(403);
   });
 
@@ -268,9 +264,7 @@ describe("DELETE /api/admin/invites", () => {
       userId: "admin-1",
       email: "admin@test.com",
     });
-    const res = await DELETE(
-      makeJsonRequest("DELETE", "/api/admin/invites?id=1abc")
-    );
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/admin/invites?id=1abc"));
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe("Invalid id");
@@ -281,9 +275,7 @@ describe("DELETE /api/admin/invites", () => {
       userId: "admin-1",
       email: "admin@test.com",
     });
-    const res = await DELETE(
-      makeJsonRequest("DELETE", "/api/admin/invites?id=-1")
-    );
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/admin/invites?id=-1"));
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe("Invalid id");
@@ -297,9 +289,7 @@ describe("DELETE /api/admin/invites", () => {
     // Atomic DELETE matches (unused or pending:*)
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await DELETE(
-      makeJsonRequest("DELETE", "/api/admin/invites?id=1")
-    );
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/admin/invites?id=1"));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.deleted).toBe(true);
@@ -315,9 +305,7 @@ describe("DELETE /api/admin/invites", () => {
     // Atomic DELETE matches (pending:* code)
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await DELETE(
-      makeJsonRequest("DELETE", "/api/admin/invites?id=2")
-    );
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/admin/invites?id=2"));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.deleted).toBe(true);
@@ -335,9 +323,7 @@ describe("DELETE /api/admin/invites", () => {
       used_by: "user-uuid-abc123",
     });
 
-    const res = await DELETE(
-      makeJsonRequest("DELETE", "/api/admin/invites?id=3")
-    );
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/admin/invites?id=3"));
     expect(res.status).toBe(409);
     const json = await res.json();
     expect(json.error).toBe("Cannot delete a used invite code");
@@ -353,9 +339,7 @@ describe("DELETE /api/admin/invites", () => {
     // Fallback getInviteCodeById also finds nothing
     mockDbRead.getInviteCodeById.mockResolvedValueOnce(null);
 
-    const res = await DELETE(
-      makeJsonRequest("DELETE", "/api/admin/invites?id=999")
-    );
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/admin/invites?id=999"));
     expect(res.status).toBe(404);
     const json = await res.json();
     expect(json.error).toBe("Code not found");

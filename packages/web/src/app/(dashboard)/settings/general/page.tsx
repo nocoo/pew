@@ -4,11 +4,7 @@ import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import {
-  User,
-  ExternalLink,
-  AlertTriangle,
-} from "@nocoo/basalt/icons";
+import { User, ExternalLink, AlertTriangle } from "@nocoo/basalt/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { Separator } from "@nocoo/basalt/components/separator";
@@ -154,9 +150,7 @@ export default function SettingsPage() {
         await signOut({ callbackUrl: "/" });
       } else {
         const data = await res.json().catch(() => ({}));
-        setDeleteError(
-          (data as { error?: string }).error ?? "Failed to delete account.",
-        );
+        setDeleteError((data as { error?: string }).error ?? "Failed to delete account.");
       }
     } catch {
       setDeleteError("Network error.");
@@ -171,10 +165,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl space-y-8">
-      <PageHeader
-        title="General"
-        description="Account settings and public profile."
-      />
+      <PageHeader title="General" description="Account settings and public profile." />
 
       {/* Account Section */}
       <section>
@@ -257,7 +248,8 @@ export default function SettingsPage() {
                 Show my profile publicly
               </Label>
               <p className="mt-0.5 text-[10px] text-basalt-muted-foreground">
-                When enabled, your profile appears on the leaderboard and is accessible at your public URL.
+                When enabled, your profile appears on the leaderboard and is accessible at your
+                public URL.
               </p>
             </div>
           </div>
@@ -281,9 +273,7 @@ export default function SettingsPage() {
         </h2>
         <div className="rounded-xl border border-basalt-destructive/30 bg-basalt-destructive/5 p-5 space-y-4">
           <div>
-            <p className="text-sm font-medium text-basalt-foreground">
-              Delete Account
-            </p>
+            <p className="text-sm font-medium text-basalt-foreground">Delete Account</p>
             <p className="mt-1 text-xs text-basalt-muted-foreground">
               Permanently delete your account and all associated data. This action cannot be undone.
               All your usage records, session history, and team memberships will be removed.
@@ -318,9 +308,7 @@ export default function SettingsPage() {
             >
               {deleting ? "Deleting..." : "Delete My Account"}
             </Button>
-            {deleteError && (
-              <Banner tone="danger" size="sm" description={deleteError} />
-            )}
+            {deleteError && <Banner tone="danger" size="sm" description={deleteError} />}
           </div>
         </div>
       </section>

@@ -38,10 +38,7 @@ export function useDerivedUsageData(
     [records],
   );
 
-  const models = useMemo(
-    () => (records ? toModelAggregates(records) : []),
-    [records],
-  );
+  const models = useMemo(() => (records ? toModelAggregates(records) : []), [records]);
 
   return { daily, sources, models };
 }

@@ -36,11 +36,14 @@ describe("cache RPC handlers", () => {
     run.mockClear();
   });
 
-  it.each([undefined, "l", "lb:", "lb:v1:"])("fences leaderboard fills before clearing prefix %s", async (prefix) => {
-    await handleCacheRpc({ method: "cache.clear", prefix }, kv, db);
-    expect(run).toHaveBeenCalledOnce();
-    expect(run.mock.invocationCallOrder[0]).toBeLessThan(kv.list.mock.invocationCallOrder[0]);
-  });
+  it.each([undefined, "l", "lb:", "lb:v1:"])(
+    "fences leaderboard fills before clearing prefix %s",
+    async (prefix) => {
+      await handleCacheRpc({ method: "cache.clear", prefix }, kv, db);
+      expect(run).toHaveBeenCalledOnce();
+      expect(run.mock.invocationCallOrder[0]).toBeLessThan(kv.list.mock.invocationCallOrder[0]);
+    },
+  );
 
   it("invalidates versioned leaderboard keys without invalidating unrelated families", async () => {
     await handleCacheRpc({ method: "cache.invalidate", key: "lb:v1:old" }, kv, db);
@@ -52,7 +55,9 @@ describe("cache RPC handlers", () => {
 
   it("does not delete keys if authoritative invalidation fails", async () => {
     run.mockRejectedValueOnce(new Error("database unavailable"));
-    await expect(handleCacheRpc({ method: "cache.clear" }, kv, db)).rejects.toThrow("database unavailable");
+    await expect(handleCacheRpc({ method: "cache.clear" }, kv, db)).rejects.toThrow(
+      "database unavailable",
+    );
     expect(kv.delete).not.toHaveBeenCalled();
   });
 

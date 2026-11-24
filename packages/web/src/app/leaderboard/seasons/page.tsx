@@ -2,13 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import {
-  Trophy,
-  Calendar,
-  Users,
-  Camera,
-  Zap,
-} from "@nocoo/basalt/icons";
+import { Trophy, Calendar, Users, Camera, Zap } from "@nocoo/basalt/icons";
 import { cn } from "@/lib/utils";
 import { TIMELINE_DOT_COLORS } from "@/lib/season-status-config";
 import { Skeleton } from "@nocoo/basalt/components/skeleton";
@@ -153,7 +147,7 @@ export default function SeasonsPage() {
   const sortedSeasons = useMemo(() => {
     if (!seasons) return [];
     return [...seasons].sort(
-      (a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+      (a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime(),
     );
   }, [seasons]);
 
@@ -171,9 +165,7 @@ export default function SeasonsPage() {
         <LeaderboardNav />
 
         {/* Error */}
-        {error && (
-          <Banner tone="danger" description={error} />
-        )}
+        {error && <Banner tone="danger" description={error} />}
 
         {/* Loading */}
         {loading && !data && (

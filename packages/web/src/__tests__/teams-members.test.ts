@@ -15,7 +15,7 @@ vi.mock("@/lib/db", () => ({
     Promise.resolve({
       getTeamMembership: mockGetTeamMembership,
       checkTeamMembershipExists: mockCheckTeamMembershipExists,
-    })
+    }),
   ),
   getDbWrite: vi.fn(() => Promise.resolve({ execute: mockExecute })),
 }));

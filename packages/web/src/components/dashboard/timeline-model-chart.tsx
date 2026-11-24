@@ -1,14 +1,7 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, modelColor } from "@/lib/palette";
@@ -78,7 +71,7 @@ export function toModelTimeline(
   tzOffset: number,
   fromISO: string,
   toISO: string,
-  topN: number
+  topN: number,
 ): { data: ModelSlotPoint[]; modelKeys: string[] } {
   const SLOT_MS = 30 * 60_000;
   const startMs = new Date(fromISO).getTime();
@@ -88,9 +81,13 @@ export function toModelTimeline(
     return time >= startMs && time <= endMs;
   });
 
-  const ranked = rankUsageByRecency(selected.map((r) => ({
-    id: r.model, date: toLocalDateStr(r.hour_start, tzOffset), value: accountedTotal(r),
-  })));
+  const ranked = rankUsageByRecency(
+    selected.map((r) => ({
+      id: r.model,
+      date: toLocalDateStr(r.hour_start, tzOffset),
+      value: accountedTotal(r),
+    })),
+  );
   const topModels = ranked.slice(0, topN);
   const hasOther = ranked.length > topN;
   const modelKeys = hasOther ? [...topModels, "Other"] : topModels;
@@ -172,7 +169,7 @@ export function TimelineModelChart({
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No model data yet
@@ -192,7 +189,7 @@ export function TimelineModelChart({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -200,25 +197,25 @@ export function TimelineModelChart({
         <div className="flex flex-wrap items-center gap-4">
           {legendItems.map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ background: color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ background: color }} />
               <span className="text-xs text-basalt-muted-foreground truncate max-w-[80px]">
                 {label}
               </span>
             </div>
           ))}
-          <ChartLegendMore items={modelKeys.map((model) => ({ key: model, label: model, color: modelColor(model).color }))} />
+          <ChartLegendMore
+            items={modelKeys.map((model) => ({
+              key: model,
+              label: model,
+              color: modelColor(model).color,
+            }))}
+          />
         </div>
       </div>
 
       <div className="h-[200px]">
         <DashboardResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={chartAxis}
@@ -251,9 +248,7 @@ export function TimelineModelChart({
                 dataKey={model}
                 stackId="1"
                 fill={modelColor(model).color}
-                radius={
-                  i === modelKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]
-                }
+                radius={i === modelKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
               />
             ))}
           </BarChart>

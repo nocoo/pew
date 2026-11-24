@@ -42,9 +42,7 @@ interface UseSessionDataResult {
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useSessionData(
-  options: UseSessionDataOptions = {}
-): UseSessionDataResult {
+export function useSessionData(options: UseSessionDataOptions = {}): UseSessionDataResult {
   const { from: fromDate, to: toDate, source, enabled = true } = options;
 
   const url = useMemo(() => {

@@ -56,10 +56,7 @@ describe("grokTokenDriver", () => {
   });
 
   it("returns empty when log missing", async () => {
-    const files = await grokTokenDriver.discover(
-      { grokLogsPath: join(root, "nope.jsonl") },
-      {},
-    );
+    const files = await grokTokenDriver.discover({ grokLogsPath: join(root, "nope.jsonl") }, {});
     expect(files).toEqual([]);
   });
 
@@ -102,11 +99,7 @@ describe("grokTokenDriver", () => {
     const line2 = `${inferenceLine("2026-07-10T00:02:00.000Z")}\n`;
     await writeFile(logPath, line1 + line2);
     const fp2 = await fingerprint(logPath);
-    const r2 = await grokTokenDriver.parse(
-      logPath,
-      grokTokenDriver.resumeState(cursor, fp2),
-      {},
-    );
+    const r2 = await grokTokenDriver.parse(logPath, grokTokenDriver.resumeState(cursor, fp2), {});
     expect(r2.deltas).toHaveLength(1);
     expect(r2.deltas[0]!.timestamp).toBe("2026-07-10T00:02:00.000Z");
   });
@@ -129,11 +122,7 @@ describe("grokTokenDriver", () => {
     const rest = `${inferenceLine("2026-07-10T00:02:00.000Z").slice(30)}\n`;
     await writeFile(logPath, complete + partial + rest);
     const fp2 = await fingerprint(logPath);
-    const r2 = await grokTokenDriver.parse(
-      logPath,
-      grokTokenDriver.resumeState(cursor, fp2),
-      {},
-    );
+    const r2 = await grokTokenDriver.parse(logPath, grokTokenDriver.resumeState(cursor, fp2), {});
     expect(r2.deltas).toHaveLength(1);
     expect(r2.deltas[0]!.timestamp).toBe("2026-07-10T00:02:00.000Z");
   });

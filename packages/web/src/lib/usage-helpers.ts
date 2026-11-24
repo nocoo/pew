@@ -23,8 +23,12 @@ export const MODEL_SERIES_LIMIT = 100;
  * from the latest positive usage date in the selection. Dates are local calendar
  * days, not timestamps. Historical totals never outrank usage in a newer window.
  */
-export function rankUsageByRecency(samples: { id: string; date: string; value: number }[]): string[] {
-  const usage = samples.filter((s) => s.value > 0).map((s) => ({ ...s, time: new Date(s.date).getTime() }));
+export function rankUsageByRecency(
+  samples: { id: string; date: string; value: number }[],
+): string[] {
+  const usage = samples
+    .filter((s) => s.value > 0)
+    .map((s) => ({ ...s, time: new Date(s.date).getTime() }));
   const latest = usage.reduce((time, s) => Math.max(time, s.time), -Infinity);
   const ranks = new Map<string, { week: number; tokens: number }>();
   for (const sample of usage) {
@@ -33,7 +37,8 @@ export function rankUsageByRecency(samples: { id: string; date: string; value: n
     if (!rank || week < rank.week) ranks.set(sample.id, { week, tokens: sample.value });
     else if (week === rank.week) rank.tokens += sample.value;
   }
-  return [...ranks].sort(([a, av], [b, bv]) => av.week - bv.week || bv.tokens - av.tokens || a.localeCompare(b))
+  return [...ranks]
+    .sort(([a, av], [b, bv]) => av.week - bv.week || bv.tokens - av.tokens || a.localeCompare(b))
     .map(([id]) => id);
 }
 
@@ -154,14 +159,17 @@ export interface DailyDominantSource {
 
 /** Group usage records by model, compute per-model aggregates. */
 export function groupByModel(records: UsageRow[], pricingMap: PricingMap): ModelGroup[] {
-  const byModel = new Map<string, {
-    sources: Set<string>;
-    inputTokens: number;
-    outputTokens: number;
-    cachedTokens: number;
-    totalTokens: number;
-    estimatedCost: number;
-  }>();
+  const byModel = new Map<
+    string,
+    {
+      sources: Set<string>;
+      inputTokens: number;
+      outputTokens: number;
+      cachedTokens: number;
+      totalTokens: number;
+      estimatedCost: number;
+    }
+  >();
 
   let grandTotal = 0;
 
@@ -174,7 +182,7 @@ export function groupByModel(records: UsageRow[], pricingMap: PricingMap): Model
     if (existing) {
       existing.sources.add(r.source);
       existing.inputTokens += display.input_tokens;
-      existing.outputTokens += (display.output_tokens + display.reasoning_output_tokens);
+      existing.outputTokens += display.output_tokens + display.reasoning_output_tokens;
       existing.cachedTokens += display.cached_input_tokens;
       existing.totalTokens += accountedTotal(r);
       existing.estimatedCost += cost.totalCost;
@@ -182,7 +190,7 @@ export function groupByModel(records: UsageRow[], pricingMap: PricingMap): Model
       byModel.set(r.model, {
         sources: new Set([r.source]),
         inputTokens: display.input_tokens,
-        outputTokens: (display.output_tokens + display.reasoning_output_tokens),
+        outputTokens: display.output_tokens + display.reasoning_output_tokens,
         cachedTokens: display.cached_input_tokens,
         totalTokens: accountedTotal(r),
         estimatedCost: cost.totalCost,
@@ -234,7 +242,7 @@ export function groupByAgent(records: UsageRow[], pricingMap: PricingMap): Agent
       for (const r of recs) {
         const display = displayCounters(r);
         inputTokens += display.input_tokens;
-        outputTokens += (display.output_tokens + display.reasoning_output_tokens);
+        outputTokens += display.output_tokens + display.reasoning_output_tokens;
         cachedTokens += display.cached_input_tokens;
         totalTokens += accountedTotal(r);
 
@@ -244,7 +252,7 @@ export function groupByAgent(records: UsageRow[], pricingMap: PricingMap): Agent
         const existing = byModel.get(r.model);
         if (existing) {
           existing.input += display.input_tokens;
-          existing.output += (display.output_tokens + display.reasoning_output_tokens);
+          existing.output += display.output_tokens + display.reasoning_output_tokens;
           existing.cached += display.cached_input_tokens;
           existing.total += accountedTotal(r);
           existing.cost += cost.totalCost;
@@ -252,7 +260,7 @@ export function groupByAgent(records: UsageRow[], pricingMap: PricingMap): Agent
           byModel.set(r.model, {
             model: r.model,
             input: display.input_tokens,
-            output: (display.output_tokens + display.reasoning_output_tokens),
+            output: display.output_tokens + display.reasoning_output_tokens,
             cached: display.cached_input_tokens,
             total: accountedTotal(r),
             cost: cost.totalCost,
@@ -282,7 +290,11 @@ export function groupByAgent(records: UsageRow[], pricingMap: PricingMap): Agent
 // ---------------------------------------------------------------------------
 
 /** Group usage records by date (YYYY-MM-DD), sorted newest-first. */
-export function groupByDate(records: UsageRow[], pricingMap: PricingMap, tzOffset = 0): DailyGroup[] {
+export function groupByDate(
+  records: UsageRow[],
+  pricingMap: PricingMap,
+  tzOffset = 0,
+): DailyGroup[] {
   const byDate = new Map<string, UsageRow[]>();
 
   for (const r of records) {
@@ -306,7 +318,7 @@ export function groupByDate(records: UsageRow[], pricingMap: PricingMap, tzOffse
       for (const r of recs) {
         const display = displayCounters(r);
         inputTokens += display.input_tokens;
-        outputTokens += (display.output_tokens + display.reasoning_output_tokens);
+        outputTokens += display.output_tokens + display.reasoning_output_tokens;
         cachedTokens += display.cached_input_tokens;
         totalTokens += accountedTotal(r);
         const c = estimateUsageCost(r, pricingMap);
@@ -358,10 +370,7 @@ export function extractModels(records: UsageRow[]): string[] {
  * @param rows     — raw UsageRow[] (should be half-hour granularity for accuracy)
  * @param tzOffset — minutes offset from UTC (positive = west, e.g. 480 for PST)
  */
-export function toLocalDailyBuckets(
-  rows: UsageRow[],
-  tzOffset = 0,
-): LocalDailyBucket[] {
+export function toLocalDailyBuckets(rows: UsageRow[], tzOffset = 0): LocalDailyBucket[] {
   const byDate = new Map<string, LocalDailyBucket>();
 
   for (const r of rows) {
@@ -375,23 +384,21 @@ export function toLocalDailyBuckets(
     const existing = byDate.get(date);
     if (existing) {
       existing.inputTokens += display.input_tokens;
-      existing.outputTokens += (display.output_tokens + display.reasoning_output_tokens);
+      existing.outputTokens += display.output_tokens + display.reasoning_output_tokens;
       existing.cachedTokens += display.cached_input_tokens;
       existing.totalTokens += accountedTotal(r);
     } else {
       byDate.set(date, {
         date,
         inputTokens: display.input_tokens,
-        outputTokens: (display.output_tokens + display.reasoning_output_tokens),
+        outputTokens: display.output_tokens + display.reasoning_output_tokens,
         cachedTokens: display.cached_input_tokens,
         totalTokens: accountedTotal(r),
       });
     }
   }
 
-  return Array.from(byDate.values()).sort((a, b) =>
-    a.date.localeCompare(b.date),
-  );
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // ---------------------------------------------------------------------------
@@ -552,25 +559,23 @@ export function computeMoMGrowth(
   }
 
   // Full month growth: (current - previous) / previous * 100; 0 if no previous
-  const tokenGrowth = prevTokens > 0
-    ? ((curTokens - prevTokens) / prevTokens) * 100
-    : 0;
-  const costGrowth = prevCost > 0
-    ? ((curCost - prevCost) / prevCost) * 100
-    : 0;
+  const tokenGrowth = prevTokens > 0 ? ((curTokens - prevTokens) / prevTokens) * 100 : 0;
+  const costGrowth = prevCost > 0 ? ((curCost - prevCost) / prevCost) * 100 : 0;
 
   // Same-date growth: current month vs previous month up to same day
-  const sameDateTokenGrowth = prevSameDateTokens > 0
-    ? ((curTokens - prevSameDateTokens) / prevSameDateTokens) * 100
-    : 0;
-  const sameDateCostGrowth = prevSameDateCost > 0
-    ? ((curCost - prevSameDateCost) / prevSameDateCost) * 100
-    : 0;
+  const sameDateTokenGrowth =
+    prevSameDateTokens > 0 ? ((curTokens - prevSameDateTokens) / prevSameDateTokens) * 100 : 0;
+  const sameDateCostGrowth =
+    prevSameDateCost > 0 ? ((curCost - prevSameDateCost) / prevSameDateCost) * 100 : 0;
 
   return {
     currentMonth: { tokens: curTokens, cost: curCost, days: curDays.size },
     previousMonth: { tokens: prevTokens, cost: prevCost, days: prevDays.size },
-    previousMonthSameDate: { tokens: prevSameDateTokens, cost: prevSameDateCost, days: prevSameDateDays.size },
+    previousMonthSameDate: {
+      tokens: prevSameDateTokens,
+      cost: prevSameDateCost,
+      days: prevSameDateDays.size,
+    },
     tokenGrowth,
     costGrowth,
     sameDateTokenGrowth,
@@ -668,24 +673,22 @@ export function computeWoWGrowth(
     }
   }
 
-  const tokenGrowth = prevTokens > 0
-    ? ((curTokens - prevTokens) / prevTokens) * 100
-    : 0;
-  const costGrowth = prevCost > 0
-    ? ((curCost - prevCost) / prevCost) * 100
-    : 0;
+  const tokenGrowth = prevTokens > 0 ? ((curTokens - prevTokens) / prevTokens) * 100 : 0;
+  const costGrowth = prevCost > 0 ? ((curCost - prevCost) / prevCost) * 100 : 0;
 
-  const sameDayTokenGrowth = prevSameDayTokens > 0
-    ? ((curTokens - prevSameDayTokens) / prevSameDayTokens) * 100
-    : 0;
-  const sameDayCostGrowth = prevSameDayCost > 0
-    ? ((curCost - prevSameDayCost) / prevSameDayCost) * 100
-    : 0;
+  const sameDayTokenGrowth =
+    prevSameDayTokens > 0 ? ((curTokens - prevSameDayTokens) / prevSameDayTokens) * 100 : 0;
+  const sameDayCostGrowth =
+    prevSameDayCost > 0 ? ((curCost - prevSameDayCost) / prevSameDayCost) * 100 : 0;
 
   return {
     currentWeek: { tokens: curTokens, cost: curCost, days: curDays.size },
     previousWeek: { tokens: prevTokens, cost: prevCost, days: prevDays.size },
-    previousWeekSameDay: { tokens: prevSameDayTokens, cost: prevSameDayCost, days: prevSameDayDays.size },
+    previousWeekSameDay: {
+      tokens: prevSameDayTokens,
+      cost: prevSameDayCost,
+      days: prevSameDayDays.size,
+    },
     tokenGrowth,
     costGrowth,
     sameDayTokenGrowth,
@@ -994,9 +997,13 @@ export function toHourlyByModel(
     return Array.from({ length: 24 }, (_, hour) => ({ hour, models: {} }));
   }
 
-  const ranked = rankUsageByRecency(rows.map((r) => ({
-    id: r.model, date: toLocalDateStr(r.hour_start, tzOffset), value: accountedTotal(r),
-  })));
+  const ranked = rankUsageByRecency(
+    rows.map((r) => ({
+      id: r.model,
+      date: toLocalDateStr(r.hour_start, tzOffset),
+      value: accountedTotal(r),
+    })),
+  );
   const topModels = new Set(ranked.slice(0, topN));
   const hasOther = ranked.length > topN;
 

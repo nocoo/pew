@@ -12,9 +12,7 @@ const INVITE = {
 test.describe("Invite code controls", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/auth/session", (route) => route.fulfill({ json: null }));
-    await page.route("**/api/admin/check", (route) =>
-      route.fulfill({ json: { isAdmin: true } }),
-    );
+    await page.route("**/api/admin/check", (route) => route.fulfill({ json: { isAdmin: true } }));
     await page.route("**/api/admin/invites", (route) =>
       route.fulfill({ json: { rows: [INVITE] } }),
     );
@@ -25,7 +23,9 @@ test.describe("Invite code controls", () => {
     const writes: unknown[] = [];
     await page.route("**/api/admin/settings", async (route) => {
       if (route.request().method() === "PUT") {
-        await expect(page.getByRole("switch", { name: "Require invite code for registration" })).toBeDisabled();
+        await expect(
+          page.getByRole("switch", { name: "Require invite code for registration" }),
+        ).toBeDisabled();
         const body = route.request().postDataJSON();
         writes.push(body);
         savedValue = body.value;
@@ -47,7 +47,8 @@ test.describe("Invite code controls", () => {
     await page.getByText("Require invite code for registration", { exact: true }).click();
     await expect(toggle).not.toBeChecked();
     await expect.poll(async () => (await thumb.boundingBox())!.x).toBeLessThan(checkedX - 10);
-    await expect.poll(() => toggle.evaluate((el) => getComputedStyle(el).backgroundColor))
+    await expect
+      .poll(() => toggle.evaluate((el) => getComputedStyle(el).backgroundColor))
       .not.toBe(checkedColor);
     await expect(page.getByText("Anyone can register without an invite code.")).toBeVisible();
     await page.reload();
@@ -57,7 +58,9 @@ test.describe("Invite code controls", () => {
     await toggle.focus();
     await page.keyboard.press("Space");
     await expect(toggle).toBeChecked();
-    await expect(page.getByText("New users must enter a valid invite code to register.")).toBeVisible();
+    await expect(
+      page.getByText("New users must enter a valid invite code to register."),
+    ).toBeVisible();
     await page.reload();
     await expect(toggle).toBeChecked();
     expect(writes).toEqual([
@@ -66,7 +69,9 @@ test.describe("Invite code controls", () => {
     ]);
   });
 
-  test("a failed registration setting save keeps the saved state and allows retry", async ({ page }) => {
+  test("a failed registration setting save keeps the saved state and allows retry", async ({
+    page,
+  }) => {
     let rejectSave = true;
     await page.route("**/api/admin/settings", (route) => {
       if (route.request().method() === "PUT") {
@@ -93,11 +98,18 @@ test.describe("Invite code controls", () => {
     await expect(toggle).toBeEnabled();
   });
 
-  test("each code is shown once and can be copied individually or in bulk", async ({ page, context }) => {
+  test("each code is shown once and can be copied individually or in bulk", async ({
+    page,
+    context,
+  }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.route("**/api/admin/settings", (route) => route.fulfill({ json: { settings: [] } }));
     await page.goto("/admin/invites");
-    const codeCell = page.getByRole("row").filter({ hasText: INVITE.code }).getByRole("cell").first();
+    const codeCell = page
+      .getByRole("row")
+      .filter({ hasText: INVITE.code })
+      .getByRole("cell")
+      .first();
     await expect(codeCell).toHaveText(INVITE.code);
     await codeCell.getByRole("button", { name: "Copy", exact: true }).click();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(INVITE.code);

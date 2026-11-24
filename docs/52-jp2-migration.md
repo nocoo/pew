@@ -16,18 +16,18 @@ and `/opt/pew/.base-ci-releases/<SHA>.json` manifests. Verify those records and
 fresh public health before treating a new image as accepted. Keep the original
 Railway digest and the accepted cutover image as distinct rollback references.
 
-| Item | Verified value |
-| --- | --- |
-| Web / CLI versions | Web `3.4.0`; CLI/core/Workers `3.3.3`, no npm publication or version synchronization |
-| jp2 source | `fcdf6e072812ed1d6cc2a1a1db31fabc92033ba4` |
-| jp2 image | `ghcr.io/nocoo/pew@sha256:319bc5f67ca525387adff9e375d6ba93c46fa84ebbacf8a0ab592d55c5951cb1` |
-| CI | [39681987929](https://github.com/nocoo/pew/actions/runs/39681987929), success |
-| Automatic Docker CD | [39682620839](https://github.com/nocoo/pew/actions/runs/39682620839), success |
-| jp2 service | `/opt/pew`, Compose `web`, container `pew-app`, one non-root Node process |
-| Application binding | `127.0.0.1:17020` -> container 7020; external Docker network `edge` |
-| Runtime state | Running/healthy, zero restarts/OOM; started `2026-10-21T21:59:31.29189512Z` |
-| Railway deployment | `1f593cdc-398c-473f-a78c-9d934b019bf2`, source `6c68c6637e1e72506dcc057c03e3a8643427956a` |
-| Railway rollback image | `sha256:33ad82409ec299399ea54b3b13ce062d86b596303171aef800be9daf9b9c416d` |
+| Item                    | Verified value                                                                                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web / CLI versions      | Web `3.4.0`; CLI/core/Workers `3.3.3`, no npm publication or version synchronization                                                                                            |
+| jp2 source              | `fcdf6e072812ed1d6cc2a1a1db31fabc92033ba4`                                                                                                                                      |
+| jp2 image               | `ghcr.io/nocoo/pew@sha256:319bc5f67ca525387adff9e375d6ba93c46fa84ebbacf8a0ab592d55c5951cb1`                                                                                     |
+| CI                      | [39681987929](https://github.com/nocoo/pew/actions/runs/39681987929), success                                                                                                   |
+| Automatic Docker CD     | [39682620839](https://github.com/nocoo/pew/actions/runs/39682620839), success                                                                                                   |
+| jp2 service             | `/opt/pew`, Compose `web`, container `pew-app`, one non-root Node process                                                                                                       |
+| Application binding     | `127.0.0.1:17020` -> container 7020; external Docker network `edge`                                                                                                             |
+| Runtime state           | Running/healthy, zero restarts/OOM; started `2026-10-21T21:59:31.29189512Z`                                                                                                     |
+| Railway deployment      | `1f593cdc-398c-473f-a78c-9d934b019bf2`, source `6c68c6637e1e72506dcc057c03e3a8643427956a`                                                                                       |
+| Railway rollback image  | `sha256:33ad82409ec299399ea54b3b13ce062d86b596303171aef800be9daf9b9c416d`                                                                                                       |
 | Railway stopped runtime | Instance `c43d9a3e-c28d-404b-8c66-00a73dbab99a` and the deployment above are REMOVED; zero active deployments, `deploymentStopped=true`, `canRedeploy=true`, `canRollback=true` |
 
 This is the first jp2 Pew deployment, so there is no earlier jp2 digest. The
@@ -127,20 +127,20 @@ in the public cutover receipt below.
 
 ## Verification Receipt
 
-| Check | Result |
-| --- | --- |
-| Local L1 and CI | 4,486 tests; strict types/lint/AST gates; four coverage metrics 98.15 / 95.38 / 98.39 / 99.09 |
-| Normal pre-push | 101 real API cases, 97 browser cases, OSV and gitleaks passed; no hooks bypassed |
-| CLI isolated E2E | 2 files, 13 tests passed; no production credentials/state used |
-| Canonical Linux image CI | Actual tracked Dockerfile built without application credentials; native/startup smoke passed |
-| Runtime identity | Container reference, resolved image ID, OCI revision/source and release manifest agree |
-| Database | Direct jp2 `/api/live`: 200, no-store, component `dashboard`, version 3.4.0, `database.connected=true`, `X-Pew-Origin: jp2`; authenticated read Worker ping and real data reads pass |
-| Real data reads | Private leaderboard API contains real entries; no redirect to Railway |
-| Pages/assets | `/`, `/login`, `/privacy`, static PNG and actual Next image optimization pass on jp2 |
-| Authorization failures | All four unauthenticated ingest routes return 401; `/leaderboard` redirects to canonical login |
-| Google configuration | Provider callback remains `https://pew.md/api/auth/callback/google` |
-| Fresh Google OAuth/session | **Waived by owner**, not executed or claimed as passed; temporary browser profile removed |
-| Precutover CLI upload | Approved exact private-origin script executed with exit 0: actual CLI uploader submitted one genuine incremental bucket in one batch, HTTP 200; D1 REST parameterized readback equals the submitted bucket |
+| Check                      | Result                                                                                                                                                                                                     |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local L1 and CI            | 4,486 tests; strict types/lint/AST gates; four coverage metrics 98.15 / 95.38 / 98.39 / 99.09                                                                                                              |
+| Normal pre-push            | 101 real API cases, 97 browser cases, OSV and gitleaks passed; no hooks bypassed                                                                                                                           |
+| CLI isolated E2E           | 2 files, 13 tests passed; no production credentials/state used                                                                                                                                             |
+| Canonical Linux image CI   | Actual tracked Dockerfile built without application credentials; native/startup smoke passed                                                                                                               |
+| Runtime identity           | Container reference, resolved image ID, OCI revision/source and release manifest agree                                                                                                                     |
+| Database                   | Direct jp2 `/api/live`: 200, no-store, component `dashboard`, version 3.4.0, `database.connected=true`, `X-Pew-Origin: jp2`; authenticated read Worker ping and real data reads pass                       |
+| Real data reads            | Private leaderboard API contains real entries; no redirect to Railway                                                                                                                                      |
+| Pages/assets               | `/`, `/login`, `/privacy`, static PNG and actual Next image optimization pass on jp2                                                                                                                       |
+| Authorization failures     | All four unauthenticated ingest routes return 401; `/leaderboard` redirects to canonical login                                                                                                             |
+| Google configuration       | Provider callback remains `https://pew.md/api/auth/callback/google`                                                                                                                                        |
+| Fresh Google OAuth/session | **Waived by owner**, not executed or claimed as passed; temporary browser profile removed                                                                                                                  |
+| Precutover CLI upload      | Approved exact private-origin script executed with exit 0: actual CLI uploader submitted one genuine incremental bucket in one batch, HTTP 200; D1 REST parameterized readback equals the submitted bucket |
 
 The operational script received independent `max` APPROVE at SHA256
 `947e13eeba2a2654fb04d9c3134809dfd098218ab1b993faaa3c7a8938faca80`;
@@ -183,16 +183,16 @@ runtime stop recorded below; project/service deletion is still not authorized.
 
 ### Records and Settings
 
-| Field | Before cutover | Current production state |
-| --- | --- | --- |
-| DNS record ID | `4302e3370f3de070a1a164c2a78972c4` | Same record |
-| DNS name / type | `pew.md` / CNAME | Unchanged |
-| CNAME target | `ry32rpn0.up.railway.app` | `jp2.nocoo.cloud` |
-| Proxy / TTL | Proxied / auto (`1`) | Unchanged |
-| Zone SSL setting | `ssl=full` | `ssl=strict` |
-| Shared Cloudflare AOP | `tls_client_auth=off` | `tls_client_auth=on` |
-| Custom-certificate zone-level AOP | `enabled=false` | Keep false; do not substitute this API toggle for shared AOP |
-| Public Pew Caddy route | Deny only | Require/verify the existing shared Cloudflare origin-pull CA, then proxy to `pew-app:7020` |
+| Field                             | Before cutover                     | Current production state                                                                   |
+| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------ |
+| DNS record ID                     | `4302e3370f3de070a1a164c2a78972c4` | Same record                                                                                |
+| DNS name / type                   | `pew.md` / CNAME                   | Unchanged                                                                                  |
+| CNAME target                      | `ry32rpn0.up.railway.app`          | `jp2.nocoo.cloud`                                                                          |
+| Proxy / TTL                       | Proxied / auto (`1`)               | Unchanged                                                                                  |
+| Zone SSL setting                  | `ssl=full`                         | `ssl=strict`                                                                               |
+| Shared Cloudflare AOP             | `tls_client_auth=off`              | `tls_client_auth=on`                                                                       |
+| Custom-certificate zone-level AOP | `enabled=false`                    | Keep false; do not substitute this API toggle for shared AOP                               |
+| Public Pew Caddy route            | Deny only                          | Require/verify the existing shared Cloudflare origin-pull CA, then proxy to `pew-app:7020` |
 
 Leave MX, SPF, DKIM, DMARC and both `_railway-verify` TXT records unchanged. Leave
 other Caddy hosts, certificates, Docker services and Cloudflare resources alone.
@@ -378,10 +378,7 @@ image digest. Use the inspected Railway GraphQL operation, as in Firefly:
 
 ```graphql
 mutation {
-  deploymentRedeploy(
-    id: "1f593cdc-398c-473f-a78c-9d934b019bf2"
-    usePreviousImageTag: true
-  ) {
+  deploymentRedeploy(id: "1f593cdc-398c-473f-a78c-9d934b019bf2", usePreviousImageTag: true) {
     id
   }
 }

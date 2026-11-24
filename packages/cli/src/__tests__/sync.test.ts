@@ -25,7 +25,7 @@ function claudeLine(ts: string, input: number, output: number): string {
 
 /** Helper: create Pi usage JSONL */
 function piSession(ts: string, input: number, output: number): string {
- return `${JSON.stringify({type:"message", timestamp:ts, message:{role:"assistant", model:"pi-model", usage:{input,output,cacheRead:0,cacheWrite:0}}})}\n`;
+  return `${JSON.stringify({ type: "message", timestamp: ts, message: { role: "assistant", model: "pi-model", usage: { input, output, cacheRead: 0, cacheWrite: 0 } } })}\n`;
 }
 
 /** Helper: create OpenCode message JSON */
@@ -131,7 +131,10 @@ describe("executeSync", () => {
 
     // Verify queue file was created
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records).toHaveLength(1);
     expect(records[0].source).toBe("claude-code");
     expect(records[0].model).toBe("glm-5");
@@ -161,10 +164,7 @@ describe("executeSync", () => {
   it("should sync OpenCode data files to queue", async () => {
     const ocDir = join(dataDir, "opencode", "message", "ses_001");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_001.json"),
-      opencodeMsg(1771120749059, 14967, 437),
-    );
+    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
 
     const result = await executeSync({
       stateDir,
@@ -236,7 +236,10 @@ describe("executeSync", () => {
     expect(result.totalRecords).toBe(1); // aggregated into one bucket
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records).toHaveLength(1);
     expect(records[0].input_tokens).toBe(3000); // 1000 + 2000
     expect(records[0].output_tokens).toBe(300); // 100 + 200
@@ -297,7 +300,10 @@ describe("executeSync", () => {
 
     // Verify queue file was created
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records).toHaveLength(1);
     expect(records[0].source).toBe("codex");
     expect(records[0].model).toBe("gpt-5.4");
@@ -333,10 +339,7 @@ describe("executeSync", () => {
     const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
     await mkdir(codexDir, { recursive: true });
     const filePath = join(codexDir, "rollout-abc123.jsonl");
-    await writeFile(
-      filePath,
-      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
+    await writeFile(filePath, `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`);
 
     const r1 = await executeSync({
       stateDir,
@@ -373,7 +376,10 @@ describe("executeSync", () => {
     expect(r2.sources.codex).toBe(1);
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     // Second record should be the diff
     const codexRecords = records.filter((r) => r.source === "codex");
     expect(codexRecords).toHaveLength(2);
@@ -387,10 +393,7 @@ describe("executeSync", () => {
   it("should be incremental for OpenCode (second sync with no file changes skips parsing)", async () => {
     const ocDir = join(dataDir, "opencode", "message", "ses_001");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_001.json"),
-      opencodeMsg(1771120749059, 14967, 437),
-    );
+    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
 
     const r1 = await executeSync({
       stateDir,
@@ -465,10 +468,7 @@ describe("executeSync", () => {
     const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
     await mkdir(agentDir, { recursive: true });
     const filePath = join(agentDir, "session.jsonl");
-    await writeFile(
-      filePath,
-      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
+    await writeFile(filePath, `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`);
 
     const r1 = await executeSync({
       stateDir,
@@ -519,10 +519,7 @@ describe("executeSync", () => {
   it("should fire progress events for OpenCode sync including dir-level skip", async () => {
     const ocDir = join(dataDir, "opencode", "message", "ses_001");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_001.json"),
-      opencodeMsg(1771120749059, 14967, 437),
-    );
+    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
 
     // First sync to populate cursors and dirMtimes
     await executeSync({
@@ -531,17 +528,32 @@ describe("executeSync", () => {
     });
 
     // Second sync: dir-level mtime skip means 0 files discovered in changed dirs
-    const events: Array<{ source: string; phase: string; current?: number; total?: number; message?: string }> = [];
+    const events: Array<{
+      source: string;
+      phase: string;
+      current?: number;
+      total?: number;
+      message?: string;
+    }> = [];
     await executeSync({
       stateDir,
       openCodeMessageDir: join(dataDir, "opencode", "message"),
-      onProgress: (e) => events.push({ source: e.source, phase: e.phase, current: e.current, total: e.total, message: e.message }),
+      onProgress: (e) =>
+        events.push({
+          source: e.source,
+          phase: e.phase,
+          current: e.current,
+          total: e.total,
+          message: e.message,
+        }),
     });
 
     expect(events.some((e) => e.source === "opencode" && e.phase === "discover")).toBe(true);
     expect(events.some((e) => e.source === "opencode" && e.phase === "parse")).toBe(true);
     // With dir-level mtime optimization, total files should be 0 (entire dir skipped)
-    const parseEvent = events.find((e) => e.source === "opencode" && e.phase === "parse" && e.total !== undefined);
+    const parseEvent = events.find(
+      (e) => e.source === "opencode" && e.phase === "parse" && e.total !== undefined,
+    );
     expect(parseEvent?.total).toBe(0);
     expect(parseEvent?.message).toContain("1 dirs skipped");
   });
@@ -566,10 +578,7 @@ describe("executeSync", () => {
     // OpenCode
     const ocDir = join(dataDir, "opencode", "message", "ses_001");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_001.json"),
-      opencodeMsg(1771120749059, 14967, 437),
-    );
+    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
     // OpenClaw
     const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
     await mkdir(agentDir, { recursive: true });
@@ -640,14 +649,12 @@ describe("executeSync", () => {
     // Spy on the parser module to throw for the bad file path
     const claudeParser = await import("../parsers/claude.js");
     const origParse = claudeParser.parseClaudeFile;
-    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockImplementation(
-      async (opts) => {
-        if (opts.filePath.includes("proj-bad")) {
-          throw new Error("Simulated parser explosion");
-        }
-        return origParse(opts);
-      },
-    );
+    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockImplementation(async (opts) => {
+      if (opts.filePath.includes("proj-bad")) {
+        throw new Error("Simulated parser explosion");
+      }
+      return origParse(opts);
+    });
 
     // Collect progress events to verify warning is emitted
     const events: Array<{ source: string; phase: string; message?: string }> = [];
@@ -665,7 +672,10 @@ describe("executeSync", () => {
 
       // Verify queue was written (not lost)
       const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-      const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+      const records = queueRaw
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l) as QueueRecord);
       expect(records).toHaveLength(1);
       expect(records[0].input_tokens).toBe(1000);
 
@@ -695,9 +705,9 @@ describe("executeSync", () => {
 
     // Make ALL Claude parses throw
     const claudeParser = await import("../parsers/claude.js");
-    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockRejectedValue(
-      new Error("Claude parser crash"),
-    );
+    const spy = vi
+      .spyOn(claudeParser, "parseClaudeFile")
+      .mockRejectedValue(new Error("Claude parser crash"));
 
     try {
       const result = await executeSync({
@@ -712,7 +722,10 @@ describe("executeSync", () => {
 
       // Verify queue has the OpenClaw record
       const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-      const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+      const records = queueRaw
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l) as QueueRecord);
       expect(records.some((r) => r.source === "openclaw")).toBe(true);
     } finally {
       spy.mockRestore();
@@ -741,8 +754,9 @@ describe("executeSync", () => {
     // We achieve this by spying on overwrite to record that it was called,
     // then spying on CursorStore.save to throw
     let overwriteCalled = false;
-    const overwriteSpy = vi.spyOn(localQueueModule.LocalQueue.prototype, "overwrite")
-      .mockImplementation(async function(this: InstanceType<typeof localQueueModule.LocalQueue>) {
+    const overwriteSpy = vi
+      .spyOn(localQueueModule.LocalQueue.prototype, "overwrite")
+      .mockImplementation(async function (this: InstanceType<typeof localQueueModule.LocalQueue>) {
         overwriteCalled = true;
         // Don't actually write — we just want to verify the call order
         throw new Error("Simulated crash after queue write");
@@ -797,10 +811,7 @@ describe("executeSync", () => {
     // OpenCode
     const ocDir = join(dataDir, "opencode", "message", "ses_001");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_001.json"),
-      opencodeMsg(1771120749059, 14967, 437),
-    );
+    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
     // OpenClaw
     const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
     await mkdir(agentDir, { recursive: true });
@@ -844,13 +855,28 @@ describe("executeSync", () => {
    * Helper: create a mock openMessageDb factory that returns rows from an in-memory array.
    * Simulates the bun:sqlite adapter without requiring the actual runtime.
    */
-  function mockOpenMessageDb(rows: Array<{ id: string; session_id: string; time_created: number; role?: string | null; data: string }>) {
+  function mockOpenMessageDb(
+    rows: Array<{
+      id: string;
+      session_id: string;
+      time_created: number;
+      role?: string | null;
+      data: string;
+    }>,
+  ) {
     // Auto-populate role from data JSON if not explicitly provided
     const enrichedRows = rows.map((r) => ({
       ...r,
-      role: r.role !== undefined ? r.role : (() => {
-        try { return (JSON.parse(r.data) as Record<string, unknown>).role as string ?? null; } catch { return null; }
-      })(),
+      role:
+        r.role !== undefined
+          ? r.role
+          : (() => {
+              try {
+                return ((JSON.parse(r.data) as Record<string, unknown>).role as string) ?? null;
+              } catch {
+                return null;
+              }
+            })(),
     }));
     return (_dbPath: string) => ({
       queryMessages: (lastTimeCreated: number) =>
@@ -875,17 +901,49 @@ describe("executeSync", () => {
         created: opts.timeCreated ?? 1739600000000,
         completed: opts.timeCompleted ?? (opts.timeCreated ?? 1739600000000) + 5000,
       },
-      tokens: opts.role === "assistant"
-        ? { total: (opts.input ?? 100) + (opts.output ?? 50), input: opts.input ?? 100, output: opts.output ?? 50, reasoning: 0, cache: { read: 0, write: 0 } }
-        : null,
+      tokens:
+        opts.role === "assistant"
+          ? {
+              total: (opts.input ?? 100) + (opts.output ?? 50),
+              input: opts.input ?? 100,
+              output: opts.output ?? 50,
+              reasoning: 0,
+              cache: { read: 0, write: 0 },
+            }
+          : null,
     });
   }
 
   it("should sync OpenCode SQLite data to queue", async () => {
     const rows = [
-      { id: "msg_001", session_id: "ses_001", time_created: 1739600000000, data: sqliteRowData({ role: "assistant", input: 5000, output: 800, timeCreated: 1739600000000 }) },
-      { id: "msg_002", session_id: "ses_001", time_created: 1739600010000, data: sqliteRowData({ role: "user", timeCreated: 1739600010000 }) },
-      { id: "msg_003", session_id: "ses_001", time_created: 1739600020000, data: sqliteRowData({ role: "assistant", input: 3000, output: 200, timeCreated: 1739600020000 }) },
+      {
+        id: "msg_001",
+        session_id: "ses_001",
+        time_created: 1739600000000,
+        data: sqliteRowData({
+          role: "assistant",
+          input: 5000,
+          output: 800,
+          timeCreated: 1739600000000,
+        }),
+      },
+      {
+        id: "msg_002",
+        session_id: "ses_001",
+        time_created: 1739600010000,
+        data: sqliteRowData({ role: "user", timeCreated: 1739600010000 }),
+      },
+      {
+        id: "msg_003",
+        session_id: "ses_001",
+        time_created: 1739600020000,
+        data: sqliteRowData({
+          role: "assistant",
+          input: 3000,
+          output: 200,
+          timeCreated: 1739600020000,
+        }),
+      },
     ];
 
     // Create a dummy DB file so stat() succeeds
@@ -908,7 +966,17 @@ describe("executeSync", () => {
 
   it("should be incremental for OpenCode SQLite (second sync with no new rows)", async () => {
     const rows = [
-      { id: "msg_001", session_id: "ses_001", time_created: 1739600000000, data: sqliteRowData({ role: "assistant", input: 5000, output: 800, timeCreated: 1739600000000 }) },
+      {
+        id: "msg_001",
+        session_id: "ses_001",
+        time_created: 1739600000000,
+        data: sqliteRowData({
+          role: "assistant",
+          input: 5000,
+          output: 800,
+          timeCreated: 1739600000000,
+        }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode");
@@ -939,10 +1007,7 @@ describe("executeSync", () => {
     // Step 1: sync the JSON file first
     const ocDir = join(dataDir, "opencode", "message", "ses_001");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_001.json"),
-      opencodeMsg(1739600000000, 14967, 437),
-    );
+    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1739600000000, 14967, 437));
 
     const r1 = await executeSync({
       stateDir,
@@ -958,9 +1023,29 @@ describe("executeSync", () => {
 
     const sqliteRows = [
       // Same message as JSON — should be deduped
-      { id: "msg_001", session_id: "ses_001", time_created: 1739600000000, data: sqliteRowData({ role: "assistant", input: 14967, output: 437, timeCreated: 1739600000000 }) },
+      {
+        id: "msg_001",
+        session_id: "ses_001",
+        time_created: 1739600000000,
+        data: sqliteRowData({
+          role: "assistant",
+          input: 14967,
+          output: 437,
+          timeCreated: 1739600000000,
+        }),
+      },
       // New message — should be included
-      { id: "msg_002", session_id: "ses_001", time_created: 1739600020000, data: sqliteRowData({ role: "assistant", input: 3000, output: 200, timeCreated: 1739600020000 }) },
+      {
+        id: "msg_002",
+        session_id: "ses_001",
+        time_created: 1739600020000,
+        data: sqliteRowData({
+          role: "assistant",
+          input: 3000,
+          output: 200,
+          timeCreated: 1739600020000,
+        }),
+      },
     ];
 
     const r2 = await executeSync({
@@ -1009,8 +1094,18 @@ describe("executeSync", () => {
     // their IDs so the second sync doesn't re-process them.
     const sameMs = 1739600000000;
     const rows = [
-      { id: "msg_A", session_id: "ses_001", time_created: sameMs, data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: sameMs }) },
-      { id: "msg_B", session_id: "ses_001", time_created: sameMs, data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: sameMs }) },
+      {
+        id: "msg_A",
+        session_id: "ses_001",
+        time_created: sameMs,
+        data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: sameMs }),
+      },
+      {
+        id: "msg_B",
+        session_id: "ses_001",
+        time_created: sameMs,
+        data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: sameMs }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode");
@@ -1041,7 +1136,12 @@ describe("executeSync", () => {
   it("should process a new row at the same millisecond as the cursor boundary", async () => {
     const sameMs = 1739600000000;
     const rowsBatch1 = [
-      { id: "msg_A", session_id: "ses_001", time_created: sameMs, data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: sameMs }) },
+      {
+        id: "msg_A",
+        session_id: "ses_001",
+        time_created: sameMs,
+        data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: sameMs }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode");
@@ -1060,7 +1160,12 @@ describe("executeSync", () => {
     // A new row arrives at the same millisecond (rare but possible)
     const rowsBatch2 = [
       ...rowsBatch1,
-      { id: "msg_B", session_id: "ses_001", time_created: sameMs, data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: sameMs }) },
+      {
+        id: "msg_B",
+        session_id: "ses_001",
+        time_created: sameMs,
+        data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: sameMs }),
+      },
     ];
 
     // Second sync: msg_A deduped, msg_B is new → 1 delta
@@ -1088,9 +1193,7 @@ describe("executeSync", () => {
       onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
     });
 
-    const warnEvent = events.find(
-      (e) => e.source === "opencode-sqlite" && e.phase === "warn",
-    );
+    const warnEvent = events.find((e) => e.source === "opencode-sqlite" && e.phase === "warn");
     expect(warnEvent).toBeDefined();
     expect(warnEvent!.message).toContain("SQLite is not available");
   });
@@ -1110,9 +1213,7 @@ describe("executeSync", () => {
       onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
     });
 
-    const warnEvent = events.find(
-      (e) => e.source === "opencode-sqlite" && e.phase === "warn",
-    );
+    const warnEvent = events.find((e) => e.source === "opencode-sqlite" && e.phase === "warn");
     expect(warnEvent).toBeDefined();
     expect(warnEvent!.message).toContain("Failed to open");
   });
@@ -1139,14 +1240,12 @@ describe("executeSync", () => {
     // Spy on the parser to throw for the bad file
     const openclawParser = await import("../parsers/openclaw.js");
     const origParse = openclawParser.parseOpenClawFile;
-    const spy = vi
-      .spyOn(openclawParser, "parseOpenClawFile")
-      .mockImplementation(async (opts) => {
-        if (opts.filePath.includes("session-bad")) {
-          throw new Error("Simulated openclaw parser crash");
-        }
-        return origParse(opts);
-      });
+    const spy = vi.spyOn(openclawParser, "parseOpenClawFile").mockImplementation(async (opts) => {
+      if (opts.filePath.includes("session-bad")) {
+        throw new Error("Simulated openclaw parser crash");
+      }
+      return origParse(opts);
+    });
 
     const events: Array<{ source: string; phase: string; message?: string }> = [];
 
@@ -1154,17 +1253,14 @@ describe("executeSync", () => {
       const result = await executeSync({
         stateDir,
         openclawDir: join(dataDir, ".openclaw"),
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // Good file data should still be synced
       expect(result.sources.openclaw).toBe(1);
 
       // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter(
-        (e) => e.source === "openclaw" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "openclaw" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated openclaw parser crash");
     } finally {
@@ -1192,14 +1288,12 @@ describe("executeSync", () => {
     // Spy on the parser to throw for the bad file
     const codexParser = await import("../parsers/codex.js");
     const origParse = codexParser.parseCodexFile;
-    const spy = vi
-      .spyOn(codexParser, "parseCodexFile")
-      .mockImplementation(async (opts) => {
-        if (opts.filePath.includes("rollout-bad")) {
-          throw new Error("Simulated codex parser crash");
-        }
-        return origParse(opts);
-      });
+    const spy = vi.spyOn(codexParser, "parseCodexFile").mockImplementation(async (opts) => {
+      if (opts.filePath.includes("rollout-bad")) {
+        throw new Error("Simulated codex parser crash");
+      }
+      return origParse(opts);
+    });
 
     const events: Array<{ source: string; phase: string; message?: string }> = [];
 
@@ -1207,17 +1301,14 @@ describe("executeSync", () => {
       const result = await executeSync({
         stateDir,
         codexSessionsDir: join(dataDir, ".codex", "sessions"),
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // Good file data should still be synced
       expect(result.sources.codex).toBe(1);
 
       // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter(
-        (e) => e.source === "codex" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "codex" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated codex parser crash");
     } finally {
@@ -1245,14 +1336,12 @@ describe("executeSync", () => {
 
     const piParser = await import("../parsers/pi.js");
     const origParse = piParser.parsePiFile;
-    const spy = vi
-      .spyOn(piParser, "parsePiFile")
-      .mockImplementation(async (opts) => {
-        if (opts.filePath.includes("session-bad")) {
-          throw new Error("Simulated pi parser crash");
-        }
-        return origParse(opts);
-      });
+    const spy = vi.spyOn(piParser, "parsePiFile").mockImplementation(async (opts) => {
+      if (opts.filePath.includes("session-bad")) {
+        throw new Error("Simulated pi parser crash");
+      }
+      return origParse(opts);
+    });
 
     const events: Array<{ source: string; phase: string; message?: string }> = [];
 
@@ -1260,17 +1349,14 @@ describe("executeSync", () => {
       const result = await executeSync({
         stateDir,
         piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // Good file data should still be synced
       expect(result.sources.pi).toBe(1);
 
       // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter(
-        (e) => e.source === "pi" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "pi" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated pi parser crash");
     } finally {
@@ -1295,14 +1381,12 @@ describe("executeSync", () => {
 
     const ocParser = await import("../parsers/opencode.js");
     const origParse = ocParser.parseOpenCodeFile;
-    const spy = vi
-      .spyOn(ocParser, "parseOpenCodeFile")
-      .mockImplementation(async (opts) => {
-        if (opts.filePath.includes("ses_bad")) {
-          throw new Error("Simulated opencode parser crash");
-        }
-        return origParse(opts);
-      });
+    const spy = vi.spyOn(ocParser, "parseOpenCodeFile").mockImplementation(async (opts) => {
+      if (opts.filePath.includes("ses_bad")) {
+        throw new Error("Simulated opencode parser crash");
+      }
+      return origParse(opts);
+    });
 
     const events: Array<{ source: string; phase: string; message?: string }> = [];
 
@@ -1310,17 +1394,14 @@ describe("executeSync", () => {
       const result = await executeSync({
         stateDir,
         openCodeMessageDir: msgDir,
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // Good file data should still be synced
       expect(result.sources.opencode).toBeGreaterThanOrEqual(1);
 
       // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter(
-        (e) => e.source === "opencode" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "opencode" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated opencode parser crash");
     } finally {
@@ -1352,12 +1433,13 @@ describe("executeSync", () => {
     const result = await executeSync({
       stateDir,
       openCodeMessageDir: msgDir,
-      onProgress: (e) => events.push({
-        source: e.source,
-        phase: e.phase,
-        current: e.current,
-        total: e.total,
-      }),
+      onProgress: (e) =>
+        events.push({
+          source: e.source,
+          phase: e.phase,
+          current: e.current,
+          total: e.total,
+        }),
     });
 
     // msg_002 is new, so at least 1 delta from it
@@ -1394,7 +1476,13 @@ describe("executeSync", () => {
               role: "assistant",
               modelID: "claude-opus-4.6",
               time: { created: 1741320000000, completed: 1741320001000 },
-              tokens: { total: 150, input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } },
+              tokens: {
+                total: 150,
+                input: 100,
+                output: 50,
+                reasoning: 0,
+                cache: { read: 0, write: 0 },
+              },
             }),
           },
         ],
@@ -1404,15 +1492,11 @@ describe("executeSync", () => {
     });
 
     // Verify SQLite discover event
-    const discoverEvents = events.filter(
-      (e) => e.source === "opencode" && e.phase === "discover",
-    );
+    const discoverEvents = events.filter((e) => e.source === "opencode" && e.phase === "discover");
     expect(discoverEvents).toHaveLength(1);
 
     // Verify SQLite parse progress event with delta details
-    const parseEvents = events.filter(
-      (e) => e.source === "opencode" && e.phase === "parse",
-    );
+    const parseEvents = events.filter((e) => e.source === "opencode" && e.phase === "parse");
     expect(parseEvents).toHaveLength(1);
     expect(parseEvents[0].message).toContain("Parsed");
     expect(parseEvents[0].message).toContain("deltas");
@@ -1460,7 +1544,10 @@ describe("executeSync", () => {
 
     // Read queue to check initial values
     const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records1 = queueRaw1
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records1).toHaveLength(1);
     expect(records1[0].input_tokens).toBe(5000);
     expect(records1[0].output_tokens).toBe(800);
@@ -1478,10 +1565,13 @@ describe("executeSync", () => {
 
     // Queue should have the SAME values (not 2x)
     const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records2 = queueRaw2
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records2).toHaveLength(1);
-    expect(records2[0].input_tokens).toBe(5000);  // NOT 10000
-    expect(records2[0].output_tokens).toBe(800);   // NOT 1600
+    expect(records2[0].input_tokens).toBe(5000); // NOT 10000
+    expect(records2[0].output_tokens).toBe(800); // NOT 1600
   });
 
   it("should accumulate incremental syncs correctly (SUM branch)", async () => {
@@ -1490,10 +1580,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-incr");
     await mkdir(claudeDir, { recursive: true });
     const filePath = join(claudeDir, "session.jsonl");
-    await writeFile(
-      filePath,
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
+    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
 
     // First sync
     await executeSync({
@@ -1503,10 +1590,7 @@ describe("executeSync", () => {
 
     // Append more data to the same file (same half-hour bucket)
     const existing = await readFile(filePath, "utf-8");
-    await writeFile(
-      filePath,
-      `${existing + claudeLine("2026-03-07T10:20:00.000Z", 2000, 200)}\n`,
-    );
+    await writeFile(filePath, `${existing + claudeLine("2026-03-07T10:20:00.000Z", 2000, 200)}\n`);
 
     // Second sync — incremental branch should SUM old + new
     await executeSync({
@@ -1515,12 +1599,15 @@ describe("executeSync", () => {
     });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     // Should be aggregated into one record with SUM
     const claudeRecs = records.filter((r) => r.source === "claude-code");
     expect(claudeRecs).toHaveLength(1);
-    expect(claudeRecs[0].input_tokens).toBe(3000);  // 1000 + 2000
-    expect(claudeRecs[0].output_tokens).toBe(300);   // 100 + 200
+    expect(claudeRecs[0].input_tokens).toBe(3000); // 1000 + 2000
+    expect(claudeRecs[0].output_tokens).toBe(300); // 100 + 200
   });
 
   it("should not inflate on upload failure + cursor reset", async () => {
@@ -1552,10 +1639,13 @@ describe("executeSync", () => {
     });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records).toHaveLength(1);
-    expect(records[0].input_tokens).toBe(4000);  // NOT 8000
-    expect(records[0].output_tokens).toBe(600);   // NOT 1200
+    expect(records[0].input_tokens).toBe(4000); // NOT 8000
+    expect(records[0].output_tokens).toBe(600); // NOT 1200
   });
 
   it("should preserve cursor-after-queue write order (queue written before cursors)", async () => {
@@ -1570,7 +1660,8 @@ describe("executeSync", () => {
 
     // Spy on LocalQueue.overwrite to throw (simulating crash during queue write)
     const localQueueModule = await import("../storage/local-queue.js");
-    const spy = vi.spyOn(localQueueModule.LocalQueue.prototype, "overwrite")
+    const spy = vi
+      .spyOn(localQueueModule.LocalQueue.prototype, "overwrite")
       .mockRejectedValue(new Error("Simulated queue write crash"));
 
     try {
@@ -1604,98 +1695,113 @@ describe("executeSync", () => {
 
   // ===== Bug A: Partial replay inflation (inode change on single file) =====
 
-  it.skipIf(!!process.env.CI)("should not inflate when a single file's inode changes (partial replay)", async () => {
-    // Scenario: sync Claude file → file gets replaced (new inode, same content)
-    // → sync again → queue should have same values (not 2x).
-    // This tests the bug where a single driver's inode reset causes
-    // partial replay that gets SUM'd with the existing queue.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-inode");
-    await mkdir(claudeDir, { recursive: true });
-    const filePath = join(claudeDir, "session.jsonl");
-    const content = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
-    await writeFile(filePath, content);
+  it.skipIf(!!process.env.CI)(
+    "should not inflate when a single file's inode changes (partial replay)",
+    async () => {
+      // Scenario: sync Claude file → file gets replaced (new inode, same content)
+      // → sync again → queue should have same values (not 2x).
+      // This tests the bug where a single driver's inode reset causes
+      // partial replay that gets SUM'd with the existing queue.
+      const claudeDir = join(dataDir, ".claude", "projects", "proj-inode");
+      await mkdir(claudeDir, { recursive: true });
+      const filePath = join(claudeDir, "session.jsonl");
+      const content = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
+      await writeFile(filePath, content);
 
-    // First sync
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
+      // First sync
+      await executeSync({
+        stateDir,
+        deviceId: "dev-1",
+        claudeDir: join(dataDir, ".claude"),
+      });
 
-    const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
-    expect(records1).toHaveLength(1);
-    expect(records1[0].input_tokens).toBe(3000);
+      const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+      const records1 = queueRaw1
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l) as QueueRecord);
+      expect(records1).toHaveLength(1);
+      expect(records1[0].input_tokens).toBe(3000);
 
-    // Simulate inode change: delete and recreate file with same content
-    // (On most filesystems, rm + create = new inode)
-    const { rm: rmFile } = await import("node:fs/promises");
-    await rmFile(filePath);
-    await new Promise((r) => setTimeout(r, 50)); // ensure different mtime
-    await writeFile(filePath, content);
+      // Simulate inode change: delete and recreate file with same content
+      // (On most filesystems, rm + create = new inode)
+      const { rm: rmFile } = await import("node:fs/promises");
+      await rmFile(filePath);
+      await new Promise((r) => setTimeout(r, 50)); // ensure different mtime
+      await writeFile(filePath, content);
 
-    // Second sync — inode changed, driver will replay from offset 0
-    // With the fix, sync should detect inode change → full rescan → overwrite
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
+      // Second sync — inode changed, driver will replay from offset 0
+      // With the fix, sync should detect inode change → full rescan → overwrite
+      await executeSync({
+        stateDir,
+        deviceId: "dev-1",
+        claudeDir: join(dataDir, ".claude"),
+      });
 
-    const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
-    expect(records2).toHaveLength(1);
-    expect(records2[0].input_tokens).toBe(3000);  // NOT 6000
-    expect(records2[0].output_tokens).toBe(300);   // NOT 600
-  });
+      const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+      const records2 = queueRaw2
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l) as QueueRecord);
+      expect(records2).toHaveLength(1);
+      expect(records2[0].input_tokens).toBe(3000); // NOT 6000
+      expect(records2[0].output_tokens).toBe(300); // NOT 600
+    },
+  );
 
-  it.skipIf(!!process.env.CI)("should not inflate when inode changes with multiple sources active", async () => {
-    // Scenario: Claude + Pi both synced. Claude file inode changes.
-    // Queue should reflect correct values for BOTH sources.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-multi");
-    await mkdir(claudeDir, { recursive: true });
-    const claudePath = join(claudeDir, "session.jsonl");
-    const claudeContent = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
-    await writeFile(claudePath, claudeContent);
+  it.skipIf(!!process.env.CI)(
+    "should not inflate when inode changes with multiple sources active",
+    async () => {
+      // Scenario: Claude + Pi both synced. Claude file inode changes.
+      // Queue should reflect correct values for BOTH sources.
+      const claudeDir = join(dataDir, ".claude", "projects", "proj-multi");
+      await mkdir(claudeDir, { recursive: true });
+      const claudePath = join(claudeDir, "session.jsonl");
+      const claudeContent = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
+      await writeFile(claudePath, claudeContent);
 
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-multi");
-    await mkdir(piDir, { recursive: true });
-    await writeFile(
-      join(piDir, "session-2026-03-07.jsonl"),
-      piSession("2026-03-07T10:15:00.000Z", 2000, 200),
-    );
+      const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-multi");
+      await mkdir(piDir, { recursive: true });
+      await writeFile(
+        join(piDir, "session-2026-03-07.jsonl"),
+        piSession("2026-03-07T10:15:00.000Z", 2000, 200),
+      );
 
-    // First sync — both sources
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-    });
+      // First sync — both sources
+      await executeSync({
+        stateDir,
+        deviceId: "dev-1",
+        claudeDir: join(dataDir, ".claude"),
+        piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
+      });
 
-    // Simulate Claude file inode change
-    const { rm: rmFile } = await import("node:fs/promises");
-    await rmFile(claudePath);
-    await new Promise((r) => setTimeout(r, 50));
-    await writeFile(claudePath, claudeContent);
+      // Simulate Claude file inode change
+      const { rm: rmFile } = await import("node:fs/promises");
+      await rmFile(claudePath);
+      await new Promise((r) => setTimeout(r, 50));
+      await writeFile(claudePath, claudeContent);
 
-    // Second sync
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-    });
+      // Second sync
+      await executeSync({
+        stateDir,
+        deviceId: "dev-1",
+        claudeDir: join(dataDir, ".claude"),
+        piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
+      });
 
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
-    const claude = records.find((r) => r.source === "claude-code");
-    const pi = records.find((r) => r.source === "pi");
-    expect(claude).toBeDefined();
-    expect(pi).toBeDefined();
-    expect(claude!.input_tokens).toBe(3000);  // NOT 6000
-    expect(pi!.input_tokens).toBe(2000);  // Preserved, not lost
-  });
+      const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+      const records = queueRaw
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l) as QueueRecord);
+      const claude = records.find((r) => r.source === "claude-code");
+      const pi = records.find((r) => r.source === "pi");
+      expect(claude).toBeDefined();
+      expect(pi).toBeDefined();
+      expect(claude!.input_tokens).toBe(3000); // NOT 6000
+      expect(pi!.input_tokens).toBe(2000); // Preserved, not lost
+    },
+  );
 
   // ===== Bug A2: Partial replay inflation (single cursor entry missing/corrupted) =====
 
@@ -1707,10 +1813,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-cursor-miss");
     await mkdir(claudeDir, { recursive: true });
     const claudePath = join(claudeDir, "session.jsonl");
-    await writeFile(
-      claudePath,
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
+    await writeFile(claudePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
 
     const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-cursor-miss");
     await mkdir(piDir, { recursive: true });
@@ -1729,7 +1832,10 @@ describe("executeSync", () => {
 
     // Verify initial queue state
     const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records1 = queueRaw1
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const claude1 = records1.find((r) => r.source === "claude-code");
     const pi1 = records1.find((r) => r.source === "pi");
     expect(claude1!.input_tokens).toBe(1000);
@@ -1738,9 +1844,11 @@ describe("executeSync", () => {
     // Tamper with cursors.json: delete only the Claude file cursor entry
     const cursorsPath = join(stateDir, "cursors.json");
     const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    cursorsData.files = Object.fromEntries(Object.entries(cursorsData.files).filter(
-      ([key]) => !(key.includes("proj-cursor-miss") && key.includes(".claude")),
-    ));
+    cursorsData.files = Object.fromEntries(
+      Object.entries(cursorsData.files).filter(
+        ([key]) => !(key.includes("proj-cursor-miss") && key.includes(".claude")),
+      ),
+    );
     await writeFile(cursorsPath, JSON.stringify(cursorsData));
 
     // Second sync — Claude cursor is missing, Pi cursor exists
@@ -1754,15 +1862,18 @@ describe("executeSync", () => {
     });
 
     const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records2 = queueRaw2
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const claude2 = records2.find((r) => r.source === "claude-code");
     const pi2 = records2.find((r) => r.source === "pi");
     expect(claude2).toBeDefined();
     expect(pi2).toBeDefined();
-    expect(claude2!.input_tokens).toBe(1000);   // NOT 2000
-    expect(claude2!.output_tokens).toBe(100);    // NOT 200
-    expect(pi2!.input_tokens).toBe(2000);    // Preserved
-    expect(pi2!.output_tokens).toBe(200);    // Preserved
+    expect(claude2!.input_tokens).toBe(1000); // NOT 2000
+    expect(claude2!.output_tokens).toBe(100); // NOT 200
+    expect(pi2!.input_tokens).toBe(2000); // Preserved
+    expect(pi2!.output_tokens).toBe(200); // Preserved
   });
 
   it("should trigger one-time full rescan when upgrading from old cursors.json without knownFilePaths", async () => {
@@ -1800,9 +1911,12 @@ describe("executeSync", () => {
     });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records).toHaveLength(1);
-    expect(records[0].input_tokens).toBe(5000);  // NOT 10000
+    expect(records[0].input_tokens).toBe(5000); // NOT 10000
 
     // Verify knownFilePaths was populated after the rescan
     const updatedCursors = JSON.parse(await readFile(cursorsPath, "utf-8"));
@@ -1842,15 +1956,14 @@ describe("executeSync", () => {
     });
 
     expect(
-      events.some(
-        (e) =>
-          e.phase === "warn" &&
-          e.message?.includes("Token accounting schema"),
-      ),
+      events.some((e) => e.phase === "warn" && e.message?.includes("Token accounting schema")),
     ).toBe(true);
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records).toHaveLength(1);
     expect(records[0]!.input_tokens).toBe(3000); // not doubled
 
@@ -1862,10 +1975,7 @@ describe("executeSync", () => {
     const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
     const rolloutPath = join(codexDir, "rollout-acct-tombstone.jsonl");
     await mkdir(codexDir, { recursive: true });
-    await writeFile(
-      rolloutPath,
-      `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
-    );
+    await writeFile(rolloutPath, `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`);
     const codexSessionsDir = join(dataDir, ".codex", "sessions");
 
     await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
@@ -1885,7 +1995,10 @@ describe("executeSync", () => {
     await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const tombstone = records.find((r) => r.hour_start.startsWith("2026-03-07T11"));
     expect(tombstone).toMatchObject({
       source: "codex",
@@ -1905,10 +2018,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-acct-keep");
     const sessionPath = join(claudeDir, "session.jsonl");
     await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      sessionPath,
-      `${claudeLine("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
-    );
+    await writeFile(sessionPath, `${claudeLine("2026-03-07T11:15:00.000Z", 4000, 400)}\n`);
     const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
     await mkdir(codexDir, { recursive: true });
     await writeFile(
@@ -1931,7 +2041,10 @@ describe("executeSync", () => {
     await executeSync({ stateDir, deviceId: "dev-1", ...dirs });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records.some((r) => r.source === "claude-code")).toBe(false);
   });
 
@@ -2069,7 +2182,10 @@ describe("executeSync", () => {
     });
 
     const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records1 = queueRaw1
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     expect(records1).toHaveLength(1);
     expect(records1[0].source).toBe("claude-code");
     expect(records1[0].input_tokens).toBe(1000);
@@ -2097,11 +2213,14 @@ describe("executeSync", () => {
 
     // Queue should have both sources with correct values
     const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records2 = queueRaw2
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const claude = records2.find((r) => r.source === "claude-code");
     const pi = records2.find((r) => r.source === "pi");
-    expect(claude!.input_tokens).toBe(1000);  // Preserved from first sync
-    expect(pi!.input_tokens).toBe(2000);  // New file, correctly SUM'd
+    expect(claude!.input_tokens).toBe(1000); // Preserved from first sync
+    expect(pi!.input_tokens).toBe(2000); // New file, correctly SUM'd
   });
 
   // ===== Bug A2b: SQLite cursor entry lost (DB-based driver cursor-loss detection) =====
@@ -2114,10 +2233,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-dbcursor-loss");
     await mkdir(claudeDir, { recursive: true });
     const claudePath = join(claudeDir, "session.jsonl");
-    await writeFile(
-      claudePath,
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
+    await writeFile(claudePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
 
     const dbDir = join(dataDir, "opencode");
     await mkdir(dbDir, { recursive: true });
@@ -2125,7 +2241,17 @@ describe("executeSync", () => {
     await writeFile(dbPath, "dummy-sqlite-db");
 
     const sqliteRows = [
-      { id: "msg_001", session_id: "ses_001", time_created: 1739600000000, data: sqliteRowData({ role: "assistant", input: 500, output: 200, timeCreated: 1739600000000 }) },
+      {
+        id: "msg_001",
+        session_id: "ses_001",
+        time_created: 1739600000000,
+        data: sqliteRowData({
+          role: "assistant",
+          input: 500,
+          output: 200,
+          timeCreated: 1739600000000,
+        }),
+      },
     ];
 
     // First sync — both Claude (file) + OpenCode SQLite (DB)
@@ -2139,7 +2265,10 @@ describe("executeSync", () => {
 
     // Verify initial queue state
     const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records1 = queueRaw1
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const claude1 = records1.find((r) => r.source === "claude-code");
     const oc1 = records1.find((r) => r.source === "opencode");
     expect(claude1!.input_tokens).toBe(1000);
@@ -2167,15 +2296,18 @@ describe("executeSync", () => {
     });
 
     const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records2 = queueRaw2
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const claude2 = records2.find((r) => r.source === "claude-code");
     const oc2 = records2.find((r) => r.source === "opencode");
     expect(claude2).toBeDefined();
     expect(oc2).toBeDefined();
-    expect(oc2!.input_tokens).toBe(500);   // NOT 1000
-    expect(oc2!.output_tokens).toBe(200);   // NOT 400
-    expect(claude2!.input_tokens).toBe(1000);  // Preserved
-    expect(claude2!.output_tokens).toBe(100);  // Preserved
+    expect(oc2!.input_tokens).toBe(500); // NOT 1000
+    expect(oc2!.output_tokens).toBe(200); // NOT 400
+    expect(claude2!.input_tokens).toBe(1000); // Preserved
+    expect(claude2!.output_tokens).toBe(100); // Preserved
   });
 
   it("should backfill knownDbSources from existing openCodeSqlite cursor on upgrade", async () => {
@@ -2188,7 +2320,17 @@ describe("executeSync", () => {
     await writeFile(dbPath, "dummy-sqlite-db");
 
     const sqliteRows = [
-      { id: "msg_001", session_id: "ses_001", time_created: 1739600000000, data: sqliteRowData({ role: "assistant", input: 500, output: 200, timeCreated: 1739600000000 }) },
+      {
+        id: "msg_001",
+        session_id: "ses_001",
+        time_created: 1739600000000,
+        data: sqliteRowData({
+          role: "assistant",
+          input: 500,
+          output: 200,
+          timeCreated: 1739600000000,
+        }),
+      },
     ];
 
     // First sync — establishes cursor with knownDbSources
@@ -2223,9 +2365,12 @@ describe("executeSync", () => {
 
     // Verify no inflation
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const oc = records.find((r) => r.source === "opencode");
-    expect(oc!.input_tokens).toBe(500);  // NOT 1000
+    expect(oc!.input_tokens).toBe(500); // NOT 1000
   });
 
   it("should trigger full rescan when knownDbSources is missing AND openCodeSqlite cursor already lost (upgrade edge case)", async () => {
@@ -2236,10 +2381,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-edge");
     await mkdir(claudeDir, { recursive: true });
     const claudePath = join(claudeDir, "session.jsonl");
-    await writeFile(
-      claudePath,
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
+    await writeFile(claudePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
 
     const dbDir = join(dataDir, "opencode");
     await mkdir(dbDir, { recursive: true });
@@ -2247,7 +2389,17 @@ describe("executeSync", () => {
     await writeFile(dbPath, "dummy-sqlite-db");
 
     const sqliteRows = [
-      { id: "msg_001", session_id: "ses_001", time_created: 1739600000000, data: sqliteRowData({ role: "assistant", input: 500, output: 200, timeCreated: 1739600000000 }) },
+      {
+        id: "msg_001",
+        session_id: "ses_001",
+        time_created: 1739600000000,
+        data: sqliteRowData({
+          role: "assistant",
+          input: 500,
+          output: 200,
+          timeCreated: 1739600000000,
+        }),
+      },
     ];
 
     // First sync — both Claude + OpenCode SQLite
@@ -2290,10 +2442,13 @@ describe("executeSync", () => {
 
     // Verify no inflation — tokens should be exact, not doubled
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const oc = records.find((r) => r.source === "opencode");
-    expect(oc!.input_tokens).toBe(500);    // NOT 1000 (inflated)
-    expect(oc!.output_tokens).toBe(200);   // NOT 400 (inflated)
+    expect(oc!.input_tokens).toBe(500); // NOT 1000 (inflated)
+    expect(oc!.output_tokens).toBe(200); // NOT 400 (inflated)
 
     // Verify knownDbSources is now populated after the rescan
     const updated = JSON.parse(await readFile(cursorsPath, "utf-8"));
@@ -2411,10 +2566,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-dk-incr");
     await mkdir(claudeDir, { recursive: true });
     const filePath = join(claudeDir, "session.jsonl");
-    await writeFile(
-      filePath,
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
+    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
 
     // First sync (full scan)
     await executeSync({
@@ -2430,10 +2582,7 @@ describe("executeSync", () => {
 
     // Append new data in a DIFFERENT hour bucket
     const existing = await readFile(filePath, "utf-8");
-    await writeFile(
-      filePath,
-      `${existing + claudeLine("2026-03-07T12:15:00.000Z", 3000, 300)}\n`,
-    );
+    await writeFile(filePath, `${existing + claudeLine("2026-03-07T12:15:00.000Z", 3000, 300)}\n`);
 
     // Second sync — incremental
     await executeSync({
@@ -2445,9 +2594,7 @@ describe("executeSync", () => {
     const dirtyKeys = await queue.loadDirtyKeys();
     expect(dirtyKeys).toBeDefined();
     // Only the NEW bucket key should be dirty (not the old 10:00 one)
-    expect(dirtyKeys!).toEqual([
-      "claude-code|glm-5|2026-03-07T12:00:00.000Z|dev-dk",
-    ]);
+    expect(dirtyKeys!).toEqual(["claude-code|glm-5|2026-03-07T12:00:00.000Z|dev-dk"]);
   });
 
   it("should union new dirty keys with existing ones on incremental sync", async () => {
@@ -2456,10 +2603,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-dk-union");
     await mkdir(claudeDir, { recursive: true });
     const filePath = join(claudeDir, "session.jsonl");
-    await writeFile(
-      filePath,
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
+    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
 
     // First sync (full scan)
     await executeSync({
@@ -2473,10 +2617,7 @@ describe("executeSync", () => {
 
     // Append data in a NEW hour bucket
     const existing = await readFile(filePath, "utf-8");
-    await writeFile(
-      filePath,
-      `${existing + claudeLine("2026-03-07T13:15:00.000Z", 4000, 400)}\n`,
-    );
+    await writeFile(filePath, `${existing + claudeLine("2026-03-07T13:15:00.000Z", 4000, 400)}\n`);
 
     // Second sync — incremental, dirtyKeys not cleared
     await executeSync({
@@ -2536,10 +2677,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-dk-same");
     await mkdir(claudeDir, { recursive: true });
     const filePath = join(claudeDir, "session.jsonl");
-    await writeFile(
-      filePath,
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
+    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
 
     // First sync
     await executeSync({
@@ -2555,10 +2693,7 @@ describe("executeSync", () => {
 
     // Append more data in the SAME hour bucket
     const existing = await readFile(filePath, "utf-8");
-    await writeFile(
-      filePath,
-      `${existing + claudeLine("2026-03-07T10:25:00.000Z", 2000, 200)}\n`,
-    );
+    await writeFile(filePath, `${existing + claudeLine("2026-03-07T10:25:00.000Z", 2000, 200)}\n`);
 
     // Second sync — incremental, same bucket
     await executeSync({
@@ -2570,9 +2705,7 @@ describe("executeSync", () => {
     const dirtyKeys = await queue.loadDirtyKeys();
     expect(dirtyKeys).toBeDefined();
     // The existing bucket is dirty because its values changed
-    expect(dirtyKeys!).toEqual([
-      "claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk",
-    ]);
+    expect(dirtyKeys!).toEqual(["claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk"]);
   });
 
   // ===== Hermes SQLite integration =====
@@ -2583,7 +2716,18 @@ describe("executeSync", () => {
   /**
    * Helper: create a mock openHermesDb factory that returns rows from an in-memory array.
    */
-  function mockOpenHermesDb(rows: Array<{ id: string; model: string | null; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number; reasoning_tokens: number; started_at: number }>) {
+  function mockOpenHermesDb(
+    rows: Array<{
+      id: string;
+      model: string | null;
+      input_tokens: number;
+      output_tokens: number;
+      cache_read_tokens: number;
+      cache_write_tokens: number;
+      reasoning_tokens: number;
+      started_at: number;
+    }>,
+  ) {
     return (_dbPath: string) => ({
       querySessions: () => rows,
       close: () => {},
@@ -2592,7 +2736,16 @@ describe("executeSync", () => {
 
   it("should sync Hermes SQLite data to queue", async () => {
     const rows = [
-      { id: "ses-h1", model: "claude-sonnet-4", input_tokens: 5000, output_tokens: 800, cache_read_tokens: 100, cache_write_tokens: 50, reasoning_tokens: 0, started_at: hermesTestStartedAt },
+      {
+        id: "ses-h1",
+        model: "claude-sonnet-4",
+        input_tokens: 5000,
+        output_tokens: 800,
+        cache_read_tokens: 100,
+        cache_write_tokens: 50,
+        reasoning_tokens: 0,
+        started_at: hermesTestStartedAt,
+      },
     ];
 
     const dbDir = join(dataDir, "hermes");
@@ -2613,7 +2766,16 @@ describe("executeSync", () => {
 
   it("should be incremental for Hermes SQLite (second sync with same data)", async () => {
     const rows = [
-      { id: "ses-h1", model: "claude-sonnet-4", input_tokens: 5000, output_tokens: 800, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0, started_at: hermesTestStartedAt },
+      {
+        id: "ses-h1",
+        model: "claude-sonnet-4",
+        input_tokens: 5000,
+        output_tokens: 800,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        reasoning_tokens: 0,
+        started_at: hermesTestStartedAt,
+      },
     ];
 
     const dbDir = join(dataDir, "hermes");
@@ -2652,7 +2814,11 @@ describe("executeSync", () => {
     });
 
     expect(result.sources.hermes).toBe(0);
-    expect(events.some((e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("not available"))).toBe(true);
+    expect(
+      events.some(
+        (e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("not available"),
+      ),
+    ).toBe(true);
   });
 
   it("should warn when Hermes openHermesDb returns null (failed to open)", async () => {
@@ -2670,7 +2836,11 @@ describe("executeSync", () => {
     });
 
     expect(result.sources.hermes).toBe(0);
-    expect(events.some((e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("Failed to open"))).toBe(true);
+    expect(
+      events.some(
+        (e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("Failed to open"),
+      ),
+    ).toBe(true);
   });
 
   it("should handle Hermes DB driver error gracefully (catch branch)", async () => {
@@ -2684,19 +2854,34 @@ describe("executeSync", () => {
       stateDir,
       hermesDbPath: dbPath,
       openHermesDb: () => ({
-        querySessions: () => { throw new Error("DB corrupted"); },
+        querySessions: () => {
+          throw new Error("DB corrupted");
+        },
         close: () => {},
       }),
       onProgress: (e) => events.push(e),
     });
 
     expect(result.sources.hermes).toBe(0);
-    expect(events.some((e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("Skipping"))).toBe(true);
+    expect(
+      events.some(
+        (e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("Skipping"),
+      ),
+    ).toBe(true);
   });
 
   it("should detect Hermes DB cursor loss and restart full scan", async () => {
     const rows = [
-      { id: "ses-h1", model: "claude-sonnet-4", input_tokens: 5000, output_tokens: 800, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0, started_at: hermesTestStartedAt },
+      {
+        id: "ses-h1",
+        model: "claude-sonnet-4",
+        input_tokens: 5000,
+        output_tokens: 800,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        reasoning_tokens: 0,
+        started_at: hermesTestStartedAt,
+      },
     ];
 
     // Need a file-based source to make initialCursorEmpty = false after cursor corruption
@@ -2738,14 +2923,25 @@ describe("executeSync", () => {
       onProgress: (e) => events.push(e),
     });
 
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("cursor entry lost"))).toBe(true);
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("cursor entry lost"))).toBe(
+      true,
+    );
     // After restart, should rescan all
     expect(r2.totalDeltas).toBeGreaterThanOrEqual(1);
   });
 
   it("should detect Hermes DB inode change and restart full scan", async () => {
     const rows = [
-      { id: "ses-h1", model: "claude-sonnet-4", input_tokens: 5000, output_tokens: 800, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0, started_at: hermesTestStartedAt },
+      {
+        id: "ses-h1",
+        model: "claude-sonnet-4",
+        input_tokens: 5000,
+        output_tokens: 800,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        reasoning_tokens: 0,
+        started_at: hermesTestStartedAt,
+      },
     ];
 
     // Need a file-based source to make initialCursorEmpty = false
@@ -2774,7 +2970,10 @@ describe("executeSync", () => {
     const { CursorStore } = await import("../storage/cursor-store.js");
     const cursorStore = new CursorStore(stateDir);
     const cursors = await cursorStore.load();
-    const hermesCursors = (cursors as Record<string, unknown>).hermesSqlite as Record<string, Record<string, unknown>>;
+    const hermesCursors = (cursors as Record<string, unknown>).hermesSqlite as Record<
+      string,
+      Record<string, unknown>
+    >;
     hermesCursors.default!.inode = 999999; // fake inode
     await cursorStore.save(cursors);
 
@@ -2787,7 +2986,9 @@ describe("executeSync", () => {
       onProgress: (e) => events.push(e),
     });
 
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("inode changed"))).toBe(true);
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("inode changed"))).toBe(
+      true,
+    );
     expect(r2.totalDeltas).toBeGreaterThanOrEqual(1);
   });
 
@@ -2818,9 +3019,11 @@ describe("executeSync", () => {
     // Tamper: delete Claude file cursor but keep it in knownFilePaths
     const cursorsPath = join(stateDir, "cursors.json");
     const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    cursorsData.files = Object.fromEntries(Object.entries(cursorsData.files).filter(
-      ([key]) => !(key.includes("proj-file-loss") && key.includes(".claude")),
-    ));
+    cursorsData.files = Object.fromEntries(
+      Object.entries(cursorsData.files).filter(
+        ([key]) => !(key.includes("proj-file-loss") && key.includes(".claude")),
+      ),
+    );
     await writeFile(cursorsPath, JSON.stringify(cursorsData));
 
     // Second sync with onProgress — should capture cursor loss and replay events
@@ -2833,8 +3036,12 @@ describe("executeSync", () => {
     });
 
     // Should detect cursor loss and restart
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("Cursor entry lost"))).toBe(true);
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("Replay condition detected"))).toBe(true);
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("Cursor entry lost"))).toBe(
+      true,
+    );
+    expect(
+      events.some((e) => e.phase === "warn" && e.message?.includes("Replay condition detected")),
+    ).toBe(true);
     // After restart, values should be correct (not inflated)
     expect(r2.totalDeltas).toBe(2);
   });
@@ -2843,7 +3050,16 @@ describe("executeSync", () => {
 
   it("should migrate old flat hermesSqlite cursor to multi-profile Record format", async () => {
     const rows = [
-      { id: "ses-m1", model: "claude-sonnet-4", input_tokens: 3000, output_tokens: 300, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0, started_at: hermesTestStartedAt },
+      {
+        id: "ses-m1",
+        model: "claude-sonnet-4",
+        input_tokens: 3000,
+        output_tokens: 300,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        reasoning_tokens: 0,
+        started_at: hermesTestStartedAt,
+      },
     ];
 
     const dbDir = join(dataDir, "hermes");
@@ -2864,7 +3080,10 @@ describe("executeSync", () => {
     const defaultCursor = cursorsData.hermesSqlite?.default;
     expect(defaultCursor).toBeDefined();
     // Replace Record<dbKey, cursor> with flat cursor that has sessionTotals
-    cursorsData.hermesSqlite = { ...defaultCursor, sessionTotals: defaultCursor.sessionTotals ?? {} };
+    cursorsData.hermesSqlite = {
+      ...defaultCursor,
+      sessionTotals: defaultCursor.sessionTotals ?? {},
+    };
     await writeFile(cursorsPath, JSON.stringify(cursorsData));
 
     // Second sync should detect old format and migrate
@@ -2876,7 +3095,9 @@ describe("executeSync", () => {
       onProgress: (e) => events.push(e),
     });
 
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("multi-profile"))).toBe(true);
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("multi-profile"))).toBe(
+      true,
+    );
     expect(r2.totalDeltas).toBeGreaterThanOrEqual(0);
   });
 
@@ -2907,7 +3128,9 @@ describe("executeSync", () => {
       onProgress: (e) => events.push(e),
     });
 
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("one-time full rescan"))).toBe(true);
+    expect(
+      events.some((e) => e.phase === "warn" && e.message?.includes("one-time full rescan")),
+    ).toBe(true);
   });
 
   // ===== Coverage: knownDbSources backfill (non-empty cursors, no DB cursors) =====
@@ -2940,7 +3163,9 @@ describe("executeSync", () => {
       onProgress: (e) => events.push(e),
     });
 
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("Upgrading cursor format (DB)"))).toBe(true);
+    expect(
+      events.some((e) => e.phase === "warn" && e.message?.includes("Upgrading cursor format (DB)")),
+    ).toBe(true);
   });
 
   // ===== Coverage: file inode change with onProgress =====
@@ -2976,14 +3201,25 @@ describe("executeSync", () => {
       onProgress: (e) => events.push(e),
     });
 
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("File inode changed"))).toBe(true);
+    expect(
+      events.some((e) => e.phase === "warn" && e.message?.includes("File inode changed")),
+    ).toBe(true);
   });
 
   // ===== Coverage: hermesProfileDbPaths =====
 
   it("should sync Hermes profile databases via hermesProfileDbPaths", async () => {
     const rows = [
-      { id: "ses-p1", model: "claude-sonnet-4", input_tokens: 2000, output_tokens: 200, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0, started_at: hermesTestStartedAt },
+      {
+        id: "ses-p1",
+        model: "claude-sonnet-4",
+        input_tokens: 2000,
+        output_tokens: 200,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        reasoning_tokens: 0,
+        started_at: hermesTestStartedAt,
+      },
     ];
 
     const dbDir = join(dataDir, "hermes", "profiles", "tomato");
@@ -3007,7 +3243,16 @@ describe("executeSync", () => {
     // But we can verify the displayName logic by checking progress events from a
     // normal Hermes sync (which will show "Hermes SQLite (default)").
     const rows = [
-      { id: "ses-dn1", model: "claude-sonnet-4", input_tokens: 1000, output_tokens: 100, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0, started_at: hermesTestStartedAt },
+      {
+        id: "ses-dn1",
+        model: "claude-sonnet-4",
+        input_tokens: 1000,
+        output_tokens: 100,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        reasoning_tokens: 0,
+        started_at: hermesTestStartedAt,
+      },
     ];
 
     const dbDir = join(dataDir, "hermes");
@@ -3048,7 +3293,12 @@ describe("executeSync", () => {
         payload: {
           info: {
             model: "gpt-5",
-            total_token_usage: { input_tokens: 1000, cached_input_tokens: 0, output_tokens: 100, reasoning_output_tokens: 0 },
+            total_token_usage: {
+              input_tokens: 1000,
+              cached_input_tokens: 0,
+              output_tokens: 100,
+              reasoning_output_tokens: 0,
+            },
           },
         },
       })}\n`,
@@ -3108,10 +3358,7 @@ describe("executeSync", () => {
 
     const ocDir = join(dataDir, "opencode", "message", "ses_mtime_skip");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_001.json"),
-      opencodeMsg(1771120749059, 100, 50),
-    );
+    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 100, 50));
 
     // Sync 1: establish both cursors.
     await executeSync({
@@ -3130,17 +3377,12 @@ describe("executeSync", () => {
       openCodeMessageDir: join(dataDir, "opencode", "message"),
     });
 
-    const midCursors = JSON.parse(
-      await readFile(join(stateDir, "cursors.json"), "utf-8"),
-    );
+    const midCursors = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8"));
     expect(midCursors.files[join(ocDir, "msg_001.json")]).toBeDefined();
 
     // Sync 3: add a new message → driver discovers it incrementally,
     // emits only the new delta. Totals should be 100+200=300 / 50+100=150.
-    await writeFile(
-      join(ocDir, "msg_002.json"),
-      opencodeMsg(1771120799059, 200, 100),
-    );
+    await writeFile(join(ocDir, "msg_002.json"), opencodeMsg(1771120799059, 200, 100));
 
     await executeSync({
       stateDir,
@@ -3150,7 +3392,10 @@ describe("executeSync", () => {
     });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const opencodeTotals = records
       .filter((r) => r.source === "opencode")
       .reduce(
@@ -3226,10 +3471,7 @@ describe("executeSync", () => {
     );
     const ocDir = join(dataDir, "opencode", "message", "ses_mtime_skip2");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_001.json"),
-      opencodeMsg(1771120749059, 100, 50),
-    );
+    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 100, 50));
 
     await executeSync({
       stateDir,
@@ -3244,10 +3486,7 @@ describe("executeSync", () => {
       openCodeMessageDir: join(dataDir, "opencode", "message"),
     });
 
-    await writeFile(
-      join(ocDir, "msg_002.json"),
-      opencodeMsg(1771120799059, 200, 100),
-    );
+    await writeFile(join(ocDir, "msg_002.json"), opencodeMsg(1771120799059, 200, 100));
     await executeSync({
       stateDir,
       deviceId: "dev-1",
@@ -3256,7 +3495,10 @@ describe("executeSync", () => {
     });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const opencodeTotals = records
       .filter((r) => r.source === "opencode")
       .reduce(
@@ -3287,14 +3529,12 @@ describe("executeSync", () => {
 
     const claudeParser = await import("../parsers/claude.js");
     const origParse = claudeParser.parseClaudeFile;
-    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockImplementation(
-      async (opts) => {
-        if (opts.filePath === badPath) {
-          throw new Error("Simulated parser explosion");
-        }
-        return origParse(opts);
-      },
-    );
+    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockImplementation(async (opts) => {
+      if (opts.filePath === badPath) {
+        throw new Error("Simulated parser explosion");
+      }
+      return origParse(opts);
+    });
 
     try {
       await executeSync({
@@ -3321,9 +3561,7 @@ describe("executeSync", () => {
         claudeDir: join(dataDir, ".claude"),
         onProgress: (e) => events.push({ phase: e.phase, message: e.message }),
       });
-      expect(
-        events.some((e) => e.message?.includes("Cursor entry lost")),
-      ).toBe(false);
+      expect(events.some((e) => e.message?.includes("Cursor entry lost"))).toBe(false);
 
       const cursors2 = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8"));
       expect(cursors2.knownFilePaths[badPath]).toBeUndefined();
@@ -3342,7 +3580,10 @@ describe("executeSync", () => {
     });
     expect(r3.sources.claude).toBe(1);
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l) as QueueRecord);
     const claudeTotal = records
       .filter((r) => r.source === "claude-code")
       .reduce((acc, r) => acc + r.input_tokens, 0);
@@ -3484,10 +3725,7 @@ describe("executeSync", () => {
       // recorded offset (streaming retry / resume — the id repeats, tokens
       // are the same). This is where the bug bites.
       const { appendFile } = await import("node:fs/promises");
-      await appendFile(
-        sessionPath,
-        `${row("msg_A", "2026-06-01T10:00:30.000Z")}\n`,
-      );
+      await appendFile(sessionPath, `${row("msg_A", "2026-06-01T10:00:30.000Z")}\n`);
 
       await executeSync({
         stateDir,
@@ -3509,9 +3747,7 @@ describe("executeSync", () => {
 
       // Cursor should have been rewritten with the modern shape (seenIds present).
       const updatedCursors = JSON.parse(await readFile(cursorsPath, "utf-8"));
-      expect(
-        updatedCursors.files[sessionPath].seenIds,
-      ).toBeDefined();
+      expect(updatedCursors.files[sessionPath].seenIds).toBeDefined();
     });
 
     it("does not double-count when a legacy cursor is unchanged and another file shares its message.id", async () => {
@@ -3605,5 +3841,4 @@ describe("executeSync", () => {
   });
 
   // ===== ZCode SQLite token driver integration =====
-
 });

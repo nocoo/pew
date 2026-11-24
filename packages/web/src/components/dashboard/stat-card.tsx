@@ -67,51 +67,46 @@ export function StatCard({
   const isPrimary = variant === "primary";
   const useSideLayout = trendsLayout === "side" && allTrends.length > 0;
 
-  const TrendsContent = allTrends.length > 0 ? (
-    <div className={cn(
-      trendsLayout === "grid" ? "grid grid-cols-2 gap-x-3 gap-y-2" : "flex flex-col gap-1",
-      useSideLayout ? "justify-center" : "mt-3"
-    )}>
-      {allTrends.map((t, i) => {
-        const isPos = t.value > 0;
-        const isNeg = t.value < 0;
-        return (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: small fixed-shape trend array with no reorder path; positional key is authoritative.
-            key={`${t.label ?? ""}:${t.value}:${i}`}
-            className="flex flex-wrap items-center gap-1 text-xs"
-          >
-            <span
-              className={cn(
-                "font-medium",
-                (trendUpIsGood ? isPos : isNeg) && "text-success",
-                (trendUpIsGood ? isNeg : isPos) && "text-basalt-destructive",
-                !isPos && !isNeg && "text-basalt-muted-foreground"
-              )}
+  const TrendsContent =
+    allTrends.length > 0 ? (
+      <div
+        className={cn(
+          trendsLayout === "grid" ? "grid grid-cols-2 gap-x-3 gap-y-2" : "flex flex-col gap-1",
+          useSideLayout ? "justify-center" : "mt-3",
+        )}
+      >
+        {allTrends.map((t, i) => {
+          const isPos = t.value > 0;
+          const isNeg = t.value < 0;
+          return (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: small fixed-shape trend array with no reorder path; positional key is authoritative.
+              key={`${t.label ?? ""}:${t.value}:${i}`}
+              className="flex flex-wrap items-center gap-1 text-xs"
             >
-              {isPos && "+"}
-              {t.value}%
-            </span>
-            {t.label && (
-              <span className="text-basalt-muted-foreground">{t.label}</span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  ) : null;
+              <span
+                className={cn(
+                  "font-medium",
+                  (trendUpIsGood ? isPos : isNeg) && "text-success",
+                  (trendUpIsGood ? isNeg : isPos) && "text-basalt-destructive",
+                  !isPos && !isNeg && "text-basalt-muted-foreground",
+                )}
+              >
+                {isPos && "+"}
+                {t.value}%
+              </span>
+              {t.label && <span className="text-basalt-muted-foreground">{t.label}</span>}
+            </div>
+          );
+        })}
+      </div>
+    ) : null;
 
   return (
-    <LayerCard
-      padding={isPrimary ? "lg" : "md"}
-      className={cn("min-w-0 flex flex-col", className)}
-    >
+    <LayerCard padding={isPrimary ? "lg" : "md"} className={cn("min-w-0 flex flex-col", className)}>
       {/* Top accent bar — only shown when explicitly provided */}
       {accentColor && (
-        <div className={cn(
-          "h-0.5 w-8 rounded-full mb-4",
-          accentColor
-        )} aria-hidden="true" />
+        <div className={cn("h-0.5 w-8 rounded-full mb-4", accentColor)} aria-hidden="true" />
       )}
 
       {/* Side layout: two columns on md+, stacked on mobile */}
@@ -122,7 +117,7 @@ export function StatCard({
             <p
               className={cn(
                 "text-basalt-muted-foreground",
-                isPrimary ? "text-xs md:text-sm font-medium" : "text-xs md:text-sm"
+                isPrimary ? "text-xs md:text-sm font-medium" : "text-xs md:text-sm",
               )}
             >
               {title}
@@ -130,14 +125,12 @@ export function StatCard({
             <p
               className={cn(
                 "font-semibold text-basalt-foreground font-display tracking-tight",
-                isPrimary ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
+                isPrimary ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl",
               )}
             >
               {typeof value === "number" ? value.toLocaleString() : value}
             </p>
-            {subtitle && (
-              <p className="text-xs text-basalt-muted-foreground">{subtitle}</p>
-            )}
+            {subtitle && <p className="text-xs text-basalt-muted-foreground">{subtitle}</p>}
           </div>
           {/* Middle: trends (hidden on mobile, shown below instead) */}
           <div className="hidden md:flex md:flex-1 md:items-center md:justify-end md:border-r md:border-basalt-border/50 md:pr-4">
@@ -169,7 +162,7 @@ export function StatCard({
               <p
                 className={cn(
                   "text-basalt-muted-foreground",
-                  isPrimary ? "text-xs md:text-sm font-medium" : "text-xs md:text-sm"
+                  isPrimary ? "text-xs md:text-sm font-medium" : "text-xs md:text-sm",
                 )}
               >
                 {title}
@@ -177,14 +170,12 @@ export function StatCard({
               <p
                 className={cn(
                   "font-semibold text-basalt-foreground font-display tracking-tight",
-                  isPrimary ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
+                  isPrimary ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl",
                 )}
               >
                 {typeof value === "number" ? value.toLocaleString() : value}
               </p>
-              {subtitle && (
-                <p className="text-xs text-basalt-muted-foreground">{subtitle}</p>
-              )}
+              {subtitle && <p className="text-xs text-basalt-muted-foreground">{subtitle}</p>}
             </div>
             {Icon && (
               <div className={cn("shrink-0 rounded-md bg-basalt-background p-2", iconColor)}>
@@ -218,9 +209,5 @@ export function StatGrid({ children, columns = 4, className }: StatGridProps) {
     4: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
   };
 
-  return (
-    <div className={cn("grid gap-3 md:gap-4", gridCols[columns], className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn("grid gap-3 md:gap-4", gridCols[columns], className)}>{children}</div>;
 }

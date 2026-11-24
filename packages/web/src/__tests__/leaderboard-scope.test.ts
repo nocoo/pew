@@ -80,10 +80,7 @@ describe("leaderboard-scope", () => {
   it("saves scope to localStorage", () => {
     const scope: ScopeSelection = { type: "global" };
     saveScopeToStorage(scope);
-    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-      SCOPE_STORAGE_KEY,
-      JSON.stringify(scope),
-    );
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(SCOPE_STORAGE_KEY, JSON.stringify(scope));
   });
 
   it("silently catches write errors", () => {

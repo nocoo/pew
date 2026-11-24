@@ -50,7 +50,9 @@ describe("GET /api/organizations/mine error handling", () => {
     expect(res.status).toBe(200);
     expect(mockDbRead.listOrganizations).toHaveBeenCalledTimes(1);
     expect(mockDbRead.listUserOrganizations).not.toHaveBeenCalled();
-    const body = (await res.json()) as { organizations: Array<{ id: string; name: string; slug: string; logoUrl: string | null }> };
+    const body = (await res.json()) as {
+      organizations: Array<{ id: string; name: string; slug: string; logoUrl: string | null }>;
+    };
     expect(body.organizations).toEqual([
       { id: "o1", name: "Acme", slug: "acme", logoUrl: "https://x/y.png" },
       { id: "o2", name: "Globex", slug: "globex", logoUrl: null },
@@ -87,9 +89,7 @@ describe("GET /api/organizations/mine error handling", () => {
 
   it("returns 500 for unexpected database failures", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockDbRead.listUserOrganizations.mockRejectedValueOnce(
-      new Error("connection refused"),
-    );
+    mockDbRead.listUserOrganizations.mockRejectedValueOnce(new Error("connection refused"));
 
     const res = await GET(makeGetRequest("/api/organizations/mine"));
 

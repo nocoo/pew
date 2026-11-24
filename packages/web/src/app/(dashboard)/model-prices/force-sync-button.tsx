@@ -56,26 +56,19 @@ export function ForceSyncButton({ onComplete }: Props) {
 
   return (
     <span className="inline-flex items-center gap-2">
-      <Button onClick={handleClick} disabled={state.kind === "syncing"} variant="secondary" size="sm">
+      <Button
+        onClick={handleClick}
+        disabled={state.kind === "syncing"}
+        variant="secondary"
+        size="sm"
+      >
         {state.kind === "syncing" ? "Refreshing…" : "Refresh prices"}
       </Button>
-      {state.kind === "ok" && (
-        <Banner
-          tone="neutral"
-          size="sm"
-          description="Prices updated"
-        />
-      )}
+      {state.kind === "ok" && <Banner tone="neutral" size="sm" description="Prices updated" />}
       {state.kind === "partial" && (
-        <Banner
-          tone="warning"
-          size="sm"
-          description="Some prices could not be refreshed"
-        />
+        <Banner tone="warning" size="sm" description="Some prices could not be refreshed" />
       )}
-      {state.kind === "error" && (
-        <Banner tone="danger" size="sm" description={state.message} />
-      )}
+      {state.kind === "error" && <Banner tone="danger" size="sm" description={state.message} />}
     </span>
   );
 }

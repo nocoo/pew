@@ -52,10 +52,7 @@ function createFakeFs(opts?: {
   };
 }
 
-function createFakeProcess(opts?: {
-  pid?: number;
-  killThrows?: Map<number, string>;
-}): ProcessOps {
+function createFakeProcess(opts?: { pid?: number; killThrows?: Map<number, string> }): ProcessOps {
   const pid = opts?.pid ?? 12345;
   const killThrows = opts?.killThrows ?? new Map();
 
@@ -113,9 +110,7 @@ describe("acquireLock", () => {
     const fs = createFakeFs({ writeThrows: err });
     const proc = createFakeProcess();
 
-    await expect(
-      acquireLock("/tmp/sync.lock", { fs, process: proc }),
-    ).rejects.toThrow("EACCES");
+    await expect(acquireLock("/tmp/sync.lock", { fs, process: proc })).rejects.toThrow("EACCES");
   });
 });
 

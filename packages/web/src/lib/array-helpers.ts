@@ -27,10 +27,7 @@ type NumericKeys<T> = {
  *   inline `arr.reduce(...)` — this helper deliberately does not expose
  *   a callback overload to avoid drifting back into shape-B territory.
  */
-export function sumBy<T, K extends NumericKeys<T>>(
-  arr: readonly T[],
-  key: K,
-): number {
+export function sumBy<T, K extends NumericKeys<T>>(arr: readonly T[], key: K): number {
   let total = 0;
   for (const item of arr) {
     total += item[key] as number;

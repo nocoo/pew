@@ -5,11 +5,7 @@ import { Calendar, Clock } from "@nocoo/basalt/icons";
 import { formatSeasonDate } from "@/lib/seasons";
 import { getSeasonEndExclusive } from "@/lib/season-helpers";
 import type { SeasonStatus } from "@pew/core";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@nocoo/basalt/components/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt/components/tooltip";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,11 +40,7 @@ interface SeasonCountdownProps {
   endDate: string;
 }
 
-export function SeasonCountdown({
-  status,
-  startDate,
-  endDate,
-}: SeasonCountdownProps) {
+export function SeasonCountdown({ status, startDate, endDate }: SeasonCountdownProps) {
   const [now, setNow] = useState(() => Date.now());
 
   // Tick every second for active/upcoming seasons, pause when tab is hidden
@@ -109,9 +101,7 @@ export function SeasonCountdown({
   // Use exclusive end boundary (end_date + 60s) for active seasons
   // to align with when data actually stops changing
   const targetMs =
-    status === "active"
-      ? getSeasonEndExclusive(endDate)
-      : new Date(startDate).getTime();
+    status === "active" ? getSeasonEndExclusive(endDate) : new Date(startDate).getTime();
   const remaining = Math.max(0, targetMs - now);
   const label = status === "active" ? "Ends in" : "Starts in";
 

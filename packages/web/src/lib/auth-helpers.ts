@@ -12,10 +12,8 @@ import { auth } from "@/auth";
 import { getDbRead } from "@/lib/db";
 
 /** The user ID used when E2E auth is bypassed (overridable via env) */
-export const E2E_TEST_USER_ID =
-  process.env.E2E_TEST_USER_ID || "e2e-test-user-id";
-export const E2E_TEST_USER_EMAIL =
-  process.env.E2E_TEST_USER_EMAIL || "e2e@test.local";
+export const E2E_TEST_USER_ID = process.env.E2E_TEST_USER_ID || "e2e-test-user-id";
+export const E2E_TEST_USER_EMAIL = process.env.E2E_TEST_USER_EMAIL || "e2e@test.local";
 
 export interface AuthResult {
   userId: string;
@@ -32,9 +30,7 @@ export interface AuthResult {
  *
  * Returns null if not authenticated.
  */
-export async function resolveUser(
-  request: Request,
-): Promise<AuthResult | null> {
+export async function resolveUser(request: Request): Promise<AuthResult | null> {
   // E2E bypass: deterministic test user
   if (isE2EMode()) {
     return { userId: E2E_TEST_USER_ID, email: E2E_TEST_USER_EMAIL };

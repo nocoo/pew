@@ -30,6 +30,7 @@
 ### 1.1 数据库结构
 
 **Sessions 表** (`~/.hermes/state.db`):
+
 ```sql
 CREATE TABLE sessions (
   id TEXT PRIMARY KEY,              -- session_20260408_064634_0b0f4143
@@ -45,6 +46,7 @@ CREATE TABLE sessions (
 ```
 
 **关键事实**:
+
 - ✅ Token 字段是**累积值**（每次 turn 后 `UPDATE ... + delta`）
 - ✅ 单行单 session（UPDATE 模式，非 INSERT 新行）
 - ⚠️ `model` 字段首次设置后不变（`COALESCE(model, ?)`）
@@ -57,16 +59,19 @@ CREATE TABLE sessions (
 
 #### 挑战 1: 时间戳缺失
 
-**问题**: 
+**问题**:
+
 - `sessions.started_at` = 会话开始时间（固定）
 - `messages.timestamp` 存在，但 `messages` 表无 token 数据
 - **无法获取每次 token 增量的准确时间**
 
-**解决方案**: 
+**解决方案**:
+
 - 用 **sync 执行时间** 作为 token 时间戳
 - 所有 delta 记录到 sync 发生的半小时 bucket
 
 **影响**:
+
 - ⚠️ 长时间运行的会话，token 会被延迟记录
 - 例如：会话从 10:00 开始，11:30 才 sync → 所有 token 记到 11:30
 
@@ -75,15 +80,18 @@ CREATE TABLE sessions (
 #### 挑战 2: Model 切换不可见
 
 **问题**:
+
 - 用户可在会话中 `/model claude-opus-4` 切换模型
 - DB 的 `sessions.model` 字段**不会更新**（COALESCE 逻辑）
 - 切换后的 token 仍被记到首个模型
 
 **解决方案**:
+
 - 接受 session-level model 归因
 - 文档明确说明限制
 
 **影响**:
+
 - ⚠️ 混合模型会话的 token 全部归到首个模型
 - 总量准确，但模型分布可能不准
 
@@ -92,11 +100,13 @@ CREATE TABLE sessions (
 #### 挑战 3: Diff 模型的幂等性
 
 **问题**:
+
 - 同一 session 的 token 持续累加
 - 必须记录"上次已同步的值"，计算增量
 - 重复同步不能重复计数
 
 **解决方案**:
+
 - Session-level diff cursor（下文详述）
 
 ---
@@ -108,6 +118,7 @@ CREATE TABLE sessions (
 **路径**: `$HERMES_HOME/state.db`（默认 `~/.hermes/state.db`）
 
 **路径解析**:
+
 ```typescript
 // packages/cli/src/utils/paths.ts
 const hermesHome = normalizeEnvPath(env.HERMES_HOME) ?? join(home, ".hermes");
@@ -120,23 +131,28 @@ const hermesDbPath = join(hermesHome, "state.db");
 
 ### 2.2 增量策略：Session-level Diff
 
-**核心思想**: 
+**核心思想**:
+
 - 每个 session 存储"上次已知的 token 总量"
 - 每次同步计算 `Delta = 当前值 - 上次值`
 - 只上报非零 delta
 
 **游标结构**:
+
 ```typescript
 // packages/core/src/types.ts
 export interface HermesSqliteCursor {
   /** Map of session_id → last known token totals */
-  sessionTotals: Record<string, {
-    input: number;
-    output: number;
-    cacheRead: number;
-    cacheWrite: number;
-    reasoning: number;
-  }>;
+  sessionTotals: Record<
+    string,
+    {
+      input: number;
+      output: number;
+      cacheRead: number;
+      cacheWrite: number;
+      reasoning: number;
+    }
+  >;
   /** DB file inode (detect file replacement) */
   inode: number;
   /** ISO 8601 timestamp of last update */
@@ -145,6 +161,7 @@ export interface HermesSqliteCursor {
 ```
 
 **CursorState 扩展**:
+
 ```typescript
 export interface CursorState {
   version: 1;
@@ -153,7 +170,7 @@ export interface CursorState {
   openCodeSqlite?: OpenCodeSqliteCursor;
   knownFilePaths?: Record<string, true>;
   knownDbSources?: Record<string, true>;
-  hermesSqlite?: HermesSqliteCursor;  // 新增
+  hermesSqlite?: HermesSqliteCursor; // 新增
   updatedAt: string | null;
 }
 ```
@@ -163,6 +180,7 @@ export interface CursorState {
 ### 2.3 Diff 计算逻辑
 
 **SQL 查询** (无 WHERE 过滤，读所有 session):
+
 ```sql
 SELECT 
   id,
@@ -178,6 +196,7 @@ ORDER BY id ASC
 ```
 
 **Diff 计算**:
+
 ```typescript
 for (const row of rows) {
   const sessionId = row.id;
@@ -214,6 +233,7 @@ for (const row of rows) {
 ```
 
 **幂等性保证**:
+
 - ✅ 同一 session 的值只在有增量时产生 delta
 - ✅ 重复同步（值未变）产生零 delta，被过滤
 - ✅ 游标持久化，下次从正确位置继续
@@ -222,14 +242,14 @@ for (const row of rows) {
 
 ### 2.4 字段映射
 
-| Hermes 字段 | pew 字段 | 说明 |
-|------------|---------|------|
-| `input_tokens` | `inputTokens` | 直接映射 |
-| `cache_read_tokens + cache_write_tokens` | `cachedInputTokens` | 两者相加（与 OpenCode 一致） |
-| `output_tokens` | `outputTokens` | 直接映射 |
-| `reasoning_tokens` | `reasoningOutputTokens` | 支持 reasoning |
-| `new Date().toISOString()` | `timestamp` | ⚠️ **使用 sync 时间**（非会话时间） |
-| `model` (session-level) | `model` | ⚠️ **会话首个模型**（可能不准） |
+| Hermes 字段                              | pew 字段                | 说明                                |
+| ---------------------------------------- | ----------------------- | ----------------------------------- |
+| `input_tokens`                           | `inputTokens`           | 直接映射                            |
+| `cache_read_tokens + cache_write_tokens` | `cachedInputTokens`     | 两者相加（与 OpenCode 一致）        |
+| `output_tokens`                          | `outputTokens`          | 直接映射                            |
+| `reasoning_tokens`                       | `reasoningOutputTokens` | 支持 reasoning                      |
+| `new Date().toISOString()`               | `timestamp`             | ⚠️ **使用 sync 时间**（非会话时间） |
+| `model` (session-level)                  | `model`                 | ⚠️ **会话首个模型**（可能不准）     |
 
 ---
 
@@ -252,6 +272,7 @@ for (const row of rows) {
 **处理**: 清空游标，触发全量重扫
 
 **实现**:
+
 ```typescript
 const st = await stat(dbPath);
 if (cursor.inode && cursor.inode !== st.ino) {
@@ -277,7 +298,8 @@ if (cursor.inode && cursor.inode !== st.ino) {
 
 **问题**: `cursors.json` 被删除或损坏
 
-**处理**: 
+**处理**:
+
 - 检测 `knownDbSources.hermesSqlite` 存在但 cursor 为空
 - 触发全量重扫（所有 session 产生全量 delta）
 - 可能导致一次性重复计数（可接受的代价）
@@ -291,6 +313,7 @@ if (cursor.inode && cursor.inode !== st.ino) {
 **目标**: 复用现有 notifier/coordinator 架构，不引入新机制
 
 **Hermes Plugin** (`~/.hermes/plugins/pew/__init__.py`):
+
 ```python
 """pew plugin — auto-trigger sync after each turn."""
 import subprocess
@@ -320,6 +343,7 @@ def register(ctx):
 ```
 
 **Plugin 元数据** (`plugin.yaml`):
+
 ```yaml
 name: pew
 version: 1.0.0
@@ -343,6 +367,7 @@ Hermes post_llm_call hook
 ```
 
 **关键特性**:
+
 - ✅ 非阻塞（`Popen` 不等待）
 - ✅ 使用绝对路径（install 时注入，避免 PATH 不完整）
 - ✅ 复用 coordinator 的 trailing-edge 机制（多次触发合并）
@@ -354,12 +379,13 @@ Hermes post_llm_call hook
 ### 3.3 路径解析
 
 **NotifierPaths 扩展**:
+
 ```typescript
 // packages/cli/src/notifier/paths.ts
 export interface NotifierPaths {
   // 现有字段...
-  hermesHome: string;           // $HERMES_HOME 或 ~/.hermes
-  hermesPluginDir: string;      // $hermesHome/plugins
+  hermesHome: string; // $HERMES_HOME 或 ~/.hermes
+  hermesPluginDir: string; // $hermesHome/plugins
 }
 
 export function resolveNotifierPaths(
@@ -367,7 +393,7 @@ export function resolveNotifierPaths(
   env: Record<string, string | undefined>,
 ): NotifierPaths {
   const hermesHome = normalizeEnvPath(env.HERMES_HOME) ?? join(home, ".hermes");
-  
+
   return {
     // 现有字段...
     hermesHome,
@@ -384,12 +410,12 @@ export function resolveNotifierPaths(
 // packages/cli/src/notifier/drivers/hermes.ts
 export const HermesNotifierDriver: NotifierDriver = {
   source: "hermes",
-  
+
   async install(paths: NotifierPaths): Promise<NotifierOperationResult> {
     const pluginDir = join(paths.hermesPluginDir, "pew");
-    
+
     // 检查 hermesHome 是否存在
-    if (!await exists(paths.hermesHome)) {
+    if (!(await exists(paths.hermesHome))) {
       return {
         source: "hermes",
         action: "skip",
@@ -397,21 +423,21 @@ export const HermesNotifierDriver: NotifierDriver = {
         detail: "Hermes not installed (no ~/.hermes directory)",
       };
     }
-    
+
     // 获取 pew 可执行路径（复用现有 helper）
-    const pewBin = await resolvePewBin();  // 已处理 argv[1]、which/where.exe、Windows shim
-    
+    const pewBin = await resolvePewBin(); // 已处理 argv[1]、which/where.exe、Windows shim
+
     // 创建插件目录
     await mkdir(pluginDir, { recursive: true });
-    
+
     // 写入 plugin.yaml
     const yamlContent = buildPluginYaml();
     await writeFile(join(pluginDir, "plugin.yaml"), yamlContent);
-    
+
     // 写入 __init__.py（注入 pew 绝对路径）
-    const pyContent = buildPluginPython(pewBin);  // 注入 pew 命令路径
+    const pyContent = buildPluginPython(pewBin); // 注入 pew 命令路径
     await writeFile(join(pluginDir, "__init__.py"), pyContent);
-    
+
     return {
       source: "hermes",
       action: "install",
@@ -419,10 +445,10 @@ export const HermesNotifierDriver: NotifierDriver = {
       detail: "Hermes plugin installed",
     };
   },
-  
+
   async uninstall(paths: NotifierPaths): Promise<NotifierOperationResult> {
     const pluginDir = join(paths.hermesPluginDir, "pew");
-    
+
     try {
       await rm(pluginDir, { recursive: true });
       return {
@@ -443,11 +469,11 @@ export const HermesNotifierDriver: NotifierDriver = {
       throw err;
     }
   },
-  
+
   async status(paths: NotifierPaths): Promise<NotifierStatus> {
     const pluginPath = join(paths.hermesPluginDir, "pew", "__init__.py");
     const content = await readFile(pluginPath, "utf8").catch(() => null);
-    
+
     if (!content) return "not-installed";
     return content.includes("PEW_PLUGIN_MARKER") ? "installed" : "error";
   },
@@ -463,6 +489,7 @@ export const HermesNotifierDriver: NotifierDriver = {
 所有引用 `Source` 类型或 `VALID_SOURCES` 的地方：
 
 **Core**:
+
 ```typescript
 // packages/core/src/types.ts (第 20 行)
 export type Source = ... | "hermes";
@@ -481,6 +508,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
 ```
 
 **CLI**:
+
 ```typescript
 // packages/cli/src/cli.ts (第 42 行)
 function isSource(value: string): value is Source {
@@ -492,12 +520,13 @@ function isSource(value: string): value is Source {
     "openclaw",
     "vscode-copilot",
     "copilot-cli",
-    "hermes",  // ← 新增
+    "hermes", // ← 新增
   ].includes(value);
 }
 ```
 
 **Web API** (每个路由各自维护 VALID_SOURCES，必须逐个添加):
+
 ```typescript
 // packages/web/src/app/api/usage/route.ts (第 21 行)
 const VALID_SOURCES = new Set([
@@ -508,7 +537,7 @@ const VALID_SOURCES = new Set([
   "openclaw",
   "vscode-copilot",
   "copilot-cli",
-  "hermes",  // ← 新增
+  "hermes", // ← 新增
 ]);
 
 // packages/web/src/app/api/sessions/route.ts (第 21 行)
@@ -533,19 +562,20 @@ const VALID_SOURCES = new Set([
 ```
 
 **Web 样式/配置**:
+
 ```typescript
 // packages/web/src/lib/pricing.ts (第 105 行)
 export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
   "claude-code": { input: 3, output: 15, cached: 0.3 },
   // ...
-  hermes: { input: 3, output: 15, cached: 0.3 },  // ← 新增
+  hermes: { input: 3, output: 15, cached: 0.3 }, // ← 新增
 };
 
 // packages/web/src/lib/palette.ts (第 72 行)
 const AGENT_COLOR_MAP: Record<string, ChartColor> = {
   "claude-code": { color: chart.violet, token: "chart-1" },
   // ...
-  hermes: { color: chart.acid, token: "chart-8" },  // ← 新增（复用 acid 绿，8色循环）
+  hermes: { color: chart.acid, token: "chart-8" }, // ← 新增（复用 acid 绿，8色循环）
 };
 ```
 
@@ -560,6 +590,7 @@ const AGENT_COLOR_MAP: Record<string, ChartColor> = {
 **状态**: 已完成（commit: feat(core,web,cli): add hermes to Source type globally）
 
 **文件变更**:
+
 ```
 M packages/core/src/types.ts          # Source union 添加 "hermes"
 M packages/core/src/constants.ts      # SOURCES 数组添加 "hermes"
@@ -574,12 +605,14 @@ M packages/web/src/app/api/users/[slug]/route.ts   # VALID_SOURCES 添加 "herme
 ```
 
 **测试**:
+
 ```bash
 bun run test packages/core
 bun run build  # 确保 Web 编译通过
 ```
 
 **Commit Message**:
+
 ```
 feat(core,web,cli): add hermes to Source type globally
 
@@ -602,6 +635,7 @@ BREAKING CHANGE: Source type now includes "hermes"
 **状态**: 已完成（commit: feat(cli): add HERMES_HOME support and sync orchestration）
 
 **文件变更**:
+
 ```
 M packages/cli/src/utils/paths.ts
 M packages/cli/src/notifier/paths.ts
@@ -612,18 +646,19 @@ M packages/cli/src/__tests__/notifier-paths.test.ts
 ```
 
 **变更内容**:
+
 ```typescript
 // packages/cli/src/utils/paths.ts
 export interface DefaultPaths {
   // ...
-  hermesDbPath: string;  // 新增
+  hermesDbPath: string; // 新增
 }
 
 // packages/cli/src/notifier/paths.ts
 export interface NotifierPaths {
   // ...
-  hermesHome: string;        // 新增
-  hermesPluginDir: string;   // 新增
+  hermesHome: string; // 新增
+  hermesPluginDir: string; // 新增
 }
 
 // packages/cli/src/commands/sync.ts
@@ -631,7 +666,7 @@ export interface SyncOptions {
   stateDir: string;
   deviceId: string;
   // ...
-  hermesDbPath?: string;  // 新增（第 43 行后）
+  hermesDbPath?: string; // 新增（第 43 行后）
 }
 
 export interface SyncResult {
@@ -640,19 +675,19 @@ export interface SyncResult {
   sources: {
     claude: number;
     // ...
-    hermes: number;  // 新增（第 72 行）
+    hermes: number; // 新增（第 72 行）
   };
   filesScanned: {
     claude: number;
     // ...
-    hermes: number;  // 新增（第 82 行）
+    hermes: number; // 新增（第 82 行）
   };
 }
 
 function sourceKey(source: Source): keyof SyncResult["sources"] {
   if (source === "claude-code") return "claude";
   // ...
-  if (source === "hermes") return "hermes";  // 新增（第 94 行后）
+  if (source === "hermes") return "hermes"; // 新增（第 94 行后）
   throw new Error(`Unknown source: ${source}`);
 }
 
@@ -660,25 +695,27 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
 export interface TokenDriverRegistryOpts {
   claudeDir?: string;
   // ...
-  hermesDbPath?: string;  // 新增（第 63 行后）
+  hermesDbPath?: string; // 新增（第 63 行后）
 }
 
 export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSet {
   // ...
   if (opts.hermesDbPath) {
-    dbDrivers.push(hermesTokenDriver);  // 新增（第 89 行后）
+    dbDrivers.push(hermesTokenDriver); // 新增（第 89 行后）
   }
   // ...
 }
 ```
 
 **测试**:
+
 ```bash
 bun run test packages/cli/src/__tests__/paths.test.ts
 bun run test packages/cli/src/__tests__/notifier-paths.test.ts
 ```
 
 **Commit Message**:
+
 ```
 feat(cli): add HERMES_HOME support and sync orchestration
 
@@ -702,17 +739,20 @@ feat(cli): add HERMES_HOME support and sync orchestration
 **状态**: 已完成（commit: feat(cli): implement hermes SQLite parser with session-level diff）
 
 **新增文件**:
+
 ```
 A packages/cli/src/parsers/hermes-sqlite.ts
 A packages/cli/src/__tests__/hermes-sqlite.test.ts
 ```
 
 **变更文件**:
+
 ```
 M packages/core/src/types.ts  (HermesSqliteCursor)
 ```
 
 **核心逻辑**:
+
 ```typescript
 // parseHermesDatabase()
 // 1. 查询所有 session (WHERE input_tokens > 0)
@@ -722,6 +762,7 @@ M packages/core/src/types.ts  (HermesSqliteCursor)
 ```
 
 **测试覆盖**:
+
 - ✅ 首次同步（全量）
 - ✅ 增量同步（只返回 delta）
 - ✅ 无变化（返回空）
@@ -732,6 +773,7 @@ M packages/core/src/types.ts  (HermesSqliteCursor)
 - ✅ Token 减少（Math.max 保护）
 
 **Commit Message**:
+
 ```
 feat(cli): implement hermes SQLite parser with session-level diff
 
@@ -754,17 +796,20 @@ Ref: similar to Gemini/OpenCode cumulative diff model
 **状态**: 已完成（commit: feat(cli): implement hermes token driver）
 
 **新增文件**:
+
 ```
 A packages/cli/src/drivers/token/hermes-token-driver.ts
 A packages/cli/src/__tests__/drivers/token/hermes-token-driver.test.ts
 ```
 
 **变更文件**:
+
 ```
 M packages/cli/src/drivers/registry.ts
 ```
 
 **Commit Message**:
+
 ```
 feat(cli): add hermes token driver
 
@@ -783,16 +828,19 @@ feat(cli): add hermes token driver
 **状态**: **已移除**（JSON 插件格式与 Hermes 官方插件系统不兼容）
 
 **原始实现问题**:
+
 - 写入 JSON 文件 (`pew-tracker.json`) 而非目录插件
 - Hermes 插件系统要求目录结构 (`plugin.yaml` + `__init__.py`)
 - JSON 格式 Hermes 不会加载，`pew init --source=hermes` 报告成功但实际无效
 
 **最终决策** (commit: `fix(cli): remove broken Hermes notifier`):
+
 - 删除 `hermes-hook.ts` 和 `hermes-hook.test.ts` (9 tests)
 - 从 notifier registry 移除 hermes driver (5 drivers remain)
 - **Hermes notifier 仅支持手动安装**（见下方"Manual Plugin Installation"）
 
 **原因**:
+
 - TypeScript CLI 无法生成 Python 代码（超出实现范围）
 - 尝试自动化安装会给用户错误的"已安装"信号
 - 手动安装文档更诚实且可靠
@@ -842,6 +890,7 @@ EOF
 ```
 
 **验证安装**:
+
 ```bash
 # 重启 Hermes Agent（插件在启动时加载）
 hermes
@@ -851,6 +900,7 @@ hermes
 ```
 
 **注意事项**:
+
 - 插件必须在 Hermes **启动时**加载，热重载不支持
 - 如果 `pew` 不在 PATH 中，需要在 `__init__.py` 中使用绝对路径（例如 `/usr/local/bin/pew`）
 - 可以通过 `which pew` 获取 pew 的绝对路径
@@ -871,11 +921,13 @@ hermes
 **状态**: 已完成（本文檔即為hermes support的完整設計與實現記錄）
 
 **新增文件**:
+
 ```
 A packages/cli/src/__tests__/e2e/hermes-e2e.test.ts
 ```
 
 **测试策略**:
+
 ```typescript
 // 创建临时 SQLite DB
 const tempDir = await mkdtemp(join(tmpdir(), "pew-hermes-"));
@@ -919,6 +971,7 @@ expect(result3.sources.hermes).toBe(0);  // 无新增量
 ```
 
 **Commit Message**:
+
 ```
 test(cli): add hermes E2E integration tests
 
@@ -935,6 +988,7 @@ test(cli): add hermes E2E integration tests
 ### Commit 7: 文档更新
 
 **文件变更**:
+
 ```
 M README.md
 M docs/03-data-pipeline.md
@@ -944,6 +998,7 @@ M CHANGELOG.md
 ```
 
 **README 章节**:
+
 ```markdown
 ### Supported AI Tools
 
@@ -966,6 +1021,7 @@ See [35-hermes-support.md](./35-hermes-support.md) for details.
 ```
 
 **Commit Message**:
+
 ```
 docs: add hermes support documentation
 
@@ -987,10 +1043,12 @@ Limitations clearly stated: time/model fuzziness acceptable
 **限制**: Token 时间戳使用 sync 执行时间，非真实产生时间
 
 **影响**:
+
 - 长会话（跨多小时）的 token 会被延迟记录
 - 小时级图表可能显示"尖峰"（大量 token 集中在 sync 时刻）
 
 **示例**:
+
 ```
 实际情况:
   10:00 - 用户开始会话，产生 1000 tokens
@@ -1003,6 +1061,7 @@ pew 记录:
 ```
 
 **缓解**:
+
 - 建议用户设置较短的 sync 间隔（如 5 分钟 cron）
 - Web UI 可添加 tooltip 说明 hermes 的时间特性
 
@@ -1013,10 +1072,12 @@ pew 记录:
 **限制**: `/model` 切换不更新 `sessions.model` 字段
 
 **影响**:
+
 - 混合模型会话的 token 全部归到首个模型
 - 总量准确，但模型分布可能失真
 
 **示例**:
+
 ```
 实际情况:
   用户: hello (使用 claude-sonnet-4)
@@ -1029,6 +1090,7 @@ pew 记录:
 ```
 
 **缓解**:
+
 - 文档明确说明此限制
 - 大多数用户不频繁切换模型，影响有限
 
@@ -1039,10 +1101,12 @@ pew 记录:
 **限制**: 不追求实时，可能有分钟级延迟
 
 **影响**:
+
 - Dashboard 数据可能滞后
 - 适合长期统计，不适合实时监控
 
 **缓解**:
+
 - 默认无 cooldown，每次 turn 后触发
 - 用户可配置 cooldown 平衡频率与延迟
 
@@ -1050,26 +1114,26 @@ pew 记录:
 
 ## 七、测试覆盖率
 
-| 组件 | 目标 | 关键场景 |
-|-----|-----|---------|
-| Parser | 100% | 首次/增量/零delta/session删除/inode变化/游标丢失 |
-| Driver | 100% | discover/parse/hermesDbPath覆盖 |
-| Notifier Driver | 100% | install/uninstall/status/HERMES_HOME |
-| Integration (E2E) | >95% | 完整流程 + 幂等性 |
+| 组件              | 目标 | 关键场景                                         |
+| ----------------- | ---- | ------------------------------------------------ |
+| Parser            | 100% | 首次/增量/零delta/session删除/inode变化/游标丢失 |
+| Driver            | 100% | discover/parse/hermesDbPath覆盖                  |
+| Notifier Driver   | 100% | install/uninstall/status/HERMES_HOME             |
+| Integration (E2E) | >95% | 完整流程 + 幂等性                                |
 
 ---
 
 ## 八、时间估算
 
-| Commit | 预计工时 | 累计 |
-|--------|---------|-----|
-| 1. Source 全局扩展 | 1.5h | 1.5h |
-| 2. 路径解析 | 1h | 2.5h |
-| 3. Parser + cursor | 3h | 5.5h |
-| 4. Token driver | 1h | 6.5h |
-| 5. Notifier driver | 2h | 8.5h |
-| 6. Integration tests | 2h | 10.5h |
-| 7. 文档 | 1.5h | 12h |
+| Commit               | 预计工时 | 累计  |
+| -------------------- | -------- | ----- |
+| 1. Source 全局扩展   | 1.5h     | 1.5h  |
+| 2. 路径解析          | 1h       | 2.5h  |
+| 3. Parser + cursor   | 3h       | 5.5h  |
+| 4. Token driver      | 1h       | 6.5h  |
+| 5. Notifier driver   | 2h       | 8.5h  |
+| 6. Integration tests | 2h       | 10.5h |
+| 7. 文档              | 1.5h     | 12h   |
 
 ---
 
@@ -1077,7 +1141,8 @@ pew 记录:
 
 ### Q1: 为什么不 JOIN messages 表获取准确时间？
 
-**A**: 
+**A**:
+
 1. `messages` 表无 token 数据（只有 timestamp）
 2. JOIN 10万+ messages 性能差
 3. 仍然只能得到"最后一条消息时间"，不是"token 产生时间"
@@ -1086,6 +1151,7 @@ pew 记录:
 ### Q2: 为什么不读 JSONL 文件补充 model 信息？
 
 **A**:
+
 1. JSONL 可能被删除/压缩
 2. 需维护双数据源（SQLite + JSONL）
 3. 复杂度高，且大多数用户不切换模型
@@ -1094,6 +1160,7 @@ pew 记录:
 ### Q3: 幂等性如何保证？
 
 **A**:
+
 1. Diff cursor 存储每个 session 的上次值
 2. 重复同步产生零 delta（被过滤）
 3. 游标持久化，状态可恢复
@@ -1102,6 +1169,7 @@ pew 记录:
 ### Q4: 如果用户删除 cursors.json 会怎样？
 
 **A**:
+
 1. `knownDbSources` 检测到游标丢失
 2. 触发全量重扫（所有 session 全量 delta）
 3. 可能导致一次性重复计数
@@ -1116,11 +1184,13 @@ pew 记录:
 ### Issue 1: DB cursor 槽位冲突 (High) ✅
 
 **Problem**:
+
 - `executeSync()` 硬编码只用 `cursors.openCodeSqlite` 和 `knownDbSources["openCodeSqlite"]`
 - 所有 DB driver（OpenCode / Hermes）共享同一个 cursor 槽位
 - Hermes 和 OpenCode 会互相覆盖对方的 cursor，导致状态污染
 
 **Solution** (commit: `fix(cli): separate cursor slots for opencode/hermes SQLite`):
+
 - `executeSync()` 改用 `driver.source` 动态选择 cursor 字段 (`openCodeSqlite` vs `hermesSqlite`)
 - `initialCursorEmpty` 检查两个 DB cursors
 - `knownDbSources` backfill 逻辑独立处理两个 cursors
@@ -1133,11 +1203,13 @@ pew 记录:
 ### Issue 2: CLI 主链路未接入 Hermes (High) ✅
 
 **Problem**:
+
 - `cli.ts` sync/notify 命令调用 `executeSync()` 时没传 `hermesDbPath` / `openHermesDb`
 - Registry 里的 Hermes driver 注册条件 `if (opts.hermesDbPath && opts.openHermesDb)` 永远为 false
 - 用户运行 `pew sync` 或 `pew notify --source=hermes` 时 Hermes 数据完全不被处理
 
 **Solution** (commit: `fix(cli): wire Hermes paths into CLI main entry points`):
+
 - `cli.ts` sync/notify 命令动态 import `hermes-sqlite-db.ts`
 - 调用 `getHermesDbPath()` 和 `openHermesDb(path)`
 - 传递给 `executeSync()` / `executeNotify()`
@@ -1150,17 +1222,20 @@ pew 记录:
 ### Issue 3: Notifier 插件格式不匹配 (High) ⚠️
 
 **Problem**:
+
 - 当前实现写的是 JSON 插件 (`pew-tracker.json`)
 - Hermes 实际要求**目录插件**（`plugin.yaml` + `__init__.py` Python 代码）
 - JSON 格式 Hermes 不会加载
 
 **Solution**: **手动安装**（TypeScript CLI 无法生成 Python 代码）
+
 - 用户需手动创建 `~/.hermes/plugins/pew-tracker/` 目录
 - 写入 `plugin.yaml` (manifest)
 - 写入 `__init__.py` (Python hook 代码)
 - 详细步骤见上方"Manual Plugin Installation"章节
 
-**Status**: 
+**Status**:
+
 - ⚠️ `pew init` 不支持 Hermes（设计限制）
 - ✅ 文档提供完整手动安装步骤
 - ✅ 现有 JSON 实现仅用于单元测试
@@ -1170,11 +1245,13 @@ pew 记录:
 ### Issue 4: rowCount 语义错误 (Medium) ✅
 
 **Problem**:
+
 - `DbTokenResult.rowCount` 接口文档定义为"raw rows queried"
 - Hermes driver 返回的是 `deltas.length`（增量 delta 条数）
 - 进度日志 `Scanned N files` 显示错误数字（delta 数而非 session 数）
 
 **Solution** (commit: `fix(cli): rowCount should reflect raw query rows, not deltas`):
+
 - `HermesSqliteResult` 新增 `rowCount` 字段
 - `parseHermesDatabase()` 返回 `rowCount: rows.length` (原始查询行数)
 - `hermes-token-driver.ts` 使用 `result.rowCount` 而非 `deltas.length`
@@ -1187,16 +1264,19 @@ pew 记录:
 ### Issue 5: SQL 查询表和列名完全错误 (High) ✅
 
 **Problem**:
+
 - `hermes-sqlite-db.ts` 查询的是 **不存在的 `llm_calls` 表**
 - 使用错误的列名：`session_id` (应为 `id`), `model_id` (应为 `model`), `created_at` (应为 `started_at`)
 - 错误地使用 `GROUP BY` 和 `SUM()` (Hermes `sessions` 表已经是聚合后的)
 - 这会导致真实运行时 Hermes token driver 返回零数据
 
 **Root Cause**:
+
 - 实现基于错误的 schema 假设，未对照真实 Hermes 数据库结构
 - 测试使用 mock functions，未验证 SQL 查询是否能在真实 DB 上执行
 
 **Solution** (commit: `fix(cli): correct Hermes SQL query to use sessions table`):
+
 - 查询 `sessions` 表（参考 `hermes_state.py:41-69`）
 - 使用正确列名：`id`, `model`, `started_at`
 - 移除 `GROUP BY` 和 `SUM()` - `sessions` 表已经是 per-session 聚合
@@ -1211,28 +1291,33 @@ Reference: `/Users/nocoo/workspace/reference/hermes-agent/hermes_state.py:41-69`
 ### Issue 6: Notifier 插件格式不兼容 (High) ✅
 
 **Problem**:
+
 - 原实现写入 JSON 文件 (`~/.hermes/plugins/pew-tracker.json`)
 - Hermes 官方插件系统要求**目录插件**（`~/.hermes/plugins/<name>/plugin.yaml` + `__init__.py`）
 - JSON 格式 Hermes 不会加载，但 `pew init --source=hermes` 会报告"安装成功"（假阳性）
 - 9 个单元测试验证的是自定义 JSON 格式，不是 Hermes 真实插件加载行为
 
 **Root Cause**:
+
 - TypeScript CLI 无法生成 Python 代码（`__init__.py` 需要 Python 函数）
 - 尝试实现自动安装超出了 CLI 工具的实现范围
 
 **Solution** (commit: `fix(cli): remove broken Hermes notifier`):
+
 - **删除** `hermes-hook.ts` 和 `hermes-hook.test.ts` (9 tests)
 - 从 notifier registry 移除 hermes driver (6 → 5 drivers)
 - 更新 `registry.test.ts` 所有断言
 - 更新文档明确说明：**Hermes notifier 仅支持手动安装**
 
 **Manual Installation** (唯一可行方案):
+
 - 用户需手动创建 `~/.hermes/plugins/pew-tracker/` 目录
 - 写入 `plugin.yaml` (manifest)
 - 写入 `__init__.py` (Python hook 代码)
 - 详细步骤见 Section 5 "Manual Plugin Installation"
 
 **Status**:
+
 - ⚠️ `pew init` **不支持** Hermes（设计限制）
 - ✅ 文档提供完整手动安装步骤
 - ✅ 诚实告知用户限制，避免假阳性安装信号

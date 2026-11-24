@@ -105,13 +105,13 @@ function OrgLogo({
       <div
         className={cn(
           sizeClasses[size],
-          "rounded-lg bg-basalt-muted flex items-center justify-center"
+          "rounded-lg bg-basalt-muted flex items-center justify-center",
         )}
       >
         <Building2
           className={cn(
             "text-basalt-muted-foreground",
-            size === "sm" ? "h-3 w-3" : size === "md" ? "h-5 w-5" : "h-8 w-8"
+            size === "sm" ? "h-3 w-3" : size === "md" ? "h-5 w-5" : "h-8 w-8",
           )}
           strokeWidth={1.5}
         />
@@ -222,12 +222,8 @@ function CreateOrgForm({
 
   return (
     <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
-      <h3 className="text-sm font-medium text-basalt-foreground mb-3">
-        Create Organization
-      </h3>
-      {error && (
-        <Banner tone="danger" size="sm" className="mb-3" description={error} />
-      )}
+      <h3 className="text-sm font-medium text-basalt-foreground mb-3">Create Organization</h3>
+      {error && <Banner tone="danger" size="sm" className="mb-3" description={error} />}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Name" htmlFor={nameId}>
           <Input
@@ -322,9 +318,7 @@ function EditOrgRow({
   return (
     <tr className="border-b border-basalt-border/50">
       <td colSpan={5} className="px-4 py-3">
-        {error && (
-          <Banner tone="danger" size="sm" className="mb-2" description={error} />
-        )}
+        {error && <Banner tone="danger" size="sm" className="mb-2" description={error} />}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Name" htmlFor={nameId}>
             <Input
@@ -385,7 +379,9 @@ function MembersModal({
   const [removing, setRemoving] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<{ id: string; name: string | null; email: string; image: string | null }[]>([]);
+  const [searchResults, setSearchResults] = useState<
+    { id: string; name: string | null; email: string; image: string | null }[]
+  >([]);
   const [searching, setSearching] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const { confirm, dialogProps } = useConfirm();
@@ -423,10 +419,9 @@ function MembersModal({
 
     setRemoving(member.userId);
     try {
-      const res = await fetch(
-        `/api/admin/organizations/${org.id}/members/${member.userId}`,
-        { method: "DELETE" }
-      );
+      const res = await fetch(`/api/admin/organizations/${org.id}/members/${member.userId}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
         setMembers((prev) => prev.filter((m) => m.userId !== member.userId));
         onMemberRemoved();
@@ -443,9 +438,13 @@ function MembersModal({
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await fetch(`/api/admin/users?q=${encodeURIComponent(searchQuery.trim())}&limit=10`);
+      const res = await fetch(
+        `/api/admin/users?q=${encodeURIComponent(searchQuery.trim())}&limit=10`,
+      );
       if (res.ok) {
-        const data = (await res.json()) as { users: { id: string; name: string | null; email: string; image: string | null }[] };
+        const data = (await res.json()) as {
+          users: { id: string; name: string | null; email: string; image: string | null }[];
+        };
         // Filter out users who are already members
         const memberIds = new Set(members.map((m) => m.userId));
         setSearchResults(data.users.filter((u) => !memberIds.has(u.id)));
@@ -458,7 +457,12 @@ function MembersModal({
   };
 
   // Add a user as member
-  const handleAddMember = async (user: { id: string; name: string | null; email: string; image: string | null }) => {
+  const handleAddMember = async (user: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  }) => {
     setAdding(true);
     try {
       const res = await fetch(`/api/admin/organizations/${org.id}/members`, {
@@ -482,7 +486,12 @@ function MembersModal({
 
   return (
     <>
-      <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <Dialog
+        open
+        onOpenChange={(next) => {
+          if (!next) onClose();
+        }}
+      >
         <DialogContent
           size="lg"
           showCloseButton={false}
@@ -586,8 +595,12 @@ function MembersModal({
             {loading ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-                  <Skeleton style={{ width: undefined }} key={`slot-${i}`} className="h-12 w-full" />
+                  <Skeleton
+                    style={{ width: undefined }}
+                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+                    key={`slot-${i}`}
+                    className="h-12 w-full"
+                  />
                 ))}
               </div>
             ) : members.length === 0 ? (
@@ -667,10 +680,7 @@ export default function AdminOrganizationsPage() {
     error: swrError,
     isLoading: loading,
     mutate: mutateRows,
-  } = useSWR<{ organizations: OrgRow[] }>(
-    isAdmin ? "/api/admin/organizations" : null,
-    fetcher
-  );
+  } = useSWR<{ organizations: OrgRow[] }>(isAdmin ? "/api/admin/organizations" : null, fetcher);
   const rows = orgData?.organizations ?? [];
   const error = swrError
     ? swrError instanceof Error
@@ -803,128 +813,123 @@ export default function AdminOrganizationsPage() {
       {loading && <OrgsSkeleton />}
 
       {/* Table */}
-      {!loading && (
-        rows.length === 0 ? (
-            <Empty
-              title="No organizations yet. Create one to get started."
-              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-            />
-          ) : (
-            <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-basalt-border">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                      Organization
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
-                      Slug
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-basalt-muted-foreground">
-                      Members
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
-                      Created
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) =>
-                    editingId === row.id ? (
-                      <EditOrgRow
-                        key={row.id}
-                        org={row}
-                        onSaved={(msg) => {
-                          setEditingId(null);
-                          setMessage({ type: "success", text: msg });
-                          fetchRows();
-                        }}
-                        onCancel={() => setEditingId(null)}
-                      />
-                    ) : (
-                      <tr
-                        key={row.id}
-                        className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <OrgLogo
-                                logoUrl={row.logoUrl}
-                                name={row.name}
-                                size="md"
-                              />
-                              <LogoUploadButton
-                                orgName={row.name}
-                                uploading={uploadingId === row.id}
-                                onFile={(file) => handleLogoUpload(row, file)}
-                              />
-                            </div>
-                            <span className="text-sm font-medium text-basalt-foreground">
-                              {row.name}
-                            </span>
+      {!loading &&
+        (rows.length === 0 ? (
+          <Empty
+            title="No organizations yet. Create one to get started."
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+          />
+        ) : (
+          <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-basalt-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                    Organization
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
+                    Slug
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-basalt-muted-foreground">
+                    Members
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
+                    Created
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) =>
+                  editingId === row.id ? (
+                    <EditOrgRow
+                      key={row.id}
+                      org={row}
+                      onSaved={(msg) => {
+                        setEditingId(null);
+                        setMessage({ type: "success", text: msg });
+                        fetchRows();
+                      }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <tr
+                      key={row.id}
+                      className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <OrgLogo logoUrl={row.logoUrl} name={row.name} size="md" />
+                            <LogoUploadButton
+                              orgName={row.name}
+                              uploading={uploadingId === row.id}
+                              onFile={(file) => handleLogoUpload(row, file)}
+                            />
                           </div>
-                        </td>
-                        <td className="px-4 py-3 hidden sm:table-cell">
-                          <span className="text-sm font-mono text-basalt-muted-foreground">
-                            {row.slug}
+                          <span className="text-sm font-medium text-basalt-foreground">
+                            {row.name}
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-sm tabular-nums text-basalt-muted-foreground">
-                            {row.memberCount}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 hidden md:table-cell">
-                          <span className="text-xs text-basalt-muted-foreground">
-                            {new Date(row.createdAt).toLocaleDateString()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={rowIconClassName}
-                              onClick={() => {
-                                setEditingId(row.id);
-                                setShowCreate(false);
-                              }}
-                              aria-label="Edit"
-                            >
-                              <Pencil strokeWidth={1.5} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={rowIconClassName}
-                              onClick={() => setMembersOrg(row)}
-                              aria-label="View members"
-                            >
-                              <Users strokeWidth={1.5} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={rowIconDangerClassName}
-                              onClick={() => handleDelete(row)}
-                              aria-label="Delete"
-                            >
-                              <Trash2 strokeWidth={1.5} />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )
-      )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <span className="text-sm font-mono text-basalt-muted-foreground">
+                          {row.slug}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-sm tabular-nums text-basalt-muted-foreground">
+                          {row.memberCount}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        <span className="text-xs text-basalt-muted-foreground">
+                          {new Date(row.createdAt).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={rowIconClassName}
+                            onClick={() => {
+                              setEditingId(row.id);
+                              setShowCreate(false);
+                            }}
+                            aria-label="Edit"
+                          >
+                            <Pencil strokeWidth={1.5} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={rowIconClassName}
+                            onClick={() => setMembersOrg(row)}
+                            aria-label="View members"
+                          >
+                            <Users strokeWidth={1.5} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={rowIconDangerClassName}
+                            onClick={() => handleDelete(row)}
+                            aria-label="Delete"
+                          >
+                            <Trash2 strokeWidth={1.5} />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+        ))}
 
       {/* Members modal */}
       {membersOrg && (

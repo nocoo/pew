@@ -39,7 +39,7 @@ interface PeakHoursCardProps {
  *   (day-of-week + time range + token count).
  */
 export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) {
-  const max = hourly.reduce((m, v) => (Math.max(v , m)), 0);
+  const max = hourly.reduce((m, v) => Math.max(v, m), 0);
   const peakHourIndex = max > 0 ? hourly.indexOf(max) : -1;
   const isEmpty = max === 0 && slots.length === 0;
 
@@ -57,16 +57,19 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
   }
 
   return (
-    <div className={cn("rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5", className)}>
+    <div
+      className={cn(
+        "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
+        className,
+      )}
+    >
       {/* Header — matches Working Hours / Daily Messages style */}
       <div className="mb-4 flex items-center justify-between">
         <p className="text-xs md:text-sm text-basalt-muted-foreground">Peak Hours</p>
         {peakHourIndex >= 0 && (
           <p className="text-xs text-basalt-muted-foreground">
             Busiest at{" "}
-            <span className="text-basalt-foreground font-medium">
-              {fmtHour(peakHourIndex)}
-            </span>
+            <span className="text-basalt-foreground font-medium">{fmtHour(peakHourIndex)}</span>
           </p>
         )}
       </div>
@@ -143,9 +146,7 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
                 <span className="truncate font-medium text-basalt-foreground">
                   {slot.dayOfWeek}
                 </span>
-                <span className="truncate text-basalt-muted-foreground">
-                  {slot.timeSlot}
-                </span>
+                <span className="truncate text-basalt-muted-foreground">{slot.timeSlot}</span>
               </div>
               <span className="shrink-0 font-medium text-basalt-foreground tabular-nums">
                 {formatTokens(slot.totalTokens)}

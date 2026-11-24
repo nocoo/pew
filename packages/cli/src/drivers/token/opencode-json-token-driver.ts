@@ -37,18 +37,16 @@ export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
 
   async discover(opts: DiscoverOpts, ctx: SyncContext): Promise<string[]> {
     if (!opts.openCodeMessageDir) return [];
-    const discovery = await discoverOpenCodeFiles(
-      opts.openCodeMessageDir,
-      ctx.dirMtimes,
-    );
+    const discovery = await discoverOpenCodeFiles(opts.openCodeMessageDir, ctx.dirMtimes);
     // Store dirMtimes back into context for orchestrator persistence
     ctx.dirMtimes = discovery.dirMtimes;
     // Expose skipped session-dir paths so the orchestrator's prune
     // pass can leave their cursors alone (see SyncContext.mtimeSkippedDirs).
     const prevSkipped = ctx.mtimeSkippedDirs ?? [];
-    ctx.mtimeSkippedDirs = prevSkipped.length === 0
-      ? discovery.skippedDirPaths
-      : [...prevSkipped, ...discovery.skippedDirPaths];
+    ctx.mtimeSkippedDirs =
+      prevSkipped.length === 0
+        ? discovery.skippedDirPaths
+        : [...prevSkipped, ...discovery.skippedDirPaths];
     return discovery.files;
   },
 
@@ -56,25 +54,42 @@ export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
     return fileUnchanged(cursor, fingerprint);
   },
 
-  resumeState(cursor: OpenCodeCursor | undefined, fingerprint: FileFingerprint): OpenCodeJsonResumeState {
+  resumeState(
+    cursor: OpenCodeCursor | undefined,
+    fingerprint: FileFingerprint,
+  ): OpenCodeJsonResumeState {
     const sameFile = cursor && cursor.inode === fingerprint.inode;
     return {
       kind: "opencode-json",
       lastTotals: sameFile ? (cursor.lastTotals ?? null) : null,
-      ...(sameFile && cursor.lastCacheWrite !== undefined ? { lastCacheWrite: cursor.lastCacheWrite } : {}),
+      ...(sameFile && cursor.lastCacheWrite !== undefined
+        ? { lastCacheWrite: cursor.lastCacheWrite }
+        : {}),
     };
   },
 
-  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<OpenCodeJsonParseResult> {
+  async parse(
+    filePath: string,
+    resume: ResumeState,
+    _ctx: SyncContext,
+  ): Promise<OpenCodeJsonParseResult> {
     const r = resume as OpenCodeJsonResumeState;
-    const result = await parseOpenCodeFile({ filePath, lastTotals: r.lastTotals,
-      ...(_ctx.collectAccounting ? { includeAccounting: true, lastCacheWrite: r.lastCacheWrite } : {}) });
+    const result = await parseOpenCodeFile({
+      filePath,
+      lastTotals: r.lastTotals,
+      ...(_ctx.collectAccounting
+        ? { includeAccounting: true, lastCacheWrite: r.lastCacheWrite }
+        : {}),
+    });
     return {
       deltas: result.delta ? [result.delta] : [],
       messageKey: result.messageKey,
       lastTotals: result.lastTotals,
-      ...(result.lastCacheWrite !== undefined ? { lastCacheWrite: result.lastCacheWrite } :
-        r.lastCacheWrite !== undefined ? { lastCacheWrite: r.lastCacheWrite } : {}),
+      ...(result.lastCacheWrite !== undefined
+        ? { lastCacheWrite: result.lastCacheWrite }
+        : r.lastCacheWrite !== undefined
+          ? { lastCacheWrite: r.lastCacheWrite }
+          : {}),
     };
   },
 

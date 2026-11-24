@@ -26,10 +26,7 @@ describe("sumBy", () => {
   });
 
   it("accepts a readonly array", () => {
-    const rows: ReadonlyArray<{ value: number }> = [
-      { value: 1 },
-      { value: 2 },
-    ];
+    const rows: ReadonlyArray<{ value: number }> = [{ value: 1 }, { value: 2 }];
     expect(sumBy(rows, "value")).toBe(3);
   });
 

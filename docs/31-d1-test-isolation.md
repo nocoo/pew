@@ -9,15 +9,16 @@ doc 30 upgraded five dimensions (L1+L2+L3+G1+G2), but the sixth — **D1 Test Is
 Currently **all E2E tests directly hit the production D1 database** (`pew-db`, ID `<PROD_DB_ID>`). The API E2E suite both reads AND writes (seed user, ingest records, create API keys, cleanup). This violates the core D1 principle: "E2E 测试必须物理隔离于生产资源".
 
 pew is a **Variant B: External Application** (Next.js on Railway, connecting to Cloudflare D1 via HTTP API + Workers). It has 2 Workers:
+
 - `pew-ingest` (writes) → `WORKER_INGEST_URL` / `WORKER_SECRET`
 - `pew` (reads) → `WORKER_READ_URL` / `WORKER_READ_SECRET`
 
 ### Target State
 
-| Dimension | Before | After |
-|-----------|--------|-------|
+| Dimension         | Before              | After                                      |
+| ----------------- | ------------------- | ------------------------------------------ |
 | D1 Test Isolation | ❌ E2E hits prod D1 | ✅ E2E hits `pew-db-test` via test Workers |
-| **Tier** | **B** | **S** (all 6 dimensions green) |
+| **Tier**          | **B**               | **S** (all 6 dimensions green)             |
 
 ---
 
@@ -53,12 +54,12 @@ E2E Runner (modified)
 
 ### Env Var Mapping
 
-| Purpose | Prod Var (`.env.local`) | Test Var (`.env.test`) |
-|---------|------------------------|----------------------|
-| D1 direct access | `CF_D1_DATABASE_ID` | `CF_D1_DATABASE_ID_TEST` |
-| Worker ingest | `WORKER_INGEST_URL` | `WORKER_INGEST_URL_TEST` |
-| Worker read | `WORKER_READ_URL` | `WORKER_READ_URL_TEST` |
-| Worker secrets | `WORKER_SECRET` / `WORKER_READ_SECRET` | Same secrets (shared) |
+| Purpose          | Prod Var (`.env.local`)                | Test Var (`.env.test`)   |
+| ---------------- | -------------------------------------- | ------------------------ |
+| D1 direct access | `CF_D1_DATABASE_ID`                    | `CF_D1_DATABASE_ID_TEST` |
+| Worker ingest    | `WORKER_INGEST_URL`                    | `WORKER_INGEST_URL_TEST` |
+| Worker read      | `WORKER_READ_URL`                      | `WORKER_READ_URL_TEST`   |
+| Worker secrets   | `WORKER_SECRET` / `WORKER_READ_SECRET` | Same secrets (shared)    |
 
 ---
 
@@ -69,6 +70,7 @@ E2E Runner (modified)
 Create `docs/31-d1-test-isolation.md` (this document). Update `docs/README.md` index.
 
 **Files:**
+
 - `docs/31-d1-test-isolation.md` (new)
 - `docs/README.md` (add row)
 
@@ -79,6 +81,7 @@ Create `docs/31-d1-test-isolation.md` (this document). Update `docs/README.md` i
 Manual Cloudflare operations (executed via `wrangler` CLI), then committed config changes.
 
 **Step 2a — Create test D1 database:**
+
 ```bash
 cd packages/worker
 npx wrangler d1 create pew-db-test
@@ -88,12 +91,14 @@ npx wrangler d1 create pew-db-test
 **Step 2b — Apply schema to test DB:**
 
 Export schema from prod (data-free) and apply to test:
+
 ```bash
 npx wrangler d1 export pew-db --remote --output=/tmp/prod-schema.sql --no-data
 npx wrangler d1 execute pew-db-test --remote --file /tmp/prod-schema.sql
 ```
 
 **Step 2c — Insert `_test_marker`:**
+
 ```bash
 npx wrangler d1 execute pew-db-test --remote --command "
   CREATE TABLE IF NOT EXISTS _test_marker (key TEXT PRIMARY KEY, value TEXT);
@@ -104,6 +109,7 @@ npx wrangler d1 execute pew-db-test --remote --command "
 **Step 2d — Add `[env.test]` to both Workers:**
 
 `packages/worker/wrangler.toml`:
+
 ```toml
 [env.test]
 name = "pew-ingest-test"
@@ -119,6 +125,7 @@ custom_domain = true
 ```
 
 `packages/worker-read/wrangler.toml`:
+
 ```toml
 [env.test]
 name = "pew-test"
@@ -134,6 +141,7 @@ custom_domain = true
 ```
 
 **Step 2e — Deploy test Workers and set secrets:**
+
 ```bash
 # Deploy ingest Worker (test env)
 cd packages/worker
@@ -153,6 +161,7 @@ npx wrangler secret put WORKER_READ_SECRET --env test
 **Step 2f — Create `.env.test`:**
 
 `packages/web/.env.test` (gitignored, manually created):
+
 ```
 # Test D1 database (pew-db-test) — NEVER point to production!
 CF_D1_DATABASE_ID_TEST=<test-d1-id>
@@ -163,6 +172,7 @@ WORKER_READ_URL_TEST=https://pew-test.worker.example.com
 ```
 
 **Files:**
+
 - `packages/worker/wrangler.toml` (add `[env.test]` section)
 - `packages/worker-read/wrangler.toml` (add `[env.test]` section)
 - `.gitignore` (add `.env.test`)
@@ -175,6 +185,7 @@ WORKER_READ_URL_TEST=https://pew-test.worker.example.com
 Create `scripts/d1-test-guard.ts` — reusable functions for test isolation verification.
 
 Four-layer defense (covers all three data paths: D1 direct, Worker ingest, Worker read):
+
 1. **Existence check**: all test env vars must be set (`CF_D1_DATABASE_ID_TEST`, `WORKER_INGEST_URL_TEST`, `WORKER_READ_URL_TEST`)
 2. **Non-equality check — DB**: test DB ID ≠ prod DB ID
 3. **Non-equality check — Workers**: test Worker URLs ≠ prod Worker URLs (prevents `.env.test` accidentally pointing test Workers at production endpoints; this is the primary data path for reads via `db-worker.ts` and writes via `ingest-handler.ts`)
@@ -188,12 +199,14 @@ Four-layer defense (covers all three data paths: D1 direct, Worker ingest, Worke
 > prod Worker URL, all real test traffic would still hit production.
 
 Core function `validateAndOverride(envLocal, envTest)`:
+
 - Takes prod env (from `.env.local`) and test env (from `.env.test`)
 - Validates all four layers
 - Returns overridden env dict with `CF_D1_DATABASE_ID` / `WORKER_INGEST_URL` / `WORKER_READ_URL` pointing to test resources
 - Throws on any failure (hard gate)
 
 **Files:**
+
 - `scripts/d1-test-guard.ts` (new)
 
 ---
@@ -205,6 +218,7 @@ Modify both E2E runners to load `.env.test`, validate isolation, and override en
 **`scripts/e2e-utils.ts`** — add `loadEnvTest()` (same parser as `loadEnvLocal`, different file path).
 
 **`scripts/run-e2e.ts`** — insert before server start:
+
 ```diff
   const envLocal = loadEnvLocal();
 + const envTest = loadEnvTest();
@@ -219,6 +233,7 @@ Modify both E2E runners to load `.env.test`, validate isolation, and override en
 `api-e2e.test.ts` requires **no changes** — its `getD1()` reads `CF_D1_DATABASE_ID` from `process.env`, which is now overridden to the test DB ID by the runner.
 
 **Files:**
+
 - `scripts/e2e-utils.ts` (add `loadEnvTest`)
 - `scripts/run-e2e.ts` (add isolation flow)
 - `scripts/run-e2e-ui.ts` (add isolation flow)
@@ -237,6 +252,7 @@ L1 tests for the guard utilities — mock-based, no real Cloudflare calls.
 - Marker verification: mock HTTP response
 
 **Files:**
+
 - `scripts/__tests__/d1-test-guard.test.ts` (new)
 
 ---
@@ -248,6 +264,7 @@ L1 tests for the guard utilities — mock-based, no real Cloudflare calls.
 **`docs/30-quality-system-upgrade.md`** — append D1 cross-reference to doc 31.
 
 **Files:**
+
 - `CLAUDE.md`
 - `docs/30-quality-system-upgrade.md`
 
@@ -271,6 +288,7 @@ bun run test:e2e:ui
 ```
 
 **Files:**
+
 - `docs/31-d1-test-isolation.md`
 
 ---
@@ -302,15 +320,15 @@ bun run test:e2e:ui                # 10+ specs pass, using pew-db-test
 # - Prod DB has no e2e-test-user-id ✅
 ```
 
-| Dimension | Status | Evidence |
-|-----------|--------|----------|
-| L1 | ✅ | 2,170+ tests, 93%+ coverage |
-| L2 | ✅ | 19 API E2E tests, real HTTP, **now on test DB** |
-| L3 | ✅ | 10 Playwright specs, **now on test DB** |
-| G1 | ✅ | tsc×5 + eslint --max-warnings=0 |
-| G2 | ✅ | osv-scanner + gitleaks |
-| D1 | ✅ | pew-db-test + test Workers + _test_marker + guards |
-| **Tier** | **S** | All 6 dimensions green |
+| Dimension | Status | Evidence                                           |
+| --------- | ------ | -------------------------------------------------- |
+| L1        | ✅     | 2,170+ tests, 93%+ coverage                        |
+| L2        | ✅     | 19 API E2E tests, real HTTP, **now on test DB**    |
+| L3        | ✅     | 10 Playwright specs, **now on test DB**            |
+| G1        | ✅     | tsc×5 + eslint --max-warnings=0                    |
+| G2        | ✅     | osv-scanner + gitleaks                             |
+| D1        | ✅     | pew-db-test + test Workers + _test_marker + guards |
+| **Tier**  | **S**  | All 6 dimensions green                             |
 
 ---
 
@@ -318,12 +336,12 @@ bun run test:e2e:ui                # 10+ specs pass, using pew-db-test
 
 ### Infrastructure
 
-| Resource | ID / URL | Status |
-|----------|----------|--------|
-| pew-db-test (D1) | `<TEST_DB_ID>` | ✅ 22 tables + _test_marker |
-| pew-ingest-test (Worker) | `pew-ingest-test.worker.example.com` | ✅ Deployed |
-| pew-test (Worker) | `pew-test.worker.example.com` | ✅ Deployed |
-| _test_marker | `key='env', value='test'` | ✅ Verified |
+| Resource                 | ID / URL                             | Status                      |
+| ------------------------ | ------------------------------------ | --------------------------- |
+| pew-db-test (D1)         | `<TEST_DB_ID>`                       | ✅ 22 tables + _test_marker |
+| pew-ingest-test (Worker) | `pew-ingest-test.worker.example.com` | ✅ Deployed                 |
+| pew-test (Worker)        | `pew-test.worker.example.com`        | ✅ Deployed                 |
+| _test_marker             | `key='env', value='test'`            | ✅ Verified                 |
 
 ### Guard Verification
 
@@ -346,12 +364,12 @@ Test Worker URLs ≠ Prod Worker URLs ✅
 
 ### Commit Log
 
-| # | Hash | Message |
-|---|------|---------|
-| 1 | `7a60e88` | docs: add D1 test isolation upgrade plan (doc 31) |
-| 2 | `2a804c8` | chore: create test D1 database and deploy test Workers |
-| 3 | `a3acc0a` | feat: add D1 test isolation guard utilities |
-| 4 | `26d4807` | refactor: integrate test isolation into E2E runners |
-| 5 | `7aa4c44` | test: add D1 test guard unit tests |
-| 6 | `07911fd` | docs: update CLAUDE.md and doc 30 with D1 dimension |
-| 7 | — | docs: finalize doc 31 with verification record |
+| #   | Hash      | Message                                                |
+| --- | --------- | ------------------------------------------------------ |
+| 1   | `7a60e88` | docs: add D1 test isolation upgrade plan (doc 31)      |
+| 2   | `2a804c8` | chore: create test D1 database and deploy test Workers |
+| 3   | `a3acc0a` | feat: add D1 test isolation guard utilities            |
+| 4   | `26d4807` | refactor: integrate test isolation into E2E runners    |
+| 5   | `7aa4c44` | test: add D1 test guard unit tests                     |
+| 6   | `07911fd` | docs: update CLAUDE.md and doc 30 with D1 dimension    |
+| 7   | —         | docs: finalize doc 31 with verification record         |

@@ -127,13 +127,15 @@ export interface SyncCycleResult {
 ### executeSyncFn Signature Change
 
 Current:
+
 ```ts
-executeSyncFn: (triggers: SyncTrigger[]) => Promise<void>
+executeSyncFn: (triggers: SyncTrigger[]) => Promise<void>;
 ```
 
 New:
+
 ```ts
-executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>
+executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>;
 ```
 
 The function always returns a `SyncCycleResult`. It never throws — errors from individual sync phases are captured inside the result as `tokenSyncError` / `sessionSyncError`. This means:
@@ -147,6 +149,7 @@ The coordinator's existing error handling for unexpected failures (e.g. the enti
 ### Notify Upload Policy
 
 **`pew notify` does NOT run upload.** This is by design:
+
 - Notify runs in a background process spawned by AI tool hooks
 - Upload requires network I/O and may be slow/unreliable
 - Upload is triggered by `pew sync --upload` (default behavior) when the user explicitly syncs
@@ -160,6 +163,7 @@ Each step is an atomic commit. Tests must pass after each step.
 **Files changed**: `packages/core/src/types.ts`
 
 Add:
+
 - `SyncCycleResult` interface (with independently optional `tokenSync` / `sessionSync` + per-phase error fields)
 - `RunLogEntry` interface
 - Update `CoordinatorRunResult` to include:
@@ -220,6 +224,7 @@ Existing `CoordinatorRunResult` fields (`runId`, `triggers`, `hadFollowUp`, `wai
 **Files changed**: `packages/cli/src/notifier/coordinator.ts`
 
 Add internal `writeRunLog` function:
+
 - Creates `runs/` directory under `stateDir`
 - Writes `runs/<runId>.json` with `RunLogEntry`
 - Writes `last-run.json` (overwrite) in `stateDir`
@@ -232,6 +237,7 @@ Call `writeRunLog` at the end of `coordinatedSync`, after all code paths (locked
 **Files changed**: `packages/cli/src/__tests__/coordinator.test.ts`
 
 New tests:
+
 - Run log file written to `runs/<runId>.json` with correct schema
 - `last-run.json` written with same content
 - `runs/` directory created via `fs.mkdir`
@@ -273,16 +279,19 @@ New tests:
 ### Step 6: Full integration verification
 
 Run all tests:
+
 ```bash
 bun test --filter 'packages/cli'
 ```
 
 Build:
+
 ```bash
 bun run build
 ```
 
 Manual verification:
+
 ```bash
 # Reset ALL state (token + session cursors, queues, and run logs)
 rm -f ~/.config/pew/cursors.json ~/.config/pew/queue.jsonl ~/.config/pew/queue.state.json
@@ -308,35 +317,35 @@ cat ~/.config/pew/last-run.json | jq '.cycles[0].tokenSync.totalDeltas, .cycles[
 
 ### Existing tests to update (Step 2 + Step 3 + Step 5)
 
-| File | Tests | Change |
-|------|-------|--------|
-| `session-sync.test.ts` | existing | Add `filesScanned` assertions |
-| `coordinator.test.ts` | 16 tests | Mock returns `{}`, add assertions for new fields |
-| `notify-command.test.ts` | 3 tests | Mock returns `SyncCycleResult` |
+| File                     | Tests    | Change                                           |
+| ------------------------ | -------- | ------------------------------------------------ |
+| `session-sync.test.ts`   | existing | Add `filesScanned` assertions                    |
+| `coordinator.test.ts`    | 16 tests | Mock returns `{}`, add assertions for new fields |
+| `notify-command.test.ts` | 3 tests  | Mock returns `SyncCycleResult`                   |
 
 ### New tests (Step 2 + Step 3 + Step 4 + Step 5)
 
-| Category | Tests | Step |
-|----------|-------|------|
-| Session filesScanned | 1-2 | Step 2 |
-| Cycle result collection | 4 | Step 3 |
-| Run log file writing | 10 | Step 4 |
-| Session sync in notify + partial success | 3 | Step 5 |
+| Category                                 | Tests | Step   |
+| ---------------------------------------- | ----- | ------ |
+| Session filesScanned                     | 1-2   | Step 2 |
+| Cycle result collection                  | 4     | Step 3 |
+| Run log file writing                     | 10    | Step 4 |
+| Session sync in notify + partial success | 3     | Step 5 |
 
 Total: ~18 new tests + 19+ updated tests.
 
 ## File Change Summary
 
-| File | Steps | Nature |
-|------|-------|--------|
-| `packages/core/src/types.ts` | 1 | Add `SyncCycleResult`, `RunLogEntry`, update `CoordinatorRunResult` |
-| `packages/cli/src/commands/session-sync.ts` | 2 | Add `filesScanned` to `SessionSyncResult` |
-| `packages/cli/src/notifier/coordinator.ts` | 3, 4 | Signature change, result collection, run log writer |
-| `packages/cli/src/commands/notify.ts` | 5 | Add session sync (explicit `openSessionDb` field, no interface extension), return `SyncCycleResult` |
-| `packages/cli/src/cli.ts` | 2, 5 | Session filesScanned display; import `openSessionDb`, pass to notify |
-| `packages/cli/src/__tests__/session-sync.test.ts` | 2 | Add `filesScanned` assertions |
-| `packages/cli/src/__tests__/coordinator.test.ts` | 3, 4 | Update mocks, ~14 new tests |
-| `packages/cli/src/__tests__/notify-command.test.ts` | 5 | Update mocks, ~3 new tests |
+| File                                                | Steps | Nature                                                                                              |
+| --------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------- |
+| `packages/core/src/types.ts`                        | 1     | Add `SyncCycleResult`, `RunLogEntry`, update `CoordinatorRunResult`                                 |
+| `packages/cli/src/commands/session-sync.ts`         | 2     | Add `filesScanned` to `SessionSyncResult`                                                           |
+| `packages/cli/src/notifier/coordinator.ts`          | 3, 4  | Signature change, result collection, run log writer                                                 |
+| `packages/cli/src/commands/notify.ts`               | 5     | Add session sync (explicit `openSessionDb` field, no interface extension), return `SyncCycleResult` |
+| `packages/cli/src/cli.ts`                           | 2, 5  | Session filesScanned display; import `openSessionDb`, pass to notify                                |
+| `packages/cli/src/__tests__/session-sync.test.ts`   | 2     | Add `filesScanned` assertions                                                                       |
+| `packages/cli/src/__tests__/coordinator.test.ts`    | 3, 4  | Update mocks, ~14 new tests                                                                         |
+| `packages/cli/src/__tests__/notify-command.test.ts` | 5     | Update mocks, ~3 new tests                                                                          |
 
 ## Future Phases
 

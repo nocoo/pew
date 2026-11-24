@@ -19,10 +19,7 @@
  * expansion step would refuse to claim the bare name (already taken).
  */
 
-import type {
-  DynamicPricingEntry,
-  DynamicPricingMeta,
-} from "./types";
+import type { DynamicPricingEntry, DynamicPricingMeta } from "./types";
 
 export interface MergeInput {
   baseline: DynamicPricingEntry[];
@@ -39,13 +36,11 @@ export interface MergeResult {
 
 function shouldSkipForZeroPrice(
   existing: DynamicPricingEntry | undefined,
-  incoming: DynamicPricingEntry
+  incoming: DynamicPricingEntry,
 ): boolean {
   if (!existing) return false;
-  const incomingZero =
-    incoming.inputPerMillion === 0 && incoming.outputPerMillion === 0;
-  const existingPositive =
-    existing.inputPerMillion > 0 || existing.outputPerMillion > 0;
+  const incomingZero = incoming.inputPerMillion === 0 && incoming.outputPerMillion === 0;
+  const existingPositive = existing.inputPerMillion > 0 || existing.outputPerMillion > 0;
   return incomingZero && existingPositive;
 }
 
@@ -56,10 +51,7 @@ function cloneEntry(entry: DynamicPricingEntry): DynamicPricingEntry {
   };
 }
 
-function applyLayer(
-  byModel: Map<string, DynamicPricingEntry>,
-  layer: DynamicPricingEntry[]
-): void {
+function applyLayer(byModel: Map<string, DynamicPricingEntry>, layer: DynamicPricingEntry[]): void {
   for (const entry of layer) {
     const exact = byModel.get(entry.model);
     // Alias-aware: if no exact match but a bare baseline holds the suffix,
@@ -86,9 +78,15 @@ function applyLayer(
     const routes = { ...prior?.routePrices, ...entry.routePrices };
     if (prior?.route && prior.route !== entry.route) {
       routes[prior.route] = {
-        inputPerMillion: prior.inputPerMillion, outputPerMillion: prior.outputPerMillion, cachedPerMillion: prior.cachedPerMillion,
-        cacheWritePerMillion: prior.cacheWritePerMillion, cacheWrite5mPerMillion: prior.cacheWrite5mPerMillion, cacheWrite1hPerMillion: prior.cacheWrite1hPerMillion,
-        contextTiers: prior.contextTiers, origin: prior.origin, updatedAt: prior.updatedAt,
+        inputPerMillion: prior.inputPerMillion,
+        outputPerMillion: prior.outputPerMillion,
+        cachedPerMillion: prior.cachedPerMillion,
+        cacheWritePerMillion: prior.cacheWritePerMillion,
+        cacheWrite5mPerMillion: prior.cacheWrite5mPerMillion,
+        cacheWrite1hPerMillion: prior.cacheWrite1hPerMillion,
+        contextTiers: prior.contextTiers,
+        origin: prior.origin,
+        updatedAt: prior.updatedAt,
       };
     }
     // A previous primary route may become primary again in the next layer.

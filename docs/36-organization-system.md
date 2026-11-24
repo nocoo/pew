@@ -6,23 +6,23 @@
 
 ## Status
 
-| # | Commit | Description | Status |
-|---|--------|-------------|--------|
-| 1 | `docs: add organization system plan` | This document | done |
-| 2 | `feat: add organizations migration` | `019-organizations.sql` | done |
-| 3 | `feat: add organization types to @pew/core` | Org-related type definitions | done |
-| 4 | `feat: add admin organizations CRUD API` | `GET/POST/PATCH/DELETE /api/admin/organizations` | done |
-| 5 | `test: add L1 tests for admin organizations API` | Admin orgs CRUD unit tests | done |
-| 6 | `feat: add organization logo upload` | `POST /api/admin/organizations/[orgId]/logo` | done |
-| 7 | `feat: add admin organization members API` | `POST/DELETE /api/admin/organizations/[orgId]/members` | done |
-| 8 | `feat: add admin organization management page` | `/admin/organizations` CRUD UI | done |
-| 9 | `feat: add user organization APIs` | List all orgs, list my orgs, view members, join, leave | done |
-| 10 | `test: add L1 tests for user org APIs` | Join/leave/list unit tests | done |
-| 11 | `feat: add organizations settings page` | `/settings/organizations` with join/leave UI | done |
-| 12 | `feat: add organization leaderboard API` | `GET /api/leaderboard?org=xxx` with EXISTS filter | done |
-| 13 | `test: add L1 tests for organization leaderboard` | Org-scoped aggregation tests | done |
-| 14 | `feat: upgrade leaderboard scope dropdown` | Org + Team selector; auth-gated; localStorage persistence | done |
-| 15 | `test: add L2 E2E tests for organization flow` | End-to-end organization scenarios | done |
+| #   | Commit                                            | Description                                               | Status |
+| --- | ------------------------------------------------- | --------------------------------------------------------- | ------ |
+| 1   | `docs: add organization system plan`              | This document                                             | done   |
+| 2   | `feat: add organizations migration`               | `019-organizations.sql`                                   | done   |
+| 3   | `feat: add organization types to @pew/core`       | Org-related type definitions                              | done   |
+| 4   | `feat: add admin organizations CRUD API`          | `GET/POST/PATCH/DELETE /api/admin/organizations`          | done   |
+| 5   | `test: add L1 tests for admin organizations API`  | Admin orgs CRUD unit tests                                | done   |
+| 6   | `feat: add organization logo upload`              | `POST /api/admin/organizations/[orgId]/logo`              | done   |
+| 7   | `feat: add admin organization members API`        | `POST/DELETE /api/admin/organizations/[orgId]/members`    | done   |
+| 8   | `feat: add admin organization management page`    | `/admin/organizations` CRUD UI                            | done   |
+| 9   | `feat: add user organization APIs`                | List all orgs, list my orgs, view members, join, leave    | done   |
+| 10  | `test: add L1 tests for user org APIs`            | Join/leave/list unit tests                                | done   |
+| 11  | `feat: add organizations settings page`           | `/settings/organizations` with join/leave UI              | done   |
+| 12  | `feat: add organization leaderboard API`          | `GET /api/leaderboard?org=xxx` with EXISTS filter         | done   |
+| 13  | `test: add L1 tests for organization leaderboard` | Org-scoped aggregation tests                              | done   |
+| 14  | `feat: upgrade leaderboard scope dropdown`        | Org + Team selector; auth-gated; localStorage persistence | done   |
+| 15  | `test: add L2 E2E tests for organization flow`    | End-to-end organization scenarios                         | done   |
 
 ---
 
@@ -43,19 +43,19 @@ but lacks a larger-scale grouping mechanism for interest communities.
 
 ## Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Naming | Organization (Org) | Distinguishes from Team; familiar term for group membership |
-| Nature | Interest-based community | Open groups, no identity verification, self-service join/leave |
-| Creation rights | System admin only (`is_admin`) | Prevents namespace pollution; admin curates available orgs |
-| Member management | System admin only | Admins can add/remove members; no org-level admin role |
-| Joining | User self-service (join via settings) | Users browse public org list and join freely |
-| Leaving | User self-service | Users can leave any org they belong to |
-| Multi-org | Yes (many-to-many) | Users may join multiple interest communities |
-| Member visibility | Logged-in users only | Any authenticated user can view any org's member list |
-| Org vs Team | Independent | Orgs are open communities; Teams are invite-only competition units |
-| Logo storage | Cloudflare R2 | Consistent with existing team logo storage pattern |
-| Leaderboard scope | Org + Team combined dropdown | Single selector with grouped options; localStorage persistence |
+| Decision          | Choice                                | Rationale                                                          |
+| ----------------- | ------------------------------------- | ------------------------------------------------------------------ |
+| Naming            | Organization (Org)                    | Distinguishes from Team; familiar term for group membership        |
+| Nature            | Interest-based community              | Open groups, no identity verification, self-service join/leave     |
+| Creation rights   | System admin only (`is_admin`)        | Prevents namespace pollution; admin curates available orgs         |
+| Member management | System admin only                     | Admins can add/remove members; no org-level admin role             |
+| Joining           | User self-service (join via settings) | Users browse public org list and join freely                       |
+| Leaving           | User self-service                     | Users can leave any org they belong to                             |
+| Multi-org         | Yes (many-to-many)                    | Users may join multiple interest communities                       |
+| Member visibility | Logged-in users only                  | Any authenticated user can view any org's member list              |
+| Org vs Team       | Independent                           | Orgs are open communities; Teams are invite-only competition units |
+| Logo storage      | Cloudflare R2                         | Consistent with existing team logo storage pattern                 |
+| Leaderboard scope | Org + Team combined dropdown          | Single selector with grouped options; localStorage persistence     |
 
 ---
 
@@ -109,35 +109,35 @@ CREATE INDEX IF NOT EXISTS idx_org_members_user ON organization_members(user_id)
 
 ### Admin APIs (requires `is_admin`)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/admin/organizations` | List all organizations with member counts |
-| POST | `/api/admin/organizations` | Create new organization (name, slug) |
-| PATCH | `/api/admin/organizations/[orgId]` | Update org details (name, slug) |
-| DELETE | `/api/admin/organizations/[orgId]` | Delete organization and all memberships |
-| POST | `/api/admin/organizations/[orgId]/logo` | Upload org logo (multipart form) |
-| POST | `/api/admin/organizations/[orgId]/members` | Add user to org (body: `{ userId }`) |
-| DELETE | `/api/admin/organizations/[orgId]/members/[userId]` | Remove user from org |
+| Method | Endpoint                                            | Description                               |
+| ------ | --------------------------------------------------- | ----------------------------------------- |
+| GET    | `/api/admin/organizations`                          | List all organizations with member counts |
+| POST   | `/api/admin/organizations`                          | Create new organization (name, slug)      |
+| PATCH  | `/api/admin/organizations/[orgId]`                  | Update org details (name, slug)           |
+| DELETE | `/api/admin/organizations/[orgId]`                  | Delete organization and all memberships   |
+| POST   | `/api/admin/organizations/[orgId]/logo`             | Upload org logo (multipart form)          |
+| POST   | `/api/admin/organizations/[orgId]/members`          | Add user to org (body: `{ userId }`)      |
+| DELETE | `/api/admin/organizations/[orgId]/members/[userId]` | Remove user from org                      |
 
 ### User APIs (authenticated)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/organizations` | List all organizations with member counts |
-| GET | `/api/organizations/mine` | List orgs the current user belongs to |
-| GET | `/api/organizations/[orgId]/members` | List members of an organization |
-| POST | `/api/organizations/[orgId]/join` | Join an organization |
-| DELETE | `/api/organizations/[orgId]/leave` | Leave an organization |
+| Method | Endpoint                             | Description                               |
+| ------ | ------------------------------------ | ----------------------------------------- |
+| GET    | `/api/organizations`                 | List all organizations with member counts |
+| GET    | `/api/organizations/mine`            | List orgs the current user belongs to     |
+| GET    | `/api/organizations/[orgId]/members` | List members of an organization           |
+| POST   | `/api/organizations/[orgId]/join`    | Join an organization                      |
+| DELETE | `/api/organizations/[orgId]/leave`   | Leave an organization                     |
 
 All user APIs require authentication. Anonymous users cannot access org data.
 
 ### Leaderboard API (public with scope restrictions)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/leaderboard` | Global leaderboard (default) |
-| GET | `/api/leaderboard?org=xxx` | Leaderboard filtered by organization |
-| GET | `/api/leaderboard?team=xxx` | Leaderboard filtered by team |
+| Method | Endpoint                    | Description                          |
+| ------ | --------------------------- | ------------------------------------ |
+| GET    | `/api/leaderboard`          | Global leaderboard (default)         |
+| GET    | `/api/leaderboard?org=xxx`  | Leaderboard filtered by organization |
+| GET    | `/api/leaderboard?team=xxx` | Leaderboard filtered by team         |
 
 **Scope parameter contract (mutually exclusive):**
 
@@ -151,6 +151,7 @@ Parameter name follows existing convention (`team`, not `teamId`).
 **Anonymous access policy:**
 
 The leaderboard API itself remains public (no auth required), but:
+
 - Anonymous requests with `org` or `team` params are **ignored** — treated as global
 - This matches the UI behavior where anonymous users cannot see the scope dropdown
 - No 401/403 errors; just silently fall back to global for simpler client handling
@@ -160,8 +161,8 @@ The leaderboard API itself remains public (no auth required), but:
 ```typescript
 interface LeaderboardResponse {
   period: string;
-  scope: 'global' | 'org' | 'team';  // NEW: actual applied scope
-  scopeId?: string;                   // NEW: org_id or team_id when scoped
+  scope: "global" | "org" | "team"; // NEW: actual applied scope
+  scopeId?: string; // NEW: org_id or team_id when scoped
   entries: LeaderboardEntry[];
 }
 ```
@@ -171,12 +172,13 @@ The `scope` and `scopeId` fields let clients verify which scope was actually app
 
 **Cache-Control policy:**
 
-| Condition | Cache-Control |
-|-----------|---------------|
-| No scope params (global) | `public, s-maxage=60, stale-while-revalidate=120` |
-| Any `org` or `team` param present | `private, no-store` |
+| Condition                         | Cache-Control                                     |
+| --------------------------------- | ------------------------------------------------- |
+| No scope params (global)          | `public, s-maxage=60, stale-while-revalidate=120` |
+| Any `org` or `team` param present | `private, no-store`                               |
 
 Scoped requests use `private, no-store` regardless of auth status because:
+
 1. Anonymous users get silently downgraded to global (different content than logged-in)
 2. Different logged-in users may have different membership visibility in future
 3. Follows existing team-scoped leaderboard behavior
@@ -201,6 +203,7 @@ New admin page for organization management:
 - **Member modal**: Lists members with remove button; search to add new members
 
 **Logo upload flow (same as team logos):**
+
 1. Admin selects image file in edit modal
 2. Frontend sends file to `POST /api/admin/organizations/[orgId]/logo`
 3. Backend resizes/compresses, uploads to R2, gets stable CDN URL
@@ -276,6 +279,7 @@ Current dropdown only shows Teams. New design:
 
 Current design has a separate toggle for Team view. This is being replaced by the
 unified dropdown because:
+
 1. Single control point is more intuitive than toggle + dropdown combo
 2. Org and Team scopes are mutually exclusive, better represented as a single selector
 3. localStorage persistence applies uniformly to the single scope state
@@ -388,8 +392,8 @@ Key: `pew:leaderboard:scope`
 
 ```typescript
 interface LeaderboardScopePreference {
-  type: 'global' | 'org' | 'team';
-  id?: string;  // org_id or team_id when type is not 'global'
+  type: "global" | "org" | "team";
+  id?: string; // org_id or team_id when type is not 'global'
 }
 ```
 
@@ -420,14 +424,14 @@ is hidden and no org/team API calls are made.
 
 ## Security Considerations
 
-| Concern | Mitigation |
-|---------|------------|
-| Spam joining | Rate limit `/api/organizations/[orgId]/join` (10 req/min per user) |
-| Unauthorized org creation | Admin-only API, `is_admin` check |
-| Unauthorized member removal | Admin-only API for forced removal; users can only self-leave |
-| Logo upload | Server-side processing; validate Content-Type, resize/compress before R2 storage |
-| Member list access | Requires authentication; anonymous users cannot enumerate members |
-| Scoped leaderboard abuse | Anonymous requests with scope params silently degrade to global |
+| Concern                     | Mitigation                                                                       |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| Spam joining                | Rate limit `/api/organizations/[orgId]/join` (10 req/min per user)               |
+| Unauthorized org creation   | Admin-only API, `is_admin` check                                                 |
+| Unauthorized member removal | Admin-only API for forced removal; users can only self-leave                     |
+| Logo upload                 | Server-side processing; validate Content-Type, resize/compress before R2 storage |
+| Member list access          | Requires authentication; anonymous users cannot enumerate members                |
+| Scoped leaderboard abuse    | Anonymous requests with scope params silently degrade to global                  |
 
 ---
 

@@ -122,19 +122,13 @@ export type AdminRpcRequest =
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handleListAuditLogs(
-  _req: ListAuditLogsRequest,
-  _db: D1Database
-): Promise<Response> {
+async function handleListAuditLogs(_req: ListAuditLogsRequest, _db: D1Database): Promise<Response> {
   // audit_logs table does not exist in the current schema
   // Return empty results until the table is created via migration
   return Response.json({ result: [] });
 }
 
-async function handleGetAuditLog(
-  req: GetAuditLogRequest,
-  _db: D1Database
-): Promise<Response> {
+async function handleGetAuditLog(req: GetAuditLogRequest, _db: D1Database): Promise<Response> {
   if (!req.logId) {
     return Response.json({ error: "logId is required" }, { status: 400 });
   }
@@ -157,10 +151,7 @@ async function handleGetSystemStats(db: D1Database): Promise<Response> {
   return Response.json({ result: result });
 }
 
-async function handleListAdminUsers(
-  req: ListAdminUsersRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleListAdminUsers(req: ListAdminUsersRequest, db: D1Database): Promise<Response> {
   const limit = Math.min(req.limit ?? 50, 250);
   const offset = req.offset ?? 0;
 
@@ -183,15 +174,15 @@ async function handleListAdminUsers(
   sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
   params.push(limit, offset);
 
-  const results = await db.prepare(sql).bind(...params).all<AdminUserRow>();
+  const results = await db
+    .prepare(sql)
+    .bind(...params)
+    .all<AdminUserRow>();
 
   return Response.json({ result: results.results });
 }
 
-async function handleGetAdminUser(
-  req: GetAdminUserRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetAdminUser(req: GetAdminUserRequest, db: D1Database): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
   }
@@ -200,7 +191,7 @@ async function handleGetAdminUser(
     .prepare(
       `SELECT id, name, email, created_at
        FROM users
-       WHERE id = ?`
+       WHERE id = ?`,
     )
     .bind(req.userId)
     .first<AdminUserRow>();
@@ -208,10 +199,7 @@ async function handleGetAdminUser(
   return Response.json({ result: result });
 }
 
-async function handleCountUsers(
-  _req: CountUsersRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleCountUsers(_req: CountUsersRequest, db: D1Database): Promise<Response> {
   const sql = `SELECT COUNT(*) AS count FROM users`;
   const result = await db.prepare(sql).first<{ count: number }>();
 
@@ -294,15 +282,13 @@ async function handleGetStorageStats(db: D1Database): Promise<Response> {
 // Router
 // ---------------------------------------------------------------------------
 
-export async function handleAdminRpc(
-  request: AdminRpcRequest,
-  db: D1Database
-): Promise<Response> {
+export async function handleAdminRpc(request: AdminRpcRequest, db: D1Database): Promise<Response> {
   switch (request.method) {
     case "admin.getUsersByIds":
     case "admin.getUsageComparison": {
       if (
-        !Array.isArray(request.userIds) || request.userIds.length === 0 ||
+        !Array.isArray(request.userIds) ||
+        request.userIds.length === 0 ||
         request.userIds.length > 10 ||
         request.userIds.some((id) => typeof id !== "string" || !id)
       ) {
@@ -310,15 +296,26 @@ export async function handleAdminRpc(
       }
       const placeholders = request.userIds.map(() => "?").join(", ");
       if (request.method === "admin.getUsersByIds") {
-        const rows = await db.prepare(`SELECT id, name, email, image, slug FROM users WHERE id IN (${placeholders})`)
-          .bind(...request.userIds).all<{ id: string; name: string | null; email: string; image: string | null; slug: string | null }>();
+        const rows = await db
+          .prepare(`SELECT id, name, email, image, slug FROM users WHERE id IN (${placeholders})`)
+          .bind(...request.userIds)
+          .all<{
+            id: string;
+            name: string | null;
+            email: string;
+            image: string | null;
+            slug: string | null;
+          }>();
         return Response.json({ result: rows.results });
       }
       const tzOffset = request.tzOffset ?? 0;
       if (
-        typeof request.fromDate !== "string" || !Number.isFinite(Date.parse(request.fromDate)) ||
-        typeof request.toDate !== "string" || !Number.isFinite(Date.parse(request.toDate)) ||
-        !Number.isInteger(tzOffset) || Math.abs(tzOffset) > 840 ||
+        typeof request.fromDate !== "string" ||
+        !Number.isFinite(Date.parse(request.fromDate)) ||
+        typeof request.toDate !== "string" ||
+        !Number.isFinite(Date.parse(request.toDate)) ||
+        !Number.isInteger(tzOffset) ||
+        Math.abs(tzOffset) > 840 ||
         (request.source !== undefined && typeof request.source !== "string") ||
         (request.model !== undefined && typeof request.model !== "string")
       ) {
@@ -328,7 +325,12 @@ export async function handleAdminRpc(
                         user_id, SUM(total_tokens) AS total_tokens, source, model
                  FROM usage_totals
                  WHERE user_id IN (${placeholders}) AND hour_start >= ? AND hour_start < ?`;
-      const params: unknown[] = [String(-tzOffset), ...request.userIds, request.fromDate, request.toDate];
+      const params: unknown[] = [
+        String(-tzOffset),
+        ...request.userIds,
+        request.fromDate,
+        request.toDate,
+      ];
       if (request.source) {
         sql += " AND source = ?";
         params.push(request.source);
@@ -338,8 +340,16 @@ export async function handleAdminRpc(
         params.push(request.model);
       }
       sql += " GROUP BY date, user_id, source, model";
-      const rows = await db.prepare(sql).bind(...params)
-        .all<{ date: string; user_id: string; total_tokens: number; source: string; model: string }>();
+      const rows = await db
+        .prepare(sql)
+        .bind(...params)
+        .all<{
+          date: string;
+          user_id: string;
+          total_tokens: number;
+          source: string;
+          model: string;
+        }>();
       return Response.json({ result: rows.results });
     }
     case "admin.listAuditLogs":
@@ -359,7 +369,7 @@ export async function handleAdminRpc(
     default:
       return Response.json(
         { error: `Unknown admin method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

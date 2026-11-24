@@ -1,6 +1,12 @@
 import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { cn } from "@/lib/utils";
-import { ROW_CLASSES, COL_RANK, COL_SESSIONS, COL_DURATION, COL_TOKENS } from "@/components/leaderboard/leaderboard-layout";
+import {
+  ROW_CLASSES,
+  COL_RANK,
+  COL_SESSIONS,
+  COL_DURATION,
+  COL_TOKENS,
+} from "@/components/leaderboard/leaderboard-layout";
 
 /**
  * Loading skeleton for leaderboard rows.

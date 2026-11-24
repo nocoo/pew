@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "@/__tests__/test-utils";
-import type {
-  DynamicPricingEntryDto,
-  DynamicPricingMetaDto,
-} from "@/lib/rpc-types";
+import type { DynamicPricingEntryDto, DynamicPricingMetaDto } from "@/lib/rpc-types";
 
 vi.mock("@/lib/db", () => ({
   getDbRead: vi.fn(),
@@ -88,9 +85,7 @@ describe("GET /api/pricing/models", () => {
 
   it("returns 503 with fallback shape when worker-read throws", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockDbRead.getDynamicPricing.mockRejectedValueOnce(
-      new Error("worker-read unreachable"),
-    );
+    mockDbRead.getDynamicPricing.mockRejectedValueOnce(new Error("worker-read unreachable"));
     mockDbRead.getDynamicPricingMeta.mockResolvedValueOnce(META as never);
 
     const res = await GET(makeGetRequest("/api/pricing/models"));

@@ -77,27 +77,48 @@ export function createHermesSqliteTokenDriver(
           opts.dbPath,
           () => rows,
           prevCursor,
-          ...(ctx.collectAccounting ? [true] as const : []),
+          ...(ctx.collectAccounting ? ([true] as const) : []),
         );
 
         const warnings: string[] = [];
         if (ctx.collectAccounting) {
           try {
             ctx.accountingSnapshots ??= [];
-            ctx.accountingSnapshots.push(...hermesAccountingSnapshots(rows, handle.queryMainModelUsage?.() ?? []));
-          } catch { warnings.push("Hermes billing details unavailable; original usage preserved"); }
+            ctx.accountingSnapshots.push(
+              ...hermesAccountingSnapshots(rows, handle.queryMainModelUsage?.() ?? []),
+            );
+          } catch {
+            warnings.push("Hermes billing details unavailable; original usage preserved");
+          }
         }
         if (handle.queryAuxiliaryUsage) {
           try {
             const rows = handle.queryAuxiliaryUsage();
-            const calls = await readHermesReviewCalls(opts.dbPath, opts.dbKey, opts.logUtcOffsetMinutes).catch(() => {
-              warnings.push("Hermes review timestamps unavailable; retaining cumulative ledger usage");
+            const calls = await readHermesReviewCalls(
+              opts.dbPath,
+              opts.dbKey,
+              opts.logUtcOffsetMinutes,
+            ).catch(() => {
+              warnings.push(
+                "Hermes review timestamps unavailable; retaining cumulative ledger usage",
+              );
               return [];
             });
-            result.deltas.push(...collectHermesUsageEvidence({ dbKey: opts.dbKey, rows, calls, previous: ctx.evidenceRecords ?? [],
-              ...(ctx.collectAccounting ? { includeAccounting: true, accountingRecords: ctx.accountingRecords } : {}) }));
+            result.deltas.push(
+              ...collectHermesUsageEvidence({
+                dbKey: opts.dbKey,
+                rows,
+                calls,
+                previous: ctx.evidenceRecords ?? [],
+                ...(ctx.collectAccounting
+                  ? { includeAccounting: true, accountingRecords: ctx.accountingRecords }
+                  : {}),
+              }),
+            );
           } catch {
-            warnings.push("Hermes auxiliary evidence unavailable; main session accounting preserved");
+            warnings.push(
+              "Hermes auxiliary evidence unavailable; main session accounting preserved",
+            );
           }
         }
         return {

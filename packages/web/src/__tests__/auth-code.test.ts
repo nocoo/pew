@@ -121,7 +121,7 @@ describe("POST /api/auth/code", () => {
     expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
     expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO auth_codes"),
-      expect.arrayContaining(["user-123"])
+      expect.arrayContaining(["user-123"]),
     );
   });
 
@@ -282,7 +282,7 @@ describe("POST /api/auth/code/verify", () => {
     // Should increment failed_attempts
     expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("failed_attempts = failed_attempts + 1"),
-      ["ABCD-1234"]
+      ["ABCD-1234"],
     );
   });
 
@@ -316,7 +316,7 @@ describe("POST /api/auth/code/verify", () => {
     // Should increment failed_attempts
     expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("failed_attempts = failed_attempts + 1"),
-      ["ABCD-1234"]
+      ["ABCD-1234"],
     );
   });
 
@@ -387,7 +387,7 @@ describe("POST /api/auth/code/verify", () => {
     // Verify code was marked as used AFTER user lookup succeeded
     expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("SET used_at"),
-      expect.arrayContaining(["ABCD-1234"])
+      expect.arrayContaining(["ABCD-1234"]),
     );
   });
 
@@ -430,7 +430,7 @@ describe("POST /api/auth/code/verify", () => {
     // Verify api_key update uses conditional WHERE api_key IS NULL
     expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("WHERE id = ? AND api_key IS NULL"),
-      expect.arrayContaining([expect.stringMatching(/^pk_/), "user-123"])
+      expect.arrayContaining([expect.stringMatching(/^pk_/), "user-123"]),
     );
   });
 
@@ -606,8 +606,8 @@ describe("POST /api/auth/code/verify", () => {
     expect(body.error).toBe("User not found");
 
     // Verify code was NOT consumed (no SET used_at call)
-    const usedAtCalls = mockDbWrite.execute.mock.calls.filter(
-      (call) => (call[0] as string).includes("SET used_at")
+    const usedAtCalls = mockDbWrite.execute.mock.calls.filter((call) =>
+      (call[0] as string).includes("SET used_at"),
     );
     expect(usedAtCalls.length).toBe(0);
   });

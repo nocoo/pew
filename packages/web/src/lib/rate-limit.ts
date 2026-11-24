@@ -97,9 +97,7 @@ class InMemoryRateLimiter {
       allowed,
       current: timestamps.length,
       limit: config.maxRequests,
-      retryAfter: allowed
-        ? 0
-        : Math.ceil(((timestamps[0] ?? now) + windowMs - now) / 1000),
+      retryAfter: allowed ? 0 : Math.ceil(((timestamps[0] ?? now) + windowMs - now) / 1000),
     };
   }
 

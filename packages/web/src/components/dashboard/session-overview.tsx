@@ -18,11 +18,7 @@ interface SessionOverviewProps {
  * Four stat cards summarising session metrics:
  * total sessions, total hours, avg duration, avg messages.
  */
-export function SessionOverview({
-  data,
-  subtitle,
-  className,
-}: SessionOverviewProps) {
+export function SessionOverview({ data, subtitle, className }: SessionOverviewProps) {
   return (
     <StatGrid columns={4} {...(className ? { className } : {})}>
       <StatCard

@@ -49,9 +49,19 @@ export async function writeDynamic(env: Env, entries: DynamicPricingEntry[]): Pr
 export async function readMeta(env: Env): Promise<DynamicPricingMeta | null>;
 export async function writeMeta(env: Env, meta: DynamicPricingMeta): Promise<void>;
 
-export interface CachedFetch<T = unknown> { json: T; fetchedAt: string }
-export async function readLastFetch(env: Env, source: 'openrouter' | 'models.dev'): Promise<CachedFetch | null>;
-export async function writeLastFetch(env: Env, source: 'openrouter' | 'models.dev', payload: CachedFetch): Promise<void>;
+export interface CachedFetch<T = unknown> {
+  json: T;
+  fetchedAt: string;
+}
+export async function readLastFetch(
+  env: Env,
+  source: "openrouter" | "models.dev",
+): Promise<CachedFetch | null>;
+export async function writeLastFetch(
+  env: Env,
+  source: "openrouter" | "models.dev",
+  payload: CachedFetch,
+): Promise<void>;
 ```
 
 - All values stored as JSON strings; no per-key TTL (we judge freshness by `meta.lastSyncedAt` and per-source `fetchedAt`).
@@ -75,13 +85,13 @@ export interface SyncOutcome {
   entriesWritten: number;
   meta: DynamicPricingMeta;
   warnings: string[];
-  errors: Array<{ source: 'openrouter' | 'models.dev' | 'd1' | 'kv'; message: string }>;
+  errors: Array<{ source: "openrouter" | "models.dev" | "d1" | "kv"; message: string }>;
 }
 
 export async function syncDynamicPricing(
   env: Env,
   now: string,
-  options?: { forceRefetch?: boolean }
+  options?: { forceRefetch?: boolean },
 ): Promise<SyncOutcome>;
 ```
 
@@ -123,7 +133,9 @@ Add a top-level export:
 
 ```typescript
 export default {
-  fetch: async (request, env, ctx) => { /* existing */ },
+  fetch: async (request, env, ctx) => {
+    /* existing */
+  },
   scheduled: async (event, env, ctx) => {
     const now = new Date().toISOString();
     const outcome = await syncDynamicPricing(env, now);
@@ -159,6 +171,7 @@ Both methods are **read-only**; they never trigger sync. Sync only happens on cr
 ### `wrangler.toml`
 
 Add to root:
+
 ```toml
 [triggers]
 crons = ["0 3 * * *"]   # daily 03:00 UTC

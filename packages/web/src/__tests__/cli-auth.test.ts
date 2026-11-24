@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, getPublicOrigin } from "@/app/api/auth/cli/route";
-import {
-  createMockDbRead,
-  createMockDbWrite,
-  loadMockedAuthHelpers,
-} from "./test-utils";
+import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers } from "./test-utils";
 import * as dbModule from "@/lib/db";
 import { inMemoryRateLimiter } from "@/lib/rate-limit";
 
@@ -46,12 +42,8 @@ describe("GET /api/auth/cli", () => {
     inMemoryRateLimiter.reset();
     mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead
-    );
-    vi.mocked(dbModule.getDbWrite).mockResolvedValue(
-      mockDbWrite as unknown as dbModule.DbWrite
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as unknown as dbModule.DbWrite);
   });
 
   describe("getPublicOrigin", () => {
@@ -202,9 +194,7 @@ describe("GET /api/auth/cli", () => {
     it("should accept localhost callback URLs", async () => {
       mockDbRead.getUserApiKey.mockResolvedValueOnce("existing-key-123");
 
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback")
-      );
+      const res = await GET(makeRequest("http://localhost:9999/callback"));
 
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
@@ -215,9 +205,7 @@ describe("GET /api/auth/cli", () => {
     it("should accept 127.0.0.1 callback URLs", async () => {
       mockDbRead.getUserApiKey.mockResolvedValueOnce("existing-key-456");
 
-      const res = await GET(
-        makeRequest("http://127.0.0.1:8888/callback")
-      );
+      const res = await GET(makeRequest("http://127.0.0.1:8888/callback"));
 
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
@@ -236,9 +224,7 @@ describe("GET /api/auth/cli", () => {
     it("should reuse existing api_key if user already has one", async () => {
       mockDbRead.getUserApiKey.mockResolvedValueOnce("existing-key-abc");
 
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback")
-      );
+      const res = await GET(makeRequest("http://localhost:9999/callback"));
 
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
@@ -251,18 +237,14 @@ describe("GET /api/auth/cli", () => {
       mockDbRead.getUserApiKey.mockResolvedValueOnce(null);
       mockDbWrite.execute.mockResolvedValueOnce(undefined);
 
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback")
-      );
+      const res = await GET(makeRequest("http://localhost:9999/callback"));
 
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
       expect(location).toContain("api_key=");
       // Should have called execute to save new key
       expect(mockDbWrite.execute).toHaveBeenCalledOnce();
-      expect(mockDbWrite.execute.mock.calls[0]![0]).toContain(
-        "UPDATE users SET api_key"
-      );
+      expect(mockDbWrite.execute.mock.calls[0]![0]).toContain("UPDATE users SET api_key");
     });
 
     it("should include email in callback redirect", async () => {
@@ -272,9 +254,7 @@ describe("GET /api/auth/cli", () => {
       });
       mockDbRead.getUserApiKey.mockResolvedValueOnce("key-xyz");
 
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback")
-      );
+      const res = await GET(makeRequest("http://localhost:9999/callback"));
 
       const location = res.headers.get("Location")!;
       expect(location).toContain("email=test%40example.com");
@@ -283,9 +263,7 @@ describe("GET /api/auth/cli", () => {
     it("should forward state parameter in callback redirect", async () => {
       mockDbRead.getUserApiKey.mockResolvedValueOnce("key-xyz");
 
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback", "my-nonce-123")
-      );
+      const res = await GET(makeRequest("http://localhost:9999/callback", "my-nonce-123"));
 
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
@@ -296,9 +274,7 @@ describe("GET /api/auth/cli", () => {
     it("should omit state from redirect when not provided", async () => {
       mockDbRead.getUserApiKey.mockResolvedValueOnce("key-xyz");
 
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback")
-      );
+      const res = await GET(makeRequest("http://localhost:9999/callback"));
 
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
@@ -308,9 +284,7 @@ describe("GET /api/auth/cli", () => {
     it("should return 500 on D1 failure", async () => {
       mockDbRead.getUserApiKey.mockRejectedValueOnce(new Error("D1 down"));
 
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback")
-      );
+      const res = await GET(makeRequest("http://localhost:9999/callback"));
 
       expect(res.status).toBe(500);
     });

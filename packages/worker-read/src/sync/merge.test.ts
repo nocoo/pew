@@ -9,7 +9,7 @@ function entry(
   origin: DynamicPricingEntry["origin"],
   input: number,
   output: number,
-  extra: Partial<DynamicPricingEntry> = {}
+  extra: Partial<DynamicPricingEntry> = {},
 ): DynamicPricingEntry {
   return {
     model,
@@ -230,11 +230,7 @@ describe("mergePricingSources", () => {
       now: NOW,
     });
     const models = r.entries.map((e) => e.model);
-    expect(models).toEqual([
-      "anthropic/apple",
-      "anthropic/banana",
-      "anthropic/zebra",
-    ]);
+    expect(models).toEqual(["anthropic/apple", "anthropic/banana", "anthropic/zebra"]);
   });
 
   it("keeps existing entry when incoming is zero-priced but existing has only outputPerMillion > 0", () => {

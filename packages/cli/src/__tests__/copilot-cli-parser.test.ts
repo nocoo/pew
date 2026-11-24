@@ -5,15 +5,17 @@ import { join } from "node:path";
 import { parseCopilotCliFile } from "../parsers/copilot-cli.js";
 
 /** Build a realistic process log snippet with an assistant_usage block */
-function buildLogWithUsage(overrides: {
-  model?: string;
-  input_tokens?: number;
-  output_tokens?: number;
-  cache_read_tokens?: number;
-  cache_write_tokens?: number;
-  created_at?: string;
-  kind?: string;
-} = {}): string {
+function buildLogWithUsage(
+  overrides: {
+    model?: string;
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_tokens?: number;
+    cache_write_tokens?: number;
+    created_at?: string;
+    kind?: string;
+  } = {},
+): string {
   const {
     model = "claude-opus-4.6",
     input_tokens = 56706,

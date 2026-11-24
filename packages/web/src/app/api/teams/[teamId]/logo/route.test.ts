@@ -63,17 +63,27 @@ describe("POST /api/teams/[teamId]/logo route edge cases", () => {
     vi.mocked(resolveUser).mockResolvedValue({ userId: "u1" });
     mockDbRead.getTeamMembership.mockResolvedValue("owner");
     mockDbWrite.execute.mockResolvedValue(undefined);
-    vi.mocked(putTeamLogo).mockResolvedValue(
-      "https://cdn.example.com/teams/t1/new-logo.jpg",
-    );
+    vi.mocked(putTeamLogo).mockResolvedValue("https://cdn.example.com/teams/t1/new-logo.jpg");
     vi.mocked(deleteTeamLogoByUrl).mockResolvedValue(undefined);
   });
 
   it("rejects a streamed oversized multipart body before image processing", async () => {
     const cancel = vi.fn();
-    const body = new ReadableStream({ start(c) { c.enqueue(new Uint8Array(2 * 1024 * 1024 + 65537)); }, cancel });
-    const response = await POST(new Request("https://test.invalid", { method: "POST", body, duplex: "half",
-      headers: { "Content-Type": "multipart/form-data; boundary=x", "Content-Length": "1" } } as RequestInit), makeParams());
+    const body = new ReadableStream({
+      start(c) {
+        c.enqueue(new Uint8Array(2 * 1024 * 1024 + 65537));
+      },
+      cancel,
+    });
+    const response = await POST(
+      new Request("https://test.invalid", {
+        method: "POST",
+        body,
+        duplex: "half",
+        headers: { "Content-Type": "multipart/form-data; boundary=x", "Content-Length": "1" },
+      } as RequestInit),
+      makeParams(),
+    );
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({ error: "Request body too large" });
     expect(cancel).toHaveBeenCalledOnce();
@@ -84,8 +94,14 @@ describe("POST /api/teams/[teamId]/logo route edge cases", () => {
   it.each(["file", "extra"])("rejects extra multipart %s entries", async (field) => {
     const form = new FormData();
     form.append("file", new File(["png"], "logo.png", { type: "image/png" }));
-    form.append(field, field === "file" ? new File(["png"], "other.png", { type: "image/png" }) : "value");
-    const response = await POST(new Request("https://test.invalid", { method: "POST", body: form }), makeParams());
+    form.append(
+      field,
+      field === "file" ? new File(["png"], "other.png", { type: "image/png" }) : "value",
+    );
+    const response = await POST(
+      new Request("https://test.invalid", { method: "POST", body: form }),
+      makeParams(),
+    );
     expect(response.status).toBe(400);
     expect(sharp).not.toHaveBeenCalled();
   });
@@ -136,18 +152,13 @@ describe("POST /api/teams/[teamId]/logo route edge cases", () => {
 
     vi.mocked(putTeamLogo).mockResolvedValueOnce(newLogoUrl);
     mockDbRead.getTeamLogoUrl.mockRejectedValueOnce(new Error("D1 down"));
-    vi.mocked(deleteTeamLogoByUrl).mockRejectedValueOnce(
-      new Error("R2 unavailable"),
-    );
+    vi.mocked(deleteTeamLogoByUrl).mockRejectedValueOnce(new Error("R2 unavailable"));
 
     const res = await POST(makeUploadRequest("t1"), makeParams());
 
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "Failed to save logo" });
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Compensating R2 delete also failed for:",
-      newLogoUrl,
-    );
+    expect(consoleSpy).toHaveBeenCalledWith("Compensating R2 delete also failed for:", newLogoUrl);
 
     consoleSpy.mockRestore();
   });
@@ -158,17 +169,15 @@ describe("POST /api/teams/[teamId]/logo route edge cases", () => {
 
     vi.mocked(putTeamLogo).mockResolvedValueOnce(newLogoUrl);
     mockDbRead.getTeamLogoUrl.mockResolvedValueOnce(oldLogoUrl);
-    vi.mocked(deleteTeamLogoByUrl).mockRejectedValueOnce(
-      new Error("old logo delete failed"),
-    );
+    vi.mocked(deleteTeamLogoByUrl).mockRejectedValueOnce(new Error("old logo delete failed"));
 
     const res = await POST(makeUploadRequest("t1"), makeParams());
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ logoUrl: newLogoUrl });
-    expect(mockDbWrite.execute).toHaveBeenCalledWith(
-      "UPDATE teams SET logo_url = ? WHERE id = ?",
-      [newLogoUrl, "t1"],
-    );
+    expect(mockDbWrite.execute).toHaveBeenCalledWith("UPDATE teams SET logo_url = ? WHERE id = ?", [
+      newLogoUrl,
+      "t1",
+    ]);
   });
 });

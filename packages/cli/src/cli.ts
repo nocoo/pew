@@ -42,7 +42,10 @@ function isDevMode(): boolean {
 
 /** Shared handler for corrupted JSONL lines in queue files */
 function handleCorruptLine(line: string, _error: unknown): void {
-  log.warn(`${pc.yellow("Skipping corrupt queue line:")} ${pc.dim(line.slice(0, 80))}${line.length > 80 ? "…" : ""}`);}
+  log.warn(
+    `${pc.yellow("Skipping corrupt queue line:")} ${pc.dim(line.slice(0, 80))}${line.length > 80 ? "…" : ""}`,
+  );
+}
 
 /**
  * Parse `--not-before=<epoch-ms>` from the notify.cjs handler. Returns
@@ -185,7 +188,6 @@ const SOURCE_LABELS: Record<string, string> = {
 
   copilotCli: "Copilot CLI",
   hermes: "Hermes",
-
 };
 
 /**
@@ -200,10 +202,7 @@ function formatScannedLine(
   const parts: string[] = [];
 
   // Collect all unique source keys (union of files + dbs)
-  const allKeys = new Set([
-    ...Object.keys(filesScanned),
-    ...Object.keys(dbsScanned ?? {}),
-  ]);
+  const allKeys = new Set([...Object.keys(filesScanned), ...Object.keys(dbsScanned ?? {})]);
 
   for (const key of allKeys) {
     const fileCount = filesScanned[key] ?? 0;
@@ -316,10 +315,12 @@ export const syncCommand = defineCommand({
       if (result.sources.openclaw > 0) deltaParts.push(`OpenClaw: ${result.sources.openclaw}`);
       if (result.sources.pi > 0) deltaParts.push(`Pi: ${result.sources.pi}`);
 
-      if (result.sources.copilotCli > 0) deltaParts.push(`Copilot CLI: ${result.sources.copilotCli}`);
+      if (result.sources.copilotCli > 0)
+        deltaParts.push(`Copilot CLI: ${result.sources.copilotCli}`);
       if (result.sources.hermes > 0) deltaParts.push(`Hermes: ${result.sources.hermes}`);
 
-      if (result.sources.antigravity > 0) deltaParts.push(`Antigravity: ${result.sources.antigravity}`);
+      if (result.sources.antigravity > 0)
+        deltaParts.push(`Antigravity: ${result.sources.antigravity}`);
       if (deltaParts.length > 0) {
         log.text(pc.dim(deltaParts.join("  ")));
       }
@@ -366,15 +367,20 @@ export const syncCommand = defineCommand({
         `Synced ${pc.bold(String(sessionResult.totalSnapshots))} sessions → ${pc.bold(String(sessionResult.totalRecords))} queue records`,
       );
       const sessParts: string[] = [];
-      if (sessionResult.sources.claude > 0) sessParts.push(`Claude: ${sessionResult.sources.claude}`);
+      if (sessionResult.sources.claude > 0)
+        sessParts.push(`Claude: ${sessionResult.sources.claude}`);
       if (sessionResult.sources.codex > 0) sessParts.push(`Codex: ${sessionResult.sources.codex}`);
-      if (sessionResult.sources.copilotCli > 0) sessParts.push(`Copilot CLI: ${sessionResult.sources.copilotCli}`);
+      if (sessionResult.sources.copilotCli > 0)
+        sessParts.push(`Copilot CLI: ${sessionResult.sources.copilotCli}`);
 
-      if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
-      if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
+      if (sessionResult.sources.opencode > 0)
+        sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
+      if (sessionResult.sources.openclaw > 0)
+        sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);
 
-      if (sessionResult.sources.antigravity > 0) sessParts.push(`Antigravity: ${sessionResult.sources.antigravity}`);
+      if (sessionResult.sources.antigravity > 0)
+        sessParts.push(`Antigravity: ${sessionResult.sources.antigravity}`);
       if (sessParts.length > 0) {
         log.text(pc.dim(sessParts.join("  ")));
       }
@@ -435,7 +441,9 @@ const statusCommand = defineCommand({
     if (Object.keys(result.sources).length > 0) {
       log.blank();
       log.text(pc.bold("Files by source:"));
-      for (const [source, count] of Object.entries(result.sources).sort(([a], [b]) => a.localeCompare(b))) {
+      for (const [source, count] of Object.entries(result.sources).sort(([a], [b]) =>
+        a.localeCompare(b),
+      )) {
         log.text(`  ${pc.cyan(source.padEnd(14))} ${count}`);
       }
     }
@@ -443,7 +451,9 @@ const statusCommand = defineCommand({
     if (Object.keys(result.notifiers).length > 0) {
       log.blank();
       log.text(pc.bold("Notifiers:"));
-      for (const [source, status] of Object.entries(result.notifiers).sort(([a], [b]) => a.localeCompare(b))) {
+      for (const [source, status] of Object.entries(result.notifiers).sort(([a], [b]) =>
+        a.localeCompare(b),
+      )) {
         const renderedStatus =
           status === "installed"
             ? pc.green(status)
@@ -566,7 +576,9 @@ const loginCommand = defineCommand({
     // In SSH mode, suppress base-cli's "Could not open browser" fallback message
     // since buildOpenBrowserFn already printed more helpful SSH guidance.
     const loginLog = isSSHSession()
-      ? (msg: string) => { if (!msg.startsWith("Could not open browser")) console.log(msg); }
+      ? (msg: string) => {
+          if (!msg.startsWith("Could not open browser")) console.log(msg);
+        }
       : undefined;
 
     const result = await executeLogin({
@@ -580,16 +592,12 @@ const loginCommand = defineCommand({
     });
 
     if (result.alreadyLoggedIn) {
-      log.info(
-        `Already logged in. Use ${pc.cyan("pew login --force")} to re-authenticate.`,
-      );
+      log.info(`Already logged in. Use ${pc.cyan("pew login --force")} to re-authenticate.`);
       return;
     }
 
     if (result.success) {
-      log.success(
-        `Logged in as ${pc.bold(result.email ?? "unknown")}`,
-      );
+      log.success(`Logged in as ${pc.bold(result.email ?? "unknown")}`);
       log.info(
         `Token saved to ${pc.dim(paths.stateDir + (dev ? "/config.dev.json" : "/config.json"))}`,
       );
@@ -667,8 +675,10 @@ const notifyCommand = defineCommand({
     if (isRetiredSource(args.source) && parseNotBefore(args["not-before"]) === undefined) return;
     const paths = resolveDefaultPaths();
     if (isRetiredSource(args.source)) {
-      if (!await repairRetiredNotifyHandler(paths.stateDir)) {
-        log.warn("Retired hook ignored: dispatcher ownership could not be verified; run pew init to repair it.");
+      if (!(await repairRetiredNotifyHandler(paths.stateDir))) {
+        log.warn(
+          "Retired hook ignored: dispatcher ownership could not be verified; run pew init to repair it.",
+        );
         return;
       }
     }
@@ -761,8 +771,7 @@ const initCommand = defineCommand({
     },
   },
   async run({ args }) {
-    const selectedSources =
-      args.source && isSource(args.source) ? [args.source] : undefined;
+    const selectedSources = args.source && isSource(args.source) ? [args.source] : undefined;
     if (args.source && !selectedSources) {
       log.error(`Invalid source: ${args.source}`);
       process.exitCode = 1;
@@ -812,8 +821,7 @@ const uninstallCommand = defineCommand({
     },
   },
   async run({ args }) {
-    const selectedSources =
-      args.source && isSource(args.source) ? [args.source] : undefined;
+    const selectedSources = args.source && isSource(args.source) ? [args.source] : undefined;
     if (args.source && !selectedSources) {
       log.error(`Invalid source: ${args.source}`);
       process.exitCode = 1;
@@ -869,9 +877,7 @@ async function runUpload(stateDir: string, apiUrl: string, dev: boolean): Promis
   if (uploadResult.warning) log.warn(uploadResult.warning);
 
   if (!uploadResult.success && uploadResult.error?.match(/not logged in/i)) {
-    log.info(
-      `Not logged in — skipping upload. Run ${pc.cyan("pew login")} to enable.`,
-    );
+    log.info(`Not logged in — skipping upload. Run ${pc.cyan("pew login")} to enable.`);
     return;
   }
 
@@ -933,23 +939,47 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
 }
 
 export const enrichCommand = defineCommand({
-  meta: { name: "enrich", description: "Preview cache accounting for retained history; --apply updates details only" },
+  meta: {
+    name: "enrich",
+    description: "Preview cache accounting for retained history; --apply updates details only",
+  },
   args: {
     source: { type: "string", description: "Source to inspect (or all)", required: true },
-    from: { type: "string", description: "Inclusive UTC date or half-hour boundary", required: true },
+    from: {
+      type: "string",
+      description: "Inclusive UTC date or half-hour boundary",
+      required: true,
+    },
     to: { type: "string", description: "Exclusive, closed UTC boundary", required: true },
-    apply: { type: "boolean", description: "Apply verified details to the local outbox", default: false },
+    apply: {
+      type: "boolean",
+      description: "Apply verified details to the local outbox",
+      default: false,
+    },
   },
   async run({ args }) {
-    if (args.source !== "all" && (!isSource(args.source) || isRetiredSource(args.source))) throw new Error("Invalid accounting source");
+    if (args.source !== "all" && (!isSource(args.source) || isRetiredSource(args.source)))
+      throw new Error("Invalid accounting source");
     const paths = resolveDefaultPaths();
     const deviceId = new ConfigManager(paths.stateDir).getDeviceId();
-    if (!deviceId) throw new Error("An existing Pew device ID is required; enrichment does not create or migrate device identity");
+    if (!deviceId)
+      throw new Error(
+        "An existing Pew device ID is required; enrichment does not create or migrate device identity",
+      );
     const [opencode, hermes] = await Promise.all([
-      import("./parsers/opencode-sqlite-db.js"), import("./parsers/hermes-sqlite-db.js"),
+      import("./parsers/opencode-sqlite-db.js"),
+      import("./parsers/hermes-sqlite-db.js"),
     ]);
-    const result = await executeEnrich({ ...paths, deviceId, source: args.source, from: args.from, to: args.to, apply: args.apply,
-      openMessageDb: opencode.openMessageDb, openHermesDb: hermes.openHermesDb });
+    const result = await executeEnrich({
+      ...paths,
+      deviceId,
+      source: args.source,
+      from: args.from,
+      to: args.to,
+      apply: args.apply,
+      openMessageDb: opencode.openMessageDb,
+      openHermesDb: hermes.openHermesDb,
+    });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   },
 });
@@ -980,9 +1010,7 @@ const resetCommand = defineCommand({
     }
 
     log.blank();
-    log.success(
-      `Cleared ${deleted.length} state file(s). Run ${pc.cyan("pew sync")} to rebuild.`,
-    );
+    log.success(`Cleared ${deleted.length} state file(s). Run ${pc.cyan("pew sync")} to rebuild.`);
   },
 });
 
@@ -1013,7 +1041,8 @@ const updateCommand = defineCommand({
 export const main = defineCommand({
   meta: {
     name: "pew",
-    version: CLI_VERSION,    description: "The contribution graph for AI-native developers",
+    version: CLI_VERSION,
+    description: "The contribution graph for AI-native developers",
   },
   subCommands: {
     sync: syncCommand,

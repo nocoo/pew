@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { AnimationControllerProvider } from "recharts";
 import { createChartAnimationController } from "@/lib/chart-animation";
 import { CHART_RESIZE_DEBOUNCE_MS, SIDEBAR_TRANSITION_MS } from "@/lib/sidebar-animation";

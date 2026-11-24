@@ -92,10 +92,7 @@ describe("usePricingEntries — module cache behaviour", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { __triggerLoadForTests } = await import("@/hooks/use-pricing-entries");
-    const [r1, r2] = await Promise.all([
-      __triggerLoadForTests(),
-      __triggerLoadForTests(),
-    ]);
+    const [r1, r2] = await Promise.all([__triggerLoadForTests(), __triggerLoadForTests()]);
 
     expect(r1).toBe(r2);
     expect(fetchMock).toHaveBeenCalledTimes(1);

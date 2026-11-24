@@ -78,8 +78,7 @@ describe("TokenDelta type", () => {
       outputTokens: 500,
       reasoningOutputTokens: 100,
     };
-    const total =
-      delta.inputTokens + delta.outputTokens + delta.reasoningOutputTokens;
+    const total = delta.inputTokens + delta.outputTokens + delta.reasoningOutputTokens;
     expect(total).toBe(1600);
   });
 });
@@ -275,12 +274,7 @@ describe("Notifier types", () => {
   });
 
   it("should constrain notifier status values", () => {
-    const statuses: NotifierStatus[] = [
-      "installed",
-      "not-installed",
-      "outdated",
-      "error",
-    ];
+    const statuses: NotifierStatus[] = ["installed", "not-installed", "outdated", "error"];
     expect(statuses).toHaveLength(4);
   });
 

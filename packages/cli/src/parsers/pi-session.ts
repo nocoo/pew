@@ -84,9 +84,7 @@ function extractProjectRef(dirName: string): string | null {
  * their own `type: "session"` header. Those are agent-driven, so they are
  * reported as `kind: "automated"` and attributed to the parent project dir.
  */
-export async function collectPiSessions(
-  filePath: string,
-): Promise<SessionSnapshot[]> {
+export async function collectPiSessions(filePath: string): Promise<SessionSnapshot[]> {
   const source = "pi";
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile() || st.size === 0) return [];
@@ -114,8 +112,7 @@ export async function collectPiSessions(
       }
 
       const type = typeof obj.type === "string" ? obj.type : null;
-      const timestamp =
-        typeof obj.timestamp === "string" ? obj.timestamp : null;
+      const timestamp = typeof obj.timestamp === "string" ? obj.timestamp : null;
 
       // Extract session ID from header
       if (type === "session") {
@@ -148,8 +145,7 @@ export async function collectPiSessions(
           assistantMessages++;
 
           // Track model from assistant messages
-          const model =
-            typeof msg.model === "string" ? msg.model.trim() : null;
+          const model = typeof msg.model === "string" ? msg.model.trim() : null;
           if (model) lastModel = model;
         }
         // toolResult messages count toward totalMessages but not user/assistant
@@ -164,8 +160,7 @@ export async function collectPiSessions(
 
   const startedAt = minTimestamp;
   const lastMessageAt = maxTimestamp ?? minTimestamp;
-  const durationMs =
-    new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
+  const durationMs = new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
 
   const { dirName, nested } = locateSession(filePath);
   const projectRef = extractProjectRef(dirName);

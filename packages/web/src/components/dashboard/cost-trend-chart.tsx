@@ -1,24 +1,13 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatCost } from "@/lib/pricing";
 import { chart, chartAxis, CHART_COLORS, chartMuted } from "@/lib/palette";
 import type { DailyCostPoint } from "@/lib/cost-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // Stable color references
 const colorOutput = CHART_COLORS[1] as string;
@@ -112,7 +101,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No cost data yet
@@ -124,14 +113,12 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs md:text-sm text-basalt-muted-foreground">
-            Daily Cost
-          </p>
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">Daily Cost</p>
         </div>
         <div className="flex items-center gap-4">
           {[
@@ -141,10 +128,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
             { key: "cacheWriteCost", label: "Cache write", color: CHART_COLORS[3] as string },
           ].map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ background: color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ background: color }} />
               <span className="text-xs text-basalt-muted-foreground">{label}</span>
             </div>
           ))}
@@ -219,8 +203,16 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
               strokeWidth={2}
               fill="url(#gradCostCached)"
             />
-            <Area {...CHART_ANIMATION} type="monotone" dataKey="cacheWriteCost" stackId="1" stroke={CHART_COLORS[3] as string}
-              fill={CHART_COLORS[3] as string} fillOpacity={0.18} strokeWidth={1.5} />
+            <Area
+              {...CHART_ANIMATION}
+              type="monotone"
+              dataKey="cacheWriteCost"
+              stackId="1"
+              stroke={CHART_COLORS[3] as string}
+              fill={CHART_COLORS[3] as string}
+              fillOpacity={0.18}
+              strokeWidth={1.5}
+            />
           </AreaChart>
         </DashboardResponsiveContainer>
       </div>

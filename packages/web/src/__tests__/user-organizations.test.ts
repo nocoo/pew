@@ -22,7 +22,12 @@ import { GET as LIST_MINE } from "@/app/api/organizations/mine/route";
 import { GET as LIST_MEMBERS } from "@/app/api/organizations/[orgId]/members/route";
 import { POST as JOIN } from "@/app/api/organizations/[orgId]/join/route";
 import { DELETE as LEAVE } from "@/app/api/organizations/[orgId]/leave/route";
-import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers, makeJsonRequest } from "./test-utils";
+import {
+  createMockDbRead,
+  createMockDbWrite,
+  loadMockedAuthHelpers,
+  makeJsonRequest,
+} from "./test-utils";
 import * as dbModule from "@/lib/db";
 
 const { resolveUser } = await loadMockedAuthHelpers();
@@ -33,11 +38,7 @@ const { resolveUser } = await loadMockedAuthHelpers();
 
 const USER = { userId: "user-1" };
 
-function makeOrgRequest(
-  method: string,
-  orgId: string,
-  body?: Record<string, unknown>
-) {
+function makeOrgRequest(method: string, orgId: string, body?: Record<string, unknown>) {
   const url = `http://localhost:7020/api/organizations/${orgId}`;
   const init: RequestInit = { method };
   if (body) {
@@ -110,7 +111,9 @@ describe("GET /api/organizations", () => {
 
   it("should return empty array if table not migrated", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.listOrganizationsWithCount.mockRejectedValueOnce(new Error("no such table: organizations"));
+    mockDbRead.listOrganizationsWithCount.mockRejectedValueOnce(
+      new Error("no such table: organizations"),
+    );
 
     const res = await LIST_ALL(makeJsonRequest("GET", "/api/organizations"));
     expect(res.status).toBe(200);

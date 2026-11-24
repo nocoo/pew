@@ -32,10 +32,7 @@ function makeRequest(
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
   }
-  return [
-    new Request(url.toString()),
-    { params: Promise.resolve({ slug }) },
-  ];
+  return [new Request(url.toString()), { params: Promise.resolve({ slug }) }];
 }
 
 describe("GET /api/users/[slug]", () => {
@@ -44,29 +41,54 @@ describe("GET /api/users/[slug]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as any,
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as any);
     // Default: unauthenticated caller (public access)
     vi.mocked(authHelpersModule.resolveUser).mockResolvedValue(null);
     vi.mocked(adminModule.isAdmin).mockReturnValue(false);
   });
 
   it("keeps billing amounts private even if an upstream read returns them", async () => {
-    mockDbRead.getPublicUserBySlugOrId.mockResolvedValue({ id: "u1", name: "Test", image: null, slug: "test", is_public: 1, created_at: "2026-01-01" });
+    mockDbRead.getPublicUserBySlugOrId.mockResolvedValue({
+      id: "u1",
+      name: "Test",
+      image: null,
+      slug: "test",
+      is_public: 1,
+      created_at: "2026-01-01",
+    });
     const r = accountingFixture();
-    const amount = { units: "12345678901234567890", scale: 10, currency: "USD", source: "grok-server", kind: "actual", status: "complete" };
+    const amount = {
+      units: "12345678901234567890",
+      scale: 10,
+      currency: "USD",
+      source: "grok-server",
+      kind: "actual",
+      status: "complete",
+    };
     const group = { ...r.groups[0], reported_costs: [amount] };
-    const record = { ...r.basis, source: r.source, model: r.model, hour_start: r.hour_start,
-      accounting: [{ status: "matched", basis: r.basis, groups: [group] }] };
+    const record = {
+      ...r.basis,
+      source: r.source,
+      model: r.model,
+      hour_start: r.hour_start,
+      accounting: [{ status: "matched", basis: r.basis, groups: [group] }],
+    };
     mockDbRead.getUsageRecords.mockResolvedValue([record]);
     const response = await GET(...makeRequest("test"));
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.records[0]).toMatchObject({ ...r.basis, accounting: [{ groups: [{ counts: { cache_write_input_tokens: 90 }, reported_costs: [] }] }] });
+    expect(body.records[0]).toMatchObject({
+      ...r.basis,
+      accounting: [{ groups: [{ counts: { cache_write_input_tokens: 90 }, reported_costs: [] }] }],
+    });
     expect(JSON.stringify(body)).not.toContain(amount.units);
     expect(record.accounting[0]?.groups[0]?.reported_costs).toEqual([amount]);
-    expect(mockDbRead.getUsageRecords).toHaveBeenCalledWith("u1", expect.any(String), expect.any(String), { granularity: "day" });
+    expect(mockDbRead.getUsageRecords).toHaveBeenCalledWith(
+      "u1",
+      expect.any(String),
+      expect.any(String),
+      { granularity: "day" },
+    );
   });
 
   describe("slug validation", () => {
@@ -235,8 +257,26 @@ describe("GET /api/users/[slug]", () => {
     it("should compute correct summary from multiple records", async () => {
       mockDbRead.getPublicUserBySlugOrId.mockResolvedValueOnce(testUser);
       mockDbRead.getUsageRecords.mockResolvedValueOnce([
-        { source: "claude-code", model: "a", hour_start: "2026-03-07", input_tokens: 100, cached_input_tokens: 10, output_tokens: 50, reasoning_output_tokens: 0, total_tokens: 160 },
-        { source: "opencode", model: "b", hour_start: "2026-03-07", input_tokens: 200, cached_input_tokens: 20, output_tokens: 100, reasoning_output_tokens: 5, total_tokens: 325 },
+        {
+          source: "claude-code",
+          model: "a",
+          hour_start: "2026-03-07",
+          input_tokens: 100,
+          cached_input_tokens: 10,
+          output_tokens: 50,
+          reasoning_output_tokens: 0,
+          total_tokens: 160,
+        },
+        {
+          source: "opencode",
+          model: "b",
+          hour_start: "2026-03-07",
+          input_tokens: 200,
+          cached_input_tokens: 20,
+          output_tokens: 100,
+          reasoning_output_tokens: 5,
+          total_tokens: 325,
+        },
       ]);
 
       const [req, ctx] = makeRequest("testuser");
@@ -502,9 +542,7 @@ describe("generateMetadata for /u/[slug]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as any,
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as any);
     vi.mocked(authHelpersModule.resolveUser).mockResolvedValue(null);
     vi.mocked(adminModule.isAdmin).mockReturnValue(false);
   });

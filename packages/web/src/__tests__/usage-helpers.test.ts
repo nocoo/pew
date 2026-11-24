@@ -7,7 +7,16 @@ import {
   sourceLabel,
   type UsageRow,
 } from "@/hooks/use-usage-data";
-import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth, toSourceTrendPoints, toDominantSourceTimeline, computeWoWGrowth, toHourlyWeekdayWeekend, rankUsageByRecency } from "@/lib/usage-helpers";
+import {
+  toLocalDailyBuckets,
+  compareWeekdayWeekend,
+  computeMoMGrowth,
+  toSourceTrendPoints,
+  toDominantSourceTimeline,
+  computeWoWGrowth,
+  toHourlyWeekdayWeekend,
+  rankUsageByRecency,
+} from "@/lib/usage-helpers";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 
@@ -25,7 +34,15 @@ describe("rankUsageByRecency", () => {
       { id: "one-off", date: "2026-09-15", value: 1 },
       { id: "empty", date: "2026-10-01", value: 0 },
     ];
-    const expected = ["regular", "current", "a-tie", "z-tie", "one-off", "previous-week", "retired"];
+    const expected = [
+      "regular",
+      "current",
+      "a-tie",
+      "z-tie",
+      "one-off",
+      "previous-week",
+      "retired",
+    ];
     expect(rankUsageByRecency(samples)).toEqual(expected);
     expect(rankUsageByRecency([...samples].reverse())).toEqual(expected);
   });
@@ -65,9 +82,30 @@ describe("toDailyPoints", () => {
 
   it("should aggregate records by date", () => {
     const records: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-07T00:00:00Z", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, reasoning_output_tokens: 0, total_tokens: 160 }),
-      makeRow({ hour_start: "2026-03-07T12:00:00Z", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, reasoning_output_tokens: 0, total_tokens: 320 }),
-      makeRow({ hour_start: "2026-03-08T00:00:00Z", input_tokens: 300, output_tokens: 150, cached_input_tokens: 30, reasoning_output_tokens: 0, total_tokens: 480 }),
+      makeRow({
+        hour_start: "2026-03-07T00:00:00Z",
+        input_tokens: 100,
+        output_tokens: 50,
+        cached_input_tokens: 10,
+        reasoning_output_tokens: 0,
+        total_tokens: 160,
+      }),
+      makeRow({
+        hour_start: "2026-03-07T12:00:00Z",
+        input_tokens: 200,
+        output_tokens: 100,
+        cached_input_tokens: 20,
+        reasoning_output_tokens: 0,
+        total_tokens: 320,
+      }),
+      makeRow({
+        hour_start: "2026-03-08T00:00:00Z",
+        input_tokens: 300,
+        output_tokens: 150,
+        cached_input_tokens: 30,
+        reasoning_output_tokens: 0,
+        total_tokens: 480,
+      }),
     ];
 
     const daily = toDailyPoints(records);
@@ -90,18 +128,28 @@ describe("toDailyPoints", () => {
 
     const daily = toDailyPoints(records);
 
-    expect(daily.map((d) => d.date)).toEqual([
-      "2026-03-07",
-      "2026-03-08",
-      "2026-03-09",
-    ]);
+    expect(daily.map((d) => d.date)).toEqual(["2026-03-07", "2026-03-08", "2026-03-09"]);
   });
 
   it("should shift records across midnight for positive tzOffset (UTC-8 PST)", () => {
     // 2026-03-08T03:00Z → 2026-03-07T19:00 PST → local date 2026-03-07
     const records = [
-      makeRow({ hour_start: "2026-03-07T20:00:00Z", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, reasoning_output_tokens: 0, total_tokens: 160 }),
-      makeRow({ hour_start: "2026-03-08T03:00:00Z", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, reasoning_output_tokens: 0, total_tokens: 320 }),
+      makeRow({
+        hour_start: "2026-03-07T20:00:00Z",
+        input_tokens: 100,
+        output_tokens: 50,
+        cached_input_tokens: 10,
+        reasoning_output_tokens: 0,
+        total_tokens: 160,
+      }),
+      makeRow({
+        hour_start: "2026-03-08T03:00:00Z",
+        input_tokens: 200,
+        output_tokens: 100,
+        cached_input_tokens: 20,
+        reasoning_output_tokens: 0,
+        total_tokens: 320,
+      }),
     ];
 
     const daily = toDailyPoints(records, 480); // UTC-8
@@ -115,7 +163,14 @@ describe("toDailyPoints", () => {
   it("should shift records across midnight for negative tzOffset (UTC+9 JST)", () => {
     // 2026-03-07T20:00Z → 2026-03-08T05:00 JST → local date 2026-03-08
     const records = [
-      makeRow({ hour_start: "2026-03-07T20:00:00Z", input_tokens: 500, output_tokens: 200, cached_input_tokens: 50, reasoning_output_tokens: 0, total_tokens: 750 }),
+      makeRow({
+        hour_start: "2026-03-07T20:00:00Z",
+        input_tokens: 500,
+        output_tokens: 200,
+        cached_input_tokens: 50,
+        reasoning_output_tokens: 0,
+        total_tokens: 750,
+      }),
     ];
 
     const daily = toDailyPoints(records, -540); // UTC+9
@@ -187,9 +242,30 @@ describe("toModelAggregates", () => {
 
   it("should aggregate by source:model key", () => {
     const records = [
-      makeRow({ source: "claude-code", model: "sonnet-4", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, total_tokens: 160 }),
-      makeRow({ source: "claude-code", model: "sonnet-4", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, total_tokens: 320 }),
-      makeRow({ source: "opencode", model: "gpt-4.1", input_tokens: 500, output_tokens: 250, cached_input_tokens: 50, total_tokens: 800 }),
+      makeRow({
+        source: "claude-code",
+        model: "sonnet-4",
+        input_tokens: 100,
+        output_tokens: 50,
+        cached_input_tokens: 10,
+        total_tokens: 160,
+      }),
+      makeRow({
+        source: "claude-code",
+        model: "sonnet-4",
+        input_tokens: 200,
+        output_tokens: 100,
+        cached_input_tokens: 20,
+        total_tokens: 320,
+      }),
+      makeRow({
+        source: "opencode",
+        model: "gpt-4.1",
+        input_tokens: 500,
+        output_tokens: 250,
+        cached_input_tokens: 50,
+        total_tokens: 800,
+      }),
     ];
 
     const result = toModelAggregates(records);
@@ -272,9 +348,27 @@ describe("toLocalDailyBuckets", () => {
 
   it("should bucket rows by UTC date when tzOffset is 0", () => {
     const rows = [
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-07T22:00:00Z", total_tokens: 200, input_tokens: 160, output_tokens: 40, cached_input_tokens: 20 }),
-      makeRow({ hour_start: "2026-03-08T05:00:00Z", total_tokens: 300, input_tokens: 240, output_tokens: 60, cached_input_tokens: 30 }),
+      makeRow({
+        hour_start: "2026-03-07T10:00:00Z",
+        total_tokens: 100,
+        input_tokens: 80,
+        output_tokens: 20,
+        cached_input_tokens: 10,
+      }),
+      makeRow({
+        hour_start: "2026-03-07T22:00:00Z",
+        total_tokens: 200,
+        input_tokens: 160,
+        output_tokens: 40,
+        cached_input_tokens: 20,
+      }),
+      makeRow({
+        hour_start: "2026-03-08T05:00:00Z",
+        total_tokens: 300,
+        input_tokens: 240,
+        output_tokens: 60,
+        cached_input_tokens: 30,
+      }),
     ];
 
     const result = toLocalDailyBuckets(rows, 0);
@@ -290,7 +384,13 @@ describe("toLocalDailyBuckets", () => {
     // tzOffset=480 means UTC-8 (PST). A record at 2026-03-08T03:00Z is
     // 2026-03-07T19:00 PST — should land in 2026-03-07 bucket.
     const rows = [
-      makeRow({ hour_start: "2026-03-08T03:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
+      makeRow({
+        hour_start: "2026-03-08T03:00:00Z",
+        total_tokens: 500,
+        input_tokens: 400,
+        output_tokens: 100,
+        cached_input_tokens: 50,
+      }),
     ];
 
     const result = toLocalDailyBuckets(rows, 480);
@@ -304,7 +404,13 @@ describe("toLocalDailyBuckets", () => {
     // tzOffset=-540 means UTC+9 (JST). A record at 2026-03-07T20:00Z is
     // 2026-03-08T05:00 JST — should land in 2026-03-08 bucket.
     const rows = [
-      makeRow({ hour_start: "2026-03-07T20:00:00Z", total_tokens: 700, input_tokens: 560, output_tokens: 140, cached_input_tokens: 70 }),
+      makeRow({
+        hour_start: "2026-03-07T20:00:00Z",
+        total_tokens: 700,
+        input_tokens: 560,
+        output_tokens: 140,
+        cached_input_tokens: 70,
+      }),
     ];
 
     const result = toLocalDailyBuckets(rows, -540);
@@ -317,8 +423,20 @@ describe("toLocalDailyBuckets", () => {
   it("should aggregate multiple rows into same local day", () => {
     // Both are UTC-8, same local day 2026-03-07
     const rows = [
-      makeRow({ hour_start: "2026-03-07T18:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-08T02:00:00Z", total_tokens: 200, input_tokens: 160, output_tokens: 40, cached_input_tokens: 20 }),
+      makeRow({
+        hour_start: "2026-03-07T18:00:00Z",
+        total_tokens: 100,
+        input_tokens: 80,
+        output_tokens: 20,
+        cached_input_tokens: 10,
+      }),
+      makeRow({
+        hour_start: "2026-03-08T02:00:00Z",
+        total_tokens: 200,
+        input_tokens: 160,
+        output_tokens: 40,
+        cached_input_tokens: 20,
+      }),
     ];
 
     const result = toLocalDailyBuckets(rows, 480);
@@ -361,8 +479,20 @@ describe("compareWeekdayWeekend", () => {
     // 2026-03-02 (Mon) to 2026-03-06 (Fri) = 5 weekdays, 0 weekend
     // But range also has no weekend days, so weekend totalDays=0
     const rows = [
-      makeRow({ hour_start: "2026-03-02T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-      makeRow({ hour_start: "2026-03-04T14:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({
+        hour_start: "2026-03-02T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
+      makeRow({
+        hour_start: "2026-03-04T14:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
     ];
 
     const result = compareWeekdayWeekend(
@@ -383,8 +513,20 @@ describe("compareWeekdayWeekend", () => {
   it("should compute averages for all-weekend data", () => {
     // 2026-03-07 is Saturday, 2026-03-08 is Sunday
     const rows = [
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
-      makeRow({ hour_start: "2026-03-08T10:00:00Z", total_tokens: 700, input_tokens: 560, output_tokens: 140, cached_input_tokens: 70 }),
+      makeRow({
+        hour_start: "2026-03-07T10:00:00Z",
+        total_tokens: 500,
+        input_tokens: 400,
+        output_tokens: 100,
+        cached_input_tokens: 50,
+      }),
+      makeRow({
+        hour_start: "2026-03-08T10:00:00Z",
+        total_tokens: 700,
+        input_tokens: 560,
+        output_tokens: 140,
+        cached_input_tokens: 70,
+      }),
     ];
 
     const result = compareWeekdayWeekend(
@@ -405,8 +547,20 @@ describe("compareWeekdayWeekend", () => {
     // 2026-03-02 (Mon) to 2026-03-08 (Sun) = 5 weekdays + 2 weekend
     // Data only on Mon and Sat — other days get zero-filled
     const rows = [
-      makeRow({ hour_start: "2026-03-02T10:00:00Z", total_tokens: 5000, input_tokens: 4000, output_tokens: 1000, cached_input_tokens: 500 }),
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({
+        hour_start: "2026-03-02T10:00:00Z",
+        total_tokens: 5000,
+        input_tokens: 4000,
+        output_tokens: 1000,
+        cached_input_tokens: 500,
+      }),
+      makeRow({
+        hour_start: "2026-03-07T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
     ];
 
     const result = compareWeekdayWeekend(
@@ -433,7 +587,13 @@ describe("compareWeekdayWeekend", () => {
     // 2026-03-08T03:00Z is actually 2026-03-07T19:00 PST = Saturday.
     // Date range: 2026-03-07 (Sat) to 2026-03-07 (Sat) in local time
     const rows = [
-      makeRow({ hour_start: "2026-03-08T03:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({
+        hour_start: "2026-03-08T03:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
     ];
 
     const result = compareWeekdayWeekend(
@@ -481,11 +641,35 @@ describe("computeMoMGrowth", () => {
   it("should split rows into current and previous month", () => {
     const rows = [
       // February (previous)
-      makeRow({ hour_start: "2026-02-10T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-      makeRow({ hour_start: "2026-02-20T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({
+        hour_start: "2026-02-10T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
+      makeRow({
+        hour_start: "2026-02-20T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
       // March (current)
-      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 4000, input_tokens: 3200, output_tokens: 800, cached_input_tokens: 400 }),
-      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({
+        hour_start: "2026-03-05T10:00:00Z",
+        total_tokens: 4000,
+        input_tokens: 3200,
+        output_tokens: 800,
+        cached_input_tokens: 400,
+      }),
+      makeRow({
+        hour_start: "2026-03-10T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
@@ -502,7 +686,13 @@ describe("computeMoMGrowth", () => {
 
   it("should handle no previous month data (first month)", () => {
     const rows = [
-      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 5000, input_tokens: 4000, output_tokens: 1000, cached_input_tokens: 500 }),
+      makeRow({
+        hour_start: "2026-03-05T10:00:00Z",
+        total_tokens: 5000,
+        input_tokens: 4000,
+        output_tokens: 1000,
+        cached_input_tokens: 500,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
@@ -516,7 +706,13 @@ describe("computeMoMGrowth", () => {
 
   it("should handle no current month data", () => {
     const rows = [
-      makeRow({ hour_start: "2026-02-10T10:00:00Z", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
+      makeRow({
+        hour_start: "2026-02-10T10:00:00Z",
+        total_tokens: 3000,
+        input_tokens: 2400,
+        output_tokens: 600,
+        cached_input_tokens: 300,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
@@ -536,11 +732,35 @@ describe("computeMoMGrowth", () => {
   it("should count distinct active days per month", () => {
     const rows = [
       // Same day in Feb — should count as 1 day
-      makeRow({ hour_start: "2026-02-10T08:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
-      makeRow({ hour_start: "2026-02-10T16:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
+      makeRow({
+        hour_start: "2026-02-10T08:00:00Z",
+        total_tokens: 500,
+        input_tokens: 400,
+        output_tokens: 100,
+        cached_input_tokens: 50,
+      }),
+      makeRow({
+        hour_start: "2026-02-10T16:00:00Z",
+        total_tokens: 500,
+        input_tokens: 400,
+        output_tokens: 100,
+        cached_input_tokens: 50,
+      }),
       // Two days in March
-      makeRow({ hour_start: "2026-03-01T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({
+        hour_start: "2026-03-01T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
+      makeRow({
+        hour_start: "2026-03-05T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
@@ -553,12 +773,42 @@ describe("computeMoMGrowth", () => {
     // ref date = March 15 → only include Feb 1-15 for same-date comparison
     const rows = [
       // February: day 5 (included), day 10 (included), day 20 (excluded)
-      makeRow({ hour_start: "2026-02-05T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-      makeRow({ hour_start: "2026-02-10T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-      makeRow({ hour_start: "2026-02-20T10:00:00Z", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
+      makeRow({
+        hour_start: "2026-02-05T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
+      makeRow({
+        hour_start: "2026-02-10T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
+      makeRow({
+        hour_start: "2026-02-20T10:00:00Z",
+        total_tokens: 3000,
+        input_tokens: 2400,
+        output_tokens: 600,
+        cached_input_tokens: 300,
+      }),
       // March (current): day 5 and day 10
-      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
-      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({
+        hour_start: "2026-03-05T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
+      makeRow({
+        hour_start: "2026-03-10T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
@@ -577,8 +827,20 @@ describe("computeMoMGrowth", () => {
   it("should include previous month day equal to current day in same-date subset", () => {
     // ref date = March 15 → Feb 15 should be INCLUDED (d <= currentDay)
     const rows = [
-      makeRow({ hour_start: "2026-02-15T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({
+        hour_start: "2026-02-15T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
+      makeRow({
+        hour_start: "2026-03-10T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
@@ -590,8 +852,20 @@ describe("computeMoMGrowth", () => {
   it("should return zero same-date growth when no previous same-date data", () => {
     // ref date = March 2 → only Feb 1-2 for same-date; all Feb data is after day 2
     const rows = [
-      makeRow({ hour_start: "2026-02-15T10:00:00Z", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
-      makeRow({ hour_start: "2026-03-01T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({
+        hour_start: "2026-02-15T10:00:00Z",
+        total_tokens: 3000,
+        input_tokens: 2400,
+        output_tokens: 600,
+        cached_input_tokens: 300,
+      }),
+      makeRow({
+        hour_start: "2026-03-01T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-02"));
@@ -608,7 +882,13 @@ describe("computeMoMGrowth", () => {
   it("should assign UTC midnight row to previous month for west-of-UTC timezone (tzOffset=480, PST)", () => {
     // 2026-03-01T01:00:00Z → PST local = 2026-02-28T17:00:00 → February
     const rows = [
-      makeRow({ hour_start: "2026-03-01T01:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({
+        hour_start: "2026-03-01T01:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"), 480);
@@ -621,7 +901,13 @@ describe("computeMoMGrowth", () => {
   it("should keep row in current month for east-of-UTC timezone (tzOffset=-540, JST)", () => {
     // 2026-02-28T20:00:00Z → JST local = 2026-03-01T05:00:00 → March
     const rows = [
-      makeRow({ hour_start: "2026-02-28T20:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({
+        hour_start: "2026-02-28T20:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
     ];
 
     const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"), -540);
@@ -633,8 +919,20 @@ describe("computeMoMGrowth", () => {
 
   it("should match zero-offset behavior when tzOffset=0", () => {
     const rows = [
-      makeRow({ hour_start: "2026-02-10T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 4000, input_tokens: 3200, output_tokens: 800, cached_input_tokens: 400 }),
+      makeRow({
+        hour_start: "2026-02-10T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
+      makeRow({
+        hour_start: "2026-03-05T10:00:00Z",
+        total_tokens: 4000,
+        input_tokens: 3200,
+        output_tokens: 800,
+        cached_input_tokens: 400,
+      }),
     ];
 
     const withTz = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"), 0);
@@ -829,8 +1127,20 @@ describe("computeWoWGrowth", () => {
   it("should compute growth when both weeks have data", () => {
     // ref = Mar 15 (Sunday), current week = Mar 15, previous week = Mar 8-14
     const rows = [
-      makeRow({ hour_start: "2026-03-08T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }), // prev week Sun
-      makeRow({ hour_start: "2026-03-15T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }), // current week Sun
+      makeRow({
+        hour_start: "2026-03-08T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }), // prev week Sun
+      makeRow({
+        hour_start: "2026-03-15T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }), // current week Sun
     ];
 
     const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-15"));
@@ -842,7 +1152,13 @@ describe("computeWoWGrowth", () => {
 
   it("should return zero growth when previous week has no data", () => {
     const rows = [
-      makeRow({ hour_start: "2026-03-15T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({
+        hour_start: "2026-03-15T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }),
     ];
 
     const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-15"));
@@ -858,10 +1174,34 @@ describe("computeWoWGrowth", () => {
     // Previous week: Mar 8 (Sun) - Mar 14 (Sat)
     // Same-day subset: Mar 8 (Sun) - Mar 11 (Wed)
     const rows = [
-      makeRow({ hour_start: "2026-03-08T10:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }), // prev Sun
-      makeRow({ hour_start: "2026-03-11T10:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }), // prev Wed (included in same-day)
-      makeRow({ hour_start: "2026-03-13T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }), // prev Fri (excluded from same-day)
-      makeRow({ hour_start: "2026-03-18T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }), // current Wed
+      makeRow({
+        hour_start: "2026-03-08T10:00:00Z",
+        total_tokens: 500,
+        input_tokens: 400,
+        output_tokens: 100,
+        cached_input_tokens: 50,
+      }), // prev Sun
+      makeRow({
+        hour_start: "2026-03-11T10:00:00Z",
+        total_tokens: 500,
+        input_tokens: 400,
+        output_tokens: 100,
+        cached_input_tokens: 50,
+      }), // prev Wed (included in same-day)
+      makeRow({
+        hour_start: "2026-03-13T10:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }), // prev Fri (excluded from same-day)
+      makeRow({
+        hour_start: "2026-03-18T10:00:00Z",
+        total_tokens: 2000,
+        input_tokens: 1600,
+        output_tokens: 400,
+        cached_input_tokens: 200,
+      }), // current Wed
     ];
 
     const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-18"));
@@ -881,7 +1221,13 @@ describe("computeWoWGrowth", () => {
     // Let's use a clearer example: Mar 15 is Sunday (week start)
     // In PST, 2026-03-09T03:00Z → Mar 8 19:00 PST (Sunday) → previous week
     const rows = [
-      makeRow({ hour_start: "2026-03-09T03:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({
+        hour_start: "2026-03-09T03:00:00Z",
+        total_tokens: 1000,
+        input_tokens: 800,
+        output_tokens: 200,
+        cached_input_tokens: 100,
+      }),
     ];
 
     // ref = Mar 15 in UTC, but we'll use tzOffset=0 for simplicity
@@ -946,9 +1292,7 @@ describe("toHourlyWeekdayWeekend", () => {
   it("should shift hours with timezone offset (UTC-8)", () => {
     // Mar 7 = Saturday
     // 2026-03-07T18:00Z → PST local = 2026-03-07T10:00 → hour 10
-    const rows: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-07T18:00:00Z", total_tokens: 1000 }),
-    ];
+    const rows: UsageRow[] = [makeRow({ hour_start: "2026-03-07T18:00:00Z", total_tokens: 1000 })];
 
     const result = toHourlyWeekdayWeekend(rows, defaultDateRange, 480);
 
@@ -958,9 +1302,7 @@ describe("toHourlyWeekdayWeekend", () => {
   });
 
   it("should zero-fill hours with no data", () => {
-    const rows: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 }),
-    ];
+    const rows: UsageRow[] = [makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 })];
 
     const result = toHourlyWeekdayWeekend(rows, defaultDateRange, 0);
 
@@ -980,9 +1322,21 @@ describe("default `now` arguments", () => {
   it("computeMoMGrowth handles January reference (previous month wraps to December of previous year)", () => {
     const rows = [
       // December 2025 (previous month when ref = Jan 2026)
-      makeRow({ hour_start: "2025-12-15T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
+      makeRow({
+        hour_start: "2025-12-15T10:00:00Z",
+        total_tokens: 100,
+        input_tokens: 80,
+        output_tokens: 20,
+        cached_input_tokens: 10,
+      }),
       // January 2026 (current)
-      makeRow({ hour_start: "2026-01-05T10:00:00Z", total_tokens: 200, input_tokens: 160, output_tokens: 40, cached_input_tokens: 20 }),
+      makeRow({
+        hour_start: "2026-01-05T10:00:00Z",
+        total_tokens: 200,
+        input_tokens: 160,
+        output_tokens: 40,
+        cached_input_tokens: 20,
+      }),
     ];
     const ref = new Date("2026-01-15T12:00:00Z");
     const result = computeMoMGrowth(rows, getDefaultPricingMap(), ref);

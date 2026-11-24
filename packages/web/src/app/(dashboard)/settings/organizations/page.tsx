@@ -48,14 +48,22 @@ interface OrgMember {
 // ---------------------------------------------------------------------------
 
 export default function OrganizationsPage() {
-  const { data: allData, error: allError, isLoading: allLoading, mutate: mutateAll } =
-    useSWR<{ organizations: Organization[] }>("/api/organizations", fetcher);
-  const { data: mineData, error: mineError, isLoading: mineLoading, mutate: mutateMine } =
-    useSWR<{ organizations: Organization[] }>("/api/organizations/mine", fetcher);
+  const {
+    data: allData,
+    error: allError,
+    isLoading: allLoading,
+    mutate: mutateAll,
+  } = useSWR<{ organizations: Organization[] }>("/api/organizations", fetcher);
+  const {
+    data: mineData,
+    error: mineError,
+    isLoading: mineLoading,
+    mutate: mutateMine,
+  } = useSWR<{ organizations: Organization[] }>("/api/organizations/mine", fetcher);
 
-  const [overrides, setOverrides] = useState<
-    Map<string, { joined: boolean; delta: number }>
-  >(new Map());
+  const [overrides, setOverrides] = useState<Map<string, { joined: boolean; delta: number }>>(
+    new Map(),
+  );
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   const baseMyOrgIds = useMemo(
@@ -89,7 +97,8 @@ export default function OrganizationsPage() {
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const wasMembersOpenRef = useRef(false);
   if (membersModalOrg !== null && !wasMembersOpenRef.current) {
-    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
   }
   wasMembersOpenRef.current = membersModalOrg !== null;
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -186,8 +195,7 @@ export default function OrganizationsPage() {
         title="Organizations"
         description={
           <>
-            Join or leave organizations to filter your leaderboard. Want to add a new
-            organization?{" "}
+            Join or leave organizations to filter your leaderboard. Want to add a new organization?{" "}
             <a
               href="https://github.com/nocoo/pew/issues/new?labels=organization&title=[Org]+Request:+"
               target="_blank"
@@ -276,7 +284,12 @@ export default function OrganizationsPage() {
         )}
       </section>
 
-      <Dialog open={membersModalOrg !== null} onOpenChange={(next) => { if (!next) closeMembersModal(); }}>
+      <Dialog
+        open={membersModalOrg !== null}
+        onOpenChange={(next) => {
+          if (!next) closeMembersModal();
+        }}
+      >
         <DialogContent
           showCloseButton={false}
           onCloseAutoFocus={(event) => {
@@ -307,9 +320,7 @@ export default function OrganizationsPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <DialogTitle className="truncate text-sm">
-                      {membersModalOrg.name}
-                    </DialogTitle>
+                    <DialogTitle className="truncate text-sm">{membersModalOrg.name}</DialogTitle>
                     <DialogDescription>
                       {membersModalOrg.memberCount}{" "}
                       {membersModalOrg.memberCount === 1 ? "member" : "members"}

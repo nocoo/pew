@@ -14,11 +14,7 @@ vi.mock("@/auth", () => ({
   shouldUseSecureCookies: vi.fn(() => false),
 }));
 
-import {
-  handleInviteGate,
-  type InviteGateRequest,
-  type InviteGateAccount,
-} from "@/lib/invite";
+import { handleInviteGate, type InviteGateRequest, type InviteGateAccount } from "@/lib/invite";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,12 +61,7 @@ describe("handleInviteGate", () => {
     // getUserByAccount returns a user → existing
     vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce({ id: "user-1" });
 
-    const result = await handleInviteGate(
-      makeReq(),
-      GOOGLE_ACCOUNT,
-      mockDbRead,
-      mockDbWrite
-    );
+    const result = await handleInviteGate(makeReq(), GOOGLE_ACCOUNT, mockDbRead, mockDbWrite);
     expect(result).toBe(true);
 
     // Should NOT have called execute (no invite code consumption)
@@ -95,7 +86,7 @@ describe("handleInviteGate", () => {
       makeReq(), // no cookies
       GOOGLE_ACCOUNT,
       mockDbRead,
-      mockDbWrite
+      mockDbWrite,
     );
     expect(typeof result).toBe("string");
     expect(result).toContain("/login?error=InviteRequired");
@@ -108,7 +99,7 @@ describe("handleInviteGate", () => {
       makeReq({ "pew-invite-code": "bad" }), // invalid format
       GOOGLE_ACCOUNT,
       mockDbRead,
-      mockDbWrite
+      mockDbWrite,
     );
     expect(typeof result).toBe("string");
     expect(result).toContain("/login?error=InviteRequired");
@@ -127,7 +118,7 @@ describe("handleInviteGate", () => {
       makeReq({ "pew-invite-code": "A3K9X2M4" }),
       GOOGLE_ACCOUNT,
       mockDbRead,
-      mockDbWrite
+      mockDbWrite,
     );
     expect(result).toBe(true);
 
@@ -152,7 +143,7 @@ describe("handleInviteGate", () => {
       makeReq({ "pew-invite-code": "A3K9X2M4" }),
       GOOGLE_ACCOUNT,
       mockDbRead,
-      mockDbWrite
+      mockDbWrite,
     );
     expect(typeof result).toBe("string");
     expect(result).toContain("/login?error=InviteRequired");
@@ -174,7 +165,7 @@ describe("handleInviteGate", () => {
       makeReq({ "pew-invite-code": "A3K9X2M4" }),
       noEmailAccount,
       mockDbRead,
-      mockDbWrite
+      mockDbWrite,
     );
     expect(result).toBe(true);
 
@@ -189,12 +180,10 @@ describe("handleInviteGate", () => {
       makeReq({ "authjs.callback-url": "/dashboard/settings" }),
       GOOGLE_ACCOUNT,
       mockDbRead,
-      mockDbWrite
+      mockDbWrite,
     );
     expect(typeof result).toBe("string");
-    expect(result).toContain(
-      `callbackUrl=${encodeURIComponent("/dashboard/settings")}`
-    );
+    expect(result).toContain(`callbackUrl=${encodeURIComponent("/dashboard/settings")}`);
   });
 
   it("should use __Secure- prefixed cookie name when secure cookies enabled", async () => {
@@ -208,12 +197,10 @@ describe("handleInviteGate", () => {
       makeReq({ "__Secure-authjs.callback-url": "/secure-dashboard" }),
       GOOGLE_ACCOUNT,
       mockDbRead,
-      mockDbWrite
+      mockDbWrite,
     );
     expect(typeof result).toBe("string");
-    expect(result).toContain(
-      `callbackUrl=${encodeURIComponent("/secure-dashboard")}`
-    );
+    expect(result).toContain(`callbackUrl=${encodeURIComponent("/secure-dashboard")}`);
 
     // Reset mock
     vi.mocked(shouldUseSecureCookies).mockReturnValue(false);
@@ -223,12 +210,7 @@ describe("handleInviteGate", () => {
     vi.stubEnv("E2E_SKIP_AUTH", "true");
     vi.stubEnv("NODE_ENV", "test");
 
-    const result = await handleInviteGate(
-      makeReq(),
-      GOOGLE_ACCOUNT,
-      mockDbRead,
-      mockDbWrite
-    );
+    const result = await handleInviteGate(makeReq(), GOOGLE_ACCOUNT, mockDbRead, mockDbWrite);
     expect(result).toBe(true);
 
     // Should NOT have queried the database at all
@@ -248,7 +230,7 @@ describe("handleInviteGate", () => {
         makeReq(), // no invite cookie
         GOOGLE_ACCOUNT,
         mockDbRead,
-        mockDbWrite
+        mockDbWrite,
       );
       // Bypass should NOT trigger; full invite-gate logic runs and rejects
       expect(typeof result).toBe("string");
@@ -286,7 +268,7 @@ describe("handleInviteGate", () => {
     // Call without overrides — this exercises the fallback to getDbRead/getDbWrite
     const result = await handleInviteGate(
       makeReq(),
-      GOOGLE_ACCOUNT
+      GOOGLE_ACCOUNT,
       // No dbReadOverride, no dbWriteOverride
     );
     expect(result).toBe(true);

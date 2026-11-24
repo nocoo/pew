@@ -17,11 +17,7 @@ import {
   uninstallCodexNotifier,
   getCodexNotifierStatus,
 } from "./codex-notifier.js";
-import {
-  installPiHook,
-  uninstallPiHook,
-  getPiHookStatus,
-} from "./pi-hook.js";
+import { installPiHook, uninstallPiHook, getPiHookStatus } from "./pi-hook.js";
 
 interface RegistryDeps {
   spawn?: (cmd: string, args: string[], opts?: object) => { status: number | null };
@@ -192,9 +188,7 @@ export async function uninstallAll(
   );
 }
 
-export async function statusAll(
-  paths: NotifierPaths,
-): Promise<Record<Source, NotifierStatus>> {
+export async function statusAll(paths: NotifierPaths): Promise<Record<Source, NotifierStatus>> {
   const entries = await Promise.all(
     DRIVERS.map(async (driver) => {
       try {

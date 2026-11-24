@@ -64,11 +64,7 @@ describe("Codex notifier installer", () => {
     const backup = JSON.parse(await readFile(originalBackupPath, "utf8"));
 
     expect(result.changed).toBe(true);
-    expect(backup.notify).toEqual([
-      "/usr/bin/env",
-      "node",
-      "/tmp/original-notify.js",
-    ]);
+    expect(backup.notify).toEqual(["/usr/bin/env", "node", "/tmp/original-notify.js"]);
   });
 
   it("is idempotent when the pew notify is already installed", async () => {
@@ -123,9 +119,7 @@ describe("Codex notifier installer", () => {
     const updated = await readFile(configPath, "utf8");
 
     expect(result.changed).toBe(true);
-    expect(updated).toContain(
-      'notify = ["/usr/bin/env", "node", "/tmp/original-notify.js"]',
-    );
+    expect(updated).toContain('notify = ["/usr/bin/env", "node", "/tmp/original-notify.js"]');
   });
 
   it("removes the notify line when uninstalling without a backup", async () => {
@@ -163,9 +157,9 @@ describe("Codex notifier installer", () => {
   });
 
   it("reports installed and not-installed status", async () => {
-    expect(
-      await getCodexNotifierStatus({ configPath, notifyPath, originalBackupPath }),
-    ).toBe("not-installed");
+    expect(await getCodexNotifierStatus({ configPath, notifyPath, originalBackupPath })).toBe(
+      "not-installed",
+    );
 
     await writeFile(
       configPath,
@@ -173,9 +167,9 @@ describe("Codex notifier installer", () => {
       "utf8",
     );
 
-    expect(
-      await getCodexNotifierStatus({ configPath, notifyPath, originalBackupPath }),
-    ).toBe("installed");
+    expect(await getCodexNotifierStatus({ configPath, notifyPath, originalBackupPath })).toBe(
+      "installed",
+    );
   });
 
   it("preserves an explicit empty notify array", async () => {
@@ -219,11 +213,7 @@ describe("Codex notifier installer", () => {
 
   it("parses notify with escaped quotes in double-quoted strings", async () => {
     // notify = ["bash", "-lc", "echo \"x\""]
-    await writeFile(
-      configPath,
-      'notify = ["bash", "-lc", "echo \\"x\\""]\n',
-      "utf8",
-    );
+    await writeFile(configPath, 'notify = ["bash", "-lc", "echo \\"x\\""]\n', "utf8");
 
     // Install should detect existing notify and back it up correctly
     const result = await installCodexNotifier({
@@ -260,11 +250,7 @@ describe("Codex notifier installer", () => {
   it("does not process escapes in single-quoted strings (TOML literal strings)", async () => {
     // In TOML, single-quoted strings are literal — backslash has no special meaning
     // notify = ['C:\Users\foo\notify.exe', '--flag']
-    await writeFile(
-      configPath,
-      "notify = ['C:\\Users\\foo\\notify.exe', '--flag']\n",
-      "utf8",
-    );
+    await writeFile(configPath, "notify = ['C:\\Users\\foo\\notify.exe', '--flag']\n", "utf8");
 
     const result = await installCodexNotifier({
       configPath,
@@ -280,11 +266,7 @@ describe("Codex notifier installer", () => {
 
   it("parses \\b and \\f escape sequences in double-quoted strings", async () => {
     // \b = backspace (U+0008), \f = form feed (U+000C)
-    await writeFile(
-      configPath,
-      'notify = ["a\\bb", "c\\fd"]\n',
-      "utf8",
-    );
+    await writeFile(configPath, 'notify = ["a\\bb", "c\\fd"]\n', "utf8");
 
     const result = await installCodexNotifier({
       configPath,
@@ -299,11 +281,7 @@ describe("Codex notifier installer", () => {
 
   it("parses \\uXXXX unicode escape sequences in double-quoted strings", async () => {
     // \u00E9 = é, \u0041 = A
-    await writeFile(
-      configPath,
-      'notify = ["caf\\u00E9", "\\u0041BC"]\n',
-      "utf8",
-    );
+    await writeFile(configPath, 'notify = ["caf\\u00E9", "\\u0041BC"]\n', "utf8");
 
     const result = await installCodexNotifier({
       configPath,
@@ -319,11 +297,7 @@ describe("Codex notifier installer", () => {
   it("preserves backslash for \\U escape with invalid hex (regex test fails)", async () => {
     // Exercises the `if (/^[0-9a-fA-F]{8}$/.test(hex))` false branch for the
     // 8-digit Unicode escape — \\U00GGHHII has invalid hex characters.
-    await writeFile(
-      configPath,
-      'notify = ["bad\\U00GGHHII"]\n',
-      "utf8",
-    );
+    await writeFile(configPath, 'notify = ["bad\\U00GGHHII"]\n', "utf8");
     const result = await installCodexNotifier({
       configPath,
       notifyPath,
@@ -337,11 +311,7 @@ describe("Codex notifier installer", () => {
   it("preserves backslash for \\U escapes whose code point exceeds 0x10FFFF", async () => {
     // Exercises the `if (codePoint <= 0x10FFFF)` false branch —
     // \\U11000000 is > 0x10FFFF (the Unicode max), so the literal backslash is kept.
-    await writeFile(
-      configPath,
-      'notify = ["bad\\U11000000"]\n',
-      "utf8",
-    );
+    await writeFile(configPath, 'notify = ["bad\\U11000000"]\n', "utf8");
 
     const result = await installCodexNotifier({
       configPath,
@@ -356,11 +326,7 @@ describe("Codex notifier installer", () => {
 
   it("parses \\UXXXXXXXX unicode escape sequences in double-quoted strings", async () => {
     // \U0001F600 = 😀 (grinning face emoji)
-    await writeFile(
-      configPath,
-      'notify = ["hi\\U0001F600"]\n',
-      "utf8",
-    );
+    await writeFile(configPath, 'notify = ["hi\\U0001F600"]\n', "utf8");
 
     const result = await installCodexNotifier({
       configPath,
@@ -375,11 +341,7 @@ describe("Codex notifier installer", () => {
 
   it("preserves backslash for invalid unicode escapes", async () => {
     // \u00GG is not valid hex, should preserve the backslash literally
-    await writeFile(
-      configPath,
-      'notify = ["bad\\u00GG"]\n',
-      "utf8",
-    );
+    await writeFile(configPath, 'notify = ["bad\\u00GG"]\n', "utf8");
 
     const result = await installCodexNotifier({
       configPath,
@@ -421,14 +383,9 @@ describe("Codex notifier installer", () => {
   it("handles multiline notify with escaped quotes", async () => {
     await writeFile(
       configPath,
-      [
-        'model = "gpt-5"',
-        "notify = [",
-        '  "bash",',
-        '  "-lc",',
-        '  "echo \\"done\\""',
-        "]",
-      ].join("\n"),
+      ['model = "gpt-5"', "notify = [", '  "bash",', '  "-lc",', '  "echo \\"done\\""', "]"].join(
+        "\n",
+      ),
       "utf8",
     );
 

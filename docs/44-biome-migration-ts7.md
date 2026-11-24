@@ -24,16 +24,16 @@
 
 按 raven 的 git log 时间线（`git log --oneline` on raven main）：
 
-| # | commit | 变更 |
-|---|---|---|
-| 1 | `58c5d05` | 单个 commit 完成 eslint → biome 切换：新 `biome.json`、根/子包 `lint` script 改 `biome check`、`lint-staged` 换成 biome、卸载 eslint 依赖、删 `eslint.config.js`、把所有 inline `// eslint-disable-next-line` 翻译成 `// biome-ignore`（**同一 commit 内**，避免中间态既没 eslint 也没 biome-ignore） |
-| 2 | `987f7a6` / `80ed74f` | README + CLAUDE.md 文案 |
-| 3 | `8678e09` | 严格性对齐：把 biome recommended 之外的 tseslint-strict 规则一条条 elevate 到 `error` |
-| 4 | `bac2b6a` | 补两个 tseslint 有但 biome 没有的规则：`no-dynamic-delete` + `ban-ts-comment` 描述长度 → `scripts/check-dynamic-delete.ts` + `scripts/check-ts-expect-error.ts`（用 `oxc-parser` 解 AST） |
-| 5 | `28f9d2d` | **走弯路**：TS 6 与 TS 7 双 sidecar (`typescript` + `typescript7: npm:typescript@7.0.2`) — 后被 revert |
-| 6 | `b7a9af6` | **最终方案**：单包 `@typescript/native-preview@7.0.0-dev.*`（供 Next 检测） + `typescript@^7.0.2` stable（供 `tsc` 走 typecheck 与 build）+ 删除 sidecar |
-| 7 | `e6d3a66` | `dependency-cruiser` 需要 TS ≤6 Compiler API → aliased `typescript6-for-depcruise: npm:typescript@6.0.3`（**pew 无 depcruise，跳过**） |
-| 8 | `fd7e27d` | 把 `scripts/` 目录也纳入 biome gate |
+| #   | commit                | 变更                                                                                                                                                                                                                                                                                                  |
+| --- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `58c5d05`             | 单个 commit 完成 eslint → biome 切换：新 `biome.json`、根/子包 `lint` script 改 `biome check`、`lint-staged` 换成 biome、卸载 eslint 依赖、删 `eslint.config.js`、把所有 inline `// eslint-disable-next-line` 翻译成 `// biome-ignore`（**同一 commit 内**，避免中间态既没 eslint 也没 biome-ignore） |
+| 2   | `987f7a6` / `80ed74f` | README + CLAUDE.md 文案                                                                                                                                                                                                                                                                               |
+| 3   | `8678e09`             | 严格性对齐：把 biome recommended 之外的 tseslint-strict 规则一条条 elevate 到 `error`                                                                                                                                                                                                                 |
+| 4   | `bac2b6a`             | 补两个 tseslint 有但 biome 没有的规则：`no-dynamic-delete` + `ban-ts-comment` 描述长度 → `scripts/check-dynamic-delete.ts` + `scripts/check-ts-expect-error.ts`（用 `oxc-parser` 解 AST）                                                                                                             |
+| 5   | `28f9d2d`             | **走弯路**：TS 6 与 TS 7 双 sidecar (`typescript` + `typescript7: npm:typescript@7.0.2`) — 后被 revert                                                                                                                                                                                                |
+| 6   | `b7a9af6`             | **最终方案**：单包 `@typescript/native-preview@7.0.0-dev.*`（供 Next 检测） + `typescript@^7.0.2` stable（供 `tsc` 走 typecheck 与 build）+ 删除 sidecar                                                                                                                                              |
+| 7   | `e6d3a66`             | `dependency-cruiser` 需要 TS ≤6 Compiler API → aliased `typescript6-for-depcruise: npm:typescript@6.0.3`（**pew 无 depcruise，跳过**）                                                                                                                                                                |
+| 8   | `fd7e27d`             | 把 `scripts/` 目录也纳入 biome gate                                                                                                                                                                                                                                                                   |
 
 pew 跳过步骤 5（sidecar 弯路）与 7（depcruise 不适用），最终态与步骤 6 一致。
 
@@ -44,26 +44,26 @@ pew 跳过步骤 5（sidecar 弯路）与 7（depcruise 不适用），最终态
 
 ### 3.1 依赖差异
 
-| 项 | raven | pew | 备注 |
-|---|---|---|---|
-| Next.js | dashboard 用 Next 16 | web 用 Next 16.2.10 | 相同栈 |
-| `@next/eslint-plugin-next` | 无（Next 16 移除内建 `next lint`） | 有 | 见 §3.3 逐条评估 |
-| `eslint-plugin-react-hooks` | 无（dashboard hooks 覆盖面小） | 有 7.1.1 | recommended 启用 16 条规则，见 §3.4 |
-| Workers | 无 | 4 个 wrangler worker | 无 lint 差异 |
-| `dependency-cruiser` | 有 | 无 | pew 跳过 raven 步骤 7 |
+| 项                          | raven                              | pew                  | 备注                                |
+| --------------------------- | ---------------------------------- | -------------------- | ----------------------------------- |
+| Next.js                     | dashboard 用 Next 16               | web 用 Next 16.2.10  | 相同栈                              |
+| `@next/eslint-plugin-next`  | 无（Next 16 移除内建 `next lint`） | 有                   | 见 §3.3 逐条评估                    |
+| `eslint-plugin-react-hooks` | 无（dashboard hooks 覆盖面小）     | 有 7.1.1             | recommended 启用 16 条规则，见 §3.4 |
+| Workers                     | 无                                 | 4 个 wrangler worker | 无 lint 差异                        |
+| `dependency-cruiser`        | 有                                 | 无                   | pew 跳过 raven 步骤 7               |
 
 ### 3.2 pew 的 suppression 盘点（精确）
 
 以 `rg -o 'eslint-disable(-next-line)? [@a-z/-]+' packages/*/src` 精确统计：
 
-| 规则 | 出现处数 | 文件分布 |
-|---|---:|---|
-| `@typescript-eslint/no-dynamic-delete` | **6** | 4 文件：`cli/notifier/claude-hook.ts` ×1 + `cli/notifier/gemini-hook.ts` ×1 + `cli/notifier/openclaw-hook.ts` ×2 + `cli/__tests__/sync.test.ts` ×2 |
-| `@next/next/no-img-element` | **13** | web 10 个 `.tsx` 文件：`showcase-image` / `pricing-table` / `teams/page` / `teams/[teamId]/page` / `layout/sidebar` (×2) / `leaderboard/logo-icons` / `dashboard/model-info-tooltip` / `admin/showcases/admin-showcases-content` / `admin/organizations/page` (×3) / `leaderboard/seasons/[slug]/page` |
-| `@typescript-eslint/no-explicit-any` | **4** | 全在 `cli/parsers/*-sqlite-db.ts`（bun:sqlite / node:sqlite 双 runtime 类型骨架） |
-| `react-hooks/purity` | **1** | `packages/web/src/app/(dashboard)/manage-devices/page.tsx` |
-| `no-constant-condition` | **1** | `packages/web/src/app/api/admin/invites/route.ts` |
-| **合计** | **25** | |
+| 规则                                   | 出现处数 | 文件分布                                                                                                                                                                                                                                                                                               |
+| -------------------------------------- | -------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@typescript-eslint/no-dynamic-delete` |    **6** | 4 文件：`cli/notifier/claude-hook.ts` ×1 + `cli/notifier/gemini-hook.ts` ×1 + `cli/notifier/openclaw-hook.ts` ×2 + `cli/__tests__/sync.test.ts` ×2                                                                                                                                                     |
+| `@next/next/no-img-element`            |   **13** | web 10 个 `.tsx` 文件：`showcase-image` / `pricing-table` / `teams/page` / `teams/[teamId]/page` / `layout/sidebar` (×2) / `leaderboard/logo-icons` / `dashboard/model-info-tooltip` / `admin/showcases/admin-showcases-content` / `admin/organizations/page` (×3) / `leaderboard/seasons/[slug]/page` |
+| `@typescript-eslint/no-explicit-any`   |    **4** | 全在 `cli/parsers/*-sqlite-db.ts`（bun:sqlite / node:sqlite 双 runtime 类型骨架）                                                                                                                                                                                                                      |
+| `react-hooks/purity`                   |    **1** | `packages/web/src/app/(dashboard)/manage-devices/page.tsx`                                                                                                                                                                                                                                             |
+| `no-constant-condition`                |    **1** | `packages/web/src/app/api/admin/invites/route.ts`                                                                                                                                                                                                                                                      |
+| **合计**                               |   **25** |                                                                                                                                                                                                                                                                                                        |
 
 以上就是"lint gate 上 warn 但已被静默"的全部真源；每一条都要有**准确的
 biome 替代或明确接受丢失**。
@@ -74,15 +74,15 @@ biome 替代或明确接受丢失**。
 `no-img-element` 命中过（13 处 disable）+ `no-html-link-for-pages` 挂在
 `eslint.config.ts`。其余 19 条要**逐条决定**是否放弃：
 
-| Next 规则 | pew 是否触发 | 迁移策略 |
-|---|---|---|
-| `no-img-element` | 是（13 处 disable） | biome `performance.noImgElement`（等价） |
-| `no-html-link-for-pages` | 否（配置有，实际 0 error — pew 全 app-router） | 放弃 |
-| `no-async-client-component` | 否 | **接受丢失**（下轮 review 若发现问题再补自研 gate） |
-| `no-before-interactive-script-outside-document` | 否 | 接受丢失 |
-| `no-css-tags` / `no-head-import-in-document` / `no-head-element` / `no-document-import-in-page` / `no-duplicate-head` / `no-page-custom-font` / `no-script-component-in-head` / `no-styled-jsx-in-document` / `no-sync-scripts` / `no-title-in-document-head` / `no-typos` / `no-unwanted-polyfillio` / `google-font-display` / `google-font-preconnect` | 否 | 全部接受丢失（未曾在 pew 中告警） |
-| `inline-script-id` | 否 | 接受丢失 |
-| `next-script-for-ga` | 否 | 接受丢失 |
+| Next 规则                                                                                                                                                                                                                                                                                                                                                | pew 是否触发                                   | 迁移策略                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| `no-img-element`                                                                                                                                                                                                                                                                                                                                         | 是（13 处 disable）                            | biome `performance.noImgElement`（等价）            |
+| `no-html-link-for-pages`                                                                                                                                                                                                                                                                                                                                 | 否（配置有，实际 0 error — pew 全 app-router） | 放弃                                                |
+| `no-async-client-component`                                                                                                                                                                                                                                                                                                                              | 否                                             | **接受丢失**（下轮 review 若发现问题再补自研 gate） |
+| `no-before-interactive-script-outside-document`                                                                                                                                                                                                                                                                                                          | 否                                             | 接受丢失                                            |
+| `no-css-tags` / `no-head-import-in-document` / `no-head-element` / `no-document-import-in-page` / `no-duplicate-head` / `no-page-custom-font` / `no-script-component-in-head` / `no-styled-jsx-in-document` / `no-sync-scripts` / `no-title-in-document-head` / `no-typos` / `no-unwanted-polyfillio` / `google-font-display` / `google-font-preconnect` | 否                                             | 全部接受丢失（未曾在 pew 中告警）                   |
+| `inline-script-id`                                                                                                                                                                                                                                                                                                                                       | 否                                             | 接受丢失                                            |
+| `next-script-for-ga`                                                                                                                                                                                                                                                                                                                                     | 否                                             | 接受丢失                                            |
 
 **接受丢失**的理由统一：这些是 pages-router 遗迹 / 边缘 SEO 优化 / 极少人踩的
 用法。Next 16 本身也在移除 built-in `next lint`，说明官方也不再把这些当核心。
@@ -94,24 +94,24 @@ require('eslint-plugin-react-hooks').configs.recommended.rules))"` 的实测输�
 为准，recommended 启用**16 条**规则（不含 `component-hook-factories` / `fbt`
 / `void-cleanup`，含 `config` / `incompatible-library` / `use-memo`）：
 
-| eslint rule | pew 是否 disable / 用到 | biome 替代 | 迁移策略 |
-|---|---|---|---|
-| `rules-of-hooks` | 未 disable | `correctness.useHookAtTopLevel` | 直接换 |
-| `exhaustive-deps` | 未 disable | `correctness.useExhaustiveDependencies` | 直接换 |
-| `purity` | **1 处 disable** (`manage-devices/page.tsx:87`) | 无等价 | **接受丢失**；删 disable 注释，加代码内 `// TODO: react-hooks/purity — no biome equivalent, manual audit` |
-| `config` | 未 disable（配置元规则） | 无 | 接受丢失（对 eslint-config 本身语义警告，pew 无自定义） |
-| `error-boundaries` | 未 disable | 无 | 接受丢失 |
-| `gating` | 未 disable | 无 | 接受丢失 |
-| `globals` | 未 disable | 无 | 接受丢失 |
-| `immutability` | 未 disable | 无 | 接受丢失 |
-| `incompatible-library` | 未 disable | 无 | 接受丢失（不使用不兼容库） |
-| `preserve-manual-memoization` | 未 disable | 无 | 接受丢失 |
-| `refs` | 未 disable | 无 | 接受丢失 |
-| `set-state-in-effect` | 未 disable | 无 | 接受丢失 |
-| `set-state-in-render` | 未 disable | 无 | 接受丢失 |
-| `static-components` | 未 disable | 无 | 接受丢失 |
-| `unsupported-syntax` | 未 disable | 无 | 接受丢失（Compiler 前置警告） |
-| `use-memo` | 未 disable | 无 | 接受丢失（推荐使用 useMemo 场景检测） |
+| eslint rule                   | pew 是否 disable / 用到                         | biome 替代                              | 迁移策略                                                                                                  |
+| ----------------------------- | ----------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `rules-of-hooks`              | 未 disable                                      | `correctness.useHookAtTopLevel`         | 直接换                                                                                                    |
+| `exhaustive-deps`             | 未 disable                                      | `correctness.useExhaustiveDependencies` | 直接换                                                                                                    |
+| `purity`                      | **1 处 disable** (`manage-devices/page.tsx:87`) | 无等价                                  | **接受丢失**；删 disable 注释，加代码内 `// TODO: react-hooks/purity — no biome equivalent, manual audit` |
+| `config`                      | 未 disable（配置元规则）                        | 无                                      | 接受丢失（对 eslint-config 本身语义警告，pew 无自定义）                                                   |
+| `error-boundaries`            | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `gating`                      | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `globals`                     | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `immutability`                | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `incompatible-library`        | 未 disable                                      | 无                                      | 接受丢失（不使用不兼容库）                                                                                |
+| `preserve-manual-memoization` | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `refs`                        | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `set-state-in-effect`         | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `set-state-in-render`         | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `static-components`           | 未 disable                                      | 无                                      | 接受丢失                                                                                                  |
+| `unsupported-syntax`          | 未 disable                                      | 无                                      | 接受丢失（Compiler 前置警告）                                                                             |
+| `use-memo`                    | 未 disable                                      | 无                                      | 接受丢失（推荐使用 useMemo 场景检测）                                                                     |
 
 **结论**：react-hooks 迁移会**丢失 14 条 rule**（包括 pew 已用到的 `purity`）。
 这是**明确接受的降级**——理由：pew 主要开发面在 CLI + web api，Next client-side
@@ -133,10 +133,10 @@ require('eslint-plugin-react-hooks').configs.recommended.rules))"` 的实测输�
 ```jsonc
 // package.json (root) — devDependencies
 {
-  "@biomejs/biome": "2.5.3",           // ← 新增
-  "typescript": "^7.0.2",              // ← 6.0.3 → 7.0.2 stable
-  "oxc-parser": "0.139.0",             // ← 新增（pin exact；raven 验证版本，
-                                        //   0.x 的 caret 不会跨到 0.139，必须精确 pin）
+  "@biomejs/biome": "2.5.3", // ← 新增
+  "typescript": "^7.0.2", // ← 6.0.3 → 7.0.2 stable
+  "oxc-parser": "0.139.0" // ← 新增（pin exact；raven 验证版本，
+  //   0.x 的 caret 不会跨到 0.139，必须精确 pin）
 
   // 移除
   // "@eslint/js": "^10.0.1",
@@ -150,7 +150,7 @@ require('eslint-plugin-react-hooks').configs.recommended.rules))"` 的实测输�
 ```jsonc
 // packages/web/package.json — devDependencies
 {
-  "@typescript/native-preview": "7.0.0-dev.20260707.2"  // ← 仅 web 装，pin exact
+  "@typescript/native-preview": "7.0.0-dev.20260707.2" // ← 仅 web 装，pin exact
 }
 ```
 
@@ -247,6 +247,7 @@ JSX / 路径 alias / worker 类型误报。
 **重要：不能原样搬运** raven 脚本，需要改四处：
 
 1. **`ROOTS` 常量必须换成 pew 的路径**：
+
    ```ts
    const ROOTS = [
      join(import.meta.dir, "..", "packages", "core", "src"),
@@ -258,6 +259,7 @@ JSX / 路径 alias / worker 类型误报。
    ```
 2. **fail-closed 检查**：在扫描后如果处理文件数为 0，脚本必须 `exit 1` 并明确
    打印"扫描到 0 个文件，路径配置错误"。防止 ROOTS 拼错时脚本假绿。
+
    ```ts
    if (scannedCount === 0) {
      console.error(`FATAL: scanned 0 files under ${ROOTS.join(", ")} — misconfigured?`);
@@ -298,9 +300,11 @@ JSX / 路径 alias / worker 类型误报。
    `check-dynamic-delete.ts` 里用 `.split("\n")[0]!.trim()`（`raven/scripts/
    check-dynamic-delete.ts:106`）——pew 顶层 `noNonNullAssertion: error`（§4.2）
    会立刻打红。搬运时改成安全取值，例如：
+
    ```ts
    snippet: (src.slice(startPos, endPos).split("\n")[0] ?? "").trim(),
    ```
+
    同样审计 `check-ts-expect-error.ts` 里的所有 `!` 断言并全部改成 `?? ""` /
    `if (!x) continue` 兜底。目标：**gate 脚本自身通过 biome lint**，否则 Commit 2
    独立跑 `bun run lint` 会挂。
@@ -354,7 +358,8 @@ biome 唯一等价规则 `complexity.noDelete` 是**全禁 delete**，会把 pew
 disable + 未来所有 `delete obj.static` 一起打错。
 
 **解决**：搬 raven 的 `scripts/check-dynamic-delete.ts`（区分动态 key 和静态 key）
-+ pew ROOTS + fail-closed（§4.4）。
+
+- pew ROOTS + fail-closed（§4.4）。
 
 ### 挑战 5：`.skip` / `.only` 禁止
 
@@ -362,13 +367,13 @@ biome `suspicious.noSkippedTests` / `noFocusedTests` 覆盖，无需自研脚本
 
 ### 挑战 6：25 处 eslint-disable 的翻译
 
-| ESLint disable | 出现次数 | Biome 替代 | 处理方式 |
-|---|---:|---|---|
-| `@typescript-eslint/no-dynamic-delete` | 6 | 由 `check-dynamic-delete.ts` 处理 — 无需 inline biome-ignore | 删除原 disable，脚本继续 whitelist 通过 |
-| `@next/next/no-img-element` | 13 | `lint/performance/noImgElement` | 翻译成 `// biome-ignore lint/performance/noImgElement: <reason>` |
-| `@typescript-eslint/no-explicit-any` | 4 | `lint/suspicious/noExplicitAny` | 翻译成 `// biome-ignore lint/suspicious/noExplicitAny: <reason>` |
-| `react-hooks/purity` | 1 | 无 | 保留代码但去掉 disable 注释（biome 不 lint 这条），加 `// TODO: react-hooks/purity — no biome equivalent, monitored via review` |
-| `no-constant-condition` | 1 | biome 的 `noConstantCondition` 属 recommended，行为等价 | 翻译成 `// biome-ignore lint/correctness/noConstantCondition: <reason>` |
+| ESLint disable                         | 出现次数 | Biome 替代                                                   | 处理方式                                                                                                                        |
+| -------------------------------------- | -------: | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `@typescript-eslint/no-dynamic-delete` |        6 | 由 `check-dynamic-delete.ts` 处理 — 无需 inline biome-ignore | 删除原 disable，脚本继续 whitelist 通过                                                                                         |
+| `@next/next/no-img-element`            |       13 | `lint/performance/noImgElement`                              | 翻译成 `// biome-ignore lint/performance/noImgElement: <reason>`                                                                |
+| `@typescript-eslint/no-explicit-any`   |        4 | `lint/suspicious/noExplicitAny`                              | 翻译成 `// biome-ignore lint/suspicious/noExplicitAny: <reason>`                                                                |
+| `react-hooks/purity`                   |        1 | 无                                                           | 保留代码但去掉 disable 注释（biome 不 lint 这条），加 `// TODO: react-hooks/purity — no biome equivalent, monitored via review` |
+| `no-constant-condition`                |        1 | biome 的 `noConstantCondition` 属 recommended，行为等价      | 翻译成 `// biome-ignore lint/correctness/noConstantCondition: <reason>`                                                         |
 
 翻译方法：每处 `// eslint-disable-next-line X` 改成 `// biome-ignore lint/<rule>: <reason>`。
 biome 强制要求 reason 部分，正好逼作者写清楚。
@@ -403,6 +408,7 @@ biome 强制要求 reason 部分，正好逼作者写清楚。
    override 里的 `noSkippedTests` / `noFocusedTests`）—— 直接用 raven 原版会
    低估 error 数（raven 全局关的 `noNonNullAssertion` 到 pew 是 error，会
    多出可观数量的告警）：
+
    ```bash
    cp ../raven/biome.json /tmp/pew-preflight-biome.json
    # 手工编辑或用 jq 打补丁：
@@ -412,6 +418,7 @@ biome 强制要求 reason 部分，正好逼作者写清楚。
    #   4. overrides 里 test glob 加 noSkippedTests/noFocusedTests = "error"
    ```
 2. 用 `--config-path` 显式指向该副本，跑 dry-run：
+
    ```bash
    bunx --package @biomejs/biome@2.5.3 biome check \
      --config-path=/tmp/pew-preflight-biome.json \
@@ -427,14 +434,14 @@ biome 强制要求 reason 部分，正好逼作者写清楚。
 
 每个 commit 独立 buildable + testable。
 
-| # | commit | 内容 | 独立 lint+test+build? |
-|---|---|---|---|
-| **Pre-flight** | *（不 commit）* | §5 挑战 8 完整流程：临时 copy raven biome.json → `bunx --config-path` dry-run → 汇总 error 分类 → 决定 Commit 1 是否再拆 1a/1b | — |
-| 1 | `chore(lint): switch from eslint to biome + translate all suppressions` | **原子切换**：装 `@biomejs/biome@2.5.3` + `oxc-parser@0.139.0`；卸 `eslint / @eslint/js / @next/eslint-plugin-next / eslint-plugin-react-hooks / typescript-eslint`；新增 `biome.json`（§4.2）；**为 5 个子包全部加 `typecheck` script**（core/cli 目前没有，遗漏会让 `--filter '*'` 静默跳过 → CLI/core 漏检）；根 `lint` 换成含 typecheck 的组合（§4.3）；`lint-staged` 换 biome；`biome check --write` 自动修 auto-fixable；剩余 25 处 inline `eslint-disable` 一次性翻译成 `biome-ignore` / 移除；删 `eslint.config.ts`。**同一 commit 起步 = eslint-disable 完成翻译，中间态可编译** | ✅ `bun run lint` 全绿（biome + tsc@6） |
-| 2 | `feat(lint): add dynamic-delete + ts-expect-error custom gates` | 加 `scripts/check-dynamic-delete.ts`（含 `ALLOWED_SITES` 逐行 whitelist §4.4）+ `scripts/check-ts-expect-error.ts`；根 `lint` 追加两条 gate；`.husky/pre-commit` 加两条串行 | ✅ |
-| 3 | **合并**：`build(web+ts): install native-preview, upgrade to TS 7.0.2 stable, stitch tsc into next build` | **单原子步骤**（避免 next build 中间态失败）：<br>1) `packages/web` 装 `@typescript/native-preview@7.0.0-dev.20260707.2`（**先装**，让 Next 检测到 native-preview marker → 跳过自身内部 typecheck，不会真调 tsgo）<br>2) `packages/web/package.json` `build` 改成 `tsc --noEmit && next build`<br>3) 根 `typescript: ^6.0.3 → ^7.0.2`；`packages/{web,worker,worker-read}/package.json` 移除 `typescript` devDep（`core / cli` 本来就没有）<br>4) `bun install` 更新 lockfile；跑 `bun run typecheck` 修 TS 7 变严格暴露的类型 error（预期少量）<br>5) `bun run --filter '@pew/web' build` 全绿验证 | ✅ 单 commit 内完成上下文切换 |
-| 4 | `feat(husky): switch pre-commit G1 to biome + custom gates` | `.husky/pre-commit` 里 `bunx lint-staged` 已在 Commit 1 换成 biome；此 commit 只清理老 hook 里的 eslint 残留 comment + 更新 exit message | ✅ |
-| 5 | `docs(44): mark biome migration + ts7 upgrade implemented; update CLAUDE.md/README` | doc 44 status → done；CLAUDE.md G1 描述改 biome；README lint 说明改 biome；suppression map 落地 | ✅ |
+| #              | commit                                                                                                    | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 独立 lint+test+build?                   |
+| -------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **Pre-flight** | _（不 commit）_                                                                                           | §5 挑战 8 完整流程：临时 copy raven biome.json → `bunx --config-path` dry-run → 汇总 error 分类 → 决定 Commit 1 是否再拆 1a/1b                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | —                                       |
+| 1              | `chore(lint): switch from eslint to biome + translate all suppressions`                                   | **原子切换**：装 `@biomejs/biome@2.5.3` + `oxc-parser@0.139.0`；卸 `eslint / @eslint/js / @next/eslint-plugin-next / eslint-plugin-react-hooks / typescript-eslint`；新增 `biome.json`（§4.2）；**为 5 个子包全部加 `typecheck` script**（core/cli 目前没有，遗漏会让 `--filter '*'` 静默跳过 → CLI/core 漏检）；根 `lint` 换成含 typecheck 的组合（§4.3）；`lint-staged` 换 biome；`biome check --write` 自动修 auto-fixable；剩余 25 处 inline `eslint-disable` 一次性翻译成 `biome-ignore` / 移除；删 `eslint.config.ts`。**同一 commit 起步 = eslint-disable 完成翻译，中间态可编译**           | ✅ `bun run lint` 全绿（biome + tsc@6） |
+| 2              | `feat(lint): add dynamic-delete + ts-expect-error custom gates`                                           | 加 `scripts/check-dynamic-delete.ts`（含 `ALLOWED_SITES` 逐行 whitelist §4.4）+ `scripts/check-ts-expect-error.ts`；根 `lint` 追加两条 gate；`.husky/pre-commit` 加两条串行                                                                                                                                                                                                                                                                                                                                                                                                                         | ✅                                      |
+| 3              | **合并**：`build(web+ts): install native-preview, upgrade to TS 7.0.2 stable, stitch tsc into next build` | **单原子步骤**（避免 next build 中间态失败）：<br>1) `packages/web` 装 `@typescript/native-preview@7.0.0-dev.20260707.2`（**先装**，让 Next 检测到 native-preview marker → 跳过自身内部 typecheck，不会真调 tsgo）<br>2) `packages/web/package.json` `build` 改成 `tsc --noEmit && next build`<br>3) 根 `typescript: ^6.0.3 → ^7.0.2`；`packages/{web,worker,worker-read}/package.json` 移除 `typescript` devDep（`core / cli` 本来就没有）<br>4) `bun install` 更新 lockfile；跑 `bun run typecheck` 修 TS 7 变严格暴露的类型 error（预期少量）<br>5) `bun run --filter '@pew/web' build` 全绿验证 | ✅ 单 commit 内完成上下文切换           |
+| 4              | `feat(husky): switch pre-commit G1 to biome + custom gates`                                               | `.husky/pre-commit` 里 `bunx lint-staged` 已在 Commit 1 换成 biome；此 commit 只清理老 hook 里的 eslint 残留 comment + 更新 exit message                                                                                                                                                                                                                                                                                                                                                                                                                                                            | ✅                                      |
+| 5              | `docs(44): mark biome migration + ts7 upgrade implemented; update CLAUDE.md/README`                       | doc 44 status → done；CLAUDE.md G1 描述改 biome；README lint 说明改 biome；suppression map 落地                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | ✅                                      |
 
 **顺序关键**：Commit 3 内部"native-preview + build script → 才升 TS 7"这三步在
 **同一 commit 内**（`git diff HEAD~1` 会同时显示这些改动），保证 CI/pre-push
@@ -465,6 +472,7 @@ biome 强制要求 reason 部分，正好逼作者写清楚。
 
 每个 commit 独立可回退：`git revert <sha>` + `bun install`。用 `revert` 而不用
 `reset --hard`，因为：
+
 - reset 会丢失 push 后拉了此 commit 的其他机器的 rebase state
 - revert 生成新 commit 记录"为什么撤"，保留审计线索
 - lockfile 也没有真正的"物理不可回退"——`bun install` 从 revert 后的
@@ -503,27 +511,27 @@ biome 强制要求 reason 部分，正好逼作者写清楚。
 
 ## 附录 A — pew 现有 25 处 suppression 逐条
 
-| # | 文件 | 行 | 规则 | 迁移后动作 |
-|---|---|---|---|---|
-| 1 | `packages/cli/src/notifier/claude-hook.ts` | ~ | `@typescript-eslint/no-dynamic-delete` | 删 disable；由 `check-dynamic-delete.ts` whitelist 允许 |
-| 2 | `packages/cli/src/notifier/gemini-hook.ts` | ~ | 同上 | 同上 |
-| 3-4 | `packages/cli/src/notifier/openclaw-hook.ts` | ~ ×2 | 同上 | 同上 |
-| 5-6 | `packages/cli/src/__tests__/sync.test.ts` | ~ ×2 | 同上 | 同上 |
-| 7 | `packages/cli/src/parsers/hermes-sqlite-db.ts` | ~ | `@typescript-eslint/no-explicit-any` | `biome-ignore lint/suspicious/noExplicitAny: bun:sqlite/node:sqlite dual-runtime require` |
-| 8 | `packages/cli/src/parsers/opencode-sqlite-db.ts` | ~ | 同上 | 同上 |
-| 9 | `packages/cli/src/parsers/zcode-sqlite-db.ts` | ~ | 同上 | 同上 |
-| 10 | `packages/cli/src/parsers/zcode-sqlite-session-db.ts` | ~ | 同上 | 同上 |
-| 11 | `packages/web/src/components/showcase/showcase-image.tsx` | ~ | `@next/next/no-img-element` | `biome-ignore lint/performance/noImgElement: <reason>` |
-| 12 | `packages/web/src/app/(dashboard)/model-prices/pricing-table.tsx` | ~ | 同上 | 同上 |
-| 13 | `packages/web/src/app/(dashboard)/teams/page.tsx` | ~ | 同上 | 同上 |
-| 14 | `packages/web/src/app/(dashboard)/teams/[teamId]/page.tsx` | ~ | 同上 | 同上 |
-| 15-16 | `packages/web/src/components/layout/sidebar.tsx` | ~ ×2 | 同上 | 同上 |
-| 17 | `packages/web/src/components/leaderboard/logo-icons.tsx` | ~ | 同上 | 同上 |
-| 18 | `packages/web/src/components/dashboard/model-info-tooltip.tsx` | ~ | 同上 | 同上 |
-| 19 | `packages/web/src/app/(dashboard)/admin/showcases/admin-showcases-content.tsx` | ~ | 同上 | 同上 |
-| 20-22 | `packages/web/src/app/(dashboard)/admin/organizations/page.tsx` | ~ ×3 | 同上 | 同上 |
-| 23 | `packages/web/src/app/leaderboard/seasons/[slug]/page.tsx` | ~ | 同上 | 同上 |
-| 24 | `packages/web/src/app/(dashboard)/manage-devices/page.tsx` | 87 | `react-hooks/purity` | 删 disable；加 `// TODO: react-hooks/purity — no biome equivalent, manual audit only` |
-| 25 | `packages/web/src/app/api/admin/invites/route.ts` | ~ | `no-constant-condition` | `biome-ignore lint/correctness/noConstantCondition: <reason>` |
+| #     | 文件                                                                           | 行   | 规则                                   | 迁移后动作                                                                                |
+| ----- | ------------------------------------------------------------------------------ | ---- | -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1     | `packages/cli/src/notifier/claude-hook.ts`                                     | ~    | `@typescript-eslint/no-dynamic-delete` | 删 disable；由 `check-dynamic-delete.ts` whitelist 允许                                   |
+| 2     | `packages/cli/src/notifier/gemini-hook.ts`                                     | ~    | 同上                                   | 同上                                                                                      |
+| 3-4   | `packages/cli/src/notifier/openclaw-hook.ts`                                   | ~ ×2 | 同上                                   | 同上                                                                                      |
+| 5-6   | `packages/cli/src/__tests__/sync.test.ts`                                      | ~ ×2 | 同上                                   | 同上                                                                                      |
+| 7     | `packages/cli/src/parsers/hermes-sqlite-db.ts`                                 | ~    | `@typescript-eslint/no-explicit-any`   | `biome-ignore lint/suspicious/noExplicitAny: bun:sqlite/node:sqlite dual-runtime require` |
+| 8     | `packages/cli/src/parsers/opencode-sqlite-db.ts`                               | ~    | 同上                                   | 同上                                                                                      |
+| 9     | `packages/cli/src/parsers/zcode-sqlite-db.ts`                                  | ~    | 同上                                   | 同上                                                                                      |
+| 10    | `packages/cli/src/parsers/zcode-sqlite-session-db.ts`                          | ~    | 同上                                   | 同上                                                                                      |
+| 11    | `packages/web/src/components/showcase/showcase-image.tsx`                      | ~    | `@next/next/no-img-element`            | `biome-ignore lint/performance/noImgElement: <reason>`                                    |
+| 12    | `packages/web/src/app/(dashboard)/model-prices/pricing-table.tsx`              | ~    | 同上                                   | 同上                                                                                      |
+| 13    | `packages/web/src/app/(dashboard)/teams/page.tsx`                              | ~    | 同上                                   | 同上                                                                                      |
+| 14    | `packages/web/src/app/(dashboard)/teams/[teamId]/page.tsx`                     | ~    | 同上                                   | 同上                                                                                      |
+| 15-16 | `packages/web/src/components/layout/sidebar.tsx`                               | ~ ×2 | 同上                                   | 同上                                                                                      |
+| 17    | `packages/web/src/components/leaderboard/logo-icons.tsx`                       | ~    | 同上                                   | 同上                                                                                      |
+| 18    | `packages/web/src/components/dashboard/model-info-tooltip.tsx`                 | ~    | 同上                                   | 同上                                                                                      |
+| 19    | `packages/web/src/app/(dashboard)/admin/showcases/admin-showcases-content.tsx` | ~    | 同上                                   | 同上                                                                                      |
+| 20-22 | `packages/web/src/app/(dashboard)/admin/organizations/page.tsx`                | ~ ×3 | 同上                                   | 同上                                                                                      |
+| 23    | `packages/web/src/app/leaderboard/seasons/[slug]/page.tsx`                     | ~    | 同上                                   | 同上                                                                                      |
+| 24    | `packages/web/src/app/(dashboard)/manage-devices/page.tsx`                     | 87   | `react-hooks/purity`                   | 删 disable；加 `// TODO: react-hooks/purity — no biome equivalent, manual audit only`     |
+| 25    | `packages/web/src/app/api/admin/invites/route.ts`                              | ~    | `no-constant-condition`                | `biome-ignore lint/correctness/noConstantCondition: <reason>`                             |
 
-*具体行号在 Commit 1 落地时对齐。*
+_具体行号在 Commit 1 落地时对齐。_

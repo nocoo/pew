@@ -11,19 +11,12 @@ interface LeaderboardPageTitleProps {
   description: string;
 }
 
-export function LeaderboardPageTitle({
-  subtitle,
-  description,
-}: LeaderboardPageTitleProps) {
+export function LeaderboardPageTitle({ subtitle, description }: LeaderboardPageTitleProps) {
   return (
     <PageHeader>
       <h1 className="tracking-tight text-basalt-foreground">
-        <span className="text-[36px] font-bold font-handwriting leading-none mr-2">
-          pew
-        </span>
-        <span className="text-[19px] font-normal text-basalt-muted-foreground">
-          {subtitle}
-        </span>
+        <span className="text-[36px] font-bold font-handwriting leading-none mr-2">pew</span>
+        <span className="text-[19px] font-normal text-basalt-muted-foreground">{subtitle}</span>
       </h1>
       <p className="mt-2 text-sm text-basalt-muted-foreground">{description}</p>
     </PageHeader>

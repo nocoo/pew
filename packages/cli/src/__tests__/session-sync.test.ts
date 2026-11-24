@@ -41,8 +41,14 @@ function claudeAssistantLine(
 // Helpers: Pi session JSONL
 // ---------------------------------------------------------------------------
 
-function piSession(opts: {sessionId?: string; startTime?: string; lastUpdated?: string; projectHash?: string; messages: Array<{type:string; timestamp:string; model?:string}>}): string {
- return `${[{type:"session",id:opts.sessionId??"pi-session"},...opts.messages.map(m=>({type:"message",timestamp:m.timestamp,message:{role:m.type==="user"?"user":"assistant",model:m.model??"pi-model"}}))].map(x=>JSON.stringify(x)).join("\n")}\n`;
+function piSession(opts: {
+  sessionId?: string;
+  startTime?: string;
+  lastUpdated?: string;
+  projectHash?: string;
+  messages: Array<{ type: string; timestamp: string; model?: string }>;
+}): string {
+  return `${[{ type: "session", id: opts.sessionId ?? "pi-session" }, ...opts.messages.map((m) => ({ type: "message", timestamp: m.timestamp, message: { role: m.type === "user" ? "user" : "assistant", model: m.model ?? "pi-model" } }))].map((x) => JSON.stringify(x)).join("\n")}\n`;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,10 +134,7 @@ function codexTurnContext(ts: string, model = "gpt-5.4"): string {
   });
 }
 
-function codexResponseItem(
-  ts: string,
-  role: "user" | "assistant",
-): string {
+function codexResponseItem(ts: string, role: "user" | "assistant"): string {
   return JSON.stringify({
     timestamp: ts,
     type: "response_item",
@@ -171,7 +174,12 @@ function copilotCliLog(opts: {
   requestCount?: number;
   startTs?: string;
 }): string {
-  const { sessionId, model = "claude-sonnet-4.6", requestCount = 1, startTs = "2026-03-07T10:00:00.000Z" } = opts;
+  const {
+    sessionId,
+    model = "claude-sonnet-4.6",
+    requestCount = 1,
+    startTs = "2026-03-07T10:00:00.000Z",
+  } = opts;
   const lines: string[] = [];
 
   // Start timestamp
@@ -193,9 +201,7 @@ function copilotCliLog(opts: {
 // Helpers: parse queue file
 // ---------------------------------------------------------------------------
 
-async function readSessionQueue(
-  stateDir: string,
-): Promise<SessionQueueRecord[]> {
+async function readSessionQueue(stateDir: string): Promise<SessionQueueRecord[]> {
   let raw: string;
   try {
     raw = await readFile(join(stateDir, "session-queue.jsonl"), "utf-8");
@@ -319,13 +325,7 @@ describe("executeSessionSync", () => {
   });
 
   it("should sync OpenClaw session data to queue", async () => {
-    const agentDir = join(
-      dataDir,
-      ".openclaw",
-      "agents",
-      "agent-1",
-      "sessions",
-    );
+    const agentDir = join(dataDir, ".openclaw", "agents", "agent-1", "sessions");
     await mkdir(agentDir, { recursive: true });
     const content = `${[
       openclawLine("2026-03-07T10:00:00.000Z", "system"),
@@ -418,7 +418,13 @@ describe("executeSessionSync", () => {
     expect(result.totalRecords).toBe(0);
     expect(result.filesScanned).toEqual({
       antigravity: 0,
-      claude: 0, codex: 0, copilotCli: 0, pi: 0, grok: 0, opencode: 0, openclaw: 0,
+      claude: 0,
+      codex: 0,
+      copilotCli: 0,
+      pi: 0,
+      grok: 0,
+      opencode: 0,
+      openclaw: 0,
     });
   });
 
@@ -467,10 +473,13 @@ describe("executeSessionSync", () => {
 
     // Wait to ensure mtime differs, then append new data
     await new Promise((r) => setTimeout(r, 50));
-    const content2 = `${content1 + [
-      claudeUserLine("2026-03-07T10:20:00.000Z"),
-      claudeAssistantLine("2026-03-07T10:25:00.000Z"),
-    ].join("\n")}\n`;
+    const content2 = `${
+      content1 +
+      [
+        claudeUserLine("2026-03-07T10:20:00.000Z"),
+        claudeAssistantLine("2026-03-07T10:25:00.000Z"),
+      ].join("\n")
+    }\n`;
     await writeFile(filePath, content2);
 
     const r2 = await executeSessionSync({
@@ -557,9 +566,7 @@ describe("executeSessionSync", () => {
 
     // Dedup keeps only one record per session_key
     const records = await readSessionQueue(stateDir);
-    const sharedRecords = records.filter((r) =>
-      r.session_key.includes("shared-session"),
-    );
+    const sharedRecords = records.filter((r) => r.session_key.includes("shared-session"));
     expect(sharedRecords).toHaveLength(1);
   });
 
@@ -597,9 +604,7 @@ describe("executeSessionSync", () => {
     expect(typeof r.total_messages).toBe("number");
     expect(typeof r.snapshot_at).toBe("string");
     // project_ref and model can be null
-    expect(r.project_ref === null || typeof r.project_ref === "string").toBe(
-      true,
-    );
+    expect(r.project_ref === null || typeof r.project_ref === "string").toBe(true);
     expect(r.model === null || typeof r.model === "string").toBe(true);
   });
 
@@ -622,19 +627,13 @@ describe("executeSessionSync", () => {
     });
 
     // Verify cursor file was created
-    const cursorRaw = await readFile(
-      join(stateDir, "session-cursors.json"),
-      "utf-8",
-    );
+    const cursorRaw = await readFile(join(stateDir, "session-cursors.json"), "utf-8");
     const cursors = JSON.parse(cursorRaw);
     expect(cursors.version).toBe(1);
     expect(Object.keys(cursors.files).length).toBeGreaterThanOrEqual(1);
 
     // Each cursor should have mtimeMs and size
-    const firstCursor = Object.values(cursors.files)[0] as Record<
-      string,
-      unknown
-    >;
+    const firstCursor = Object.values(cursors.files)[0] as Record<string, unknown>;
     expect(typeof firstCursor.mtimeMs).toBe("number");
     expect(typeof firstCursor.size).toBe("number");
   });
@@ -706,7 +705,13 @@ describe("executeSessionSync", () => {
 
   /** Helper: mock openSessionDb factory */
   function mockOpenSessionDb(
-    sessions: Array<{ id: string; project_id: string | null; title: string | null; time_created: number; time_updated: number }>,
+    sessions: Array<{
+      id: string;
+      project_id: string | null;
+      title: string | null;
+      time_created: number;
+      time_updated: number;
+    }>,
     messages: Array<{ session_id: string; role: string; time_created: number; data: string }>,
   ) {
     return (_dbPath: string) => ({
@@ -732,21 +737,48 @@ describe("executeSessionSync", () => {
         created: opts.timeCreated ?? 1739600000000,
         completed: opts.timeCompleted ?? (opts.timeCreated ?? 1739600000000) + 5000,
       },
-      tokens: opts.role === "assistant"
-        ? { total: 150, input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
-        : null,
+      tokens:
+        opts.role === "assistant"
+          ? { total: 150, input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
+          : null,
     });
   }
 
   it("should sync OpenCode SQLite sessions to queue", async () => {
     const sessions = [
-      { id: "ses_sql_001", project_id: "proj_1", title: "Test session", time_created: 1739600000000, time_updated: 1739600600000 },
+      {
+        id: "ses_sql_001",
+        project_id: "proj_1",
+        title: "Test session",
+        time_created: 1739600000000,
+        time_updated: 1739600600000,
+      },
     ];
     const messages = [
-      { session_id: "ses_sql_001", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
-      { session_id: "ses_sql_001", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
-      { session_id: "ses_sql_001", role: "user", time_created: 1739600200000, data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }) },
-      { session_id: "ses_sql_001", role: "assistant", time_created: 1739600300000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }) },
+      {
+        session_id: "ses_sql_001",
+        role: "user",
+        time_created: 1739600000000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }),
+      },
+      {
+        session_id: "ses_sql_001",
+        role: "assistant",
+        time_created: 1739600100000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }),
+      },
+      {
+        session_id: "ses_sql_001",
+        role: "user",
+        time_created: 1739600200000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }),
+      },
+      {
+        session_id: "ses_sql_001",
+        role: "assistant",
+        time_created: 1739600300000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode");
@@ -776,11 +808,27 @@ describe("executeSessionSync", () => {
 
   it("should be incremental for OpenCode SQLite sessions (second sync with no new sessions)", async () => {
     const sessions = [
-      { id: "ses_sql_001", project_id: null, title: null, time_created: 1739600000000, time_updated: 1739600600000 },
+      {
+        id: "ses_sql_001",
+        project_id: null,
+        title: null,
+        time_created: 1739600000000,
+        time_updated: 1739600600000,
+      },
     ];
     const messages = [
-      { session_id: "ses_sql_001", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
-      { session_id: "ses_sql_001", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
+      {
+        session_id: "ses_sql_001",
+        role: "user",
+        time_created: 1739600000000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }),
+      },
+      {
+        session_id: "ses_sql_001",
+        role: "assistant",
+        time_created: 1739600100000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode");
@@ -837,11 +885,27 @@ describe("executeSessionSync", () => {
     await writeFile(dbPath, "dummy");
 
     const sessions = [
-      { id: "ses_sql_002", project_id: null, title: null, time_created: 1741400000000, time_updated: 1741400600000 },
+      {
+        id: "ses_sql_002",
+        project_id: null,
+        title: null,
+        time_created: 1741400000000,
+        time_updated: 1741400600000,
+      },
     ];
     const messages = [
-      { session_id: "ses_sql_002", role: "user", time_created: 1741400000000, data: sqliteMsgData({ role: "user", timeCreated: 1741400000000 }) },
-      { session_id: "ses_sql_002", role: "assistant", time_created: 1741400100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1741400100000 }) },
+      {
+        session_id: "ses_sql_002",
+        role: "user",
+        time_created: 1741400000000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1741400000000 }),
+      },
+      {
+        session_id: "ses_sql_002",
+        role: "assistant",
+        time_created: 1741400100000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1741400100000 }),
+      },
     ];
 
     const result = await executeSessionSync({
@@ -872,14 +936,46 @@ describe("executeSessionSync", () => {
     // their IDs so the second sync doesn't re-process them.
     const sameMs = 1739600600000;
     const sessions = [
-      { id: "ses_A", project_id: null, title: null, time_created: 1739600000000, time_updated: sameMs },
-      { id: "ses_B", project_id: null, title: null, time_created: 1739600100000, time_updated: sameMs },
+      {
+        id: "ses_A",
+        project_id: null,
+        title: null,
+        time_created: 1739600000000,
+        time_updated: sameMs,
+      },
+      {
+        id: "ses_B",
+        project_id: null,
+        title: null,
+        time_created: 1739600100000,
+        time_updated: sameMs,
+      },
     ];
     const messages = [
-      { session_id: "ses_A", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
-      { session_id: "ses_A", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
-      { session_id: "ses_B", role: "user", time_created: 1739600200000, data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }) },
-      { session_id: "ses_B", role: "assistant", time_created: 1739600300000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }) },
+      {
+        session_id: "ses_A",
+        role: "user",
+        time_created: 1739600000000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }),
+      },
+      {
+        session_id: "ses_A",
+        role: "assistant",
+        time_created: 1739600100000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }),
+      },
+      {
+        session_id: "ses_B",
+        role: "user",
+        time_created: 1739600200000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }),
+      },
+      {
+        session_id: "ses_B",
+        role: "assistant",
+        time_created: 1739600300000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode");
@@ -910,11 +1006,27 @@ describe("executeSessionSync", () => {
   it("should process a new session at the same millisecond as the cursor boundary", async () => {
     const sameMs = 1739600600000;
     const sessionsBatch1 = [
-      { id: "ses_A", project_id: null, title: null, time_created: 1739600000000, time_updated: sameMs },
+      {
+        id: "ses_A",
+        project_id: null,
+        title: null,
+        time_created: 1739600000000,
+        time_updated: sameMs,
+      },
     ];
     const messagesBatch1 = [
-      { session_id: "ses_A", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
-      { session_id: "ses_A", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
+      {
+        session_id: "ses_A",
+        role: "user",
+        time_created: 1739600000000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }),
+      },
+      {
+        session_id: "ses_A",
+        role: "assistant",
+        time_created: 1739600100000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode");
@@ -933,12 +1045,28 @@ describe("executeSessionSync", () => {
     // A new session arrives with the same time_updated (rare but possible)
     const sessionsBatch2 = [
       ...sessionsBatch1,
-      { id: "ses_B", project_id: null, title: null, time_created: 1739600200000, time_updated: sameMs },
+      {
+        id: "ses_B",
+        project_id: null,
+        title: null,
+        time_created: 1739600200000,
+        time_updated: sameMs,
+      },
     ];
     const messagesBatch2 = [
       ...messagesBatch1,
-      { session_id: "ses_B", role: "user", time_created: 1739600200000, data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }) },
-      { session_id: "ses_B", role: "assistant", time_created: 1739600300000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }) },
+      {
+        session_id: "ses_B",
+        role: "user",
+        time_created: 1739600200000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }),
+      },
+      {
+        session_id: "ses_B",
+        role: "assistant",
+        time_created: 1739600300000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }),
+      },
     ];
 
     // Second sync: ses_A deduped, ses_B is new → 1 snapshot
@@ -968,9 +1096,7 @@ describe("executeSessionSync", () => {
       onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
     });
 
-    const warnEvent = events.find(
-      (e) => e.source === "opencode-sqlite" && e.phase === "warn",
-    );
+    const warnEvent = events.find((e) => e.source === "opencode-sqlite" && e.phase === "warn");
     expect(warnEvent).toBeDefined();
     expect(warnEvent!.message).toContain("SQLite is not available");
   });
@@ -990,9 +1116,7 @@ describe("executeSessionSync", () => {
       onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
     });
 
-    const warnEvent = events.find(
-      (e) => e.source === "opencode-sqlite" && e.phase === "warn",
-    );
+    const warnEvent = events.find((e) => e.source === "opencode-sqlite" && e.phase === "warn");
     expect(warnEvent).toBeDefined();
     expect(warnEvent!.message).toContain("Failed to open");
   });
@@ -1032,17 +1156,14 @@ describe("executeSessionSync", () => {
       const result = await executeSessionSync({
         stateDir,
         codexSessionsDir: join(dataDir, ".codex", "sessions"),
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // The good file's data should still be synced
       expect(result.sources.codex).toBeGreaterThanOrEqual(1);
 
       // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter(
-        (e) => e.source === "codex" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "codex" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated codex session parser crash");
 
@@ -1133,7 +1254,13 @@ describe("executeSessionSync", () => {
       }),
     );
 
-    const events: Array<{ source: string; phase: string; current?: number; total?: number; message?: string }> = [];
+    const events: Array<{
+      source: string;
+      phase: string;
+      current?: number;
+      total?: number;
+      message?: string;
+    }> = [];
 
     const result = await executeSessionSync({
       stateDir,
@@ -1143,13 +1270,14 @@ describe("executeSessionSync", () => {
       piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
       openCodeMessageDir: join(dataDir, "opencode-prog", "message"),
       openclawDir: join(dataDir, ".openclaw-prog"),
-      onProgress: (e) => events.push({
-        source: e.source,
-        phase: e.phase,
-        current: e.current,
-        total: e.total,
-        message: e.message,
-      }),
+      onProgress: (e) =>
+        events.push({
+          source: e.source,
+          phase: e.phase,
+          current: e.current,
+          total: e.total,
+          message: e.message,
+        }),
     });
 
     // Verify all sources produced snapshots
@@ -1163,14 +1291,23 @@ describe("executeSessionSync", () => {
     // Verify progress events were emitted for each source
     for (const source of ["claude-code", "codex", "copilot-cli", "pi", "opencode", "openclaw"]) {
       const sourceEvents = events.filter((e) => e.source === source);
-      expect(sourceEvents.some((e) => e.phase === "discover"), `${source} should have discover`).toBe(true);
-      expect(sourceEvents.some((e) => e.phase === "parse"), `${source} should have parse`).toBe(true);
+      expect(
+        sourceEvents.some((e) => e.phase === "discover"),
+        `${source} should have discover`,
+      ).toBe(true);
+      expect(
+        sourceEvents.some((e) => e.phase === "parse"),
+        `${source} should have parse`,
+      ).toBe(true);
 
       // Verify parse events have current/total for the file loop
       const parseWithProgress = sourceEvents.filter(
         (e) => e.phase === "parse" && e.current !== undefined,
       );
-      expect(parseWithProgress.length, `${source} should have parse with current`).toBeGreaterThanOrEqual(1);
+      expect(
+        parseWithProgress.length,
+        `${source} should have parse with current`,
+      ).toBeGreaterThanOrEqual(1);
     }
 
     // Verify dedup and done events
@@ -1270,12 +1407,13 @@ describe("executeSessionSync", () => {
       piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
       openCodeMessageDir: join(dataDir, "opencode-skip", "message"),
       openclawDir: join(dataDir, ".openclaw-skip"),
-      onProgress: (e) => events.push({
-        source: e.source,
-        phase: e.phase,
-        current: e.current,
-        total: e.total,
-      }),
+      onProgress: (e) =>
+        events.push({
+          source: e.source,
+          phase: e.phase,
+          current: e.current,
+          total: e.total,
+        }),
     });
 
     // No new snapshots since files are unchanged
@@ -1331,14 +1469,12 @@ describe("executeSessionSync", () => {
 
     const piParser = await import("../parsers/pi-session.js");
     const origCollect = piParser.collectPiSessions;
-    const spy = vi
-      .spyOn(piParser, "collectPiSessions")
-      .mockImplementation(async (filePath) => {
-        if (filePath.includes("session-bad")) {
-          throw new Error("Simulated pi parser crash");
-        }
-        return origCollect(filePath);
-      });
+    const spy = vi.spyOn(piParser, "collectPiSessions").mockImplementation(async (filePath) => {
+      if (filePath.includes("session-bad")) {
+        throw new Error("Simulated pi parser crash");
+      }
+      return origCollect(filePath);
+    });
 
     const events: Array<{ source: string; phase: string; message?: string }> = [];
 
@@ -1346,17 +1482,14 @@ describe("executeSessionSync", () => {
       const result = await executeSessionSync({
         stateDir,
         piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // Good file's data should still be synced
       expect(result.sources.pi).toBeGreaterThanOrEqual(1);
 
       // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter(
-        (e) => e.source === "pi" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "pi" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated pi parser crash");
     } finally {
@@ -1404,17 +1537,14 @@ describe("executeSessionSync", () => {
       const result = await executeSessionSync({
         stateDir,
         openCodeMessageDir: msgDir,
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // Good dir's data should still be synced
       expect(result.sources.opencode).toBeGreaterThanOrEqual(1);
 
       // Verify a warning was emitted for the bad dir
-      const warnEvents = events.filter(
-        (e) => e.source === "opencode" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "opencode" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated opencode parser crash");
     } finally {
@@ -1462,17 +1592,14 @@ describe("executeSessionSync", () => {
       const result = await executeSessionSync({
         stateDir,
         openclawDir: join(dataDir, ".openclaw-err"),
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // Good file's data should still be synced
       expect(result.sources.openclaw).toBeGreaterThanOrEqual(1);
 
       // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter(
-        (e) => e.source === "openclaw" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "openclaw" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated openclaw parser crash");
     } finally {
@@ -1484,11 +1611,27 @@ describe("executeSessionSync", () => {
 
   it("should emit progress for SQLite session parse with found sessions", async () => {
     const sessions = [
-      { id: "ses_prog_sql", project_id: "proj_1", title: "Test", time_created: 1739600000000, time_updated: 1739600600000 },
+      {
+        id: "ses_prog_sql",
+        project_id: "proj_1",
+        title: "Test",
+        time_created: 1739600000000,
+        time_updated: 1739600600000,
+      },
     ];
     const messages = [
-      { session_id: "ses_prog_sql", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
-      { session_id: "ses_prog_sql", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
+      {
+        session_id: "ses_prog_sql",
+        role: "user",
+        time_created: 1739600000000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }),
+      },
+      {
+        session_id: "ses_prog_sql",
+        role: "assistant",
+        time_created: 1739600100000,
+        data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode-sqlprog");
@@ -1512,19 +1655,28 @@ describe("executeSessionSync", () => {
     expect(discoverEvents).toHaveLength(1);
 
     // Verify parse event with session count details
-    const parseEvents = events.filter(
-      (e) => e.source === "opencode-sqlite" && e.phase === "parse",
-    );
+    const parseEvents = events.filter((e) => e.source === "opencode-sqlite" && e.phase === "parse");
     expect(parseEvents).toHaveLength(1);
     expect(parseEvents[0].message).toContain("Collected 1 sessions");
   });
 
   it("should emit 'No new OpenCode SQLite sessions found' progress when no new sessions", async () => {
     const sessions = [
-      { id: "ses_empty_sql", project_id: null, title: null, time_created: 1739600000000, time_updated: 1739600600000 },
+      {
+        id: "ses_empty_sql",
+        project_id: null,
+        title: null,
+        time_created: 1739600000000,
+        time_updated: 1739600600000,
+      },
     ];
     const messages = [
-      { session_id: "ses_empty_sql", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
+      {
+        session_id: "ses_empty_sql",
+        role: "user",
+        time_created: 1739600000000,
+        data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }),
+      },
     ];
 
     const dbDir = join(dataDir, "opencode-sqlempty");
@@ -1548,9 +1700,7 @@ describe("executeSessionSync", () => {
       onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
     });
 
-    const parseEvents = events.filter(
-      (e) => e.source === "opencode-sqlite" && e.phase === "parse",
-    );
+    const parseEvents = events.filter((e) => e.source === "opencode-sqlite" && e.phase === "parse");
     expect(parseEvents).toHaveLength(1);
     expect(parseEvents[0].message).toBe("No new OpenCode SQLite sessions found");
   });
@@ -1596,17 +1746,14 @@ describe("executeSessionSync", () => {
       const result = await executeSessionSync({
         stateDir,
         claudeDir: join(dataDir, ".claude"),
-        onProgress: (e) =>
-          events.push({ source: e.source, phase: e.phase, message: e.message }),
+        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
       });
 
       // Good file should still be synced
       expect(result.sources.claude).toBeGreaterThanOrEqual(1);
 
       // Verify warning for the bad file
-      const warnEvents = events.filter(
-        (e) => e.source === "claude-code" && e.phase === "warn",
-      );
+      const warnEvents = events.filter((e) => e.source === "claude-code" && e.phase === "warn");
       expect(warnEvents).toHaveLength(1);
       expect(warnEvents[0].message).toContain("Simulated claude session parser crash");
     } finally {
@@ -1629,11 +1776,15 @@ describe("executeSessionSync", () => {
 
     const queueSpy = vi
       .spyOn(SessionQueue.prototype, "appendBatch")
-      .mockImplementation(async () => { callOrder.push("queue.appendBatch"); });
+      .mockImplementation(async () => {
+        callOrder.push("queue.appendBatch");
+      });
 
     const cursorSpy = vi
       .spyOn(SessionCursorStore.prototype, "save")
-      .mockImplementation(async () => { callOrder.push("cursorStore.save"); });
+      .mockImplementation(async () => {
+        callOrder.push("cursorStore.save");
+      });
 
     try {
       await executeSessionSync({
@@ -1690,7 +1841,4 @@ describe("executeSessionSync", () => {
     expect(after.files[realPath]).toBeDefined();
     expect(after.files[aliasPath]).toBeUndefined();
   });
-
-
-
 });

@@ -34,42 +34,75 @@ describe("D1 identifier lists within the 100-parameter limit", () => {
         INSERT INTO usage_totals VALUES ('u1','2026-01-15',100,60,30,10,'codex','model','');
         CREATE VIEW usage_bases AS SELECT * FROM usage_totals;
         CREATE TABLE organization_members(org_id TEXT,user_id TEXT);`);
-      sqlite.exec(readFileSync('scripts/migrations/029-leaderboard-revision.sql','utf8'));
+      sqlite.exec(readFileSync("scripts/migrations/029-leaderboard-revision.sql", "utf8"));
       const prepare = (sql: string, params: unknown[] = []) => ({
         bind: (...values: unknown[]) => {
           if (values.length > 100) throw new Error("too many SQL variables");
           return prepare(sql, values);
         },
-        all: async () => ({ success: true, results: sqlite.prepare(sql).all(...params as never[]) }),
-        first: async () => sqlite.prepare(sql).get(...params as never[]) ?? null,
+        all: async () => ({
+          success: true,
+          results: sqlite.prepare(sql).all(...(params as never[])),
+        }),
+        first: async () => sqlite.prepare(sql).get(...(params as never[])) ?? null,
       });
-      const db = { prepare, batch: async (statements: ReturnType<typeof prepare>[]) => Promise.all(statements.map((s) => s.all())) } as unknown as D1Database;
+      const db = {
+        prepare,
+        batch: async (statements: ReturnType<typeof prepare>[]) =>
+          Promise.all(statements.map((s) => s.all())),
+      } as unknown as D1Database;
       const kv = { get: async () => null, put: async () => {} } as unknown as KVNamespace;
-      for (const method of ["seasons.getMemberTokens", "seasons.getTeamSessionStats", "seasons.getMemberSessionStats", "seasons.aggregateMemberTokens"] as const) {
-        const response = await handleSeasonsRpc({ method, seasonId: "s1", teamIds, ...bounds }, db, kv);
+      for (const method of [
+        "seasons.getMemberTokens",
+        "seasons.getTeamSessionStats",
+        "seasons.getMemberSessionStats",
+        "seasons.aggregateMemberTokens",
+      ] as const) {
+        const response = await handleSeasonsRpc(
+          { method, seasonId: "s1", teamIds, ...bounds },
+          db,
+          kv,
+        );
         expect((await response.json()).result).toHaveLength(1);
       }
-      const conflict = await handleSeasonsRpc({ method: "seasons.checkMemberConflict", seasonId: "s1", userIds: ids }, db, kv);
+      const conflict = await handleSeasonsRpc(
+        { method: "seasons.checkMemberConflict", seasonId: "s1", userIds: ids },
+        db,
+        kv,
+      );
       expect((await conflict.json()).result).toEqual({ user_id: "u1" });
       const now = new Date().toISOString();
       for (let i = 0; i < 105; i++) {
-        sqlite.prepare("INSERT INTO users VALUES (?,?,'User',NULL,NULL,1)").run(`page${i}`, `page${i}`);
-        sqlite.prepare("INSERT INTO usage_totals VALUES (?,?,100,60,30,10,'codex','model','')").run(`page${i}`, now);
+        sqlite
+          .prepare("INSERT INTO users VALUES (?,?,'User',NULL,NULL,1)")
+          .run(`page${i}`, `page${i}`);
+        sqlite
+          .prepare("INSERT INTO usage_totals VALUES (?,?,100,60,30,10,'codex','model','')")
+          .run(`page${i}`, now);
         sqlite.prepare("INSERT INTO session_records VALUES (?,?,'codex',60)").run(`page${i}`, now);
       }
       const read = createMockDbRead();
-      const rpc = async (request: Parameters<typeof handleLeaderboardRpc>[0]) => (await (await handleLeaderboardRpc(request, db, kv)).json()).result;
-      read.getLeaderboardRevision.mockImplementation(async () => rpc({ method: "leaderboard.getRevision" }));
-      read.getLeaderboardSnapshot.mockImplementation(async (options) => rpc({ method: "leaderboard.getSnapshot", ...options }));
+      const rpc = async (request: Parameters<typeof handleLeaderboardRpc>[0]) =>
+        (await (await handleLeaderboardRpc(request, db, kv)).json()).result;
+      read.getLeaderboardRevision.mockImplementation(async () =>
+        rpc({ method: "leaderboard.getRevision" }),
+      );
+      read.getLeaderboardSnapshot.mockImplementation(async (options) =>
+        rpc({ method: "leaderboard.getSnapshot", ...options }),
+      );
       vi.mocked(getDbRead).mockResolvedValue(read);
       for (const query of ["limit=100&period=week", "limit=99&period=week&source=codex"]) {
         const response = await GET(new Request(`http://localhost/api/leaderboard?${query}`));
         expect(response.status).toBe(200);
         const body = await response.json();
         expect(body.entries).toHaveLength(query.includes("limit=100") ? 100 : 99);
-        expect(body.entries.every((entry: { session_count: number }) => entry.session_count === 1)).toBe(true);
+        expect(
+          body.entries.every((entry: { session_count: number }) => entry.session_count === 1),
+        ).toBe(true);
         expect(body.hasMore).toBe(true);
       }
-    } finally { sqlite.close(); }
+    } finally {
+      sqlite.close();
+    }
   });
 });

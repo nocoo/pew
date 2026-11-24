@@ -73,20 +73,18 @@ async function handleGetDynamicPricingMeta(kv: KVNamespace): Promise<Response> {
 async function handleRebuildDynamicPricing(
   req: RebuildDynamicPricingRequest,
   db: D1Database,
-  kv: KVNamespace
+  kv: KVNamespace,
 ): Promise<Response> {
-  const outcome: SyncOutcome = await syncDynamicPricing(
-    { db, kv },
-    new Date().toISOString(),
-    { forceRefetch: req.forceRefetch }
-  );
+  const outcome: SyncOutcome = await syncDynamicPricing({ db, kv }, new Date().toISOString(), {
+    forceRefetch: req.forceRefetch,
+  });
   return Response.json({ result: outcome });
 }
 
 export async function handlePricingRpc(
   request: PricingRpcRequest,
   db: D1Database,
-  kv: KVNamespace
+  kv: KVNamespace,
 ): Promise<Response> {
   switch (request.method) {
     case "pricing.getDynamicPricing":
@@ -98,7 +96,7 @@ export async function handlePricingRpc(
     default:
       return Response.json(
         { error: `Unknown pricing method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

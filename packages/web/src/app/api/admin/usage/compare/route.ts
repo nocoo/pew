@@ -49,10 +49,7 @@ export async function GET(request: Request) {
   // Parse userIds (required)
   const userIdsParam = url.searchParams.get("userIds");
   if (!userIdsParam?.trim()) {
-    return NextResponse.json(
-      { error: "userIds parameter is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "userIds parameter is required" }, { status: 400 });
   }
 
   // Parse, dedupe, and preserve order
@@ -71,17 +68,11 @@ export async function GET(request: Request) {
   }
 
   if (userIds.length < 2) {
-    return NextResponse.json(
-      { error: "At least 2 unique user IDs are required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "At least 2 unique user IDs are required" }, { status: 400 });
   }
 
   if (userIds.length > MAX_USERS) {
-    return NextResponse.json(
-      { error: `Maximum ${MAX_USERS} users allowed` },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: `Maximum ${MAX_USERS} users allowed` }, { status: 400 });
   }
 
   // Parse date range
@@ -96,10 +87,7 @@ export async function GET(request: Request) {
   const toDate = toParam ? new Date(toParam) : now;
 
   if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
-    return NextResponse.json(
-      { error: "Invalid date format" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
   }
 
   // Optional filters
@@ -110,10 +98,7 @@ export async function GET(request: Request) {
 
   // Validate tzOffset
   if (!Number.isFinite(tzOffset) || Math.abs(tzOffset) > 840) {
-    return NextResponse.json(
-      { error: "Invalid tzOffset value" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid tzOffset value" }, { status: 400 });
   }
 
   const db = await getDbRead();
@@ -132,14 +117,13 @@ export async function GET(request: Request) {
 
     // Validate we have at least 2 valid users
     if (users.length < 2) {
-      return NextResponse.json(
-        { error: "At least 2 valid users are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "At least 2 valid users are required" }, { status: 400 });
     }
 
     const usageRows = await db.getAdminUsageComparison(
-      userIds, fromDate.toISOString(), toDate.toISOString(),
+      userIds,
+      fromDate.toISOString(),
+      toDate.toISOString(),
       { tzOffset, ...(source ? { source } : {}), ...(model ? { model } : {}) },
     );
 
@@ -175,9 +159,6 @@ export async function GET(request: Request) {
     return NextResponse.json(response);
   } catch (err) {
     console.error("Failed to compare user usage:", err);
-    return NextResponse.json(
-      { error: "Failed to compare user usage" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to compare user usage" }, { status: 500 });
   }
 }

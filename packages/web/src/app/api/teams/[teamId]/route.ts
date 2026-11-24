@@ -25,10 +25,7 @@ function generateInviteCode(): string {
 // GET — team details with members
 // ---------------------------------------------------------------------------
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ teamId: string }> },
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ teamId: string }> }) {
   const authResult = await resolveUser(request);
   if (!authResult) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -70,9 +67,8 @@ export async function GET(
 
     // Strip invite_code for non-owners
     const { invite_code, logo_url, ...teamWithoutSensitive } = team;
-    const sanitizedTeam = role === "owner"
-      ? { ...teamWithoutSensitive, invite_code }
-      : teamWithoutSensitive;
+    const sanitizedTeam =
+      role === "owner" ? { ...teamWithoutSensitive, invite_code } : teamWithoutSensitive;
 
     return NextResponse.json({
       ...sanitizedTeam,
@@ -106,10 +102,7 @@ export async function GET(
 // PATCH — rename team (owner only)
 // ---------------------------------------------------------------------------
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ teamId: string }> },
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ teamId: string }> }) {
   const authResult = await resolveUser(request);
   if (!authResult) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -123,7 +116,8 @@ export async function PATCH(
   try {
     const body = await request.json();
     name = typeof body.name === "string" ? body.name.trim() : undefined;
-    autoRegisterSeason = typeof body.auto_register_season === "boolean" ? body.auto_register_season : undefined;
+    autoRegisterSeason =
+      typeof body.auto_register_season === "boolean" ? body.auto_register_season : undefined;
     regenerateInviteCode = body.regenerate_invite_code === true;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
@@ -137,10 +131,7 @@ export async function PATCH(
   }
 
   if (name === undefined && autoRegisterSeason === undefined && !regenerateInviteCode) {
-    return NextResponse.json(
-      { error: "No valid fields to update" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
   try {
@@ -154,7 +145,10 @@ export async function PATCH(
       return NextResponse.json({ error: "Not a member" }, { status: 403 });
     }
     if (role !== "owner") {
-      return NextResponse.json({ error: "Only the team owner can update settings" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Only the team owner can update settings" },
+        { status: 403 },
+      );
     }
 
     const updates: string[] = [];
@@ -179,10 +173,7 @@ export async function PATCH(
 
     values.push(teamId);
     try {
-      await dbWrite.execute(
-        `UPDATE teams SET ${updates.join(", ")} WHERE id = ?`,
-        values,
-      );
+      await dbWrite.execute(`UPDATE teams SET ${updates.join(", ")} WHERE id = ?`, values);
     } catch (updateErr) {
       const updateMsg = updateErr instanceof Error ? updateErr.message : "";
       if (updateMsg.includes("no such column") && autoRegisterSeason !== undefined) {
@@ -238,7 +229,10 @@ export async function DELETE(
 
     if (role === "owner" && memberCount > 1) {
       return NextResponse.json(
-        { error: "Transfer ownership before leaving (not yet supported — remove other members first)" },
+        {
+          error:
+            "Transfer ownership before leaving (not yet supported — remove other members first)",
+        },
         { status: 400 },
       );
     }
@@ -254,7 +248,15 @@ export async function DELETE(
             SELECT 1 FROM team_members WHERE team_id = ? AND user_id != ?))
           AND (EXISTS (SELECT 1 FROM team_members WHERE team_id = ? AND user_id != ?)
             OR NOT EXISTS (${lockedSeason})) RETURNING user_id`,
-        params: [teamId, authResult.userId, teamId, authResult.userId, teamId, authResult.userId, teamId],
+        params: [
+          teamId,
+          authResult.userId,
+          teamId,
+          authResult.userId,
+          teamId,
+          authResult.userId,
+          teamId,
+        ],
       },
       {
         sql: `DELETE FROM season_team_members WHERE team_id = ? AND (

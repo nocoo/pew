@@ -80,7 +80,7 @@ export type LiveRpcRequest =
 
 async function handleGetActiveSessions(
   req: GetActiveSessionsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   const limit = Math.min(req.limit ?? 50, 250);
 
@@ -109,7 +109,7 @@ async function handleGetActiveSessions(
 
 async function handleGetRecentActivity(
   req: GetRecentActivityRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   const limit = Math.min(req.limit ?? 50, 250);
   const conditions = ["ur.hour_start >= datetime('now', '-1 hour')"];
@@ -144,7 +144,10 @@ async function handleGetRecentActivity(
 
   params.push(limit);
 
-  const results = await db.prepare(sql).bind(...params).all<RecentActivityRow>();
+  const results = await db
+    .prepare(sql)
+    .bind(...params)
+    .all<RecentActivityRow>();
 
   return Response.json({ result: results.results });
 }
@@ -166,7 +169,7 @@ async function handleGetLiveStats(db: D1Database): Promise<Response> {
 
 async function handleGetUserLiveStats(
   req: GetUserLiveStatsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
@@ -180,14 +183,11 @@ async function handleGetUserLiveStats(
       (SELECT COUNT(*) FROM usage_totals WHERE user_id = ? AND hour_start >= datetime('now', '-1 hour')) AS requests_last_hour
   `;
 
-  const result = await db
-    .prepare(sql)
-    .bind(req.userId, req.userId, req.userId)
-    .first<{
-      active_sessions: number;
-      tokens_last_hour: number;
-      requests_last_hour: number;
-    }>();
+  const result = await db.prepare(sql).bind(req.userId, req.userId, req.userId).first<{
+    active_sessions: number;
+    tokens_last_hour: number;
+    requests_last_hour: number;
+  }>();
 
   return Response.json({ result: result });
 }
@@ -201,10 +201,7 @@ async function handlePing(db: D1Database): Promise<Response> {
 // Router
 // ---------------------------------------------------------------------------
 
-export async function handleLiveRpc(
-  request: LiveRpcRequest,
-  db: D1Database
-): Promise<Response> {
+export async function handleLiveRpc(request: LiveRpcRequest, db: D1Database): Promise<Response> {
   switch (request.method) {
     case "live.getActiveSessions":
       return handleGetActiveSessions(request, db);
@@ -219,7 +216,7 @@ export async function handleLiveRpc(
     default:
       return Response.json(
         { error: `Unknown live method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

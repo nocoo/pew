@@ -6,25 +6,28 @@
 
 pew 已有完善的本地质量系统（doc 30-31），但缺少 CI 门禁：
 
-| 层级 | 作用 | 本地触发 | CI 状态 |
-|------|------|----------|---------|
-| L1 | 单元测试 + 90% 覆盖率 | pre-commit | ❌ |
-| G1 | tsc + Biome (0 warnings, doc 44) | pre-commit | ❌ |
-| L2 | API E2E (真实 HTTP) | pre-push | ❌ |
-| G2 | osv-scanner + gitleaks | pre-push | ❌ |
-| L3 | Playwright UI E2E | 手动 | ❌ |
+| 层级 | 作用                             | 本地触发   | CI 状态 |
+| ---- | -------------------------------- | ---------- | ------- |
+| L1   | 单元测试 + 90% 覆盖率            | pre-commit | ❌      |
+| G1   | tsc + Biome (0 warnings, doc 44) | pre-commit | ❌      |
+| L2   | API E2E (真实 HTTP)              | pre-push   | ❌      |
+| G2   | osv-scanner + gitleaks           | pre-push   | ❌      |
+| L3   | Playwright UI E2E                | 手动       | ❌      |
 
 **问题**：
+
 1. 开发者可以 `--no-verify` 跳过 hooks
 2. 没有强制的 PR 门禁
 3. main 分支没有保护
 
 **Phase 1 目标**：
+
 - 保证合入 main 的代码通过类型检查、Lint、单元测试
 - 验证构建产物可生成（`bun run build`）
 - 阻止已知 CVE 漏洞的依赖进入 main
 
 **Phase 2 目标**（doc 37）：
+
 - API E2E 验证真实数据路径
 - Secret 泄漏检测
 
@@ -36,14 +39,15 @@ pew 已有完善的本地质量系统（doc 30-31），但缺少 CI 门禁：
 
 只运行不需要外部凭证的检查：
 
-| 检查项 | 命令 | 需要 Secrets |
-|--------|------|-------------|
-| G1 Static Analysis | `bun run lint` | ❌ |
-| L1 Unit Tests | `bun run test:coverage` | ❌ |
-| Build | `bun run build` | ❌ |
-| G2a osv-scanner | `osv-scanner --lockfile=bun.lock` | ❌ |
+| 检查项             | 命令                              | 需要 Secrets |
+| ------------------ | --------------------------------- | ------------ |
+| G1 Static Analysis | `bun run lint`                    | ❌           |
+| L1 Unit Tests      | `bun run test:coverage`           | ❌           |
+| Build              | `bun run build`                   | ❌           |
+| G2a osv-scanner    | `osv-scanner --lockfile=bun.lock` | ❌           |
 
 **覆盖风险**：
+
 - ✅ 类型错误
 - ✅ Lint 违规
 - ✅ 单元测试失败
@@ -108,11 +112,11 @@ jobs:
 
 ### 文件变更
 
-| 文件 | 操作 |
-|------|------|
-| `.github/workflows/ci.yml` | 新建 |
+| 文件                           | 操作           |
+| ------------------------------ | -------------- |
+| `.github/workflows/ci.yml`     | 新建           |
 | `docs/36-github-actions-ci.md` | 新建（本文档） |
-| `docs/README.md` | 添加索引行 |
+| `docs/README.md`               | 添加索引行     |
 
 ### Branch Protection Rules
 
@@ -138,6 +142,7 @@ CI 就绪后，在 GitHub repo settings 配置：
 创建 `.github/workflows/ci.yml`。
 
 **验证**：
+
 - 创建一个 PR 到 main 分支
 - 在 PR 的 Checks tab 观察 `quality-gate` job 运行
 - 确认 G1、L1、Build、G2a 四个 step 都通过
@@ -160,6 +165,7 @@ Phase 2 将设计：
 3. **可选：L3 Playwright**：需要复杂的 D1 隧道或 mock
 
 Secrets 需求清单：
+
 ```
 CF_D1_DATABASE_ID_TEST     # 测试 D1 数据库
 CF_ACCOUNT_ID              # Cloudflare 账户
@@ -192,13 +198,13 @@ osv-scanner --lockfile=bun.lock
 
 Phase 1 实现完成: 2026-04-08
 
-| 检查项 | 状态 | 备注 |
-|--------|------|------|
-| G1 Static Analysis | ✅ | 本地通过 |
-| L1 Unit Tests | ✅ | 本地通过，coverage ≥90% |
-| Build | ✅ | 本地通过 |
-| G2a osv-scanner | ✅ | 本地通过 |
-| Branch Protection | ⏳ | CI 验证后配置 |
+| 检查项             | 状态 | 备注                    |
+| ------------------ | ---- | ----------------------- |
+| G1 Static Analysis | ✅   | 本地通过                |
+| L1 Unit Tests      | ✅   | 本地通过，coverage ≥90% |
+| Build              | ✅   | 本地通过                |
+| G2a osv-scanner    | ✅   | 本地通过                |
+| Branch Protection  | ⏳   | CI 验证后配置           |
 
 ### 代码基线修复
 
@@ -219,10 +225,10 @@ Phase 1 实现完成: 2026-04-08
 
 ### Commits
 
-| # | Hash | Message |
-|---|------|---------|
-| 1 | `bcd8b58` | ci: add GitHub Actions workflow for L1+G1+Build+G2a |
-| 2 | `08b5f42` | docs: add GitHub Actions CI plan (doc 36) |
-| 3 | — | fix: resolve lint errors in sync.ts and pi-hook.ts |
-| 4 | — | test: adjust coverage exclusions for 90% branch threshold |
-| 5 | — | ci: pin actions to SHA and add OSV permissions |
+| #   | Hash      | Message                                                   |
+| --- | --------- | --------------------------------------------------------- |
+| 1   | `bcd8b58` | ci: add GitHub Actions workflow for L1+G1+Build+G2a       |
+| 2   | `08b5f42` | docs: add GitHub Actions CI plan (doc 36)                 |
+| 3   | —         | fix: resolve lint errors in sync.ts and pi-hook.ts        |
+| 4   | —         | test: adjust coverage exclusions for 90% branch threshold |
+| 5   | —         | ci: pin actions to SHA and add OSV permissions            |

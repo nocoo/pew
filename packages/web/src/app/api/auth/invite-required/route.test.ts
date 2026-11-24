@@ -46,9 +46,7 @@ describe("GET /api/auth/invite-required", () => {
   });
 
   it("returns required=true and no Cache-Control when table is missing", async () => {
-    mockDbRead.getAppSetting.mockRejectedValueOnce(
-      new Error("no such table: app_settings"),
-    );
+    mockDbRead.getAppSetting.mockRejectedValueOnce(new Error("no such table: app_settings"));
 
     const res = await GET();
 

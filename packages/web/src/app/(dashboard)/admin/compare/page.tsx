@@ -4,14 +4,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Search,
-  X,
-  Users,
-} from "@nocoo/basalt/icons";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, X, Users } from "@nocoo/basalt/icons";
 import { cn, formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/error-banner";
@@ -28,22 +21,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@nocoo/basalt/components/tooltip";
-import type {
-  StorageUserRow,
-  StorageSummary,
-} from "@/app/api/admin/storage/route";
+import type { StorageUserRow, StorageSummary } from "@/app/api/admin/storage/route";
 import { CHART_COLORS } from "@/lib/palette";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type SortKey =
-  | "total_tokens"
-  | "tokens_7d"
-  | "tokens_30d"
-  | "session_count"
-  | "total_messages";
+type SortKey = "total_tokens" | "tokens_7d" | "tokens_30d" | "session_count" | "total_messages";
 
 type SortDir = "asc" | "desc";
 
@@ -58,8 +43,11 @@ function SelectionSkeleton() {
     <div className="space-y-3">
       {/* Table skeleton */}
       {Array.from({ length: 8 }).map((_, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-        <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
+        <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          key={`slot-${i}`}
+          className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4"
+        >
           <div className="flex items-center gap-4">
             <Skeleton style={{ width: undefined }} className="h-5 w-5 rounded" />
             <Skeleton style={{ width: undefined }} className="h-8 w-8 rounded-full" />
@@ -94,25 +82,14 @@ function SortHeader({
   className?: string;
 }) {
   const isActive = currentSort === sortKey;
-  const Icon = isActive
-    ? currentDir === "asc"
-      ? ArrowUp
-      : ArrowDown
-    : ArrowUpDown;
+  const Icon = isActive ? (currentDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
 
-  const ariaSort = isActive
-    ? currentDir === "asc"
-      ? "ascending"
-      : "descending"
-    : "none";
+  const ariaSort = isActive ? (currentDir === "asc" ? "ascending" : "descending") : "none";
 
   return (
     <th
       aria-sort={ariaSort as "ascending" | "descending" | "none"}
-      className={cn(
-        "px-4 py-3 text-xs font-medium text-basalt-muted-foreground",
-        className
-      )}
+      className={cn("px-4 py-3 text-xs font-medium text-basalt-muted-foreground", className)}
     >
       <Button
         type="button"
@@ -137,7 +114,11 @@ function ComparePageContent() {
   const searchParams = useSearchParams();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
-  const { data, error: swrError, isLoading } = useSWR<{
+  const {
+    data,
+    error: swrError,
+    isLoading,
+  } = useSWR<{
     users: StorageUserRow[];
     summary: StorageSummary;
   }>(isAdmin ? "/api/admin/storage" : null, fetcher);
@@ -154,8 +135,7 @@ function ComparePageContent() {
     const param = searchParams.get("userIds");
     return param ? param.split(",").filter(Boolean) : [];
   }, [searchParams]);
-  const [selectedUserIds, setSelectedUserIds] =
-    useState<string[]>(initialUserIds);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>(initialUserIds);
 
   // Filter & sort
   const [search, setSearch] = useState("");
@@ -185,7 +165,7 @@ function ComparePageContent() {
         setSortDir("desc");
       }
     },
-    [sortKey]
+    [sortKey],
   );
 
   // ---------------------------------------------------------------------------
@@ -231,8 +211,7 @@ function ComparePageContent() {
       const q = search.trim().toLowerCase();
       list = list.filter(
         (u) =>
-          (u.email ?? "").toLowerCase().includes(q) ||
-          (u.name ?? "").toLowerCase().includes(q)
+          (u.email ?? "").toLowerCase().includes(q) || (u.name ?? "").toLowerCase().includes(q),
       );
     }
 
@@ -295,9 +274,7 @@ function ComparePageContent() {
                 className="flex items-center gap-2 rounded-full border border-basalt-border bg-basalt-background pl-1 pr-2 py-0.5"
               >
                 <Avatar className="h-5 w-5 shrink-0">
-                  {user.image && (
-                    <AvatarImage src={user.image} alt={user.name ?? ""} />
-                  )}
+                  {user.image && <AvatarImage src={user.image} alt={user.name ?? ""} />}
                   <AvatarFallback className="text-[8px] bg-basalt-primary text-basalt-primary-foreground">
                     {(user.name ?? user.email ?? "?")[0]?.toUpperCase()}
                   </AvatarFallback>
@@ -305,9 +282,7 @@ function ComparePageContent() {
                 <div
                   className="h-2 w-2 rounded-full shrink-0"
                   style={{
-                    backgroundColor: CHART_COLORS[
-                      i % CHART_COLORS.length
-                    ] as string,
+                    backgroundColor: CHART_COLORS[i % CHART_COLORS.length] as string,
                   }}
                 />
                 <span className="text-xs font-medium truncate max-w-[120px]">
@@ -388,186 +363,167 @@ function ComparePageContent() {
         {loading && <SelectionSkeleton />}
 
         {/* Table */}
-        {!loading && (
-          filteredUsers.length === 0 ? (
-              <Empty
-                title={search ? "No users match your filter." : "No users found."}
-                className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-              />
-            ) : (
-              <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-basalt-border">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground w-10">
-                        <span className="sr-only">Select</span>
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                        User
-                      </th>
-                      <SortHeader
-                        label="Total"
-                        sortKey="total_tokens"
-                        currentSort={sortKey}
-                        currentDir={sortDir}
-                        onSort={handleSort}
-                        className="text-right"
-                      />
-                      <SortHeader
-                        label="7d"
-                        sortKey="tokens_7d"
-                        currentSort={sortKey}
-                        currentDir={sortDir}
-                        onSort={handleSort}
-                        className="text-right hidden md:table-cell"
-                      />
-                      <SortHeader
-                        label="30d"
-                        sortKey="tokens_30d"
-                        currentSort={sortKey}
-                        currentDir={sortDir}
-                        onSort={handleSort}
-                        className="text-right hidden md:table-cell"
-                      />
-                      <SortHeader
-                        label="Sessions"
-                        sortKey="session_count"
-                        currentSort={sortKey}
-                        currentDir={sortDir}
-                        onSort={handleSort}
-                        className="text-right hidden sm:table-cell"
-                      />
-                      <SortHeader
-                        label="Messages"
-                        sortKey="total_messages"
-                        currentSort={sortKey}
-                        currentDir={sortDir}
-                        onSort={handleSort}
-                        className="text-right hidden lg:table-cell"
-                      />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((user) => {
-                      const isSelected = selectedUserIds.includes(user.user_id);
-                      const isDisabled =
-                        !isSelected && selectedUserIds.length >= 10;
+        {!loading &&
+          (filteredUsers.length === 0 ? (
+            <Empty
+              title={search ? "No users match your filter." : "No users found."}
+              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+            />
+          ) : (
+            <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-basalt-border">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground w-10">
+                      <span className="sr-only">Select</span>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                      User
+                    </th>
+                    <SortHeader
+                      label="Total"
+                      sortKey="total_tokens"
+                      currentSort={sortKey}
+                      currentDir={sortDir}
+                      onSort={handleSort}
+                      className="text-right"
+                    />
+                    <SortHeader
+                      label="7d"
+                      sortKey="tokens_7d"
+                      currentSort={sortKey}
+                      currentDir={sortDir}
+                      onSort={handleSort}
+                      className="text-right hidden md:table-cell"
+                    />
+                    <SortHeader
+                      label="30d"
+                      sortKey="tokens_30d"
+                      currentSort={sortKey}
+                      currentDir={sortDir}
+                      onSort={handleSort}
+                      className="text-right hidden md:table-cell"
+                    />
+                    <SortHeader
+                      label="Sessions"
+                      sortKey="session_count"
+                      currentSort={sortKey}
+                      currentDir={sortDir}
+                      onSort={handleSort}
+                      className="text-right hidden sm:table-cell"
+                    />
+                    <SortHeader
+                      label="Messages"
+                      sortKey="total_messages"
+                      currentSort={sortKey}
+                      currentDir={sortDir}
+                      onSort={handleSort}
+                      className="text-right hidden lg:table-cell"
+                    />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => {
+                    const isSelected = selectedUserIds.includes(user.user_id);
+                    const isDisabled = !isSelected && selectedUserIds.length >= 10;
 
-                      return (
-                        <tr
-                          key={user.user_id}
-                          className={cn(
-                            "border-b border-basalt-border/50 last:border-0 transition-colors",
-                            isSelected
-                              ? "bg-basalt-accent/30"
-                              : "hover:bg-basalt-accent/50",
-                            isDisabled && "opacity-50"
-                          )}
-                        >
-                          {/* Checkbox */}
-                          <td className="px-4 py-3">
-                            <Checkbox
-                              checked={isSelected}
-                              disabled={isDisabled}
-                              onCheckedChange={() => toggleUser(user.user_id)}
-                              aria-label={`Select ${user.name ?? user.email ?? "user"}`}
-                            />
-                          </td>
-                          {/* User */}
-                          <td className="px-4 py-3">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => toggleUser(user.user_id)}
-                              disabled={isDisabled}
-                              className="h-auto min-w-0 justify-start gap-3 px-0 py-0 hover:bg-transparent hover:opacity-80"
-                            >
-                              <Avatar className="h-7 w-7 shrink-0">
-                                {user.image && (
-                                  <AvatarImage
-                                    src={user.image}
-                                    alt={user.name ?? ""}
-                                  />
-                                )}
-                                <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
-                                  {(
-                                    user.name ??
-                                    user.email ??
-                                    "?"
-                                  )[0]?.toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0">
-                                {user.name && (
-                                  <p className="text-sm font-medium text-basalt-foreground truncate">
-                                    {user.name}
-                                  </p>
-                                )}
-                                <p className="text-xs text-basalt-muted-foreground truncate">
-                                  {user.email ?? user.user_id}
+                    return (
+                      <tr
+                        key={user.user_id}
+                        className={cn(
+                          "border-b border-basalt-border/50 last:border-0 transition-colors",
+                          isSelected ? "bg-basalt-accent/30" : "hover:bg-basalt-accent/50",
+                          isDisabled && "opacity-50",
+                        )}
+                      >
+                        {/* Checkbox */}
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={isSelected}
+                            disabled={isDisabled}
+                            onCheckedChange={() => toggleUser(user.user_id)}
+                            aria-label={`Select ${user.name ?? user.email ?? "user"}`}
+                          />
+                        </td>
+                        {/* User */}
+                        <td className="px-4 py-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => toggleUser(user.user_id)}
+                            disabled={isDisabled}
+                            className="h-auto min-w-0 justify-start gap-3 px-0 py-0 hover:bg-transparent hover:opacity-80"
+                          >
+                            <Avatar className="h-7 w-7 shrink-0">
+                              {user.image && <AvatarImage src={user.image} alt={user.name ?? ""} />}
+                              <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
+                                {(user.name ?? user.email ?? "?")[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              {user.name && (
+                                <p className="text-sm font-medium text-basalt-foreground truncate">
+                                  {user.name}
                                 </p>
-                              </div>
-                            </Button>
-                          </td>
-                          {/* Total tokens */}
-                          <td className="px-4 py-3 text-right">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-sm font-medium tabular-nums cursor-default">
-                                  {formatTokens(user.total_tokens)}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {formatTokensFull(user.total_tokens)}
-                              </TooltipContent>
-                            </Tooltip>
-                          </td>
-                          {/* 7d tokens */}
-                          <td className="px-4 py-3 text-right hidden md:table-cell">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-sm text-basalt-muted-foreground tabular-nums cursor-default">
-                                  {formatTokens(user.tokens_7d)}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {formatTokensFull(user.tokens_7d)}
-                              </TooltipContent>
-                            </Tooltip>
-                          </td>
-                          {/* 30d tokens */}
-                          <td className="px-4 py-3 text-right hidden md:table-cell">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-sm text-basalt-muted-foreground tabular-nums cursor-default">
-                                  {formatTokens(user.tokens_30d)}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {formatTokensFull(user.tokens_30d)}
-                              </TooltipContent>
-                            </Tooltip>
-                          </td>
-                          {/* Sessions */}
-                          <td className="px-4 py-3 text-right hidden sm:table-cell">
-                            <span className="text-sm text-basalt-muted-foreground tabular-nums">
-                              {user.session_count.toLocaleString()}
-                            </span>
-                          </td>
-                          {/* Messages */}
-                          <td className="px-4 py-3 text-right hidden lg:table-cell">
-                            <span className="text-sm text-basalt-muted-foreground tabular-nums">
-                              {user.total_messages.toLocaleString()}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )
-        )}
+                              )}
+                              <p className="text-xs text-basalt-muted-foreground truncate">
+                                {user.email ?? user.user_id}
+                              </p>
+                            </div>
+                          </Button>
+                        </td>
+                        {/* Total tokens */}
+                        <td className="px-4 py-3 text-right">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm font-medium tabular-nums cursor-default">
+                                {formatTokens(user.total_tokens)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{formatTokensFull(user.total_tokens)}</TooltipContent>
+                          </Tooltip>
+                        </td>
+                        {/* 7d tokens */}
+                        <td className="px-4 py-3 text-right hidden md:table-cell">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm text-basalt-muted-foreground tabular-nums cursor-default">
+                                {formatTokens(user.tokens_7d)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{formatTokensFull(user.tokens_7d)}</TooltipContent>
+                          </Tooltip>
+                        </td>
+                        {/* 30d tokens */}
+                        <td className="px-4 py-3 text-right hidden md:table-cell">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm text-basalt-muted-foreground tabular-nums cursor-default">
+                                {formatTokens(user.tokens_30d)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{formatTokensFull(user.tokens_30d)}</TooltipContent>
+                          </Tooltip>
+                        </td>
+                        {/* Sessions */}
+                        <td className="px-4 py-3 text-right hidden sm:table-cell">
+                          <span className="text-sm text-basalt-muted-foreground tabular-nums">
+                            {user.session_count.toLocaleString()}
+                          </span>
+                        </td>
+                        {/* Messages */}
+                        <td className="px-4 py-3 text-right hidden lg:table-cell">
+                          <span className="text-sm text-basalt-muted-foreground tabular-nums">
+                            {user.total_messages.toLocaleString()}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
 
         {/* Empty state - show compare button if users selected */}
         {!loading && selectedUsers.length >= 2 && (

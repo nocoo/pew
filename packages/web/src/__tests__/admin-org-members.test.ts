@@ -8,7 +8,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "@/app/api/admin/organizations/[orgId]/members/route";
 import { DELETE } from "@/app/api/admin/organizations/[orgId]/members/[userId]/route";
-import { POST as UPLOAD_LOGO, DELETE as DELETE_LOGO } from "@/app/api/admin/organizations/[orgId]/logo/route";
+import {
+  POST as UPLOAD_LOGO,
+  DELETE as DELETE_LOGO,
+} from "@/app/api/admin/organizations/[orgId]/logo/route";
 
 // Mock admin resolver
 vi.mock("@/lib/admin", () => ({
@@ -59,7 +62,10 @@ function makeParams(orgId: string): { params: Promise<{ orgId: string }> } {
   return { params: Promise.resolve({ orgId }) };
 }
 
-function makeDeleteParams(orgId: string, userId: string): { params: Promise<{ orgId: string; userId: string }> } {
+function makeDeleteParams(
+  orgId: string,
+  userId: string,
+): { params: Promise<{ orgId: string; userId: string }> } {
   return { params: Promise.resolve({ orgId, userId }) };
 }
 
@@ -151,10 +157,7 @@ describe("admin organization member management", () => {
     it("should return 403 for non-admin users", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(null);
 
-      const res = await POST(
-        makeJsonRequest("POST", { userId: "u1" }),
-        makeParams("org-1"),
-      );
+      const res = await POST(makeJsonRequest("POST", { userId: "u1" }), makeParams("org-1"));
       expect(res.status).toBe(403);
     });
 
@@ -185,10 +188,7 @@ describe("admin organization member management", () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
       mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
-      const res = await POST(
-        makeJsonRequest("POST", { userId: "u1" }),
-        makeParams("org-1"),
-      );
+      const res = await POST(makeJsonRequest("POST", { userId: "u1" }), makeParams("org-1"));
       expect(res.status).toBe(404);
       const json = await res.json();
       expect(json.error).toBe("Organization not found");
@@ -199,10 +199,7 @@ describe("admin organization member management", () => {
       mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
       mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([]); // user not found
 
-      const res = await POST(
-        makeJsonRequest("POST", { userId: "u1" }),
-        makeParams("org-1"),
-      );
+      const res = await POST(makeJsonRequest("POST", { userId: "u1" }), makeParams("org-1"));
       expect(res.status).toBe(404);
       const json = await res.json();
       expect(json.error).toBe("User not found");
@@ -211,27 +208,25 @@ describe("admin organization member management", () => {
     it("should return 409 if user already member", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
       mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
-      mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([{ id: "u1", name: "Alice", email: "a@e.com", image: null, slug: "a" }]);
+      mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([
+        { id: "u1", name: "Alice", email: "a@e.com", image: null, slug: "a" },
+      ]);
       mockDbRead.checkOrgMembership.mockResolvedValueOnce(true); // already member
 
-      const res = await POST(
-        makeJsonRequest("POST", { userId: "u1" }),
-        makeParams("org-1"),
-      );
+      const res = await POST(makeJsonRequest("POST", { userId: "u1" }), makeParams("org-1"));
       expect(res.status).toBe(409);
     });
 
     it("should add member successfully", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
       mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
-      mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([{ id: "u1", name: "Alice", email: "a@e.com", image: null, slug: "a" }]);
+      mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([
+        { id: "u1", name: "Alice", email: "a@e.com", image: null, slug: "a" },
+      ]);
       mockDbRead.checkOrgMembership.mockResolvedValueOnce(false); // not a member
       mockDbWrite.execute.mockResolvedValueOnce({});
 
-      const res = await POST(
-        makeJsonRequest("POST", { userId: "u1" }),
-        makeParams("org-1"),
-      );
+      const res = await POST(makeJsonRequest("POST", { userId: "u1" }), makeParams("org-1"));
       expect(res.status).toBe(201);
       const json = await res.json();
       expect(json.user.name).toBe("Alice");
@@ -241,10 +236,7 @@ describe("admin organization member management", () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
       mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table"));
 
-      const res = await POST(
-        makeJsonRequest("POST", { userId: "u1" }),
-        makeParams("org-1"),
-      );
+      const res = await POST(makeJsonRequest("POST", { userId: "u1" }), makeParams("org-1"));
       expect(res.status).toBe(503);
     });
   });
@@ -349,9 +341,21 @@ describe("admin organization member management", () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
       mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
       const cancel = vi.fn();
-      const body = new ReadableStream({ start(c) { c.enqueue(new Uint8Array(2 * 1024 * 1024 + 65537)); }, cancel });
-      const response = await UPLOAD_LOGO(new Request("https://test.invalid", { method: "POST", body, duplex: "half",
-        headers: { "Content-Type": "multipart/form-data; boundary=x" } } as RequestInit), makeParams("org-1"));
+      const body = new ReadableStream({
+        start(c) {
+          c.enqueue(new Uint8Array(2 * 1024 * 1024 + 65537));
+        },
+        cancel,
+      });
+      const response = await UPLOAD_LOGO(
+        new Request("https://test.invalid", {
+          method: "POST",
+          body,
+          duplex: "half",
+          headers: { "Content-Type": "multipart/form-data; boundary=x" },
+        } as RequestInit),
+        makeParams("org-1"),
+      );
       expect(response.status).toBe(413);
       expect(await response.json()).toEqual({ error: "Request body too large" });
       expect(cancel).toHaveBeenCalledOnce();
@@ -363,8 +367,14 @@ describe("admin organization member management", () => {
       mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
       const form = new FormData();
       form.append("file", new File(["png"], "logo.png", { type: "image/png" }));
-      form.append(field, field === "file" ? new File(["png"], "other.png", { type: "image/png" }) : "value");
-      const response = await UPLOAD_LOGO(new Request("https://test.invalid", { method: "POST", body: form }), makeParams("org-1"));
+      form.append(
+        field,
+        field === "file" ? new File(["png"], "other.png", { type: "image/png" }) : "value",
+      );
+      const response = await UPLOAD_LOGO(
+        new Request("https://test.invalid", { method: "POST", body: form }),
+        makeParams("org-1"),
+      );
       expect(response.status).toBe(400);
       expect(putOrgLogo).not.toHaveBeenCalled();
     });
@@ -446,13 +456,17 @@ describe("admin organization member management", () => {
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.logoUrl).toBe("https://cdn.example.com/logo.jpg");
-      expect((await import("sharp")).default).toHaveBeenCalledWith(expect.any(Buffer), { limitInputPixels: 16_777_216 });
+      expect((await import("sharp")).default).toHaveBeenCalledWith(expect.any(Buffer), {
+        limitInputPixels: 16_777_216,
+      });
     });
 
     it("should delete old logo when uploading new one", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
       mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
-      mockDbRead.getOrganizationById.mockResolvedValueOnce({ logo_url: "https://cdn.example.com/old.jpg" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({
+        logo_url: "https://cdn.example.com/old.jpg",
+      });
       vi.mocked(putOrgLogo).mockResolvedValueOnce("https://cdn.example.com/new.jpg");
       mockDbWrite.execute.mockResolvedValueOnce({});
 
@@ -520,7 +534,9 @@ describe("admin organization member management", () => {
     it("should handle old logo deletion failure gracefully", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
       mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
-      mockDbRead.getOrganizationById.mockResolvedValueOnce({ logo_url: "https://cdn.example.com/old.jpg" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({
+        logo_url: "https://cdn.example.com/old.jpg",
+      });
       vi.mocked(putOrgLogo).mockResolvedValueOnce("https://cdn.example.com/new.jpg");
       mockDbWrite.execute.mockResolvedValueOnce({});
       // Old logo deletion fails — should not affect response

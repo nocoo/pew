@@ -29,7 +29,7 @@ function isValidDatetime(s: string): boolean {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ seasonId: string }> }
+  { params }: { params: Promise<{ seasonId: string }> },
 ) {
   const admin = await resolveAdmin(request);
   if (!admin) {
@@ -66,10 +66,7 @@ export async function PATCH(
     if (body.name !== undefined) {
       const name = body.name as string;
       if (typeof name !== "string" || name.length < 1 || name.length > 64) {
-        return NextResponse.json(
-          { error: "name must be 1-64 characters" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "name must be 1-64 characters" }, { status: 400 });
       }
       updates.push("name = ?");
       values.push(name);
@@ -80,14 +77,14 @@ export async function PATCH(
       if (status !== "upcoming") {
         return NextResponse.json(
           { error: "Cannot modify dates of active or ended season" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       const sd = body.start_date as string;
       if (typeof sd !== "string" || !isValidDatetime(sd)) {
         return NextResponse.json(
           { error: "start_date must be ISO 8601 UTC format (YYYY-MM-DDTHH:mmZ)" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       updates.push("start_date = ?");
@@ -98,14 +95,14 @@ export async function PATCH(
       if (status !== "upcoming") {
         return NextResponse.json(
           { error: "Cannot modify dates of active or ended season" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       const ed = body.end_date as string;
       if (typeof ed !== "string" || !isValidDatetime(ed)) {
         return NextResponse.json(
           { error: "end_date must be ISO 8601 UTC format (YYYY-MM-DDTHH:mmZ)" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       updates.push("end_date = ?");
@@ -115,13 +112,9 @@ export async function PATCH(
     // Validate end_date >= start_date after applying updates
     const finalStartDate =
       (values[updates.indexOf("start_date = ?")] as string) ?? season.start_date;
-    const finalEndDate =
-      (values[updates.indexOf("end_date = ?")] as string) ?? season.end_date;
+    const finalEndDate = (values[updates.indexOf("end_date = ?")] as string) ?? season.end_date;
     if (new Date(finalEndDate).getTime() < new Date(finalStartDate).getTime()) {
-      return NextResponse.json(
-        { error: "end_date must be >= start_date" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "end_date must be >= start_date" }, { status: 400 });
     }
 
     // Toggle flags — always allowed regardless of status
@@ -139,19 +132,13 @@ export async function PATCH(
     }
 
     if (updates.length === 0) {
-      return NextResponse.json(
-        { error: "No valid fields to update" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
     updates.push("updated_at = datetime('now')");
     values.push(seasonId);
 
-    await dbWrite.execute(
-      `UPDATE seasons SET ${updates.join(", ")} WHERE id = ?`,
-      values
-    );
+    await dbWrite.execute(`UPDATE seasons SET ${updates.join(", ")} WHERE id = ?`, values);
 
     // Auto-backfill rosters when allow_roster_changes flips 0→1 on an active season.
     // Use post-update dates so a single PATCH that transitions upcoming→active
@@ -170,10 +157,7 @@ export async function PATCH(
     // Return updated season
     const updated = await dbRead.getSeasonById(seasonId);
     if (!updated) {
-      return NextResponse.json(
-        { error: "Season not found after update" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Season not found after update" }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -192,15 +176,9 @@ export async function PATCH(
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Season tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Season tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to update season:", err);
-    return NextResponse.json(
-      { error: "Failed to update season" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update season" }, { status: 500 });
   }
 }

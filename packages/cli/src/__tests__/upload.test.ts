@@ -27,14 +27,13 @@ function makeRecord(overrides: Partial<QueueRecord> = {}): QueueRecord {
 }
 
 /** Fake fetch that records calls and returns configurable responses */
-function createMockFetch(responses: Array<{ status: number; body: unknown; headers?: Record<string, string> }>) {
+function createMockFetch(
+  responses: Array<{ status: number; body: unknown; headers?: Record<string, string> }>,
+) {
   let callIndex = 0;
   const calls: Array<{ url: string; init: RequestInit }> = [];
 
-  const fetchFn = async (
-    url: string | URL | Request,
-    init?: RequestInit,
-  ): Promise<Response> => {
+  const fetchFn = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
     calls.push({ url: String(url), init: init ?? {} });
     const resp = responses[callIndex] ?? responses[responses.length - 1];
     callIndex++;
@@ -115,9 +114,7 @@ describe("executeUpload", () => {
     ];
     await queue.appendBatch(records);
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 2 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
     const result = await executeUpload({
       stateDir: dir,
@@ -165,9 +162,7 @@ describe("executeUpload", () => {
     const batch2 = [makeRecord({ model: "new-model" })];
     await queue.appendBatch(batch2);
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const result = await executeUpload({
       stateDir: dir,
@@ -193,9 +188,7 @@ describe("executeUpload", () => {
     const queue = new LocalQueue(dir);
     await queue.appendBatch([makeRecord()]);
 
-    const { fetchFn } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     await executeUpload({
       stateDir: dir,
@@ -267,9 +260,7 @@ describe("executeUpload", () => {
     const queue = new LocalQueue(dir);
     await queue.appendBatch([makeRecord()]);
 
-    const { fetchFn } = createMockFetch([
-      { status: 401, body: { error: "Unauthorized" } },
-    ]);
+    const { fetchFn } = createMockFetch([{ status: 401, body: { error: "Unauthorized" } }]);
 
     const result = await executeUpload({
       stateDir: dir,
@@ -379,9 +370,7 @@ describe("executeUpload", () => {
     const queue = new LocalQueue(dir);
     await queue.appendBatch([makeRecord(), makeRecord({ model: "o3" })]);
 
-    const { fetchFn } = createMockFetch([
-      { status: 200, body: { ingested: 2 } },
-    ]);
+    const { fetchFn } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
     const events: Array<{ phase: string; batch?: number; total?: number }> = [];
 
@@ -519,8 +508,16 @@ describe("executeUpload", () => {
 describe("aggregateRecords", () => {
   it("should return records unchanged when all keys are unique", () => {
     const records: QueueRecord[] = [
-      makeRecord({ source: "claude-code", model: "sonnet", hour_start: "2026-03-07T10:00:00.000Z" }),
-      makeRecord({ source: "gemini-cli", model: "gemini-2.5-pro", hour_start: "2026-03-07T10:00:00.000Z" }),
+      makeRecord({
+        source: "claude-code",
+        model: "sonnet",
+        hour_start: "2026-03-07T10:00:00.000Z",
+      }),
+      makeRecord({
+        source: "gemini-cli",
+        model: "gemini-2.5-pro",
+        hour_start: "2026-03-07T10:00:00.000Z",
+      }),
     ];
 
     const result = aggregateRecords(records);

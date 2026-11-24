@@ -128,11 +128,7 @@ function run(
   });
 }
 
-async function runOrDie(
-  cmd: string,
-  args: string[],
-  errorMsg: string,
-): Promise<string> {
+async function runOrDie(cmd: string, args: string[], errorMsg: string): Promise<string> {
   const result = await run(cmd, args);
   if (result.code !== 0) {
     console.error(`❌ ${errorMsg}`);
@@ -167,9 +163,7 @@ function compareSemver(a: string, b: string): number {
 function bumpVersion(current: string, bumpArg: string): string {
   if (SEMVER_RE.test(bumpArg)) {
     if (compareSemver(bumpArg, current) <= 0) {
-      console.error(
-        `❌ Explicit version ${bumpArg} must be greater than current ${current}`,
-      );
+      console.error(`❌ Explicit version ${bumpArg} must be greater than current ${current}`);
       process.exit(1);
     }
     return bumpArg;
@@ -224,9 +218,7 @@ function updateVersionInFile(
     const escaped = oldVersion.replace(/\./g, "\\.");
     const re = new RegExp(`"${escaped}"`, "g");
     if (!re.test(content)) {
-      console.error(
-        `  ✗ ${target.path} — version "${oldVersion}" not found`,
-      );
+      console.error(`  ✗ ${target.path} — version "${oldVersion}" not found`);
       return false;
     }
     // Re-create regex since .test() consumes lastIndex
@@ -249,9 +241,7 @@ async function getLastTag(): Promise<string | undefined> {
   return result.stdout.trim();
 }
 
-async function getCommitsSinceTag(
-  tag: string | undefined,
-): Promise<Commit[]> {
+async function getCommitsSinceTag(tag: string | undefined): Promise<Commit[]> {
   const range = tag ? `${tag}..HEAD` : "HEAD";
   const args = ["log", range, "--format=%H|||%s"];
   const stdout = await runOrDie("git", args, "Failed to read git log");
@@ -326,10 +316,7 @@ function capitalizeFirst(s: string): string {
  *   ### Added
  *   - ...
  */
-function formatChangelogSection(
-  version: string,
-  sections: ChangelogSections,
-): string {
+function formatChangelogSection(version: string, sections: ChangelogSections): string {
   const lines: string[] = [`## v${version}`];
 
   const sectionOrder: [keyof ChangelogSections, string][] = [
@@ -363,8 +350,7 @@ function updateChangelog(newSection: string): void {
     // No existing entries — append after header
     updated = `${content.trimEnd()}\n\n${newSection}\n`;
   } else {
-    updated =
-      `${content.slice(0, idx) + newSection}\n\n${content.slice(idx)}`;
+    updated = `${content.slice(0, idx) + newSection}\n\n${content.slice(idx)}`;
   }
 
   writeFileSync(CHANGELOG_MD, updated);
@@ -388,15 +374,9 @@ async function main(): Promise<void> {
   console.log("📋 Preflight checks...\n");
 
   // Clean working tree
-  const status = await runOrDie(
-    "git",
-    ["status", "--porcelain"],
-    "Failed to check git status",
-  );
+  const status = await runOrDie("git", ["status", "--porcelain"], "Failed to check git status");
   if (status) {
-    console.error(
-      "❌ Working tree is not clean. Commit or stash changes first.",
-    );
+    console.error("❌ Working tree is not clean. Commit or stash changes first.");
     console.error(status);
     process.exit(1);
   }
@@ -430,9 +410,7 @@ async function main(): Promise<void> {
   console.log("");
 
   // --- Phase 1: Version bump across monorepo ---
-  console.log(
-    `📝 Phase 1: Updating version in ${VERSION_TARGETS.length} files...\n`,
-  );
+  console.log(`📝 Phase 1: Updating version in ${VERSION_TARGETS.length} files...\n`);
 
   if (isDryRun) {
     console.log(
@@ -450,9 +428,7 @@ async function main(): Promise<void> {
     }
 
     if (failures > 0) {
-      console.error(
-        `\n❌ Failed to update ${failures}/${VERSION_TARGETS.length} files. Aborting.`,
-      );
+      console.error(`\n❌ Failed to update ${failures}/${VERSION_TARGETS.length} files. Aborting.`);
       console.error("   Run `git checkout .` to revert partial changes.");
       process.exit(1);
     }
@@ -476,9 +452,7 @@ async function main(): Promise<void> {
 
   const commits = await getCommitsSinceTag(lastTag);
   if (commits.length === 0) {
-    console.log(
-      "   ⚠️  No commits since last tag — CHANGELOG section will be empty",
-    );
+    console.log("   ⚠️  No commits since last tag — CHANGELOG section will be empty");
   }
 
   const sections = classifyCommits(commits);
@@ -489,9 +463,7 @@ async function main(): Promise<void> {
   console.log("   --- End ---\n");
 
   if (isDryRun) {
-    console.log(
-      "   [dry-run] Would prepend above section to CHANGELOG.md",
-    );
+    console.log("   [dry-run] Would prepend above section to CHANGELOG.md");
   } else {
     updateChangelog(changelogSection);
     console.log("   ✅ CHANGELOG.md updated");
@@ -519,9 +491,7 @@ async function main(): Promise<void> {
   ]);
 
   if (rgResult.code === 0 && rgResult.stdout.trim()) {
-    console.error(
-      `❌ Found stale version "${currentVersion}" in source files:`,
-    );
+    console.error(`❌ Found stale version "${currentVersion}" in source files:`);
     console.error(rgResult.stdout.trim());
     if (!isDryRun) {
       console.error("   Aborting. Update these files before releasing.");
@@ -538,24 +508,14 @@ async function main(): Promise<void> {
   console.log("💾 Phase 4: Committing...\n");
 
   // Stage all modified version files + lockfile + changelog
-  const filesToStage = [
-    ...VERSION_TARGETS.map((t) => t.path),
-    "bun.lock",
-    "CHANGELOG.md",
-  ];
+  const filesToStage = [...VERSION_TARGETS.map((t) => t.path), "bun.lock", "CHANGELOG.md"];
 
   if (isDryRun) {
-    console.log(
-      `   [dry-run] Would commit: chore: bump version to ${newVersion}`,
-    );
+    console.log(`   [dry-run] Would commit: chore: bump version to ${newVersion}`);
     console.log(`   [dry-run] Files: ${filesToStage.join(", ")}`);
   } else {
     await runOrDie("git", ["add", ...filesToStage], "Failed to stage files");
-    const commitResult = await run("git", [
-      "commit",
-      "-m",
-      `chore: bump version to ${newVersion}`,
-    ]);
+    const commitResult = await run("git", ["commit", "-m", `chore: bump version to ${newVersion}`]);
     if (commitResult.code !== 0) {
       console.error("❌ Commit failed (pre-commit hooks?)");
       if (commitResult.stderr.trim()) {
@@ -576,9 +536,7 @@ async function main(): Promise<void> {
   console.log(`     • git tag -a v${newVersion} -m "v${newVersion}"`);
   console.log("     • git push --tags");
   if (ghAuthed) {
-    console.log(
-      `     • gh release create v${newVersion} --title "v${newVersion}"`,
-    );
+    console.log(`     • gh release create v${newVersion} --title "v${newVersion}"`);
   }
   console.log("");
 
@@ -597,28 +555,18 @@ async function main(): Promise<void> {
     console.error("     git push");
     console.error(`     git tag -a v${newVersion} -m "v${newVersion}"`);
     console.error("     git push --tags");
-    console.error(
-      `     gh release create v${newVersion} --title "v${newVersion}" --notes "..."`,
-    );
+    console.error(`     gh release create v${newVersion} --title "v${newVersion}" --notes "..."`);
     process.exit(1);
   }
   console.log("   ✅ Pushed");
 
   // Tag
   console.log(`   🔄 Creating tag v${newVersion}...`);
-  const tagResult = await run("git", [
-    "tag",
-    "-a",
-    `v${newVersion}`,
-    "-m",
-    `v${newVersion}`,
-  ]);
+  const tagResult = await run("git", ["tag", "-a", `v${newVersion}`, "-m", `v${newVersion}`]);
   if (tagResult.code !== 0) {
     console.error(`❌ Failed to create tag v${newVersion}`);
     if (tagResult.stderr.includes("already exists")) {
-      console.error(
-        `   Tag already exists. Delete with: git tag -d v${newVersion}`,
-      );
+      console.error(`   Tag already exists. Delete with: git tag -d v${newVersion}`);
     }
     process.exit(1);
   }
@@ -669,19 +617,10 @@ async function main(): Promise<void> {
   console.log(`   🏷️  Tag:     v${newVersion}`);
   console.log(`   📦 Files:   ${VERSION_TARGETS.length} updated`);
   if (ghAuthed) {
-    const repoUrl = await run("gh", [
-      "repo",
-      "view",
-      "--json",
-      "url",
-      "-q",
-      ".url",
-    ]);
+    const repoUrl = await run("gh", ["repo", "view", "--json", "url", "-q", ".url"]);
     const repo = repoUrl.stdout.trim();
     if (repo) {
-      console.log(
-        `   🔗 Release: ${repo}/releases/tag/v${newVersion}`,
-      );
+      console.log(`   🔗 Release: ${repo}/releases/tag/v${newVersion}`);
     }
   }
   console.log("=".repeat(50));

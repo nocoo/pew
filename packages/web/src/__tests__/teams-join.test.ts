@@ -46,12 +46,8 @@ describe("POST /api/teams/join", () => {
     inMemoryRateLimiter.reset();
     mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead,
-    );
-    vi.mocked(dbModule.getDbWrite).mockResolvedValue(
-      mockDbWrite as unknown as dbModule.DbWrite,
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as unknown as dbModule.DbWrite);
     const mod = await import("@/app/api/teams/join/route");
     POST = mod.POST;
   });
@@ -87,12 +83,15 @@ describe("POST /api/teams/join", () => {
     expect((await res.json()).error).toContain("invite_code is required");
   });
 
-  it.each(["01234567", "g".repeat(32), "0".repeat(33)])("rejects invalid invite format %s before lookup", async (code) => {
-    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    const res = await POST(makeJson({ invite_code: code }));
-    expect(res.status).toBe(400);
-    expect(mockDbRead.findTeamByInviteCode).not.toHaveBeenCalled();
-  });
+  it.each(["01234567", "g".repeat(32), "0".repeat(33)])(
+    "rejects invalid invite format %s before lookup",
+    async (code) => {
+      vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+      const res = await POST(makeJson({ invite_code: code }));
+      expect(res.status).toBe(400);
+      expect(mockDbRead.findTeamByInviteCode).not.toHaveBeenCalled();
+    },
+  );
 
   it("should reject empty invite_code", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
@@ -133,7 +132,11 @@ describe("POST /api/teams/join", () => {
 
   it("should join team successfully", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockDbRead.findTeamByInviteCode.mockResolvedValueOnce({ id: "t1", name: "Team Alpha", slug: "team-alpha" });
+    mockDbRead.findTeamByInviteCode.mockResolvedValueOnce({
+      id: "t1",
+      name: "Team Alpha",
+      slug: "team-alpha",
+    });
     mockDbRead.checkTeamMembershipExists.mockResolvedValueOnce(false); // not yet a member
     mockDbRead.getAppSetting.mockResolvedValueOnce("5"); // max_team_members setting
     // Atomic INSERT ... SELECT succeeds (1 row inserted)

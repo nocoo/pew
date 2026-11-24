@@ -10,11 +10,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbWrite } from "@/lib/db";
-import {
-  AUTH_CODE_GENERATE_RATE_LIMIT,
-  getClientIp,
-  inMemoryRateLimiter,
-} from "@/lib/rate-limit";
+import { AUTH_CODE_GENERATE_RATE_LIMIT, getClientIp, inMemoryRateLimiter } from "@/lib/rate-limit";
 
 // Human-readable alphabet: excludes 0/O/I/L/1 to avoid confusion
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -42,10 +38,7 @@ function generateCode(): string {
 export async function POST(request: Request) {
   // Rate limit: 10 code generations per hour per IP
   const ip = getClientIp(request);
-  const rl = inMemoryRateLimiter.check(
-    `auth-code-generate:${ip}`,
-    AUTH_CODE_GENERATE_RATE_LIMIT,
-  );
+  const rl = inMemoryRateLimiter.check(`auth-code-generate:${ip}`, AUTH_CODE_GENERATE_RATE_LIMIT);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
@@ -73,7 +66,7 @@ export async function POST(request: Request) {
         await dbWrite.execute(
           `INSERT INTO auth_codes (code, user_id, expires_at)
            VALUES (?, ?, ?)`,
-          [code, userId, expiresAt]
+          [code, userId, expiresAt],
         );
         break;
       } catch (err: unknown) {
@@ -99,9 +92,6 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("Failed to generate auth code:", err);
-    return NextResponse.json(
-      { error: "Failed to generate code" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate code" }, { status: 500 });
   }
 }

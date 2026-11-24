@@ -80,7 +80,7 @@ async function resolveSource(
   url: string,
   now: string,
   deps: SyncDeps,
-  forceRefetch: boolean | undefined
+  forceRefetch: boolean | undefined,
 ): Promise<FetchResolution> {
   // Cheap-rebuild path: do not hit upstream. Use cached JSON if any.
   if (forceRefetch === false) {
@@ -113,7 +113,7 @@ async function resolveSource(
 export async function syncDynamicPricing(
   deps: SyncDeps,
   now: string,
-  options?: SyncOptions
+  options?: SyncOptions,
 ): Promise<SyncOutcome> {
   const forceRefetch = options?.forceRefetch;
   const errors: SyncError[] = [];

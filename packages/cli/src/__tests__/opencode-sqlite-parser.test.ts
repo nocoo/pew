@@ -39,9 +39,16 @@ function msgRow(
   role?: string | null,
 ): MessageRow {
   // If role not explicitly provided, extract from data JSON
-  const resolvedRole = role !== undefined ? role : (() => {
-    try { return (JSON.parse(data) as Record<string, unknown>).role as string ?? null; } catch { return null; }
-  })();
+  const resolvedRole =
+    role !== undefined
+      ? role
+      : (() => {
+          try {
+            return ((JSON.parse(data) as Record<string, unknown>).role as string) ?? null;
+          } catch {
+            return null;
+          }
+        })();
   return { id, session_id: sessionId, time_created: timeCreated, role: resolvedRole, data };
 }
 
@@ -60,16 +67,21 @@ describe("processOpenCodeMessages", () => {
   it("should parse assistant messages", () => {
     const rows: MessageRow[] = [
       msgRow("msg_001", "ses_001", 1771120749059, assistantData()),
-      msgRow("msg_002", "ses_001", 1771120822000, assistantData({
-        modelID: "gemini-2.5-pro",
-        tokens: {
-          total: 5000,
-          input: 4000,
-          output: 1000,
-          reasoning: 0,
-          cache: { read: 500, write: 100 },
-        },
-      })),
+      msgRow(
+        "msg_002",
+        "ses_001",
+        1771120822000,
+        assistantData({
+          modelID: "gemini-2.5-pro",
+          tokens: {
+            total: 5000,
+            input: 4000,
+            output: 1000,
+            reasoning: 0,
+            cache: { read: 500, write: 100 },
+          },
+        }),
+      ),
     ];
 
     const result = processOpenCodeMessages(rows);
@@ -87,10 +99,15 @@ describe("processOpenCodeMessages", () => {
 
   it("should skip non-assistant messages", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_user", "ses_001", 1771120749059, JSON.stringify({
-        role: "user",
-        time: { created: 1771120749059 },
-      })),
+      msgRow(
+        "msg_user",
+        "ses_001",
+        1771120749059,
+        JSON.stringify({
+          role: "user",
+          time: { created: 1771120749059 },
+        }),
+      ),
       msgRow("msg_asst", "ses_001", 1771120822000, assistantData()),
     ];
 
@@ -121,15 +138,20 @@ describe("processOpenCodeMessages", () => {
 
   it("should skip messages with zero tokens", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_zero", "ses_001", 1771120749059, assistantData({
-        tokens: {
-          total: 0,
-          input: 0,
-          output: 0,
-          reasoning: 0,
-          cache: { read: 0, write: 0 },
-        },
-      })),
+      msgRow(
+        "msg_zero",
+        "ses_001",
+        1771120749059,
+        assistantData({
+          tokens: {
+            total: 0,
+            input: 0,
+            output: 0,
+            reasoning: 0,
+            cache: { read: 0, write: 0 },
+          },
+        }),
+      ),
     ];
 
     const result = processOpenCodeMessages(rows);
@@ -139,11 +161,16 @@ describe("processOpenCodeMessages", () => {
 
   it("should skip messages with missing tokens", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_notokens", "ses_001", 1771120749059, JSON.stringify({
-        role: "assistant",
-        modelID: "test-model",
-        time: { completed: 1771120749059 },
-      })),
+      msgRow(
+        "msg_notokens",
+        "ses_001",
+        1771120749059,
+        JSON.stringify({
+          role: "assistant",
+          modelID: "test-model",
+          time: { completed: 1771120749059 },
+        }),
+      ),
     ];
 
     const result = processOpenCodeMessages(rows);
@@ -153,18 +180,23 @@ describe("processOpenCodeMessages", () => {
 
   it("should skip messages with missing time fields", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_notime", "ses_001", 1771120749059, JSON.stringify({
-        role: "assistant",
-        modelID: "test-model",
-        time: {},
-        tokens: {
-          total: 100,
-          input: 80,
-          output: 20,
-          reasoning: 0,
-          cache: { read: 0, write: 0 },
-        },
-      })),
+      msgRow(
+        "msg_notime",
+        "ses_001",
+        1771120749059,
+        JSON.stringify({
+          role: "assistant",
+          modelID: "test-model",
+          time: {},
+          tokens: {
+            total: 100,
+            input: 80,
+            output: 20,
+            reasoning: 0,
+            cache: { read: 0, write: 0 },
+          },
+        }),
+      ),
     ];
 
     const result = processOpenCodeMessages(rows);
@@ -180,22 +212,25 @@ describe("processOpenCodeMessages", () => {
 
     const result = processOpenCodeMessages(rows);
 
-    expect(result.messageKeys).toEqual(
-      new Set(["ses_001|msg_001", "ses_002|msg_002"]),
-    );
+    expect(result.messageKeys).toEqual(new Set(["ses_001|msg_001", "ses_002|msg_002"]));
   });
 
   it("should handle reasoning tokens", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_think", "ses_001", 1771120749059, assistantData({
-        tokens: {
-          total: 1000,
-          input: 500,
-          output: 300,
-          reasoning: 200,
-          cache: { read: 0, write: 0 },
-        },
-      })),
+      msgRow(
+        "msg_think",
+        "ses_001",
+        1771120749059,
+        assistantData({
+          tokens: {
+            total: 1000,
+            input: 500,
+            output: 300,
+            reasoning: 200,
+            cache: { read: 0, write: 0 },
+          },
+        }),
+      ),
     ];
 
     const result = processOpenCodeMessages(rows);
@@ -206,10 +241,15 @@ describe("processOpenCodeMessages", () => {
 
   it("should fallback model from modelID to model field", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_model", "ses_001", 1771120749059, assistantData({
-        modelID: undefined,
-        model: "gpt-4o",
-      })),
+      msgRow(
+        "msg_model",
+        "ses_001",
+        1771120749059,
+        assistantData({
+          modelID: undefined,
+          model: "gpt-4o",
+        }),
+      ),
     ];
 
     const result = processOpenCodeMessages(rows);
@@ -220,17 +260,22 @@ describe("processOpenCodeMessages", () => {
 
   it("should use 'unknown' when both modelID and model are missing", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_nomodel", "ses_001", 1771120749059, JSON.stringify({
-        role: "assistant",
-        time: { completed: 1771120822000 },
-        tokens: {
-          total: 100,
-          input: 80,
-          output: 20,
-          reasoning: 0,
-          cache: { read: 0, write: 0 },
-        },
-      })),
+      msgRow(
+        "msg_nomodel",
+        "ses_001",
+        1771120749059,
+        JSON.stringify({
+          role: "assistant",
+          time: { completed: 1771120822000 },
+          tokens: {
+            total: 100,
+            input: 80,
+            output: 20,
+            reasoning: 0,
+            cache: { read: 0, write: 0 },
+          },
+        }),
+      ),
     ];
 
     const result = processOpenCodeMessages(rows);
@@ -241,9 +286,14 @@ describe("processOpenCodeMessages", () => {
 
   it("should handle epoch seconds in time fields (coercion)", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_epoch", "ses_001", 1771120749059, assistantData({
-        time: { created: 1771120749, completed: 1771120822 },
-      })),
+      msgRow(
+        "msg_epoch",
+        "ses_001",
+        1771120749059,
+        assistantData({
+          time: { created: 1771120749, completed: 1771120822 },
+        }),
+      ),
     ];
 
     const result = processOpenCodeMessages(rows);
@@ -255,10 +305,15 @@ describe("processOpenCodeMessages", () => {
 
   it("should track max time_created even for non-assistant rows", () => {
     const rows: MessageRow[] = [
-      msgRow("msg_user", "ses_001", 9999999999999, JSON.stringify({
-        role: "user",
-        time: { created: 9999999999999 },
-      })),
+      msgRow(
+        "msg_user",
+        "ses_001",
+        9999999999999,
+        JSON.stringify({
+          role: "user",
+          time: { created: 9999999999999 },
+        }),
+      ),
       msgRow("msg_asst", "ses_001", 1771120822000, assistantData()),
     ];
 
@@ -296,9 +351,7 @@ describe("parseOpenCodeSqlite (integration)", () => {
     const dbPath = join(tempDir, "opencode.db");
     await writeFile(dbPath, "dummy");
 
-    const rows: MessageRow[] = [
-      msgRow("msg_001", "ses_001", 1771120749059, assistantData()),
-    ];
+    const rows: MessageRow[] = [msgRow("msg_001", "ses_001", 1771120749059, assistantData())];
 
     const result = await parseOpenCodeSqlite({
       dbPath,
@@ -317,15 +370,20 @@ describe("parseOpenCodeSqlite (integration)", () => {
 
     const rows: MessageRow[] = [
       msgRow("msg_old", "ses_001", 1000000, assistantData()),
-      msgRow("msg_new", "ses_001", 2000000, assistantData({
-        tokens: {
-          total: 100,
-          input: 80,
-          output: 20,
-          reasoning: 0,
-          cache: { read: 0, write: 0 },
-        },
-      })),
+      msgRow(
+        "msg_new",
+        "ses_001",
+        2000000,
+        assistantData({
+          tokens: {
+            total: 100,
+            input: 80,
+            output: 20,
+            reasoning: 0,
+            cache: { read: 0, write: 0 },
+          },
+        }),
+      ),
     ];
 
     const result = await parseOpenCodeSqlite({

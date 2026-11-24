@@ -102,12 +102,21 @@ describe("normalizePiUsage", () => {
     });
     // Row total is preserved — reasoning is carved out, never added on top
     const total =
-      result.inputTokens + result.cachedInputTokens + result.outputTokens + result.reasoningOutputTokens;
+      result.inputTokens +
+      result.cachedInputTokens +
+      result.outputTokens +
+      result.reasoningOutputTokens;
     expect(total).toBe(600);
   });
 
   it("splits pi's legacy `reasoning` spelling the same way", () => {
-    const result = normalizePiUsage({ input: 3, output: 123, cacheRead: 0, cacheWrite: 0, reasoning: 26 });
+    const result = normalizePiUsage({
+      input: 3,
+      output: 123,
+      cacheRead: 0,
+      cacheWrite: 0,
+      reasoning: 26,
+    });
     expect(result.outputTokens).toBe(97);
     expect(result.reasoningOutputTokens).toBe(26);
   });
@@ -146,7 +155,10 @@ describe("normalizePiUsage", () => {
 
     // pew's total must still equal the source's own totalTokens
     const total =
-      result.inputTokens + result.cachedInputTokens + result.outputTokens + result.reasoningOutputTokens;
+      result.inputTokens +
+      result.cachedInputTokens +
+      result.outputTokens +
+      result.reasoningOutputTokens;
     expect(total).toBe(usage.totalTokens);
   });
 
@@ -254,7 +266,13 @@ describe("parsePiFile", () => {
             cacheRead: 0,
             cacheWrite: 0,
             totalTokens: 44323,
-            cost: { input: 0.22064, output: 0.004875, cacheRead: 0, cacheWrite: 0, total: 0.225515 },
+            cost: {
+              input: 0.22064,
+              output: 0.004875,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0.225515,
+            },
           },
         },
       }),

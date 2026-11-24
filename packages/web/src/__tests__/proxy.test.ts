@@ -11,10 +11,7 @@ import { NextRequest } from "next/server";
 // Helper: create a minimal NextRequest
 // ---------------------------------------------------------------------------
 
-function makeReq(
-  pathname: string,
-  headers: Record<string, string> = {},
-): NextRequest {
+function makeReq(pathname: string, headers: Record<string, string> = {}): NextRequest {
   const url = `https://pew.example.com${pathname}`;
   return new NextRequest(url, { headers });
 }
@@ -158,15 +155,11 @@ describe("resolveProxyAction", () => {
   });
 
   it("should redirect unauthenticated user to login", () => {
-    expect(resolveProxyAction("/dashboard", false, false)).toBe(
-      "redirect:/login",
-    );
+    expect(resolveProxyAction("/dashboard", false, false)).toBe("redirect:/login");
   });
 
   it("should redirect unauthenticated user away from /leaderboard to login", () => {
-    expect(resolveProxyAction("/leaderboard", false, false)).toBe(
-      "redirect:/login",
-    );
+    expect(resolveProxyAction("/leaderboard", false, false)).toBe("redirect:/login");
   });
 
   it("should allow logged-in user on /leaderboard", () => {

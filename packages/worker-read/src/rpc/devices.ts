@@ -66,10 +66,7 @@ export type DevicesRpcRequest =
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handleListDevices(
-  req: ListDevicesRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleListDevices(req: ListDevicesRequest, db: D1Database): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
   }
@@ -103,7 +100,7 @@ async function handleListDevices(
       LEFT JOIN usage u ON u.device_id = m.device_id
       LEFT JOIN device_aliases da ON da.user_id = ? AND da.device_id = m.device_id
       LEFT JOIN device_revocations drv ON drv.user_id = ? AND drv.device_id = m.device_id
-      ORDER BY COALESCE(u.total_tokens, 0) DESC, m.device_id`
+      ORDER BY COALESCE(u.total_tokens, 0) DESC, m.device_id`,
     )
     .bind(req.userId, req.userId, req.userId, req.userId)
     .all<DeviceRow>();
@@ -113,13 +110,10 @@ async function handleListDevices(
 
 async function handleCheckDeviceExists(
   req: CheckDeviceExistsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId || !req.deviceId) {
-    return Response.json(
-      { error: "userId and deviceId are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId and deviceId are required" }, { status: 400 });
   }
 
   const result = await db
@@ -130,7 +124,7 @@ async function handleCheckDeviceExists(
         UNION ALL
         SELECT device_id FROM device_aliases
         WHERE user_id = ? AND device_id = ?
-      ) LIMIT 1`
+      ) LIMIT 1`,
     )
     .bind(req.userId, req.deviceId, req.userId, req.deviceId)
     .first<{ device_id: string }>();
@@ -140,12 +134,12 @@ async function handleCheckDeviceExists(
 
 async function handleCheckDuplicateAlias(
   req: CheckDuplicateAliasRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId || !req.alias || !req.excludeDeviceId) {
     return Response.json(
       { error: "userId, alias, and excludeDeviceId are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -153,7 +147,7 @@ async function handleCheckDuplicateAlias(
     .prepare(
       `SELECT device_id FROM device_aliases
        WHERE user_id = ? AND LOWER(TRIM(alias)) = LOWER(TRIM(?)) AND device_id != ?
-       LIMIT 1`
+       LIMIT 1`,
     )
     .bind(req.userId, req.alias, req.excludeDeviceId)
     .first<{ device_id: string }>();
@@ -163,20 +157,17 @@ async function handleCheckDuplicateAlias(
 
 async function handleCheckDeviceHasRecords(
   req: CheckDeviceHasRecordsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId || !req.deviceId) {
-    return Response.json(
-      { error: "userId and deviceId are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId and deviceId are required" }, { status: 400 });
   }
 
   const result = await db
     .prepare(
       `SELECT 1 AS cnt FROM usage_bases
        WHERE user_id = ? AND device_id = ? AND (event_id = '' OR total_tokens > 0)
-       LIMIT 1`
+       LIMIT 1`,
     )
     .bind(req.userId, req.deviceId)
     .first<{ cnt: number }>();
@@ -184,21 +175,15 @@ async function handleCheckDeviceHasRecords(
   return Response.json({ result: { hasRecords: (result?.cnt ?? 0) > 0 } });
 }
 
-async function handleGetDeviceAlias(
-  req: GetDeviceAliasRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetDeviceAlias(req: GetDeviceAliasRequest, db: D1Database): Promise<Response> {
   if (!req.userId || !req.deviceId) {
-    return Response.json(
-      { error: "userId and deviceId are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId and deviceId are required" }, { status: 400 });
   }
 
   const result = await db
     .prepare(
       `SELECT alias FROM device_aliases
-       WHERE user_id = ? AND device_id = ?`
+       WHERE user_id = ? AND device_id = ?`,
     )
     .bind(req.userId, req.deviceId)
     .first<{ alias: string }>();
@@ -212,7 +197,7 @@ async function handleGetDeviceAlias(
 
 export async function handleDevicesRpc(
   request: DevicesRpcRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   switch (request.method) {
     case "devices.list":
@@ -228,7 +213,7 @@ export async function handleDevicesRpc(
     default:
       return Response.json(
         { error: `Unknown devices method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

@@ -43,12 +43,7 @@ export async function parseOpenClawFile(opts: {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
 
-  const endOffset = await jsonlCompleteBound(
-    filePath,
-    startOffset,
-    st.size,
-    opts.endBound,
-  );
+  const endOffset = await jsonlCompleteBound(filePath, startOffset, st.size, opts.endBound);
   if (startOffset >= endOffset) return { deltas, endOffset };
 
   const stream = createReadStream(filePath, {
@@ -79,16 +74,13 @@ export async function parseOpenClawFile(opts: {
       const usage = msg.usage as Record<string, unknown> | undefined;
       if (!usage || typeof usage !== "object") continue;
 
-      const timestamp =
-        typeof obj?.timestamp === "string" ? obj.timestamp : null;
+      const timestamp = typeof obj?.timestamp === "string" ? obj.timestamp : null;
       if (!timestamp) continue;
 
-      const model =
-        typeof msg.model === "string" ? msg.model.trim() : "unknown";
+      const model = typeof msg.model === "string" ? msg.model.trim() : "unknown";
 
       const tokens: TokenDelta = {
-        inputTokens:
-          toNonNegInt(usage.input) + toNonNegInt(usage.cacheWrite),
+        inputTokens: toNonNegInt(usage.input) + toNonNegInt(usage.cacheWrite),
         cachedInputTokens: toNonNegInt(usage.cacheRead),
         outputTokens: toNonNegInt(usage.output),
         reasoningOutputTokens: 0,
@@ -97,19 +89,42 @@ export async function parseOpenClawFile(opts: {
       if (isAllZero(tokens)) continue;
 
       const savedCost = (usage.cost as { total?: unknown } | undefined)?.total;
-      const cost = decimalCost(savedCost, "openclaw-sdk", "estimate", Number(savedCost) > 0 ? "complete" : "unknown");
+      const cost = decimalCost(
+        savedCost,
+        "openclaw-sdk",
+        "estimate",
+        Number(savedCost) > 0 ? "complete" : "unknown",
+      );
 
       deltas.push({
         source: "openclaw" as Source,
         model,
         timestamp,
         tokens,
-        ...(opts.includeAccounting ? { accounting: inclusiveAccounting(tokens, {
-          input: tokens.inputTokens + tokens.cachedInputTokens, read: usage.cacheRead, write: usage.cacheWrite,
-          uncachedInput: usage.input,
-          write5m: usage.cacheWrite5m, write1h: usage.cacheWrite1h, output: usage.output, reasoning: usage.reasoningTokens ?? usage.reasoning,
-        }, { origin: "openclaw:usage", model, provider: accountingLabel(msg.provider), rawTotal: usage.totalTokens,
-          reportedCosts: cost ? [cost] : [] }) } : {}),
+        ...(opts.includeAccounting
+          ? {
+              accounting: inclusiveAccounting(
+                tokens,
+                {
+                  input: tokens.inputTokens + tokens.cachedInputTokens,
+                  read: usage.cacheRead,
+                  write: usage.cacheWrite,
+                  uncachedInput: usage.input,
+                  write5m: usage.cacheWrite5m,
+                  write1h: usage.cacheWrite1h,
+                  output: usage.output,
+                  reasoning: usage.reasoningTokens ?? usage.reasoning,
+                },
+                {
+                  origin: "openclaw:usage",
+                  model,
+                  provider: accountingLabel(msg.provider),
+                  rawTotal: usage.totalTokens,
+                  reportedCosts: cost ? [cost] : [],
+                },
+              ),
+            }
+          : {}),
       });
     }
   } finally {

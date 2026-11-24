@@ -7,10 +7,7 @@ import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import type {
-  DynamicPricingEntryDto,
-  DynamicPricingMetaDto,
-} from "@/lib/rpc-types";
+import type { DynamicPricingEntryDto, DynamicPricingMetaDto } from "@/lib/rpc-types";
 import { PricingTable } from "./pricing-table";
 import { PricingInformation } from "./pricing-information";
 import { ForceSyncButton } from "./force-sync-button";
@@ -34,8 +31,12 @@ function PageSkeleton() {
 export default function ModelPricesPage() {
   const { isAdmin } = useAdmin();
 
-  const { data, error: swrError, isLoading: loading, mutate } =
-    useSWR<ModelsResponse>("/api/pricing/models", fetcher);
+  const {
+    data,
+    error: swrError,
+    isLoading: loading,
+    mutate,
+  } = useSWR<ModelsResponse>("/api/pricing/models", fetcher);
   const error = swrError
     ? swrError instanceof Error
       ? swrError.message
@@ -47,10 +48,19 @@ export default function ModelPricesPage() {
       <PageHeader
         title="Model Prices"
         description="Compare published model prices."
-        actions={<>
-          <PricingInformation meta={data?.meta} servedFrom={data?.servedFrom} />
-          {isAdmin && <ForceSyncButton onComplete={() => { void mutate(); invalidatePricingEntries(); }} />}
-        </>}
+        actions={
+          <>
+            <PricingInformation meta={data?.meta} servedFrom={data?.servedFrom} />
+            {isAdmin && (
+              <ForceSyncButton
+                onComplete={() => {
+                  void mutate();
+                  invalidatePricingEntries();
+                }}
+              />
+            )}
+          </>
+        }
       />
 
       <ErrorBanner messagePrefix="Failed to load" error={error} />

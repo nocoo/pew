@@ -124,9 +124,7 @@ describe("GET /api/admin/check", () => {
           resolveUser: vi.fn().mockResolvedValue(null),
         }));
         const mod = await import("@/app/api/admin/check/route");
-        const res = await mod.GET(
-          new Request("http://localhost:7020/api/admin/check"),
-        );
+        const res = await mod.GET(new Request("http://localhost:7020/api/admin/check"));
         return (await res.json()) as { isAdmin: boolean };
       } finally {
         process.env = prev;

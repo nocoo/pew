@@ -90,10 +90,7 @@ export type AuthRpcRequest =
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handleGetInviteCode(
-  req: GetInviteCodeRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetInviteCode(req: GetInviteCodeRequest, db: D1Database): Promise<Response> {
   if (!req.code) {
     return Response.json({ error: "code is required" }, { status: 400 });
   }
@@ -102,7 +99,7 @@ async function handleGetInviteCode(
     .prepare(
       `SELECT id, code, used_by, used_at, created_at
        FROM invite_codes
-       WHERE code = ?`
+       WHERE code = ?`,
     )
     .bind(req.code)
     .first<InviteCodeRow>();
@@ -113,7 +110,7 @@ async function handleGetInviteCode(
 /** Check if invite code exists and return id + used_by for consumption check */
 async function handleCheckInviteCode(
   req: CheckInviteCodeRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.code) {
     return Response.json({ error: "code is required" }, { status: 400 });
@@ -131,7 +128,7 @@ async function handleCheckInviteCode(
 /** Get invite code by ID (for DELETE fallback check) */
 async function handleGetInviteCodeById(
   req: GetInviteCodeByIdRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (req.id === undefined || req.id === null) {
     return Response.json({ error: "id is required" }, { status: 400 });
@@ -147,7 +144,7 @@ async function handleGetInviteCodeById(
 
 async function handleListInviteCodes(
   req: ListInviteCodesRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   const limit = Math.min(req.limit ?? 50, 250);
   const offset = req.offset ?? 0;
@@ -176,16 +173,16 @@ async function handleListInviteCodes(
   sql += ` ORDER BY ic.created_at DESC LIMIT ? OFFSET ?`;
   params.push(limit, offset);
 
-  const results = await db.prepare(sql).bind(...params).all<InviteCodeRow>();
+  const results = await db
+    .prepare(sql)
+    .bind(...params)
+    .all<InviteCodeRow>();
 
   return Response.json({ result: results.results });
 }
 
 /** Get auth code by code string */
-async function handleGetCode(
-  req: GetCodeRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetCode(req: GetCodeRequest, db: D1Database): Promise<Response> {
   if (!req.code) {
     return Response.json({ error: "code is required" }, { status: 400 });
   }
@@ -194,7 +191,7 @@ async function handleGetCode(
     .prepare(
       `SELECT code, user_id, expires_at, used_at, failed_attempts
        FROM auth_codes
-       WHERE code = ?`
+       WHERE code = ?`,
     )
     .bind(req.code)
     .first<AuthCodeRow>();
@@ -204,7 +201,7 @@ async function handleGetCode(
 
 async function handleUserHasUnusedInvite(
   req: UserHasUnusedInviteRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "userId is required" }, { status: 400 });
@@ -214,7 +211,7 @@ async function handleUserHasUnusedInvite(
     .prepare(
       `SELECT id FROM invite_codes
        WHERE created_by = ? AND used_by IS NULL
-       LIMIT 1`
+       LIMIT 1`,
     )
     .bind(req.userId)
     .first<{ id: number }>();
@@ -226,10 +223,7 @@ async function handleUserHasUnusedInvite(
 // Router
 // ---------------------------------------------------------------------------
 
-export async function handleAuthRpc(
-  request: AuthRpcRequest,
-  db: D1Database
-): Promise<Response> {
+export async function handleAuthRpc(request: AuthRpcRequest, db: D1Database): Promise<Response> {
   switch (request.method) {
     case "auth.getInviteCode":
       return handleGetInviteCode(request, db);
@@ -246,7 +240,7 @@ export async function handleAuthRpc(
     default:
       return Response.json(
         { error: `Unknown auth method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

@@ -196,8 +196,20 @@ describe("auth RPC handlers", () => {
   describe("auth.listInviteCodes", () => {
     it("should return list of invite codes", async () => {
       const mockCodes = [
-        { id: "i1", code: "ABC123", used_by: null, used_at: null, created_at: "2026-01-01T00:00:00Z" },
-        { id: "i2", code: "DEF456", used_by: "u1", used_at: "2026-01-02T00:00:00Z", created_at: "2026-01-01T00:00:00Z" },
+        {
+          id: "i1",
+          code: "ABC123",
+          used_by: null,
+          used_at: null,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+        {
+          id: "i2",
+          code: "DEF456",
+          used_by: "u1",
+          used_at: "2026-01-02T00:00:00Z",
+          created_at: "2026-01-01T00:00:00Z",
+        },
       ];
       db.all.mockResolvedValue({ results: mockCodes });
 

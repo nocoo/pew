@@ -42,9 +42,7 @@ export interface ClaudeFileResult {
  */
 export function normalizeClaudeUsage(u: Record<string, unknown>): TokenDelta {
   return {
-    inputTokens:
-      toNonNegInt(u?.input_tokens) +
-      toNonNegInt(u?.cache_creation_input_tokens),
+    inputTokens: toNonNegInt(u?.input_tokens) + toNonNegInt(u?.cache_creation_input_tokens),
     cachedInputTokens: toNonNegInt(u?.cache_read_input_tokens),
     outputTokens: toNonNegInt(u?.output_tokens),
     reasoningOutputTokens: 0,
@@ -79,12 +77,7 @@ export async function parseClaudeFile(opts: {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset, emittedIds };
 
-  const endOffset = await jsonlCompleteBound(
-    filePath,
-    startOffset,
-    st.size,
-    opts.endBound,
-  );
+  const endOffset = await jsonlCompleteBound(filePath, startOffset, st.size, opts.endBound);
   if (startOffset >= endOffset) return { deltas, endOffset, emittedIds };
 
   const stream = createReadStream(filePath, {
@@ -108,9 +101,7 @@ export async function parseClaudeFile(opts: {
 
       // Extract usage from message.usage or obj.usage
       const msg = obj?.message as Record<string, unknown> | undefined;
-      const usage = (msg?.usage || obj?.usage) as
-        | Record<string, unknown>
-        | undefined;
+      const usage = (msg?.usage || obj?.usage) as Record<string, unknown> | undefined;
       if (!usage || typeof usage !== "object") continue;
 
       // Extract model
@@ -121,8 +112,7 @@ export async function parseClaudeFile(opts: {
       if (!model) continue;
 
       // Extract timestamp
-      const timestamp =
-        typeof obj?.timestamp === "string" ? obj.timestamp : null;
+      const timestamp = typeof obj?.timestamp === "string" ? obj.timestamp : null;
       if (!timestamp) continue;
 
       const id = typeof msg?.id === "string" ? msg.id : null;
@@ -147,14 +137,26 @@ export async function parseClaudeFile(opts: {
         model,
         timestamp,
         tokens: delta,
-        ...(opts.includeAccounting ? { accounting: inclusiveAccounting(delta, {
-          input: delta.inputTokens + delta.cachedInputTokens, read: usage.cache_read_input_tokens,
-          uncachedInput: usage.input_tokens,
-          write: usage.cache_creation_input_tokens,
-          write5m: (usage.cache_creation as Record<string, unknown> | undefined)?.ephemeral_5m_input_tokens,
-          write1h: (usage.cache_creation as Record<string, unknown> | undefined)?.ephemeral_1h_input_tokens,
-          output: usage.output_tokens, reasoning: null,
-        }, { origin: "claude:usage", model }) } : {}),
+        ...(opts.includeAccounting
+          ? {
+              accounting: inclusiveAccounting(
+                delta,
+                {
+                  input: delta.inputTokens + delta.cachedInputTokens,
+                  read: usage.cache_read_input_tokens,
+                  uncachedInput: usage.input_tokens,
+                  write: usage.cache_creation_input_tokens,
+                  write5m: (usage.cache_creation as Record<string, unknown> | undefined)
+                    ?.ephemeral_5m_input_tokens,
+                  write1h: (usage.cache_creation as Record<string, unknown> | undefined)
+                    ?.ephemeral_1h_input_tokens,
+                  output: usage.output_tokens,
+                  reasoning: null,
+                },
+                { origin: "claude:usage", model },
+              ),
+            }
+          : {}),
       });
     }
   } finally {

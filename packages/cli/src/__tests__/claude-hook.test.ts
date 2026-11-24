@@ -207,9 +207,9 @@ describe("Claude hook installer", () => {
       mkdir: async () => {},
     };
 
-    await expect(
-      installClaudeHook({ settingsPath, notifyPath, fs: fsMock }),
-    ).rejects.toThrow("EACCES");
+    await expect(installClaudeHook({ settingsPath, notifyPath, fs: fsMock })).rejects.toThrow(
+      "EACCES",
+    );
   });
 
   it("falls back to string-based mkdir when URL-based mkdir fails", async () => {
@@ -274,12 +274,7 @@ describe("Claude hook installer", () => {
           SessionEnd: [
             {
               matcher: "*",
-              hooks: [
-                null,
-                "not-an-object",
-                42,
-                { type: "command", command: "echo other" },
-              ],
+              hooks: [null, "not-an-object", 42, { type: "command", command: "echo other" }],
             },
           ],
         },
@@ -288,9 +283,7 @@ describe("Claude hook installer", () => {
     );
 
     // Status should be 'not-installed' (commandMatches false for all valid entries, junk skipped)
-    expect(
-      await getClaudeHookStatus({ settingsPath, notifyPath }),
-    ).toBe("not-installed");
+    expect(await getClaudeHookStatus({ settingsPath, notifyPath })).toBe("not-installed");
 
     // Install should preserve junk entries verbatim
     await installClaudeHook({ settingsPath, notifyPath });
@@ -299,9 +292,7 @@ describe("Claude hook installer", () => {
     };
     const entry = after.hooks.SessionEnd[0]!;
     // Original junk preserved; pew hook appended
-    expect(entry.hooks).toEqual(
-      expect.arrayContaining([null, "not-an-object", 42]),
-    );
+    expect(entry.hooks).toEqual(expect.arrayContaining([null, "not-an-object", 42]));
     expect(after.hooks.SessionEnd.length).toBe(2);
 
     // Uninstall should leave the junk entries alone
@@ -310,9 +301,7 @@ describe("Claude hook installer", () => {
       hooks: { SessionEnd: Array<{ hooks: unknown[] }> };
     };
     const entryAfter = afterUninstall.hooks.SessionEnd[0]!;
-    expect(entryAfter.hooks).toEqual(
-      expect.arrayContaining([null, "not-an-object", 42]),
-    );
+    expect(entryAfter.hooks).toEqual(expect.arrayContaining([null, "not-an-object", 42]));
   });
 
   it("leaves SessionEnd entries untouched when their .hooks is not an array", async () => {
@@ -329,9 +318,7 @@ describe("Claude hook installer", () => {
       }),
       "utf8",
     );
-    expect(
-      await getClaudeHookStatus({ settingsPath, notifyPath }),
-    ).toBe("not-installed");
+    expect(await getClaudeHookStatus({ settingsPath, notifyPath })).toBe("not-installed");
 
     // Uninstall is a no-op (nothing to strip) — should report "skip" or "unchanged"
     const res = await uninstallClaudeHook({ settingsPath, notifyPath });

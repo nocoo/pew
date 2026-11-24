@@ -256,9 +256,7 @@ describe("teams RPC handlers", () => {
         method: "teams.getMembers",
         teamId: "t1",
       };
-      await expect(handleTeamsRpc(request, db)).rejects.toBe(
-        "unrelated DB failure (non-Error)",
-      );
+      await expect(handleTeamsRpc(request, db)).rejects.toBe("unrelated DB failure (non-Error)");
     });
   });
 
@@ -547,8 +545,26 @@ describe("teams RPC handlers", () => {
   describe("teams.listAll", () => {
     it("should return all teams ordered by created_at desc", async () => {
       const rows = [
-        { id: "t1", name: "A", slug: "a", invite_code: "i1", created_by: "u1", created_at: "2026-01-02", logo_url: null, member_count: 3 },
-        { id: "t2", name: "B", slug: "b", invite_code: "i2", created_by: "u2", created_at: "2026-01-01", logo_url: null, member_count: 1 },
+        {
+          id: "t1",
+          name: "A",
+          slug: "a",
+          invite_code: "i1",
+          created_by: "u1",
+          created_at: "2026-01-02",
+          logo_url: null,
+          member_count: 3,
+        },
+        {
+          id: "t2",
+          name: "B",
+          slug: "b",
+          invite_code: "i2",
+          created_by: "u2",
+          created_at: "2026-01-01",
+          logo_url: null,
+          member_count: 1,
+        },
       ];
       db.all.mockResolvedValue({ results: rows });
       const req: ListAllTeamsRequest = { method: "teams.listAll" };
@@ -706,75 +722,158 @@ describe("teams RPC handlers", () => {
   describe("400 validation", () => {
     it("teams.getById 400 when teamId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.getById", teamId: "" } as GetTeamByIdRequest, db)).status,
+        (await handleTeamsRpc({ method: "teams.getById", teamId: "" } as GetTeamByIdRequest, db))
+          .status,
       ).toBe(400);
     });
     it("teams.getMembers 400 when teamId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.getMembers", teamId: "" } as GetTeamMembersRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.getMembers", teamId: "" } as GetTeamMembersRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.countMembers 400 when teamId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.countMembers", teamId: "" } as CountTeamMembersRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.countMembers", teamId: "" } as CountTeamMembersRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.getLogoUrl 400 when teamId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.getLogoUrl", teamId: "" } as GetTeamLogoUrlRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.getLogoUrl", teamId: "" } as GetTeamLogoUrlRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.getMemberUserIds 400 when teamId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.getMemberUserIds", teamId: "" } as GetTeamMemberUserIdsRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.getMemberUserIds", teamId: "" } as GetTeamMemberUserIdsRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.getOwner 400 when teamId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.getOwner", teamId: "" } as GetTeamOwnerRequest, db)).status,
+        (await handleTeamsRpc({ method: "teams.getOwner", teamId: "" } as GetTeamOwnerRequest, db))
+          .status,
       ).toBe(400);
     });
     it("teams.findByInviteCode 400 when missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.findByInviteCode", inviteCode: "" } as FindTeamByInviteCodeRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.findByInviteCode", inviteCode: "" } as FindTeamByInviteCodeRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.checkSlugExists 400 when missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.checkSlugExists", slug: "" } as CheckTeamSlugExistsRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.checkSlugExists", slug: "" } as CheckTeamSlugExistsRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.membershipExists 400 when teamId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.membershipExists", teamId: "", userId: "u" } as CheckTeamMembershipExistsRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            {
+              method: "teams.membershipExists",
+              teamId: "",
+              userId: "u",
+            } as CheckTeamMembershipExistsRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.membershipExists 400 when userId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.membershipExists", teamId: "t", userId: "" } as CheckTeamMembershipExistsRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            {
+              method: "teams.membershipExists",
+              teamId: "t",
+              userId: "",
+            } as CheckTeamMembershipExistsRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.getAppSetting 400 when key missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.getAppSetting", key: "" } as GetAppSettingRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.getAppSetting", key: "" } as GetAppSettingRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.getMembership 400 when teamId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.getMembership", teamId: "", userId: "u" } as GetTeamMembershipRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.getMembership", teamId: "", userId: "u" } as GetTeamMembershipRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.listForUser 400 when userId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.listForUser", userId: "" } as ListUserTeamsRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            { method: "teams.listForUser", userId: "" } as ListUserTeamsRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
     it("teams.usersShareTeam 400 when either userId missing", async () => {
       expect(
-        (await handleTeamsRpc({ method: "teams.usersShareTeam", userId1: "", userId2: "b" } as CheckUsersShareTeamRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            {
+              method: "teams.usersShareTeam",
+              userId1: "",
+              userId2: "b",
+            } as CheckUsersShareTeamRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
       expect(
-        (await handleTeamsRpc({ method: "teams.usersShareTeam", userId1: "a", userId2: "" } as CheckUsersShareTeamRequest, db)).status,
+        (
+          await handleTeamsRpc(
+            {
+              method: "teams.usersShareTeam",
+              userId1: "a",
+              userId2: "",
+            } as CheckUsersShareTeamRequest,
+            db,
+          )
+        ).status,
       ).toBe(400);
     });
   });

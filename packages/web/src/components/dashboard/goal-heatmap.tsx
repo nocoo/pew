@@ -39,10 +39,7 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
 
   // Boundaries for 3-level bucketing: [lower, upper]
   // getColorIndex: 0=empty, 0<v≤lower → 1 (red), lower<v≤upper → 2 (yellow), v>upper → 3 (green)
-  const boundaries = useMemo(
-    () => [thresholds.lower, thresholds.upper],
-    [thresholds],
-  );
+  const boundaries = useMemo(() => [thresholds.lower, thresholds.upper], [thresholds]);
 
   // Compute stats from data
   const { daysOnTarget, onTargetRate } = useMemo(() => {
@@ -66,15 +63,20 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 shrink-0 text-basalt-muted-foreground" strokeWidth={1.5} />
-            <span className="text-xs font-medium uppercase tracking-wider text-basalt-muted-foreground">Goal Tracker</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-basalt-muted-foreground">
+              Goal Tracker
+            </span>
           </div>
           <p className="text-xs text-basalt-muted-foreground">
-            {daysOnTarget} day{daysOnTarget !== 1 ? "s" : ""} above {formatTokens(thresholds.upper)}/day
+            {daysOnTarget} day{daysOnTarget !== 1 ? "s" : ""} above {formatTokens(thresholds.upper)}
+            /day
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <div className="text-right">
-            <span className="text-2xl font-bold font-display tracking-tight text-basalt-foreground">{onTargetRate}%</span>
+            <span className="text-2xl font-bold font-display tracking-tight text-basalt-foreground">
+              {onTargetRate}%
+            </span>
             <p className="text-xs text-basalt-muted-foreground">on target</p>
           </div>
           <Button

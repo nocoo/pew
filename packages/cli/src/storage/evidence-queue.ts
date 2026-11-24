@@ -5,16 +5,32 @@ import { evidenceKey, toEvidenceRecord } from "../utils/usage-evidence.js";
 
 function checkedRecord(r: EvidenceRecord): EvidenceRecord {
   try {
-    const projected = toEvidenceRecord({ source: r.source, model: r.model, timestamp: r.timestamp,
-      tokens: { inputTokens: r.input_tokens, cachedInputTokens: r.cached_input_tokens,
-        outputTokens: r.output_tokens, reasoningOutputTokens: r.reasoning_output_tokens }, evidence: r.evidence }, r.device_id);
-    const sameFields = (a: object, b: object) => Object.keys(a).length === Object.keys(b).length &&
+    const projected = toEvidenceRecord(
+      {
+        source: r.source,
+        model: r.model,
+        timestamp: r.timestamp,
+        tokens: {
+          inputTokens: r.input_tokens,
+          cachedInputTokens: r.cached_input_tokens,
+          outputTokens: r.output_tokens,
+          reasoningOutputTokens: r.reasoning_output_tokens,
+        },
+        evidence: r.evidence,
+      },
+      r.device_id,
+    );
+    const sameFields = (a: object, b: object) =>
+      Object.keys(a).length === Object.keys(b).length &&
       Object.entries(b).every(([key, value]) => (a as Record<string, unknown>)[key] === value);
     const { evidence, ...fields } = r;
     const { evidence: projectedEvidence, ...projectedFields } = projected;
-    if (!sameFields(fields, projectedFields) || !sameFields(evidence, projectedEvidence)) throw new Error();
+    if (!sameFields(fields, projectedFields) || !sameFields(evidence, projectedEvidence))
+      throw new Error();
     return projected;
-  } catch { throw new Error("Invalid usage evidence ledger"); }
+  } catch {
+    throw new Error("Invalid usage evidence ledger");
+  }
 }
 
 /**
@@ -27,7 +43,9 @@ export class EvidenceQueue extends BaseQueue<EvidenceRecord> {
     super(stateDir, "evidence-queue.jsonl", "evidence-queue.state.json");
   }
 
-  override async readFromOffset(offset: number): Promise<{ records: EvidenceRecord[]; newOffset: number }> {
+  override async readFromOffset(
+    offset: number,
+  ): Promise<{ records: EvidenceRecord[]; newOffset: number }> {
     let raw: Buffer;
     try {
       raw = await readFile(this.queuePath);
@@ -36,7 +54,12 @@ export class EvidenceQueue extends BaseQueue<EvidenceRecord> {
       throw new Error("Invalid usage evidence ledger");
     }
     try {
-      const records = raw.subarray(offset).toString("utf8").split("\n").filter(Boolean).map((line) => checkedRecord(JSON.parse(line)));
+      const records = raw
+        .subarray(offset)
+        .toString("utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => checkedRecord(JSON.parse(line)));
       return { records, newOffset: raw.byteLength };
     } catch {
       throw new Error("Invalid usage evidence ledger");
@@ -57,13 +80,20 @@ export class EvidenceQueue extends BaseQueue<EvidenceRecord> {
       if (prev) {
         if (r.evidence.snapshotSeq < prev.evidence.snapshotSeq) continue;
         if (JSON.stringify(r) === JSON.stringify(prev)) continue;
-        if (r.evidence.snapshotSeq === prev.evidence.snapshotSeq ||
-          r.timestamp !== prev.timestamp || r.hour_start !== prev.hour_start ||
-          r.model !== prev.model || r.source !== prev.source ||
-          r.evidence.groupId !== prev.evidence.groupId || r.evidence.callType !== prev.evidence.callType ||
-          r.evidence.origin !== prev.evidence.origin || r.evidence.provider !== prev.evidence.provider ||
-          r.evidence.granularity !== prev.evidence.granularity || r.evidence.timePrecision !== prev.evidence.timePrecision ||
-          r.evidence.intervalStart !== prev.evidence.intervalStart) {
+        if (
+          r.evidence.snapshotSeq === prev.evidence.snapshotSeq ||
+          r.timestamp !== prev.timestamp ||
+          r.hour_start !== prev.hour_start ||
+          r.model !== prev.model ||
+          r.source !== prev.source ||
+          r.evidence.groupId !== prev.evidence.groupId ||
+          r.evidence.callType !== prev.evidence.callType ||
+          r.evidence.origin !== prev.evidence.origin ||
+          r.evidence.provider !== prev.evidence.provider ||
+          r.evidence.granularity !== prev.evidence.granularity ||
+          r.evidence.timePrecision !== prev.evidence.timePrecision ||
+          r.evidence.intervalStart !== prev.evidence.intervalStart
+        ) {
           throw new Error("Conflicting usage evidence snapshot");
         }
       }
@@ -75,7 +105,10 @@ export class EvidenceQueue extends BaseQueue<EvidenceRecord> {
     // commit. A crash can replay a snapshot but cannot lose its upload intent.
     if (changed || (replay && records.length > 0)) {
       await this.saveDirtyKeys([...dirty].sort());
-      if (changed) await this.overwrite([...merged.values()].sort((a, b) => evidenceKey(a).localeCompare(evidenceKey(b))));
+      if (changed)
+        await this.overwrite(
+          [...merged.values()].sort((a, b) => evidenceKey(a).localeCompare(evidenceKey(b))),
+        );
     }
   }
 }

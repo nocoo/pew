@@ -42,9 +42,14 @@ describe("toQueueRecord", () => {
     expect(r.project_ref).toBe(valid);
   });
 
-  it.each(["/Users/alice/myproject", "a".repeat(64), "ZZZZZZZZZZZZZZZZ"])("rejects a malformed parser project hash (%s)", (projectRef) => {
-    expect(() => toQueueRecord(makeSnap({ projectRef }))).toThrow("Project reference must be hashed by the parser");
-  });
+  it.each(["/Users/alice/myproject", "a".repeat(64), "ZZZZZZZZZZZZZZZZ"])(
+    "rejects a malformed parser project hash (%s)",
+    (projectRef) => {
+      expect(() => toQueueRecord(makeSnap({ projectRef }))).toThrow(
+        "Project reference must be hashed by the parser",
+      );
+    },
+  );
 
   it("maps all snake_case fields correctly", () => {
     const snap = makeSnap({
@@ -106,8 +111,6 @@ describe("sourceKey", () => {
   });
 
   it("throws on unknown source (defensive runtime check)", () => {
-    expect(() => sourceKey("not-a-real-source" as Source)).toThrow(
-      /Unknown source/,
-    );
+    expect(() => sourceKey("not-a-real-source" as Source)).toThrow(/Unknown source/);
   });
 });

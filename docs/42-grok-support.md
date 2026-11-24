@@ -24,11 +24,11 @@
 1. **Grok CLI 不持久化 pricing 元数据**:本文档假设 pew 的 `pricing.ts` 会为 `xai` provider
    独立维护单价表。**前置 fix(commit 0)**:`estimateCost()` 有两个既存问题需要一起改:
    (a) 它对 input 做了 `nonCached = input - cached` 减法(见"1.3 归一化关键约束"),
-       在 grok 这种 cache 命中率高的场景下会把真实 input 砍成 0。改成直接
-       `inputCost = inputTokens * pricing.input`。
+   在 grok 这种 cache 命中率高的场景下会把真实 input 砍成 0。改成直接
+   `inputCost = inputTokens * pricing.input`。
    (b) 只接收 `(input, output, cached)` 三参数,reasoning tokens 完全没入账。加入
-       `reasoningTokens` + `pricing.reasoning`(单价 fallback = output 单价)。同步扩展所有
-       调用点(见 §5.6 pricing.ts + §5.7 reasoning propagation)。
+   `reasoningTokens` + `pricing.reasoning`(单价 fallback = output 单价)。同步扩展所有
+   调用点(见 §5.6 pricing.ts + §5.7 reasoning propagation)。
 2. **只读取 `logs/unified.jsonl`**,不读 `sessions/<sid>/updates.jsonl`。原因见"关键挑战 1"。
 3. **首次 sync 全量 emit**:cursor 丢失/首次跑 = 全文件解析,与其他 byte-offset source 行为一致。
    D1 端 `ON CONFLICT` upsert 保证零 inflation。
@@ -98,14 +98,14 @@ xAI 官方 CLI 编码代理，`grok` 可执行文件通常安装在 `~/.local/bi
 
 **核心字段解释**：
 
-| 字段 | 语义 | 归一化到 |
-|---|---|---|
-| `prompt_tokens` | 本次 inference 的输入 token 总数(**含 cached 部分**) | 用于导出 non-cached input |
-| `cached_prompt_tokens` | 命中 prompt cache 的部分(xAI 有 prompt caching) | → `cachedInputTokens` |
-| `completion_tokens` | 输出 token 数 | → `outputTokens` |
-| `reasoning_tokens` | 思维链输出 token 数 | → `reasoningOutputTokens` |
-| `sid` | session id | 归因 |
-| `ts` | 事件时间(ISO 8601) | hour bucket 归属 |
+| 字段                   | 语义                                                 | 归一化到                  |
+| ---------------------- | ---------------------------------------------------- | ------------------------- |
+| `prompt_tokens`        | 本次 inference 的输入 token 总数(**含 cached 部分**) | 用于导出 non-cached input |
+| `cached_prompt_tokens` | 命中 prompt cache 的部分(xAI 有 prompt caching)      | → `cachedInputTokens`     |
+| `completion_tokens`    | 输出 token 数                                        | → `outputTokens`          |
+| `reasoning_tokens`     | 思维链输出 token 数                                  | → `reasoningOutputTokens` |
+| `sid`                  | session id                                           | 归因                      |
+| `ts`                   | 事件时间(ISO 8601)                                   | hour bucket 归属          |
 
 **归一化公式**（字段全部互斥；`completion` 含 `reasoning`，实测 104/104 条）:
 
@@ -118,6 +118,7 @@ reasoningOutputTokens = reasoning_tokens
 
 **关键约束 — `inputTokens` 和 `cachedInputTokens` 必须不重叠**。pew 全 source 遵守这个
 disjoint 约定:
+
 - Claude parser 存 `input + cache_creation`(不含 cache_read),`cachedInputTokens = cache_read`
 - Gemini parser 存 `tokens.input`(源已是 non-cached),`cachedInputTokens = tokens.cached`
 - Codex 存 OpenAI 包容字段的**互斥化**:`input = max(0, input - cached)`,`output = max(0, output - reasoning)`
@@ -151,6 +152,7 @@ disjoint 约定:
 成本过高。用两级 fast/slow path:
 
 **归因规则(按优先级)**:
+
 1. **Fast path**:读 `signals.json.modelsUsed`。**当且仅当 `Array.isArray(modelsUsed) &&
    modelsUsed.length === 1`** → 直接用它唯一的 model_id 归因该 sid 所有 `inference_done`,
    **跳过 events.jsonl 扫描**。绝大部分 session 属于此情况。
@@ -175,11 +177,11 @@ disjoint 约定:
 
 **本机 1 个真实 session 实测**：
 
-| 数据源 | 计算方式 | in+out |
-|---|---|---:|
+| 数据源                                                 | 计算方式                                   |     in+out |
+| ------------------------------------------------------ | ------------------------------------------ | ---------: |
 | **正确**（`unified.jsonl` 3 次 `inference_done` 累加） | prompt=89187 cached=63872 out=1682 rea=111 | **90,980** |
-| ❌ `updates.jsonl.max(totalTokens)` | 36,046（仅 context 大小） | 36,046 |
-| ❌ 参考项目算法（80/20 硬拆 totalTokens） | input≈28,837 out≈7,209 | 36,046 |
+| ❌ `updates.jsonl.max(totalTokens)`                    | 36,046（仅 context 大小）                  |     36,046 |
+| ❌ 参考项目算法（80/20 硬拆 totalTokens）              | input≈28,837 out≈7,209                     |     36,046 |
 
 **结论**：只有 `~/.grok/logs/unified.jsonl` 是 token 消耗真源。
 
@@ -202,6 +204,7 @@ disjoint 约定:
 全扫成本过高。
 
 **解决**:分两级读。见 §1.4 的 fast/slow path:
+
 1. **总是**尝试读 `signals.json`(几十字节)。**只有** `Array.isArray(modelsUsed) &&
    modelsUsed.length === 1` 才走 fast path,该 sid 所有 inference_done 直接用它,
    **不读 events.jsonl**。
@@ -214,6 +217,7 @@ disjoint 约定:
 **问题**：日志文件持续增长，不能每次全读。
 
 **解决**：byte-offset cursor，和 pi/openclaw/copilot-cli 完全一致的 pattern。
+
 - Cursor 类型：`ByteOffsetCursor`（现有类型，无需扩展）
 - Skip gate：`fileUnchanged(cursor, fingerprint)` = inode + mtime + size
 - Inode 变化 → 走 orchestrator 已有的 replay 路径（`needsReplay` 不需要，因为无 legacy schema）
@@ -224,6 +228,7 @@ disjoint 约定:
 以及 `attempts > 1`（重试）。
 
 **解决**：**每个 inference_done 都独立计入**。因为：
+
 - 每次都是真实的 API 调用（真实计费）
 - `loop_index` 和 `attempts` 只是元数据，不影响归因
 - xAI 后端按每次 request 计费
@@ -236,6 +241,7 @@ disjoint 约定:
 **问题**：Grok 有 session 概念但 `chat_history.jsonl` 消息里没时间戳。
 
 **解决**：session driver 读 `~/.grok/sessions/<enc-cwd>/<sid>/summary.json`：
+
 - `session_key = <sid>`（UUID v7 全局唯一）
 - `startedAt = summary.created_at`
 - `lastMessageAt = summary.last_active_at`
@@ -277,8 +283,8 @@ export function normalizeGrokUsage(ctx: Record<string, unknown>): TokenDelta {
 ```typescript
 // packages/cli/src/parsers/grok.ts
 export async function parseGrokLogFile(opts: {
-  filePath: string;                                       // ~/.grok/logs/unified.jsonl
-  startOffset: number;                                    // byte offset cursor
+  filePath: string; // ~/.grok/logs/unified.jsonl
+  startOffset: number; // byte offset cursor
   sidTurnTimeline: Map<string, Array<{ ts: string; modelId: string }>>;
   sidPrimaryModel: Map<string, string>;
 }): Promise<GrokFileResult> {
@@ -344,7 +350,7 @@ export async function parseGrokSession(sessionDir: string): Promise<SessionSnaps
     durationSeconds: signals?.sessionDurationSeconds ?? 0,
     userMessages: signals?.userMessageCount ?? 0,
     assistantMessages: signals?.assistantMessageCount ?? 0,
-    totalMessages: summary.num_chat_messages ?? 0,   // NOT num_messages
+    totalMessages: summary.num_chat_messages ?? 0, // NOT num_messages
     projectRef: summary.git_root_dir ?? summary.info.cwd ?? null,
     model: summary.current_model_id ?? null,
     snapshotAt: new Date().toISOString(),
@@ -355,6 +361,7 @@ export async function parseGrokSession(sessionDir: string): Promise<SessionSnaps
 ### 4.2 增量策略
 
 Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copilot pattern）：
+
 - discover：glob `~/.grok/sessions/*/*/summary.json`
 - shouldSkip：summary.json mtime 未变则跳过
 - parse：读 summary.json + signals.json
@@ -386,6 +393,7 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 - `packages/cli/src/drivers/types.ts` — `DiscoverOpts` 加 `grokLogsPath` + `grokSessionsDir`
 - `packages/cli/src/discovery/sources.ts` — `discoverGrokLogFile()` + `discoverGrokSessionDirs()`
 - `packages/cli/src/utils/paths.ts` — 添加：
+
   ```
   grokHome:            ~/.grok
   grokLogsPath:        ~/.grok/logs/unified.jsonl
@@ -408,30 +416,30 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 - `packages/web/src/lib/usage-transforms.ts` — `SOURCE_LABELS` 加 `{ grok: "Grok" }`
 - `packages/web/src/lib/pricing.ts` — 两项改动:
   (a) **扩展 `estimateCost()` 接受 `reasoningTokens` + `pricing.reasoning` 单价**,
-      同步更新 `ModelPricing` 类型、`pricing.test.ts` 的 5 处调用、以及**全部 14 处**
-      生产调用点(reasoning 单价 fallback = output 单价):
+  同步更新 `ModelPricing` 类型、`pricing.test.ts` 的 5 处调用、以及**全部 14 处**
+  生产调用点(reasoning 单价 fallback = output 单价):
 
-      | 位置 | file:line | 说明 |
-      |---|---|---|
-      | Achievement 成本 | `api/achievements/route.ts:66` | user route |
-      | Achievement 成本 | `api/users/[slug]/achievements/route.ts:51` | slug route |
-      | By-device 成本 | `api/usage/by-device/route.ts:124` | device 聚合 |
-      | Daily usage | `(dashboard)/daily-usage/page.tsx:61` | 页面 |
-      | Hourly usage | `(dashboard)/hourly-usage/page.tsx:140` | 页面 |
-      | Model 成本 (per-model) | `lib/cost-helpers.ts:23` | `sumMostExpensiveModels` 类 |
-      | Model 成本 (per-source-model) | `lib/cost-helpers.ts:59` | 按 source × model |
-      | Cost per 1K | `lib/cost-helpers.ts:206` | 排序辅助 |
-      | Records 聚合 (map 分支) | `lib/usage-helpers.ts:166` | 主 aggregate |
-      | Records 聚合 (per-model 分支) | `lib/usage-helpers.ts:235` | model 展开 |
-      | Records 聚合 (per-source 分支) | `lib/usage-helpers.ts:306` | source 展开 |
-      | Records 聚合 (per-hour 分支) | `lib/usage-helpers.ts:429` | hour 展开 |
-      | Records 聚合 (per-day 分支) | `lib/usage-helpers.ts:539` | day 展开 |
-      | Records 聚合 (per-device 分支) | `lib/usage-helpers.ts:659` | device 展开 |
+  | 位置                           | file:line                                   | 说明                        |
+  | ------------------------------ | ------------------------------------------- | --------------------------- |
+  | Achievement 成本               | `api/achievements/route.ts:66`              | user route                  |
+  | Achievement 成本               | `api/users/[slug]/achievements/route.ts:51` | slug route                  |
+  | By-device 成本                 | `api/usage/by-device/route.ts:124`          | device 聚合                 |
+  | Daily usage                    | `(dashboard)/daily-usage/page.tsx:61`       | 页面                        |
+  | Hourly usage                   | `(dashboard)/hourly-usage/page.tsx:140`     | 页面                        |
+  | Model 成本 (per-model)         | `lib/cost-helpers.ts:23`                    | `sumMostExpensiveModels` 类 |
+  | Model 成本 (per-source-model)  | `lib/cost-helpers.ts:59`                    | 按 source × model           |
+  | Cost per 1K                    | `lib/cost-helpers.ts:206`                   | 排序辅助                    |
+  | Records 聚合 (map 分支)        | `lib/usage-helpers.ts:166`                  | 主 aggregate                |
+  | Records 聚合 (per-model 分支)  | `lib/usage-helpers.ts:235`                  | model 展开                  |
+  | Records 聚合 (per-source 分支) | `lib/usage-helpers.ts:306`                  | source 展开                 |
+  | Records 聚合 (per-hour 分支)   | `lib/usage-helpers.ts:429`                  | hour 展开                   |
+  | Records 聚合 (per-day 分支)    | `lib/usage-helpers.ts:539`                  | day 展开                    |
+  | Records 聚合 (per-device 分支) | `lib/usage-helpers.ts:659`                  | device 展开                 |
 
-      每处调用签名从 `estimateCost(input, output, cached, pricing)` →
-      `estimateCost(input, output, cached, reasoning, pricing)`。**新增参数必填**
-      (不设 optional,否则遗漏调用点会被 TS 静默通过 → 该页面/路由无 reasoning 计价)。
-      commit 0 里 grok 尚未接入,reasoning 传 `0` 保持行为等价。
+  每处调用签名从 `estimateCost(input, output, cached, pricing)` →
+  `estimateCost(input, output, cached, reasoning, pricing)`。**新增参数必填**
+  (不设 optional,否则遗漏调用点会被 TS 静默通过 → 该页面/路由无 reasoning 计价)。
+  commit 0 里 grok 尚未接入,reasoning 传 `0` 保持行为等价。
   (b) `DEFAULT_SOURCE_DEFAULTS` 加 grok 条目(默认 xAI 模型的 input/output/cached/reasoning 单价)。
 - `packages/web/src/app/api/{leaderboard,usage,sessions,projects,users/[slug]}/route.ts` +
   `packages/web/src/app/api/projects/[id]/route.ts` — 6 处 `VALID_SOURCES` 数组
@@ -444,29 +452,29 @@ commit 0 让 `estimateCost()` 接受 `reasoningTokens`,但**上游根本没有 r
 Codex 未来产生 reasoning 数据,页面成本估算仍**不会包含 reasoning 部分**,除非同步扩展下面
 的层(计数不确定,commit 6 CI 全绿 + pin-test 通过是唯一可信信号):
 
-| 层 | 文件 | 改动 |
-|---|---|---|
-| Core type:by-device cost | `packages/core/src/types.ts:DeviceCostDetail` | 加 `reasoning_output_tokens: number` |
-| **Core type:by-device timeline** | `packages/core/src/types.ts:DeviceTimelinePoint` | 加 `reasoning_output_tokens: number` |
-| Worker-read SQL:by-device 细节 | `packages/worker-read/src/rpc/usage.ts:handleGetDeviceCostDetails` | SELECT 里 `SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens` |
-| Worker-read row type:by-device 细节 | `packages/worker-read/src/rpc/usage.ts:CostDetailRow` | 加 `reasoning_output_tokens: number` |
-| **Worker-read SQL:by-device timeline** | `packages/worker-read/src/rpc/usage.ts:handleGetDeviceTimeline` | SELECT 里 `SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens`(若做 timeline reasoning 展示) |
-| **Worker-read row type:by-device timeline** | `packages/worker-read/src/rpc/usage.ts:TimelineRow` | 加 `reasoning_output_tokens: number` |
-| **By-device route:estimateCost 调用** | `packages/web/src/app/api/usage/by-device/route.ts:124` | `estimateCost(row.input_tokens, row.output_tokens, row.cached_input_tokens, row.reasoning_output_tokens, pricing)` — 传新参 |
-| **By-device route:deviceDetails map** | `packages/web/src/app/api/usage/by-device/route.ts:162` | 输出加 `reasoning_output_tokens: row.reasoning_output_tokens`;`total_tokens` 从 `input+output+cached` 改为 `input+output+cached+reasoning`(避免 UI 层 reasoning 消失)|
-| **Device breakdown 类型** | `packages/web/src/lib/device-helpers.ts:193, 202` | `DeviceAgentBreakdownRow` 和 `DeviceModelBreakdownRow` 各加 `reasoning_output_tokens: number` |
-| **Device breakdown reducers** | `packages/web/src/lib/device-helpers.ts:toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` | 初始化和累加都加 `reasoning_output_tokens += d.reasoning_output_tokens` |
+| 层                                               | 文件                                                                                                                                                                                                                         | 改动                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core type:by-device cost                         | `packages/core/src/types.ts:DeviceCostDetail`                                                                                                                                                                                | 加 `reasoning_output_tokens: number`                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Core type:by-device timeline**                 | `packages/core/src/types.ts:DeviceTimelinePoint`                                                                                                                                                                             | 加 `reasoning_output_tokens: number`                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Worker-read SQL:by-device 细节                   | `packages/worker-read/src/rpc/usage.ts:handleGetDeviceCostDetails`                                                                                                                                                           | SELECT 里 `SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens`                                                                                                                                                                                                                                                                                                                                                                 |
+| Worker-read row type:by-device 细节              | `packages/worker-read/src/rpc/usage.ts:CostDetailRow`                                                                                                                                                                        | 加 `reasoning_output_tokens: number`                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Worker-read SQL:by-device timeline**           | `packages/worker-read/src/rpc/usage.ts:handleGetDeviceTimeline`                                                                                                                                                              | SELECT 里 `SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens`(若做 timeline reasoning 展示)                                                                                                                                                                                                                                                                                                                                   |
+| **Worker-read row type:by-device timeline**      | `packages/worker-read/src/rpc/usage.ts:TimelineRow`                                                                                                                                                                          | 加 `reasoning_output_tokens: number`                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **By-device route:estimateCost 调用**            | `packages/web/src/app/api/usage/by-device/route.ts:124`                                                                                                                                                                      | `estimateCost(row.input_tokens, row.output_tokens, row.cached_input_tokens, row.reasoning_output_tokens, pricing)` — 传新参                                                                                                                                                                                                                                                                                                            |
+| **By-device route:deviceDetails map**            | `packages/web/src/app/api/usage/by-device/route.ts:162`                                                                                                                                                                      | 输出加 `reasoning_output_tokens: row.reasoning_output_tokens`;`total_tokens` 从 `input+output+cached` 改为 `input+output+cached+reasoning`(避免 UI 层 reasoning 消失)                                                                                                                                                                                                                                                                  |
+| **Device breakdown 类型**                        | `packages/web/src/lib/device-helpers.ts:193, 202`                                                                                                                                                                            | `DeviceAgentBreakdownRow` 和 `DeviceModelBreakdownRow` 各加 `reasoning_output_tokens: number`                                                                                                                                                                                                                                                                                                                                          |
+| **Device breakdown reducers**                    | `packages/web/src/lib/device-helpers.ts:toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown`                                                                                                                                  | 初始化和累加都加 `reasoning_output_tokens += d.reasoning_output_tokens`                                                                                                                                                                                                                                                                                                                                                                |
 | **Device 堆叠图 keys/labels(3 个 chart 同结构)** | `packages/web/src/components/dashboard/device-agent-chart.tsx` + `device-model-chart.tsx` + `device-breakdown-chart.tsx`(每个都在 L54-63 附近声明 `labels` map + `orderedKeys` 数组,并在 render 里放 `<Bar dataKey=...>` 段) | 三个 chart 都要:`orderedKeys` 从 `["input_tokens","output_tokens","cached_input_tokens"]` 扩为 `[..., "reasoning_output_tokens"]`;label 加 `reasoning_output_tokens: "Reasoning"`;render 新增一段 `<Bar dataKey="reasoning_output_tokens" ...>`。否则堆叠段之和 < `total_tokens`,视觉上出现"缺口"。**注意**:三个文件必须一起改 — device-breakdown-chart 是"按设备总览",另两个是 agent/model 下钻,漏改任一都让相应视图缺 reasoning 段。 |
-| **By-device route:timeline map** | `packages/web/src/app/api/usage/by-device/route.ts:152` | 输出加 `reasoning_output_tokens: row.reasoning_output_tokens`(前提是 TimelineRow SQL 已加上)|
-| Worker-read SQL:achievements daily-cost | `packages/worker-read/src/rpc/achievements.ts:129` | SELECT 加 `SUM(reasoning_output_tokens)` |
-| Worker-read SQL:achievements per-model-source | `packages/worker-read/src/rpc/achievements.ts:222` | SELECT 加 `SUM(reasoning_output_tokens)` |
-| Worker-read type | `packages/worker-read/src/rpc/achievements-types.ts:DailyCostRow` 和 `CostByModelSourceRow` | 两个 interface 各加 `reasoning_output_tokens: number` |
-| Web RPC 镜像类型 | `packages/web/src/lib/rpc-types.ts:AchievementDailyCostRow` 和 `AchievementCostByModelSourceRow`(~L628 / L660) | 镜像加同名字段 |
-| 两个 achievement route computeCost | `packages/web/src/app/api/achievements/route.ts:57` (`computeCost`) 与调用点 :196 :209;`packages/web/src/app/api/users/[slug]/achievements/route.ts:42` 与 :113 :130 | `computeCost` 签名加 `reasoningTokens`,调用点从聚合行读 `row.reasoning_output_tokens` 传入 |
-| Web `ModelAggregate` | `packages/web/src/lib/usage-transforms.ts:58` | 加 `reasoning: number` |
-| Web `toModelAggregates` | `packages/web/src/lib/usage-transforms.ts:145` | 累加 `reasoning += r.reasoning_output_tokens`;初始化 `reasoning: r.reasoning_output_tokens` |
-| Web helpers 内聚合结构 | `packages/web/src/lib/usage-helpers.ts` 所有内部 `{ inputTokens, outputTokens, cachedTokens }` interface + reducer(grep `cachedTokens` 定位) | 各加 `reasoningTokens`,reducer `+=` 累加,`estimateCost` 调用传真值 |
-| Web `cost-helpers` | `packages/web/src/lib/cost-helpers.ts` 的 `m.input/m.output/m.cached` 调用点(L23 / L59 / L206) | 传 `m.reasoning`(需 ModelAggregate 先加字段) |
+| **By-device route:timeline map**                 | `packages/web/src/app/api/usage/by-device/route.ts:152`                                                                                                                                                                      | 输出加 `reasoning_output_tokens: row.reasoning_output_tokens`(前提是 TimelineRow SQL 已加上)                                                                                                                                                                                                                                                                                                                                           |
+| Worker-read SQL:achievements daily-cost          | `packages/worker-read/src/rpc/achievements.ts:129`                                                                                                                                                                           | SELECT 加 `SUM(reasoning_output_tokens)`                                                                                                                                                                                                                                                                                                                                                                                               |
+| Worker-read SQL:achievements per-model-source    | `packages/worker-read/src/rpc/achievements.ts:222`                                                                                                                                                                           | SELECT 加 `SUM(reasoning_output_tokens)`                                                                                                                                                                                                                                                                                                                                                                                               |
+| Worker-read type                                 | `packages/worker-read/src/rpc/achievements-types.ts:DailyCostRow` 和 `CostByModelSourceRow`                                                                                                                                  | 两个 interface 各加 `reasoning_output_tokens: number`                                                                                                                                                                                                                                                                                                                                                                                  |
+| Web RPC 镜像类型                                 | `packages/web/src/lib/rpc-types.ts:AchievementDailyCostRow` 和 `AchievementCostByModelSourceRow`(~L628 / L660)                                                                                                               | 镜像加同名字段                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 两个 achievement route computeCost               | `packages/web/src/app/api/achievements/route.ts:57` (`computeCost`) 与调用点 :196 :209;`packages/web/src/app/api/users/[slug]/achievements/route.ts:42` 与 :113 :130                                                         | `computeCost` 签名加 `reasoningTokens`,调用点从聚合行读 `row.reasoning_output_tokens` 传入                                                                                                                                                                                                                                                                                                                                             |
+| Web `ModelAggregate`                             | `packages/web/src/lib/usage-transforms.ts:58`                                                                                                                                                                                | 加 `reasoning: number`                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Web `toModelAggregates`                          | `packages/web/src/lib/usage-transforms.ts:145`                                                                                                                                                                               | 累加 `reasoning += r.reasoning_output_tokens`;初始化 `reasoning: r.reasoning_output_tokens`                                                                                                                                                                                                                                                                                                                                            |
+| Web helpers 内聚合结构                           | `packages/web/src/lib/usage-helpers.ts` 所有内部 `{ inputTokens, outputTokens, cachedTokens }` interface + reducer(grep `cachedTokens` 定位)                                                                                 | 各加 `reasoningTokens`,reducer `+=` 累加,`estimateCost` 调用传真值                                                                                                                                                                                                                                                                                                                                                                     |
+| Web `cost-helpers`                               | `packages/web/src/lib/cost-helpers.ts` 的 `m.input/m.output/m.cached` 调用点(L23 / L59 / L206)                                                                                                                               | 传 `m.reasoning`(需 ModelAggregate 先加字段)                                                                                                                                                                                                                                                                                                                                                                                           |
 
 **注**:之前草案里"Achievement cost row: `web/src/lib/achievement-helpers.ts`" 是错的
 — `achievement-helpers.ts` 只有 "reasoning-junkie" achievement 定义,不做 cost 计算。
@@ -478,17 +486,17 @@ cost 逻辑在**两个 achievement route 的 `computeCost()`**,数据源在 **wo
 pricing.test.ts 只覆盖 estimator 本身,漏了任一上游聚合都不会让 pricing 单元测试失败
 (它输入什么就算什么)。commit 6 必须**每层单独 pin 测试**:
 
-| 层 | 测试文件 | 关键断言 |
-|---|---|---|
-| **estimator** | `packages/web/src/__tests__/pricing.test.ts` | `estimateCost(100, 200, 500, 50, pricing)` 的 `totalCost` 包含 `50/M * pricing.reasoning` |
-| **worker-read achievements SQL** | `packages/worker-read/src/rpc/achievements.test.ts` | seed 一行 `reasoning_output_tokens=50`,断言 `DailyCostRow`/`CostByModelSourceRow` 返回 `reasoning_output_tokens: 50` |
-| **worker-read by-device SQL(cost + timeline 两处)** | `packages/worker-read/src/rpc/usage.test.ts` | seed 一行 grok,`handleGetDeviceCostDetails` 返回的 CostDetailRow 含 `reasoning_output_tokens`;`handleGetDeviceTimeline` 返回的 TimelineRow 也含之 |
-| **web device breakdown reducers + 3 chart** | `packages/web/src/__tests__/device-helpers.test.ts` 覆盖 reducer;`packages/web/src/components/dashboard/__tests__/`(或 snapshot)覆盖 3 个 chart | 一组带 reasoning 的 DeviceCostDetail 输入,`toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` 结果里各 row 的 `reasoning_output_tokens` 正确累加;`total_tokens` 等于 input+output+cached+reasoning;三个 chart 的 `orderedKeys` 包含 `reasoning_output_tokens` |
-| **web usage-transforms** | `packages/web/src/__tests__/usage-transforms.test.ts`(新增或补) | `toModelAggregates([{...,reasoning_output_tokens:50}])` 结果 `models[0].reasoning === 50` |
-| **web usage-helpers reducer** | `packages/web/src/__tests__/usage-helpers.test.ts` | 每个 reducer(代表 3 处:per-model、per-hour、per-day)聚合后 `reasoningTokens` 累加正确 |
-| **web achievements route** | `packages/web/src/__tests__/achievements-route.test.ts` (or e2e) | mock RPC 返回带 reasoning 的行,`computeCost` 结果 delta 与不带 reasoning 差异 = `50/M * priceReasoning` |
-| **e2e/api-e2e — token 保留**(user route) | `packages/web/src/__tests__/e2e/api-e2e.test.ts` | ingest 一条 `reasoning_output_tokens=50` grok 行,GET `/api/users/${TEST_USER_SLUG}?source=grok` 返回的 token summary 里 `reasoning_output_tokens === 50`。**注意**:`/api/users/[slug]` route 只算 token summary,**不算 estimated_cost**,不能用来验成本传播 |
-| **e2e/api-e2e — cost 传播**(by-device) | 同上文件 | ingest 同一条 grok 行(含 `device_id`),GET `/api/usage/by-device?from=...&to=...`,断言 `devices[0].estimated_cost` 与"reasoning=0 时应有的 cost" 差异 ≥ `50/M * pricing.reasoning`(pricing 从 `DEFAULT_SOURCE_DEFAULTS` 查 grok 单价)。这是唯一能端到端验证 reasoning **进入成本估算**的 e2e 路径 |
+| 层                                                  | 测试文件                                                                                                                                        | 关键断言                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **estimator**                                       | `packages/web/src/__tests__/pricing.test.ts`                                                                                                    | `estimateCost(100, 200, 500, 50, pricing)` 的 `totalCost` 包含 `50/M * pricing.reasoning`                                                                                                                                                                                                        |
+| **worker-read achievements SQL**                    | `packages/worker-read/src/rpc/achievements.test.ts`                                                                                             | seed 一行 `reasoning_output_tokens=50`,断言 `DailyCostRow`/`CostByModelSourceRow` 返回 `reasoning_output_tokens: 50`                                                                                                                                                                             |
+| **worker-read by-device SQL(cost + timeline 两处)** | `packages/worker-read/src/rpc/usage.test.ts`                                                                                                    | seed 一行 grok,`handleGetDeviceCostDetails` 返回的 CostDetailRow 含 `reasoning_output_tokens`;`handleGetDeviceTimeline` 返回的 TimelineRow 也含之                                                                                                                                                |
+| **web device breakdown reducers + 3 chart**         | `packages/web/src/__tests__/device-helpers.test.ts` 覆盖 reducer;`packages/web/src/components/dashboard/__tests__/`(或 snapshot)覆盖 3 个 chart | 一组带 reasoning 的 DeviceCostDetail 输入,`toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` 结果里各 row 的 `reasoning_output_tokens` 正确累加;`total_tokens` 等于 input+output+cached+reasoning;三个 chart 的 `orderedKeys` 包含 `reasoning_output_tokens`                                   |
+| **web usage-transforms**                            | `packages/web/src/__tests__/usage-transforms.test.ts`(新增或补)                                                                                 | `toModelAggregates([{...,reasoning_output_tokens:50}])` 结果 `models[0].reasoning === 50`                                                                                                                                                                                                        |
+| **web usage-helpers reducer**                       | `packages/web/src/__tests__/usage-helpers.test.ts`                                                                                              | 每个 reducer(代表 3 处:per-model、per-hour、per-day)聚合后 `reasoningTokens` 累加正确                                                                                                                                                                                                            |
+| **web achievements route**                          | `packages/web/src/__tests__/achievements-route.test.ts` (or e2e)                                                                                | mock RPC 返回带 reasoning 的行,`computeCost` 结果 delta 与不带 reasoning 差异 = `50/M * priceReasoning`                                                                                                                                                                                          |
+| **e2e/api-e2e — token 保留**(user route)            | `packages/web/src/__tests__/e2e/api-e2e.test.ts`                                                                                                | ingest 一条 `reasoning_output_tokens=50` grok 行,GET `/api/users/${TEST_USER_SLUG}?source=grok` 返回的 token summary 里 `reasoning_output_tokens === 50`。**注意**:`/api/users/[slug]` route 只算 token summary,**不算 estimated_cost**,不能用来验成本传播                                       |
+| **e2e/api-e2e — cost 传播**(by-device)              | 同上文件                                                                                                                                        | ingest 同一条 grok 行(含 `device_id`),GET `/api/usage/by-device?from=...&to=...`,断言 `devices[0].estimated_cost` 与"reasoning=0 时应有的 cost" 差异 ≥ `50/M * pricing.reasoning`(pricing 从 `DEFAULT_SOURCE_DEFAULTS` 查 grok 单价)。这是唯一能端到端验证 reasoning **进入成本估算**的 e2e 路径 |
 
 任一层未改会让**对应的层测试失败**,不会遗漏。
 
@@ -507,6 +515,7 @@ labels 一起做。estimator 接受 reasoning(commit 0)+ propagation(commit 6)+ 
 以下现有 test 里硬编码 11 source 断言的地方,必须同步扩展:
 
 **Core / CLI**:
+
 - `packages/core/src/__tests__/constants.test.ts` — SOURCES 数组断言
 - `packages/core/src/__tests__/types.test.ts`
 - `packages/core/src/__tests__/validation.test.ts`
@@ -520,6 +529,7 @@ labels 一起做。estimator 接受 reasoning(commit 0)+ propagation(commit 6)+ 
 - `packages/cli/src/__tests__/cli.test.ts`
 
 **Web(2 处,不能忘)**:
+
 - `packages/web/src/__tests__/palette.test.ts:18` — `toHaveLength(11)` → 12,加 chart-12 断言
 - `packages/web/src/__tests__/e2e/api-e2e.test.ts` — commit 6 加一个 `it("accepts and reads
   back grok source records — every whitelist entry point")` case
@@ -547,18 +557,19 @@ labels 一起做。estimator 接受 reasoning(commit 0)+ propagation(commit 6)+ 
 union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `DiscoverOpts.grokLogsPath`
 必须在同一或更早 commit 存在。为此重排如下:
 
-| # | Commit | 内容 | 独立编译? |
-|---|---|---|---|
-| 0 | `fix(web): estimateCost inputCost uses inputTokens directly (no cache subtraction) + accept reasoningTokens` | 两处 pricing.ts 内部改动 + `pricing.test.ts` 更新预期(新增 cached>input 的 case 明确断言 input 不被砍)+ **全部 14 处**生产调用点扩展签名 `estimateCost(input, output, cached, reasoning, pricing)`(2 achievements route + 1 by-device route + 2 dashboard 页面 + 3 处 `cost-helpers.ts` + 6 处 `usage-helpers.ts`;reasoning 传 `0` 保原成本行为,直到 P1b 让上游真值可用)。**reasoning 参数必填**,防止遗漏 callsite。 | ✅ 独立 refactor,无 grok 引用 |
-| 1 | **`feat: add "grok" source foundation (types + all exhaustive switches + DiscoverOpts stub)`** | `core/types.ts` `Source` 加 grok + 加 `GrokCursor` 若需要;`core/constants.ts` `SOURCES` 加 grok;**同时**加 `sync.ts`/`session-sync.ts`/`session-sync-helpers.ts` 里 `sourceKey()` 的 `case "grok"`、`SyncResult.sources.grok`、`filesScanned.grok` 初始化;`drivers/types.ts` `DiscoverOpts` 加 `grokLogsPath?` + `grokSessionsDir?`;`utils/paths.ts` 加 grok 三个默认路径;`cli.ts` `isSource()` + `SOURCE_LABELS` + `SourceDirs`;所有列在 §5.8 里的 core/CLI test 断言更新。**尚无 driver 注册,尚无 parser** — foundation commit,typecheck + lint 全绿 | ✅ |
-| 2 | `feat(cli): add grok log parser and normalizer (no wiring)` | `parsers/grok.ts` + `grok-parser.test.ts`。**TDD 先测后码**。此时 parser 尚未被任何 driver 调用,纯函数库。 | ✅ |
-| 3 | `feat(cli): add grok session parser (no wiring)` | `parsers/grok-session.ts` + `grok-session.test.ts`。同上。 | ✅ |
-| 4 | `feat(cli): add grok token+session drivers and register them` | `drivers/token/grok-token-driver.ts`、`drivers/session/grok-session-driver.ts`、`discovery/sources.ts` 新增 `discoverGrokLogFile()` + `discoverGrokSessionDirs()`、`drivers/registry.ts` 注册两个 driver + registry test 更新。driver 依赖 (2)/(3) 的 parser 和 (1) 的 DiscoverOpts,都已就位。 | ✅ |
-| 5 | `feat(cli): wire grok end-to-end through sync + status + notify` | `commands/sync.ts` / `session-sync.ts` / `notify.ts` / `status.ts` 里传入 `grokLogsPath` / `grokSessionsDir`,sync/session-sync/status test 追加 grok 覆盖。此时 CLI 端 grok source 完整可用。 | ✅ |
-| 6 | `feat(web): add grok to dashboard palette, labels, API validation, and propagate reasoning end-to-end` | Web dashboard 文件(见 §5.6)+ `palette.test.ts` 里 `toHaveLength(11) → toHaveLength(12)` 和 `chart-12` 断言 + 相关 dashboard test。**同时完成 §5.6b 全部 reasoning propagation 层**(core 类型 + worker-read SQL/type + web RPC 镜像 + `api/usage/by-device/route.ts` 三处 + 两个 achievement route 的 `computeCost()` + `ModelAggregate` + `toModelAggregates` + `usage-helpers.ts` 所有 reducer + `cost-helpers.ts` 三处 estimateCost 调用 + `device-helpers.ts` 两个 breakdown row/reducer + 两个 device chart keys/labels)。**同时加 §5.6b 全部 pin-test**,任一层漏改立刻失败。 | ✅ |
-| 7 | `docs(42): mark grok support as implemented; update CLAUDE.md/README/PRIVACY` | 4 个文档 + doc 42 status → done + tool 数字 11 → 12。 | ✅ |
+| #   | Commit                                                                                                       | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 独立编译?                     |
+| --- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 0   | `fix(web): estimateCost inputCost uses inputTokens directly (no cache subtraction) + accept reasoningTokens` | 两处 pricing.ts 内部改动 + `pricing.test.ts` 更新预期(新增 cached>input 的 case 明确断言 input 不被砍)+ **全部 14 处**生产调用点扩展签名 `estimateCost(input, output, cached, reasoning, pricing)`(2 achievements route + 1 by-device route + 2 dashboard 页面 + 3 处 `cost-helpers.ts` + 6 处 `usage-helpers.ts`;reasoning 传 `0` 保原成本行为,直到 P1b 让上游真值可用)。**reasoning 参数必填**,防止遗漏 callsite。                                                                                                                                                              | ✅ 独立 refactor,无 grok 引用 |
+| 1   | **`feat: add "grok" source foundation (types + all exhaustive switches + DiscoverOpts stub)`**               | `core/types.ts` `Source` 加 grok + 加 `GrokCursor` 若需要;`core/constants.ts` `SOURCES` 加 grok;**同时**加 `sync.ts`/`session-sync.ts`/`session-sync-helpers.ts` 里 `sourceKey()` 的 `case "grok"`、`SyncResult.sources.grok`、`filesScanned.grok` 初始化;`drivers/types.ts` `DiscoverOpts` 加 `grokLogsPath?` + `grokSessionsDir?`;`utils/paths.ts` 加 grok 三个默认路径;`cli.ts` `isSource()` + `SOURCE_LABELS` + `SourceDirs`;所有列在 §5.8 里的 core/CLI test 断言更新。**尚无 driver 注册,尚无 parser** — foundation commit,typecheck + lint 全绿                            | ✅                            |
+| 2   | `feat(cli): add grok log parser and normalizer (no wiring)`                                                  | `parsers/grok.ts` + `grok-parser.test.ts`。**TDD 先测后码**。此时 parser 尚未被任何 driver 调用,纯函数库。                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | ✅                            |
+| 3   | `feat(cli): add grok session parser (no wiring)`                                                             | `parsers/grok-session.ts` + `grok-session.test.ts`。同上。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | ✅                            |
+| 4   | `feat(cli): add grok token+session drivers and register them`                                                | `drivers/token/grok-token-driver.ts`、`drivers/session/grok-session-driver.ts`、`discovery/sources.ts` 新增 `discoverGrokLogFile()` + `discoverGrokSessionDirs()`、`drivers/registry.ts` 注册两个 driver + registry test 更新。driver 依赖 (2)/(3) 的 parser 和 (1) 的 DiscoverOpts,都已就位。                                                                                                                                                                                                                                                                                    | ✅                            |
+| 5   | `feat(cli): wire grok end-to-end through sync + status + notify`                                             | `commands/sync.ts` / `session-sync.ts` / `notify.ts` / `status.ts` 里传入 `grokLogsPath` / `grokSessionsDir`,sync/session-sync/status test 追加 grok 覆盖。此时 CLI 端 grok source 完整可用。                                                                                                                                                                                                                                                                                                                                                                                     | ✅                            |
+| 6   | `feat(web): add grok to dashboard palette, labels, API validation, and propagate reasoning end-to-end`       | Web dashboard 文件(见 §5.6)+ `palette.test.ts` 里 `toHaveLength(11) → toHaveLength(12)` 和 `chart-12` 断言 + 相关 dashboard test。**同时完成 §5.6b 全部 reasoning propagation 层**(core 类型 + worker-read SQL/type + web RPC 镜像 + `api/usage/by-device/route.ts` 三处 + 两个 achievement route 的 `computeCost()` + `ModelAggregate` + `toModelAggregates` + `usage-helpers.ts` 所有 reducer + `cost-helpers.ts` 三处 estimateCost 调用 + `device-helpers.ts` 两个 breakdown row/reducer + 两个 device chart keys/labels)。**同时加 §5.6b 全部 pin-test**,任一层漏改立刻失败。 | ✅                            |
+| 7   | `docs(42): mark grok support as implemented; update CLAUDE.md/README/PRIVACY`                                | 4 个文档 + doc 42 status → done + tool 数字 11 → 12。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | ✅                            |
 
 每个 commit 单独运行:
+
 - `bun run test`:全绿
 - `bun run lint`:typecheck + eslint 全绿
 - pre-commit L1/G1 hook 通过
@@ -571,53 +582,53 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 **Parser 正确性（`grok-parser.test.ts`）**：
 
-| Case | 输入 | 期望 |
-|---|---|---|
-| 1 | `msg=shell.turn.inference_done` 单行 | 1 delta，字段映射正确 |
-| 2 | 3 行 `inference_done`（本机真实数据） | 3 deltas，总 in=25315 cached=63872 out=1571 rea=111（out=completion−reasoning） |
-| 3 | 非 `inference_done` 事件（phase_changed 等） | 0 deltas，正常跳过 |
-| 4 | 缺 `prompt_tokens` 字段 | 0 deltas（`isAllZero` 过滤） |
-| 5 | 缺 `cached_prompt_tokens`（旧 grok 版本） | `cached = 0`，`input = prompt_tokens` 全额 |
-| 6 | `cached > prompt`（异常） | `input = max(0, prompt - cached) = 0`，不返回负数 |
-| 7 | 恶意 JSON（malformed line） | 跳过，不阻塞 |
-| 8 | `attempts > 1`（重试） | 每次都 emit（每次都真实计费） |
-| 9 | 缺 `ts` | skip |
-| 10 | `ctx.prompt_tokens = "not a number"` | 用 `toNonNegInt` 归零 |
+| Case | 输入                                         | 期望                                                                            |
+| ---- | -------------------------------------------- | ------------------------------------------------------------------------------- |
+| 1    | `msg=shell.turn.inference_done` 单行         | 1 delta，字段映射正确                                                           |
+| 2    | 3 行 `inference_done`（本机真实数据）        | 3 deltas，总 in=25315 cached=63872 out=1571 rea=111（out=completion−reasoning） |
+| 3    | 非 `inference_done` 事件（phase_changed 等） | 0 deltas，正常跳过                                                              |
+| 4    | 缺 `prompt_tokens` 字段                      | 0 deltas（`isAllZero` 过滤）                                                    |
+| 5    | 缺 `cached_prompt_tokens`（旧 grok 版本）    | `cached = 0`，`input = prompt_tokens` 全额                                      |
+| 6    | `cached > prompt`（异常）                    | `input = max(0, prompt - cached) = 0`，不返回负数                               |
+| 7    | 恶意 JSON（malformed line）                  | 跳过，不阻塞                                                                    |
+| 8    | `attempts > 1`（重试）                       | 每次都 emit（每次都真实计费）                                                   |
+| 9    | 缺 `ts`                                      | skip                                                                            |
+| 10   | `ctx.prompt_tokens = "not a number"`         | 用 `toNonNegInt` 归零                                                           |
 
 **Session 正确性（`grok-session.test.ts`）**：
 
-| Case | 输入 | 期望 |
-|---|---|---|
-| 1 | 完整 summary.json + signals.json | SessionSnapshot 各字段正确 |
-| 2 | signals.json 缺失 | snapshot 有 startedAt/model,messages 用 summary.num_chat_messages fallback |
-| 3 | summary.json 缺 `current_model_id` | `model = null` |
-| 4 | summary.json 损坏 | 返回 null,不抛异常 |
+| Case | 输入                               | 期望                                                                       |
+| ---- | ---------------------------------- | -------------------------------------------------------------------------- |
+| 1    | 完整 summary.json + signals.json   | SessionSnapshot 各字段正确                                                 |
+| 2    | signals.json 缺失                  | snapshot 有 startedAt/model,messages 用 summary.num_chat_messages fallback |
+| 3    | summary.json 缺 `current_model_id` | `model = null`                                                             |
+| 4    | summary.json 损坏                  | 返回 null,不抛异常                                                         |
 
 **Byte-offset cursor(`grok-token-driver.test.ts`)**:
 
-| Case | 期望 |
-|---|---|
-| 首次 sync | 全文件 emit |
-| 二次 sync 文件不变 | 0 deltas |
-| 二次 sync 文件追加(完整行) | 只 emit 新增部分 |
-| **半行安全**:文件尾部是半条 line(无末尾 `\n`) | 半行**不**计入 endOffset,不 emit;二次 sync 追加剩余部分 + `\n`,该完整 line 被正确 emit **一次** |
-| **半行 → 追加 → 追加(pi/openclaw 已有的 round-trip 模式)** | Parser 从 raw offset 开始每次都能正确对齐到 line 边界 |
-| Inode 变化(log rotate) | 触发 replay,orchestrator 清 cursors 全量重扫 |
-| 尾部损坏(完整 line 但 JSON 错) | 该 line 跳过,offset **可以**推进(未 stall);后续完整 line 正常处理 |
+| Case                                                       | 期望                                                                                            |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 首次 sync                                                  | 全文件 emit                                                                                     |
+| 二次 sync 文件不变                                         | 0 deltas                                                                                        |
+| 二次 sync 文件追加(完整行)                                 | 只 emit 新增部分                                                                                |
+| **半行安全**:文件尾部是半条 line(无末尾 `\n`)              | 半行**不**计入 endOffset,不 emit;二次 sync 追加剩余部分 + `\n`,该完整 line 被正确 emit **一次** |
+| **半行 → 追加 → 追加(pi/openclaw 已有的 round-trip 模式)** | Parser 从 raw offset 开始每次都能正确对齐到 line 边界                                           |
+| Inode 变化(log rotate)                                     | 触发 replay,orchestrator 清 cursors 全量重扫                                                    |
+| 尾部损坏(完整 line 但 JSON 错)                             | 该 line 跳过,offset **可以**推进(未 stall);后续完整 line 正常处理                               |
 
 **Model 归因(`grok-parser.test.ts` 扩展)**:
 
-| Case | 期望 |
-|---|---|
-| **Fast path**:`modelsUsed = ["grok-4.5"]`(长度 = 1) | 用 `grok-4.5`,**不读 events.jsonl**(用 spy 断言未调用) |
-| **Slow path — 多模型**:`modelsUsed = ["grok-4.5","grok-code"]`,一次 inference_done 在 turn A 之后 | 扫 events.jsonl,用 turn A 的 model_id |
-| **Slow path — 空数组**:`modelsUsed = []` | 必须扫 events.jsonl(spy 断言**已**调用),再 fallback 到 primaryModelId |
-| **Slow path — 字段缺失**:`signals.json` 完全没有 `modelsUsed` key | 同上,扫 events → fallback |
-| **Slow path — signals.json 缺失**:文件不存在 | 直接扫 events;若 events 也无数据 → `"grok-unknown"` |
-| session 内两次 turn_started 切换模型(A → B),中间夹一条 inference_done | 该 inference_done 归 A |
-| turn_started 缺失,但 signals.json 有 primaryModelId | 用 primaryModelId fallback |
-| turn_started 和 primaryModelId 都缺 | fallback `"grok-unknown"`,不阻塞 emit |
-| inference_done.ts 早于任何 turn_started(理论异常) | fallback 到 primaryModelId,再不行 `"grok-unknown"` |
+| Case                                                                                              | 期望                                                                  |
+| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Fast path**:`modelsUsed = ["grok-4.5"]`(长度 = 1)                                               | 用 `grok-4.5`,**不读 events.jsonl**(用 spy 断言未调用)                |
+| **Slow path — 多模型**:`modelsUsed = ["grok-4.5","grok-code"]`,一次 inference_done 在 turn A 之后 | 扫 events.jsonl,用 turn A 的 model_id                                 |
+| **Slow path — 空数组**:`modelsUsed = []`                                                          | 必须扫 events.jsonl(spy 断言**已**调用),再 fallback 到 primaryModelId |
+| **Slow path — 字段缺失**:`signals.json` 完全没有 `modelsUsed` key                                 | 同上,扫 events → fallback                                             |
+| **Slow path — signals.json 缺失**:文件不存在                                                      | 直接扫 events;若 events 也无数据 → `"grok-unknown"`                   |
+| session 内两次 turn_started 切换模型(A → B),中间夹一条 inference_done                             | 该 inference_done 归 A                                                |
+| turn_started 缺失,但 signals.json 有 primaryModelId                                               | 用 primaryModelId fallback                                            |
+| turn_started 和 primaryModelId 都缺                                                               | fallback `"grok-unknown"`,不阻塞 emit                                 |
+| inference_done.ts 早于任何 turn_started(理论异常)                                                 | fallback 到 primaryModelId,再不行 `"grok-unknown"`                    |
 
 ### 7.2 L1 Unit tests(source registry 扩展)
 
@@ -646,21 +657,22 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 **Route → 白名单校验入口清单**(commit 6 test 必须每个都覆盖 — 注意 commit 5 时 web 侧
 `VALID_SOURCES` 还没加 grok,L2 case 必须放 commit 6):
 
-| Route | 校验入口 | L2 打法 |
-|---|---|---|
-| `/api/ingest` | POST body 是 **`IngestRecord[]` bare array**(不是 `{records:[...]}`)里的 `records[*].source` | `POST /api/ingest [{source:"grok",...}]` |
-| `/api/usage` | query `?source=` | `GET /api/usage?source=grok` |
-| `/api/sessions` | query `?source=` | `GET /api/sessions?source=grok` |
-| `/api/leaderboard` | query `?source=` | `GET /api/leaderboard?source=grok` |
-| `/api/users/<slug>` | query `?source=` | `GET /api/users/<slug>?source=grok`(前置:test user 必须有 slug + is_public=1) |
-| **`/api/projects`** | **POST body 里的 `aliases[*].source`**(**不读** `?source=`) | `POST /api/projects {name:"...", aliases:[{source:"grok",project_ref:"..."}]}` |
-| **`/api/projects/[id]`** | **PATCH body 里的 `add_aliases[*].source` / `remove_aliases[*].source`**(**不是** camelCase `aliasesToAdd`) | `PATCH /api/projects/<id> {add_aliases:[{source:"grok",project_ref:"..."}]}` |
+| Route                    | 校验入口                                                                                                    | L2 打法                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `/api/ingest`            | POST body 是 **`IngestRecord[]` bare array**(不是 `{records:[...]}`)里的 `records[*].source`                | `POST /api/ingest [{source:"grok",...}]`                                       |
+| `/api/usage`             | query `?source=`                                                                                            | `GET /api/usage?source=grok`                                                   |
+| `/api/sessions`          | query `?source=`                                                                                            | `GET /api/sessions?source=grok`                                                |
+| `/api/leaderboard`       | query `?source=`                                                                                            | `GET /api/leaderboard?source=grok`                                             |
+| `/api/users/<slug>`      | query `?source=`                                                                                            | `GET /api/users/<slug>?source=grok`(前置:test user 必须有 slug + is_public=1)  |
+| **`/api/projects`**      | **POST body 里的 `aliases[*].source`**(**不读** `?source=`)                                                 | `POST /api/projects {name:"...", aliases:[{source:"grok",project_ref:"..."}]}` |
+| **`/api/projects/[id]`** | **PATCH body 里的 `add_aliases[*].source` / `remove_aliases[*].source`**(**不是** camelCase `aliasesToAdd`) | `PATCH /api/projects/<id> {add_aliases:[{source:"grok",project_ref:"..."}]}`   |
 
 **前置准备**(必须在 case 头部执行,否则某些 route 打不通):
 
 1. `TEST_USER_SLUG` 常量当前不存在;新增。**注意**:`scripts/run-e2e.ts` 只透传 `E2E_TEST_USER_ID`
    和 `E2E_TEST_USER_EMAIL` 到测试进程,**不透传 `RUN_ID`**。测试端从 `TEST_USER_ID` 派生
    稳定后缀,避免并发 CI 撞车:
+
    ```typescript
    // TEST_USER_ID = "e2e-test-user-<8hex>", already established at test-file top
    const RUN_SUFFIX = TEST_USER_ID.replace("e2e-test-user-", "");  // → "<8hex>"
@@ -679,13 +691,15 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
    usage_records,最后 users(FK 顺序)。
 
 新增 case(放 commit 6,不是 commit 5):
+
 ```typescript
 it("accepts and reads back grok source records — every whitelist entry point", async () => {
   // 1. POST /api/ingest — bare-array body
   const ingest = await fetch(`${BASE_URL}/api/ingest`, {
     method: "POST",
     headers: INGEST_HEADERS,
-    body: JSON.stringify([  // <-- bare array, NOT wrapped in {records:...}
+    body: JSON.stringify([
+      // <-- bare array, NOT wrapped in {records:...}
       makeRecord({
         source: "grok",
         model: "grok-4.5",
@@ -769,6 +783,7 @@ commit 6 立刻停下。
 ```
 
 对比:
+
 - Pre-implementation: 0(pew 完全不支持 grok)
 - Post-implementation: **25315 + 63872 + 1571 + 111 = 90869 tokens**
   (本机 1 session;`output = completion − reasoning`,不再把 reasoning 双计)
@@ -777,24 +792,25 @@ commit 6 立刻停下。
 
 **关键 case**: 故意破坏 `~/.grok/logs/unified.jsonl`(chmod 000 / 截断 / 塞乱码),
 运行 `pew sync`,验证:
+
 - 其他 source 全部正常同步
 - grok source 报 warning 但不抛异常
 - 不 crash
 
 ## 八、时间估算
 
-| 阶段 | 内容 | 预计 |
-|---|---|---|
-| Commit 0 | pricing.ts 去掉 nonCached 减法 + 加 reasoning + 14 callsite 迁移 + 更新 5 处 test 预期 | 40 min |
-| Commit 1 | Foundation:core types + 所有 exhaustive switch + DiscoverOpts + paths + status wiring + 所有列在 §5.8 的 test 断言 | 45 min |
-| Commit 2 | grok.ts parser + tests | 35 min |
-| Commit 3 | grok-session.ts parser + tests | 20 min |
-| Commit 4 | 两个 driver + discovery + registry + tests | 40 min |
-| Commit 5 | sync/notify/status end-to-end wiring + tests | 25 min |
-| Commit 6 | Web dashboard 文件 + §5.6b 全部 reasoning propagation 层(core + worker-read + web,含 by-device route 三处 + device breakdown)+ 全部 pin-test + palette/e2e | 110 min |
-| Commit 7 | Docs + PRIVACY + CLAUDE.md + doc 42 close | 15 min |
-| 全量 test + lint + golden 验证 | | 20 min |
-| **合计** | | **~4 h** |
+| 阶段                           | 内容                                                                                                                                                       | 预计     |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Commit 0                       | pricing.ts 去掉 nonCached 减法 + 加 reasoning + 14 callsite 迁移 + 更新 5 处 test 预期                                                                     | 40 min   |
+| Commit 1                       | Foundation:core types + 所有 exhaustive switch + DiscoverOpts + paths + status wiring + 所有列在 §5.8 的 test 断言                                         | 45 min   |
+| Commit 2                       | grok.ts parser + tests                                                                                                                                     | 35 min   |
+| Commit 3                       | grok-session.ts parser + tests                                                                                                                             | 20 min   |
+| Commit 4                       | 两个 driver + discovery + registry + tests                                                                                                                 | 40 min   |
+| Commit 5                       | sync/notify/status end-to-end wiring + tests                                                                                                               | 25 min   |
+| Commit 6                       | Web dashboard 文件 + §5.6b 全部 reasoning propagation 层(core + worker-read + web,含 by-device route 三处 + device breakdown)+ 全部 pin-test + palette/e2e | 110 min  |
+| Commit 7                       | Docs + PRIVACY + CLAUDE.md + doc 42 close                                                                                                                  | 15 min   |
+| 全量 test + lint + golden 验证 |                                                                                                                                                            | 20 min   |
+| **合计**                       |                                                                                                                                                            | **~4 h** |
 
 ## 九、FAQ
 
@@ -810,6 +826,7 @@ A: 是。Grok-4 系列有 chain-of-thought(reasoning),按独立单价计费(通�
 
 **Q4: 如果 xAI 后续修改 log schema 怎么办?**
 A:
+
 1. Parser 层 `msg == "shell.turn.inference_done"` 过滤 + `if (!ctx.prompt_tokens && !ctx.completion_tokens) skip` 兜底,新 event 类型自动被忽略
 2. 字段缺失 → 归零(`toNonNegInt`),不抛
 3. 违反预期结构 → JSON.parse fail → 跳过该行,不影响后续

@@ -200,7 +200,11 @@ export interface OpenCodeJsonResumeState {
  * Resume state for Codex (byte-offset + cumulative diff state).
  */
 export interface CodexResumeState {
-  accountingContext?: { provider?: string | null; route?: string | null; service_tier?: string | null };
+  accountingContext?: {
+    provider?: string | null;
+    route?: string | null;
+    service_tier?: string | null;
+  };
   readonly kind: "codex";
   startOffset: number;
   endBound?: number;

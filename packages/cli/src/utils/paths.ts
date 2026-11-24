@@ -127,7 +127,8 @@ export function resolveDefaultPaths(home = homedir()) {
   const copilotCliOtelPaths = [
     process.env.COPILOT_OTEL_FILE_EXPORTER_PATH,
     ...(process.env.PEW_COPILOT_OTEL_PATHS?.split(delimiter) ?? []),
-  ].filter((path): path is string => typeof path === "string" && path.trim().length > 0)
+  ]
+    .filter((path): path is string => typeof path === "string" && path.trim().length > 0)
     .map((path) => path.trim());
   const envAntigravityDirs = [
     ...new Set(
@@ -157,14 +158,7 @@ export function resolveDefaultPaths(home = homedir()) {
     /** Antigravity conversation databases (CLI + IDE/App) */
     antigravityDirs,
     /** OpenCode message storage: ~/.local/share/opencode/storage/message */
-    openCodeMessageDir: join(
-      home,
-      ".local",
-      "share",
-      "opencode",
-      "storage",
-      "message",
-    ),
+    openCodeMessageDir: join(home, ".local", "share", "opencode", "storage", "message"),
     /** OpenCode SQLite database: ~/.local/share/opencode/opencode.db */
     openCodeDbPath: join(home, ".local", "share", "opencode", "opencode.db"),
     /** OpenClaw data: ~/.openclaw */

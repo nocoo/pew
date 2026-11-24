@@ -14,7 +14,6 @@ import type { KVNamespace } from "@cloudflare/workers-types";
 /** 24 hours — for rarely-changing data (pricing, frozen snapshots) */
 export const TTL_24H = 86400;
 
-
 /** 10 minutes — for moderately-changing data (seasons list, public leaderboard) */
 export const TTL_10M = 600;
 
@@ -51,7 +50,7 @@ export async function withCache<T>(
   kv: KVNamespace,
   key: string,
   fetcher: () => Promise<T>,
-  options: CacheOptions
+  options: CacheOptions,
 ): Promise<{ data: T; cached: boolean }> {
   // 1. Try cache
   try {
@@ -91,7 +90,7 @@ export async function withCache<T>(
  */
 export async function listAllCacheKeys(
   kv: KVNamespace,
-  prefix?: string
+  prefix?: string,
 ): Promise<{ keys: string[]; truncated: boolean; count: number }> {
   const keys: string[] = [];
   let cursor: string | undefined;
@@ -142,7 +141,7 @@ export async function listAllCacheKeys(
  */
 export async function clearAllCache(
   kv: KVNamespace,
-  prefix?: string
+  prefix?: string,
 ): Promise<{ deleted: number; truncated: boolean }> {
   let deleted = 0;
   let cursor: string | undefined;
@@ -188,9 +187,6 @@ export async function clearAllCache(
 /**
  * Delete a single cache entry.
  */
-export async function invalidateKey(
-  kv: KVNamespace,
-  key: string
-): Promise<void> {
+export async function invalidateKey(kv: KVNamespace, key: string): Promise<void> {
   await kv.delete(key);
 }

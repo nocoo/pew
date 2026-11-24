@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatCost,
-  formatDuration,
-  formatTokens,
-  formatTokensFull,
-} from "./format";
+import { formatCost, formatDuration, formatTokens, formatTokensFull } from "./format";
 
 describe("formatTokens", () => {
   it("returns plain integer below 1k", () => {

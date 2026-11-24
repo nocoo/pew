@@ -45,9 +45,7 @@ describe("GET /api/teams", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead,
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
     const mod = await import("@/app/api/teams/route");
     GET = mod.GET;
   });
@@ -106,8 +104,9 @@ describe("GET /api/teams", () => {
   it("should list all teams for admin users", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "admin-1" });
     vi.mocked(isAdminUser).mockResolvedValueOnce(true);
-    (mockDbRead as unknown as { listAllTeams: ReturnType<typeof vi.fn> }).listAllTeams =
-      vi.fn().mockResolvedValueOnce([
+    (mockDbRead as unknown as { listAllTeams: ReturnType<typeof vi.fn> }).listAllTeams = vi
+      .fn()
+      .mockResolvedValueOnce([
         {
           id: "t1",
           name: "Team Alpha",
@@ -167,12 +166,8 @@ describe("POST /api/teams", () => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead,
-    );
-    vi.mocked(dbModule.getDbWrite).mockResolvedValue(
-      mockDbWrite as unknown as dbModule.DbWrite,
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as unknown as dbModule.DbWrite);
     // Deterministic UUIDs for testing
     let callIdx = 0;
     const uuids = [
@@ -180,9 +175,7 @@ describe("POST /api/teams", () => {
       "11111111-2222-3333-4444-555555555555",
       "66666666-7777-8888-9999-000000000000",
     ];
-    vi.spyOn(crypto, "randomUUID").mockImplementation(
-      () => uuids[callIdx++ % uuids.length]!,
-    );
+    vi.spyOn(crypto, "randomUUID").mockImplementation(() => uuids[callIdx++ % uuids.length]!);
     const mod = await import("@/app/api/teams/route");
     POST = mod.POST;
   });

@@ -35,10 +35,7 @@ import type {
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/models";
 const MODELS_DEV_URL = "https://models.dev/api.json";
 const FETCH_TIMEOUT_MS = 30_000;
-const DEFAULT_OUTPUT = resolve(
-  __dirname,
-  "../packages/worker-read/src/data/model-prices.json"
-);
+const DEFAULT_OUTPUT = resolve(__dirname, "../packages/worker-read/src/data/model-prices.json");
 
 export interface SyncOptions {
   dryRun: boolean;
@@ -124,16 +121,24 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
   // Preserve prior updatedAt when nothing meaningful changed — keeps re-runs
   // diff-free against the checked-in baseline file.
   const priorById = new Map(prior.map((e) => [e.model, e]));
-  const content = (value: unknown) => JSON.stringify(value, (key, v) => key === "updatedAt" ? undefined : v);
+  const content = (value: unknown) =>
+    JSON.stringify(value, (key, v) => (key === "updatedAt" ? undefined : v));
   const stabilized = merged.entries.map((e) => {
     const prev = priorById.get(e.model);
     if (!prev) return e;
-    const routePrices = e.routePrices && Object.fromEntries(Object.entries(e.routePrices).map(([route, rates]) => {
-      const previous = prev.routePrices?.[route];
-      return [route, previous && content(previous) === content(rates) ? previous : rates];
-    }));
-    return { ...e, ...(routePrices ? { routePrices } : {}),
-      updatedAt: content(prev) === content(e) ? prev.updatedAt : e.updatedAt };
+    const routePrices =
+      e.routePrices &&
+      Object.fromEntries(
+        Object.entries(e.routePrices).map(([route, rates]) => {
+          const previous = prev.routePrices?.[route];
+          return [route, previous && content(previous) === content(rates) ? previous : rates];
+        }),
+      );
+    return {
+      ...e,
+      ...(routePrices ? { routePrices } : {}),
+      updatedAt: content(prev) === content(e) ? prev.updatedAt : e.updatedAt,
+    };
   });
 
   return {
@@ -199,7 +204,7 @@ export async function main(argv: string[]): Promise<number> {
   if (result.removedModels.length > 0) {
     if (!args.allowRemovals) {
       console.error(
-        `regression: ${result.removedModels.length} model(s) removed — pass --allow-removals to accept:`
+        `regression: ${result.removedModels.length} model(s) removed — pass --allow-removals to accept:`,
       );
       for (const id of result.removedModels) console.error(`  - ${id}`);
       return 2;
@@ -209,7 +214,7 @@ export async function main(argv: string[]): Promise<number> {
 
   for (const w of result.warnings) console.warn(`warn: ${w}`);
   console.log(
-    `entries=${result.entries.length} baseline=${result.meta.baselineCount} openrouter=${result.meta.openRouterCount} modelsDev=${result.meta.modelsDevCount}`
+    `entries=${result.entries.length} baseline=${result.meta.baselineCount} openrouter=${result.meta.openRouterCount} modelsDev=${result.meta.modelsDevCount}`,
   );
 
   if (args.dryRun) {
@@ -218,11 +223,7 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   mkdirSync(dirname(args.outputPath), { recursive: true });
-  writeFileSync(
-    args.outputPath,
-    `${JSON.stringify(result.entries, null, 2)}\n`,
-    "utf-8"
-  );
+  writeFileSync(args.outputPath, `${JSON.stringify(result.entries, null, 2)}\n`, "utf-8");
   console.log(`wrote ${args.outputPath}`);
   return 0;
 }

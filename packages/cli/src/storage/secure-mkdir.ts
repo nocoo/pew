@@ -17,10 +17,7 @@ export const SECURE_DIR_MODE = 0o700;
  * Async mkdir with secure permissions for sensitive directories.
  * Always creates with mode 0o700 regardless of umask.
  */
-export async function mkdirSecure(
-  path: string,
-  options?: { recursive?: boolean },
-): Promise<void> {
+export async function mkdirSecure(path: string, options?: { recursive?: boolean }): Promise<void> {
   await mkdir(path, { ...options, mode: SECURE_DIR_MODE });
 }
 
@@ -28,9 +25,6 @@ export async function mkdirSecure(
  * Sync mkdir with secure permissions for sensitive directories.
  * Used in notify-handler where async is not possible.
  */
-export function mkdirSecureSync(
-  path: string,
-  options?: { recursive?: boolean },
-): void {
+export function mkdirSecureSync(path: string, options?: { recursive?: boolean }): void {
   mkdirSyncFs(path, { ...options, mode: SECURE_DIR_MODE });
 }

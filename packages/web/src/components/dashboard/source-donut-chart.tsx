@@ -1,12 +1,7 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  PieChart,
-  Pie,
-  Tooltip,
-  Cell,
-} from "recharts";
+import { PieChart, Pie, Tooltip, Cell } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { agentColor } from "@/lib/palette";
@@ -65,7 +60,7 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No usage data yet
@@ -85,7 +80,7 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
     <div
       className={cn(
         "flex flex-col rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">By Agent</p>
@@ -118,13 +113,8 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
         <div className="mt-3 grid w-full grid-cols-2 gap-x-4 gap-y-2">
           {chartData.map((item) => (
             <div key={item.name} className="flex items-center gap-2">
-              <div
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: item.fill }}
-              />
-              <span className="text-xs text-basalt-muted-foreground truncate">
-                {item.name}
-              </span>
+              <div className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.fill }} />
+              <span className="text-xs text-basalt-muted-foreground truncate">{item.name}</span>
               <span className="ml-auto text-xs font-medium text-basalt-foreground">
                 {formatTokens(item.value)}
               </span>

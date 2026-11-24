@@ -47,11 +47,7 @@ export async function installOpenClawHook(
       ["plugins", "install", "--link", "--dangerously-force-unsafe-install", pluginDir],
       { cwd: pluginDir },
     );
-    const enableResult = spawn(
-      "openclaw",
-      ["plugins", "enable", PLUGIN_ID],
-      { cwd: pluginDir },
-    );
+    const enableResult = spawn("openclaw", ["plugins", "enable", PLUGIN_ID], { cwd: pluginDir });
 
     const warnings: string[] = [];
     if ((installResult.status ?? 1) !== 0) warnings.push("openclaw plugin install failed");
@@ -125,13 +121,19 @@ export async function uninstallOpenClawHook(
 
   const installs = normalizeObject(plugins.installs);
   for (const [key, value] of Object.entries(installs)) {
-    const sourcePath = typeof (value as Record<string, unknown>).sourcePath === "string"
-      ? resolve(String((value as Record<string, unknown>).sourcePath))
-      : null;
-    const installPath = typeof (value as Record<string, unknown>).installPath === "string"
-      ? resolve(String((value as Record<string, unknown>).installPath))
-      : null;
-    if (key === PLUGIN_ID || sourcePath === resolvedPluginDir || installPath === resolvedPluginDir) {
+    const sourcePath =
+      typeof (value as Record<string, unknown>).sourcePath === "string"
+        ? resolve(String((value as Record<string, unknown>).sourcePath))
+        : null;
+    const installPath =
+      typeof (value as Record<string, unknown>).installPath === "string"
+        ? resolve(String((value as Record<string, unknown>).installPath))
+        : null;
+    if (
+      key === PLUGIN_ID ||
+      sourcePath === resolvedPluginDir ||
+      installPath === resolvedPluginDir
+    ) {
       delete installs[key];
       changed = true;
     }
@@ -158,9 +160,7 @@ export async function uninstallOpenClawHook(
   };
 }
 
-export async function getOpenClawHookStatus(
-  opts: OpenClawHookOptions,
-): Promise<NotifierStatus> {
+export async function getOpenClawHookStatus(opts: OpenClawHookOptions): Promise<NotifierStatus> {
   const fs = opts.fs ?? { readFile, writeFile, mkdir, rm };
   const pluginDir = join(opts.pluginBaseDir, PLUGIN_ID);
   const loaded = await loadConfig(opts.openclawConfigPath, fs);
@@ -188,9 +188,7 @@ async function loadConfig(
   configPath: string,
   fs: OpenClawHookFs,
 ): Promise<
-  | { status: "missing" }
-  | { status: "invalid" }
-  | { status: "ok"; config: Record<string, unknown> }
+  { status: "missing" } | { status: "invalid" } | { status: "ok"; config: Record<string, unknown> }
 > {
   try {
     const raw = await fs.readFile(configPath, "utf8");

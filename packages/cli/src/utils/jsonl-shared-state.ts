@@ -13,10 +13,7 @@ export type JsonlSharedSnapshot = {
   claudeIds: string[] | null;
 };
 
-export function snapshotCodexSharedState(
-  ctx: SyncContext,
-  filePath: string,
-): CodexSharedSnapshot {
+export function snapshotCodexSharedState(ctx: SyncContext, filePath: string): CodexSharedSnapshot {
   const scopeId = ctx.codexFileScopes?.get(filePath);
   if (!scopeId) return null;
   const hadTotals = ctx.codexScopeTotals?.has(scopeId) ?? false;
@@ -29,10 +26,7 @@ export function snapshotCodexSharedState(
   };
 }
 
-export function restoreCodexSharedState(
-  ctx: SyncContext,
-  snapshot: CodexSharedSnapshot,
-): void {
+export function restoreCodexSharedState(ctx: SyncContext, snapshot: CodexSharedSnapshot): void {
   if (!snapshot) return;
   if (snapshot.hadTotals && snapshot.totals) {
     ctx.codexScopeTotals?.set(snapshot.scopeId, snapshot.totals);
@@ -51,20 +45,14 @@ export function restoreCodexSharedState(
   }
 }
 
-export function snapshotJsonlSharedState(
-  ctx: SyncContext,
-  filePath: string,
-): JsonlSharedSnapshot {
+export function snapshotJsonlSharedState(ctx: SyncContext, filePath: string): JsonlSharedSnapshot {
   return {
     codex: snapshotCodexSharedState(ctx, filePath),
     claudeIds: ctx.seenClaudeMessageIds ? [...ctx.seenClaudeMessageIds] : null,
   };
 }
 
-export function restoreJsonlSharedState(
-  ctx: SyncContext,
-  snapshot: JsonlSharedSnapshot,
-): void {
+export function restoreJsonlSharedState(ctx: SyncContext, snapshot: JsonlSharedSnapshot): void {
   restoreCodexSharedState(ctx, snapshot.codex);
   if (snapshot.claudeIds === null) {
     ctx.seenClaudeMessageIds?.clear();

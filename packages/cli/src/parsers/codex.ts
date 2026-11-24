@@ -18,7 +18,11 @@ import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
-import { accountingLabel, inclusiveAccounting, type AccountingContext } from "../utils/accounting.js";
+import {
+  accountingLabel,
+  inclusiveAccounting,
+  type AccountingContext,
+} from "../utils/accounting.js";
 
 /** Result of parsing a single Codex JSONL rollout file */
 export interface CodexFileResult {
@@ -68,7 +72,10 @@ function diffHighWater(current: TokenDelta, previous: TokenDelta): TokenDelta {
     inputTokens: Math.max(0, current.inputTokens - previous.inputTokens),
     cachedInputTokens: Math.max(0, current.cachedInputTokens - previous.cachedInputTokens),
     outputTokens: Math.max(0, current.outputTokens - previous.outputTokens),
-    reasoningOutputTokens: Math.max(0, current.reasoningOutputTokens - previous.reasoningOutputTokens),
+    reasoningOutputTokens: Math.max(
+      0,
+      current.reasoningOutputTokens - previous.reasoningOutputTokens,
+    ),
   };
 }
 
@@ -99,7 +106,9 @@ export function codexUsageEdgeKey(current: TokenDelta, last: TokenDelta): string
     last.cachedInputTokens,
     last.outputTokens,
     last.reasoningOutputTokens,
-  ].map((value) => value.toString(36)).join(".");
+  ]
+    .map((value) => value.toString(36))
+    .join(".");
 }
 
 /**
@@ -159,12 +168,7 @@ export async function parseCodexFile(opts: {
     return { deltas, endOffset: startOffset, lastTotals, lastModel, highWaterTotals, usageKeys };
   }
 
-  const endOffset = await jsonlCompleteBound(
-    filePath,
-    startOffset,
-    st.size,
-    opts.endBound,
-  );
+  const endOffset = await jsonlCompleteBound(filePath, startOffset, st.size, opts.endBound);
   if (endOffset === 0 || startOffset >= endOffset) {
     return {
       deltas,
@@ -208,8 +212,10 @@ export async function parseCodexFile(opts: {
 
       // Track model from turn_context (overrides session_meta)
       if (type === "turn_context" && payload) {
-        if (Object.hasOwn(payload, "service_tier")) accountingContext.service_tier = accountingLabel(payload.service_tier);
-        if (Object.hasOwn(payload, "model_provider")) accountingContext.provider = accountingLabel(payload.model_provider);
+        if (Object.hasOwn(payload, "service_tier"))
+          accountingContext.service_tier = accountingLabel(payload.service_tier);
+        if (Object.hasOwn(payload, "model_provider"))
+          accountingContext.provider = accountingLabel(payload.model_provider);
         const model = typeof payload.model === "string" ? payload.model.trim() : null;
         if (model) lastModel = model;
         continue;
@@ -242,7 +248,12 @@ export async function parseCodexFile(opts: {
           };
           const usageKey = codexUsageEdgeKey(currentTotals, last);
           if (seenUsageKeys.has(usageKey)) {
-            rawDelta = { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningOutputTokens: 0 };
+            rawDelta = {
+              inputTokens: 0,
+              cachedInputTokens: 0,
+              outputTokens: 0,
+              reasoningOutputTokens: 0,
+            };
           } else {
             seenUsageKeys.add(usageKey);
             usageKeys.push(usageKey);
@@ -275,12 +286,30 @@ export async function parseCodexFile(opts: {
           model: lastModel || "unknown",
           timestamp,
           tokens,
-          ...(opts.includeAccounting ? { accounting: inclusiveAccounting(tokens, {
-            input: lastUsage ? lastUsage.input_tokens : rawDelta.inputTokens, read: lastUsage ? lastUsage.cached_input_tokens : rawDelta.cachedInputTokens,
-            write: lastUsage?.cache_write_input_tokens, output: lastUsage ? lastUsage.output_tokens : rawDelta.outputTokens,
-            reasoning: lastUsage ? lastUsage.reasoning_output_tokens : rawDelta.reasoningOutputTokens,
-          }, { origin: lastUsage ? "codex:last_token_usage" : "codex:cumulative", model: lastModel || "unknown",
-            ...accountingContext, rawTotal: lastUsage?.total_tokens, aggregate: !lastUsage, quality: lastUsage ? "reported" : "derived" }) } : {}),
+          ...(opts.includeAccounting
+            ? {
+                accounting: inclusiveAccounting(
+                  tokens,
+                  {
+                    input: lastUsage ? lastUsage.input_tokens : rawDelta.inputTokens,
+                    read: lastUsage ? lastUsage.cached_input_tokens : rawDelta.cachedInputTokens,
+                    write: lastUsage?.cache_write_input_tokens,
+                    output: lastUsage ? lastUsage.output_tokens : rawDelta.outputTokens,
+                    reasoning: lastUsage
+                      ? lastUsage.reasoning_output_tokens
+                      : rawDelta.reasoningOutputTokens,
+                  },
+                  {
+                    origin: lastUsage ? "codex:last_token_usage" : "codex:cumulative",
+                    model: lastModel || "unknown",
+                    ...accountingContext,
+                    rawTotal: lastUsage?.total_tokens,
+                    aggregate: !lastUsage,
+                    quality: lastUsage ? "reported" : "derived",
+                  },
+                ),
+              }
+            : {}),
         });
       }
     }
@@ -289,7 +318,13 @@ export async function parseCodexFile(opts: {
     stream.destroy();
   }
 
-  return { deltas, endOffset, lastTotals, lastModel, highWaterTotals, usageKeys,
+  return {
+    deltas,
+    endOffset,
+    lastTotals,
+    lastModel,
+    highWaterTotals,
+    usageKeys,
     ...(opts.includeAccounting ? { lastAccountingContext: accountingContext } : {}),
   };
 }

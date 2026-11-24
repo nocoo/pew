@@ -8,26 +8,16 @@ describe("resolveNotifierPaths", () => {
 
     expect(paths.stateDir).toBe(join("/home/tester", ".config", "pew"));
     expect(paths.binDir).toBe(join("/home/tester", ".config", "pew", "bin"));
-    expect(paths.notifyPath).toBe(
-      join("/home/tester", ".config", "pew", "bin", "notify.cjs"),
-    );
+    expect(paths.notifyPath).toBe(join("/home/tester", ".config", "pew", "bin", "notify.cjs"));
     expect(paths.lockPath).toBe(join("/home/tester", ".config", "pew", "sync.lock"));
-    expect(paths.signalPath).toBe(
-      join("/home/tester", ".config", "pew", "notify.signal"),
-    );
+    expect(paths.signalPath).toBe(join("/home/tester", ".config", "pew", "notify.signal"));
     expect(paths.claudeSettingsPath).toBe(join("/home/tester", ".claude", "settings.json"));
 
     expect(paths.opencodeConfigDir).toBe(join("/home/tester", ".config", "opencode"));
-    expect(paths.opencodePluginDir).toBe(
-      join("/home/tester", ".config", "opencode", "plugin"),
-    );
+    expect(paths.opencodePluginDir).toBe(join("/home/tester", ".config", "opencode", "plugin"));
     expect(paths.openclawHome).toBe(join("/home/tester", ".openclaw"));
-    expect(paths.openclawConfigPath).toBe(
-      join("/home/tester", ".openclaw", "openclaw.json"),
-    );
-    expect(paths.openclawPluginDir).toBe(
-      join("/home/tester", ".config", "pew", "openclaw-plugin"),
-    );
+    expect(paths.openclawConfigPath).toBe(join("/home/tester", ".openclaw", "openclaw.json"));
+    expect(paths.openclawPluginDir).toBe(join("/home/tester", ".config", "pew", "openclaw-plugin"));
     expect(paths.codexHome).toBe(join("/home/tester", ".codex"));
     expect(paths.codexConfigPath).toBe(join("/home/tester", ".codex", "config.toml"));
     expect(paths.codexNotifyOriginalPath).toBe(

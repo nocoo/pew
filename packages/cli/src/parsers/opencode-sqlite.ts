@@ -76,15 +76,12 @@ export function processOpenCodeMessages(
     messageKeys.add(`${row.session_id}|${row.id}`);
 
     // Normalize tokens
-    const tokens = normalizeOpenCodeTokens(
-      msg.tokens as Record<string, unknown> | null,
-    );
+    const tokens = normalizeOpenCodeTokens(msg.tokens as Record<string, unknown> | null);
     if (!tokens || isAllZero(tokens)) continue;
 
     // Extract timestamp from time.completed or time.created
     const time = msg.time as Record<string, unknown> | undefined;
-    const timestampMs =
-      coerceEpochMs(time?.completed) || coerceEpochMs(time?.created);
+    const timestampMs = coerceEpochMs(time?.completed) || coerceEpochMs(time?.created);
     if (!timestampMs) continue;
 
     // Extract model

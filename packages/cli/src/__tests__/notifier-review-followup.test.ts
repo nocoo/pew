@@ -67,12 +67,15 @@ describe("executeUninstall — Codex backup guarded by driver outcome (doc 45 §
       stateDir: "/tmp/pew",
       home: "/tmp",
       resolveNotifierPathsFn: makePaths,
-      uninstallAllFn: async () => [codexHook, {
-        source: "claude-code",
-        action: "uninstall",
-        changed: true,
-        detail: "ok",
-      }],
+      uninstallAllFn: async () => [
+        codexHook,
+        {
+          source: "claude-code",
+          action: "uninstall",
+          changed: true,
+          detail: "ok",
+        },
+      ],
       removeNotifyHandlerFn: async () => ({
         changed: true,
         path: "/tmp/pew/bin/notify.cjs",
@@ -99,9 +102,11 @@ describe("executeUninstall — Codex backup guarded by driver outcome (doc 45 §
       home: "/tmp",
       resolveNotifierPathsFn: makePaths,
       uninstallAllFn: async () => [codexHook],
-      getAllDriversFn: () => [
-        { source: "codex" as Source, displayName: "Codex" },
-      ] as Array<{ source: Source; displayName: string }>,
+      getAllDriversFn: () =>
+        [{ source: "codex" as Source, displayName: "Codex" }] as Array<{
+          source: Source;
+          displayName: string;
+        }>,
       removeNotifyHandlerFn: async () => ({
         changed: true,
         path: "/tmp/pew/bin/notify.cjs",
@@ -326,9 +331,7 @@ describe("notify-handler chain guard — diagnostic reachable (doc 45 §4.1 #3)"
       .digest("hex")
       .slice(0, 16);
     const spy = makeChainGuardSandbox(`foo,${instanceId},bar`);
-    const guardWrite = spy.writes.find((w) =>
-      w.path.endsWith("last-notify-guard.json"),
-    );
+    const guardWrite = spy.writes.find((w) => w.path.endsWith("last-notify-guard.json"));
     expect(guardWrite).toBeDefined();
     const parsed = JSON.parse(guardWrite!.data);
     expect(parsed.reason).toBe("chain_reentry");
@@ -338,9 +341,7 @@ describe("notify-handler chain guard — diagnostic reachable (doc 45 §4.1 #3)"
   it("writes last-notify-guard.json when chain exceeds 2048 bytes (chain_too_long)", () => {
     const long = "a".repeat(3_000);
     const spy = makeChainGuardSandbox(long);
-    const guardWrite = spy.writes.find((w) =>
-      w.path.endsWith("last-notify-guard.json"),
-    );
+    const guardWrite = spy.writes.find((w) => w.path.endsWith("last-notify-guard.json"));
     expect(guardWrite).toBeDefined();
     const parsed = JSON.parse(guardWrite!.data);
     expect(parsed.reason).toBe("chain_too_long");
@@ -465,18 +466,13 @@ describe("notify-handler self-notify — Windows case-insensitive (doc 45 §4.1 
     // (If reads is empty the test would silently pass for the wrong
     // reason — e.g. gate/backup path mismatch, ENOENT on backup, or
     // early exit — none of which exercise the case-fold branch.)
-    const backupReads = reads.filter(
-      (p) => p === "C:\\pew\\state\\codex_notify_original.json",
-    );
+    const backupReads = reads.filter((p) => p === "C:\\pew\\state\\codex_notify_original.json");
     expect(backupReads).toHaveLength(1);
     // With the backup actually parsed, the case-folded self check must
     // treat the saved-original as self and refuse to forward. The Pew
     // worker spawn (pew.cmd / pew / npx) is a separate branch.
     const foreign = spawns.filter(
-      (s) =>
-        !s.cmd.endsWith("pew.cmd") &&
-        !s.cmd.endsWith("pew") &&
-        s.cmd !== "npx",
+      (s) => !s.cmd.endsWith("pew.cmd") && !s.cmd.endsWith("pew") && s.cmd !== "npx",
     );
     expect(foreign).toHaveLength(0);
   });

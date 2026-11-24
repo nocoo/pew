@@ -55,10 +55,7 @@ describe("claudeTokenDriver", () => {
       await writeFile(join(projectsDir, "session.jsonl"), `${claudeLine()}\n`);
       await writeFile(join(projectsDir, "not-jsonl.txt"), "ignore");
 
-      const files = await claudeTokenDriver.discover(
-        { claudeDir: tempDir },
-        ctx,
-      );
+      const files = await claudeTokenDriver.discover({ claudeDir: tempDir }, ctx);
       expect(files).toHaveLength(1);
       expect(files[0]).toContain("session.jsonl");
     });
@@ -202,14 +199,22 @@ describe("claudeTokenDriver", () => {
       // Fresh context so the resume test isn't affected by other tests'
       // shared `ctx`. Byte-offset resume must work regardless of dedup state.
       const localCtx: SyncContext = {};
-      const result1 = await claudeTokenDriver.parse(filePath, { kind: "claude", startOffset: 0, priorSeenIds: [] }, localCtx);
+      const result1 = await claudeTokenDriver.parse(
+        filePath,
+        { kind: "claude", startOffset: 0, priorSeenIds: [] },
+        localCtx,
+      );
       expect(result1.deltas).toHaveLength(2);
 
       // Build cursor with endOffset
       const endOffset = (result1 as unknown as { endOffset: number }).endOffset;
 
       // Parse from offset — nothing new
-      const result2 = await claudeTokenDriver.parse(filePath, { kind: "claude", startOffset: endOffset, priorSeenIds: [] }, localCtx);
+      const result2 = await claudeTokenDriver.parse(
+        filePath,
+        { kind: "claude", startOffset: endOffset, priorSeenIds: [] },
+        localCtx,
+      );
       expect(result2.deltas).toHaveLength(0);
     });
   });

@@ -73,9 +73,7 @@ describe("pricing cutover (C5)", () => {
       aliases: ["claude-sonnet-4-alias", "anthropic/claude-sonnet-4-20250514"],
     };
     const map = buildPricingMap({ dynamic: [entry] });
-    expect(map.models["claude-sonnet-4-alias"]).toBe(
-      map.models["anthropic/claude-sonnet-4"],
-    );
+    expect(map.models["claude-sonnet-4-alias"]).toBe(map.models["anthropic/claude-sonnet-4"]);
     expect(map.models["anthropic/claude-sonnet-4-20250514"]).toEqual({
       input: 3,
       output: 15,

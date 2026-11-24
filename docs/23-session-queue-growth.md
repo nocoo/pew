@@ -6,13 +6,13 @@
 
 ### 当前数据
 
-| Metric | Token Queue | Session Queue |
-|--------|------------|---------------|
-| 写入方式 | `overwrite()` (atomic replace) | `appendBatch()` (append) |
-| 文件大小 | 753 KB | **21 MB** |
-| 行数 | 2,996 | **63,548** |
-| Unique keys | 2,996 | 7,758 |
-| 冗余倍率 | 1.0x | **8.2x** |
+| Metric      | Token Queue                    | Session Queue            |
+| ----------- | ------------------------------ | ------------------------ |
+| 写入方式    | `overwrite()` (atomic replace) | `appendBatch()` (append) |
+| 文件大小    | 753 KB                         | **21 MB**                |
+| 行数        | 2,996                          | **63,548**               |
+| Unique keys | 2,996                          | 7,758                    |
+| 冗余倍率    | 1.0x                           | **8.2x**                 |
 
 每次 sync 追加约 3,700 行（= unique session count），加上后台 notifier 进程的并发 sync，文件以约每次 sync **4K 行 / 1.3MB** 的速度增长。
 
@@ -102,7 +102,8 @@ session-upload:
 ```
 
 **优点**: 与 token pipeline 对齐，文件大小恒定（= unique sessions × record size ≈ 2.7MB）
-**缺点**: 
+**缺点**:
+
 - 每次 upload 发送**所有** session records（不仅仅是增量），D1 upsert 幂等所以正确性无碍，但浪费带宽
 - 并发 notifier 问题：两个进程同时 overwrite 会互相覆盖
 - 打破了 "只上传新数据" 的增量优化

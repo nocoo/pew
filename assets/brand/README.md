@@ -2,12 +2,12 @@
 
 Adopted from `hexly.ai/artwork/logo-family/pew/2026-09-06-01/`, finishing `04`. The selected zebra preserves its wink, ivory and charcoal facets, and one rainbow tongue. Its neck enters naturally through the bottom and right edges. The lilac field keeps the owner's selected tapered-stripe motif.
 
-| Asset | Role |
-| --- | --- |
-| `../../logo.png` | Canonical transparent foreground, 2048 × 2048 |
-| `icon.png` | Square lilac presentation for platform-managed masking |
+| Asset              | Role                                                             |
+| ------------------ | ---------------------------------------------------------------- |
+| `../../logo.png`   | Canonical transparent foreground, 2048 × 2048                    |
+| `icon.png`         | Square lilac presentation for platform-managed masking           |
 | `icon-rounded.png` | Rounded presentation for the 128 px README logo and social image |
-| `provenance.json` | Source study, selected pass, local adoption scope, and hashes |
+| `provenance.json`  | Source study, selected pass, local adoption scope, and hashes    |
 
 Regenerate all application derivatives with:
 

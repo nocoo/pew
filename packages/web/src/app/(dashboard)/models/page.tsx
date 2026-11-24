@@ -30,8 +30,12 @@ function ModelsSkeleton() {
     <div className="space-y-4 md:space-y-6">
       <div className="grid gap-4 md:gap-6">
         {Array.from({ length: 2 }).map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-          <ChartCardSkeleton key={`slot-${i}`} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
+          <ChartCardSkeleton
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            key={`slot-${i}`}
+            titleWidth="w-24"
+            chartHeight="h-[240px] md:h-[280px]"
+          />
         ))}
       </div>
 
@@ -43,28 +47,60 @@ function ModelsSkeleton() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-basalt-border">
-              <th className="px-4 py-3 text-left"><Skeleton style={{ width: undefined }} className="h-3 w-12" /></th>
-              <th className="px-4 py-3 text-left hidden lg:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-14 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-left">
+                <Skeleton style={{ width: undefined }} className="h-3 w-12" />
+              </th>
+              <th className="px-4 py-3 text-left hidden lg:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10" />
+              </th>
+              <th className="px-4 py-3 text-right">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right hidden md:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right hidden sm:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-14 ml-auto" />
+              </th>
+              <th className="px-4 py-3 text-right hidden md:table-cell">
+                <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+              </th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 5 }).map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
               <tr key={`slot-${i}`} className="border-b border-basalt-border/50 last:border-0">
-                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-32" /></td>
-                <td className="px-4 py-3 hidden lg:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-16" /></td>
-                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-2 w-full rounded-full" /></td>
+                <td className="px-4 py-3">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-32" />
+                </td>
+                <td className="px-4 py-3 hidden lg:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-16" />
+                </td>
+                <td className="px-4 py-3">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3 hidden md:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3 hidden sm:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" />
+                </td>
+                <td className="px-4 py-3 hidden md:table-cell">
+                  <Skeleton style={{ width: undefined }} className="h-2 w-full rounded-full" />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -119,7 +155,16 @@ export default function ModelsPage() {
       <PageHeader
         title="By Model"
         description={`Token usage grouped by AI model (${subtitle}).`}
-        actions={<><PeriodSelector value={period} onChange={setPeriod} /><UsageInformation records={data?.records ?? []} pricingMap={pricingMap} loading={pricingLoading} /></>}
+        actions={
+          <>
+            <PeriodSelector value={period} onChange={setPeriod} />
+            <UsageInformation
+              records={data?.records ?? []}
+              pricingMap={pricingMap}
+              loading={pricingLoading}
+            />
+          </>
+        }
       />
 
       {/* Error */}
@@ -129,117 +174,149 @@ export default function ModelsPage() {
       {loading && <ModelsSkeleton />}
 
       {/* Content */}
-      {!loading && data && (
-        modelGroups.length === 0 ? (
-            <Empty
-              title="No usage data yet."
-              description="Start using your AI coding tools and sync with pew!"
-              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-            />
-          ) : (
-            <>
-              {/* Evolution charts */}
-              <div className="grid gap-4 md:gap-6">
-                <SourceTrendChart data={sourceTrendData} />
-                <ModelEvolutionChart records={data.records} tzOffset={tzOffset} end={today} />
-              </div>
+      {!loading &&
+        data &&
+        (modelGroups.length === 0 ? (
+          <Empty
+            title="No usage data yet."
+            description="Start using your AI coding tools and sync with pew!"
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+          />
+        ) : (
+          <>
+            {/* Evolution charts */}
+            <div className="grid gap-4 md:gap-6">
+              <SourceTrendChart data={sourceTrendData} />
+              <ModelEvolutionChart records={data.records} tzOffset={tzOffset} end={today} />
+            </div>
 
-              {/* Chart */}
-              <ModelBreakdownChart data={models} />
+            {/* Chart */}
+            <ModelBreakdownChart data={models} />
 
-              {/* Summary table */}
-              <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-basalt-border">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">Model</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">Agent</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">Input</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">Output</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">Cached</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">Total</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">Est. Cost</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32 hidden md:table-cell">Share</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modelGroups.map((group) => (
-                      <tr
-                        key={group.model}
-                        className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className="h-2.5 w-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: modelColor(group.model).color }}
-                            />
-                            <span className="text-sm font-mono font-medium text-basalt-foreground">{group.model}</span>
-                            <ModelInfoTooltip model={group.model} className="ml-0.5" />
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 hidden lg:table-cell">
-                          <div className="flex gap-1.5">
-                            {group.sources.map((s) => {
-                              const ac = agentColor(s);
-                              return (
-                                <span
-                                  key={s}
-                                  className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                                  style={{
-                                    backgroundColor: withAlpha(ac.token, 0.12),
-                                    color: ac.color,
-                                  }}
-                                >
-                                  {sourceLabel(s)}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right tabular-nums">{formatTokens(group.inputTokens)}</td>
-                        <td className="px-4 py-3 text-sm text-right tabular-nums">{formatTokens(group.outputTokens)}</td>
-                        <td className="px-4 py-3 text-sm text-right tabular-nums hidden md:table-cell">{formatTokens(group.cachedTokens)}</td>
-                        <td className="px-4 py-3 text-sm text-right tabular-nums font-medium">{formatTokens(group.totalTokens)}</td>
-                        <td className="px-4 py-3 text-sm text-right tabular-nums hidden sm:table-cell">{formatCost(group.estimatedCost)}</td>
-                        <td className="px-4 py-3 hidden md:table-cell">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 rounded-full bg-basalt-background overflow-hidden">
-                              <div
-                                key={group.pctOfTotal}
-                                className="chart-animate chart-grow-x h-full rounded-full"
-                                style={{
-                                  width: `${group.pctOfTotal}%`,
-                                  backgroundColor: modelColor(group.model).color,
-                                }}
-                              />
-                            </div>
-                            <span className="text-[10px] tabular-nums text-basalt-muted-foreground w-8 text-right">
-                              {group.pctOfTotal.toFixed(0)}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t border-basalt-border">
-                      <td className="px-4 py-3 text-sm font-medium" colSpan={2}>Total</td>
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden lg:table-cell" />
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium" />
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden md:table-cell" />
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-bold">{formatTokens(grandTotal)}</td>
-                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden sm:table-cell">
-                        {formatCost(modelGroups.reduce((s, g) => s + g.estimatedCost, 0))}
+            {/* Summary table */}
+            <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-basalt-border">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                      Model
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">
+                      Agent
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                      Input
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                      Output
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
+                      Cached
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
+                      Est. Cost
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32 hidden md:table-cell">
+                      Share
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modelGroups.map((group) => (
+                    <tr
+                      key={group.model}
+                      className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: modelColor(group.model).color }}
+                          />
+                          <span className="text-sm font-mono font-medium text-basalt-foreground">
+                            {group.model}
+                          </span>
+                          <ModelInfoTooltip model={group.model} className="ml-0.5" />
+                        </div>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell" />
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <div className="flex gap-1.5">
+                          {group.sources.map((s) => {
+                            const ac = agentColor(s);
+                            return (
+                              <span
+                                key={s}
+                                className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                style={{
+                                  backgroundColor: withAlpha(ac.token, 0.12),
+                                  color: ac.color,
+                                }}
+                              >
+                                {sourceLabel(s)}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right tabular-nums">
+                        {formatTokens(group.inputTokens)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right tabular-nums">
+                        {formatTokens(group.outputTokens)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right tabular-nums hidden md:table-cell">
+                        {formatTokens(group.cachedTokens)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right tabular-nums font-medium">
+                        {formatTokens(group.totalTokens)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right tabular-nums hidden sm:table-cell">
+                        {formatCost(group.estimatedCost)}
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 rounded-full bg-basalt-background overflow-hidden">
+                            <div
+                              key={group.pctOfTotal}
+                              className="chart-animate chart-grow-x h-full rounded-full"
+                              style={{
+                                width: `${group.pctOfTotal}%`,
+                                backgroundColor: modelColor(group.model).color,
+                              }}
+                            />
+                          </div>
+                          <span className="text-[10px] tabular-nums text-basalt-muted-foreground w-8 text-right">
+                            {group.pctOfTotal.toFixed(0)}%
+                          </span>
+                        </div>
+                      </td>
                     </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </>
-          )
-      )}
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-basalt-border">
+                    <td className="px-4 py-3 text-sm font-medium" colSpan={2}>
+                      Total
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden lg:table-cell" />
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-medium" />
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden md:table-cell" />
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-bold">
+                      {formatTokens(grandTotal)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden sm:table-cell">
+                      {formatCost(modelGroups.reduce((s, g) => s + g.estimatedCost, 0))}
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell" />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
+        ))}
     </div>
   );
 }

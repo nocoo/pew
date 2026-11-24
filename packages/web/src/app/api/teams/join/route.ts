@@ -15,10 +15,7 @@ export async function POST(request: Request) {
   }
 
   // Rate limit: 5 join attempts per minute per user
-  const rl = inMemoryRateLimiter.check(
-    `team-join:${authResult.userId}`,
-    TEAM_JOIN_RATE_LIMIT,
-  );
+  const rl = inMemoryRateLimiter.check(`team-join:${authResult.userId}`, TEAM_JOIN_RATE_LIMIT);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many join attempts. Please try again later." },
@@ -35,10 +32,7 @@ export async function POST(request: Request) {
 
   const inviteCode = body.invite_code;
   if (typeof inviteCode !== "string" || inviteCode.length === 0) {
-    return NextResponse.json(
-      { error: "invite_code is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "invite_code is required" }, { status: 400 });
   }
 
   if (!/^[a-f0-9]{32}$/.test(inviteCode)) {
@@ -53,20 +47,14 @@ export async function POST(request: Request) {
     const team = await dbRead.findTeamByInviteCode(inviteCode);
 
     if (!team) {
-      return NextResponse.json(
-        { error: "Invalid invite code" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Invalid invite code" }, { status: 404 });
     }
 
     // Check if already a member
     const isMember = await dbRead.checkTeamMembershipExists(team.id, authResult.userId);
 
     if (isMember) {
-      return NextResponse.json(
-        { error: "Already a member of this team" },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: "Already a member of this team" }, { status: 409 });
     }
 
     // Enforce team member limit from app_settings (default: 5)

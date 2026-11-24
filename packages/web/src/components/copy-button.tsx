@@ -29,7 +29,11 @@ export function CopyButton({ text, children }: { text: string; children: string 
       >
         <span aria-live="polite">{copied ? "Copied" : children}</span>
       </Button>
-      {failed && <p role="alert" className="text-xs text-basalt-destructive">Could not copy. Try again.</p>}
+      {failed && (
+        <p role="alert" className="text-xs text-basalt-destructive">
+          Could not copy. Try again.
+        </p>
+      )}
     </div>
   );
 }

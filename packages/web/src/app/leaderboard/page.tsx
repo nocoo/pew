@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useLeaderboard,
-  type LeaderboardPeriod,
-} from "@/hooks/use-leaderboard";
+import { useLeaderboard, type LeaderboardPeriod } from "@/hooks/use-leaderboard";
 import { useLeaderboardScope } from "@/hooks/use-leaderboard-scope";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { LeaderboardPageTitle } from "@/components/leaderboard/leaderboard-page-title";
@@ -32,21 +29,14 @@ export default function LeaderboardPage() {
     orgId,
   } = useLeaderboardScope();
 
-  const {
-    entries,
-    loading,
-    loadingMore,
-    error,
-    hasMore,
-    loadMore,
-    animationStartIndex,
-  } = useLeaderboard({
-    period,
-    teamId,
-    orgId,
-    limit: PAGE_SIZE,
-    enabled: scopeInitialized && !isSessionLoading,
-  });
+  const { entries, loading, loadingMore, error, hasMore, loadMore, animationStartIndex } =
+    useLeaderboard({
+      period,
+      teamId,
+      orgId,
+      limit: PAGE_SIZE,
+      enabled: scopeInitialized && !isSessionLoading,
+    });
 
   return (
     <>

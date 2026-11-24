@@ -28,10 +28,7 @@ const JPEG_QUALITY = 80;
 // POST — upload logo
 // ---------------------------------------------------------------------------
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> },
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const admin = await resolveAdmin(request);
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -53,43 +50,36 @@ export async function POST(
   let formData: FormData;
   try {
     const body = await readBoundedBody(request, MAX_FILE_SIZE + 64 * 1024);
-    formData = await new Response(body, { headers: { "Content-Type": request.headers.get("Content-Type") ?? "" } }).formData();
+    formData = await new Response(body, {
+      headers: { "Content-Type": request.headers.get("Content-Type") ?? "" },
+    }).formData();
   } catch (error) {
-    if (error instanceof BodyTooLargeError) return NextResponse.json({ error: error.message }, { status: 413 });
-    return NextResponse.json(
-      { error: "Expected multipart/form-data" },
-      { status: 400 },
-    );
+    if (error instanceof BodyTooLargeError)
+      return NextResponse.json({ error: error.message }, { status: 413 });
+    return NextResponse.json({ error: "Expected multipart/form-data" }, { status: 400 });
   }
 
   const file = formData.get("file");
   if (!file || !(file instanceof File)) {
-    return NextResponse.json(
-      { error: "Missing file field" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Missing file field" }, { status: 400 });
   }
 
   let fieldCount = 0;
-  formData.forEach(() => { fieldCount++; });
+  formData.forEach(() => {
+    fieldCount++;
+  });
   if (fieldCount !== 1) {
     return NextResponse.json({ error: "Expected a single file field" }, { status: 400 });
   }
 
   // Validate MIME type
   if (!ACCEPTED_TYPES.has(file.type)) {
-    return NextResponse.json(
-      { error: "Only PNG and JPEG images are accepted" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Only PNG and JPEG images are accepted" }, { status: 400 });
   }
 
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json(
-      { error: "File too large (max 2 MB)" },
-      { status: 413 },
-    );
+    return NextResponse.json({ error: "File too large (max 2 MB)" }, { status: 413 });
   }
 
   // Read file buffer
@@ -104,10 +94,7 @@ export async function POST(
       .jpeg({ quality: JPEG_QUALITY })
       .toBuffer();
   } catch {
-    return NextResponse.json(
-      { error: "Invalid image file" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid image file" }, { status: 400 });
   }
 
   // Upload to R2 (returns new unique CDN URL)
@@ -116,10 +103,7 @@ export async function POST(
     newLogoUrl = await putOrgLogo(orgId, jpegBuffer);
   } catch (err) {
     console.error("Failed to upload org logo to R2:", err);
-    return NextResponse.json(
-      { error: "Failed to store logo" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to store logo" }, { status: 500 });
   }
 
   // Persist new URL to DB — compensate by deleting the new R2 object on failure
@@ -141,10 +125,7 @@ export async function POST(
       // Double-fault: log but accept potential orphan
       console.error("Compensating R2 delete also failed for:", newLogoUrl);
     }
-    return NextResponse.json(
-      { error: "Failed to save logo" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to save logo" }, { status: 500 });
   }
 
   // Best-effort delete old R2 object
@@ -163,10 +144,7 @@ export async function POST(
 // DELETE — remove logo
 // ---------------------------------------------------------------------------
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> },
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const admin = await resolveAdmin(request);
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -192,10 +170,7 @@ export async function DELETE(
     );
   } catch (err) {
     console.error("Failed to clear logo_url in DB:", err);
-    return NextResponse.json(
-      { error: "Failed to remove logo" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to remove logo" }, { status: 500 });
   }
 
   // Best-effort delete from R2

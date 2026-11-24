@@ -24,10 +24,8 @@ export const STATUS_LABELS: Record<SeasonStatus, string> = {
 // ---------------------------------------------------------------------------
 
 export const STATUS_BADGE_STYLES: Record<SeasonStatus, string> = {
-  active:
-    "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/25",
-  upcoming:
-    "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/25",
+  active: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/25",
+  upcoming: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/25",
   ended: "bg-basalt-muted text-basalt-muted-foreground border-basalt-border",
 };
 
@@ -48,5 +46,4 @@ export const TIMELINE_DOT_COLORS: Record<SeasonStatus, string> = {
 export const LIVE_PILL_STYLE =
   "border-green-500/25 bg-green-500/15 text-green-700 dark:text-green-400";
 
-export const FINAL_PILL_STYLE =
-  "border-basalt-border bg-basalt-muted text-basalt-muted-foreground";
+export const FINAL_PILL_STYLE = "border-basalt-border bg-basalt-muted text-basalt-muted-foreground";

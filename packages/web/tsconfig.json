@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -28,9 +24,7 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -44,9 +38,5 @@
     ".next-e2e-ui/types/**/*.ts",
     ".next-e2e-ui/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "e2e",
-    "src/__tests__/e2e"
-  ]
+  "exclude": ["node_modules", "e2e", "src/__tests__/e2e"]
 }

@@ -16,7 +16,9 @@ function runHook(failure: string) {
   try {
     const bin = join(root, "bin");
     mkdirSync(bin);
-    writeFileSync(join(bin, "bun"), `#!/bin/sh
+    writeFileSync(
+      join(bin, "bun"),
+      `#!/bin/sh
 if [ "$1" = "--no-env-file" ]; then
   echo "environment guard ran"
   [ "$FAILURE" != "preflight" ]
@@ -30,7 +32,9 @@ esac
 echo "$2 stdout"
 echo "$2 stderr" >&2
 if [ "$FAILURE" = "$2" ] || [ "$FAILURE" = "all" ]; then exit 23; fi
-`, { mode: 0o755 });
+`,
+      { mode: 0o755 },
+    );
     return spawnSync("/bin/sh", ["-e", hook], {
       cwd: root,
       env: { PATH: `${bin}:/usr/bin:/bin`, HOME: root, TMPDIR: root, FAILURE: failure },
@@ -43,27 +47,30 @@ if [ "$FAILURE" = "$2" ] || [ "$FAILURE" = "all" ]; then exit 23; fi
 }
 
 describe("pre-push result aggregation under Husky sh -e", () => {
-  it.each(["none", ...lanes.map(([lane]) => lane), "all"])("prints every lane and rejects failures (%s)", (failure) => {
-    const result = runHook(failure);
-    expect(result.error).toBeUndefined();
-    expect(result.signal).toBeNull();
-    expect(result.status, result.stderr).toBe(failure === "none" ? 0 : 1);
-    expect(result.stdout).toContain("environment guard ran");
-    for (const [lane, message] of lanes) {
-      expect(result.stdout).toContain(`${lane} stdout`);
-      expect(result.stdout).toContain(`${lane} stderr`);
-      if (failure === lane || failure === "all") {
-        expect(result.stdout).toContain(`pre-push FAILED: ${message}`);
-      } else {
-        expect(result.stdout).not.toContain(`pre-push FAILED: ${message}`);
+  it.each(["none", ...lanes.map(([lane]) => lane), "all"])(
+    "prints every lane and rejects failures (%s)",
+    (failure) => {
+      const result = runHook(failure);
+      expect(result.error).toBeUndefined();
+      expect(result.signal).toBeNull();
+      expect(result.status, result.stderr).toBe(failure === "none" ? 0 : 1);
+      expect(result.stdout).toContain("environment guard ran");
+      for (const [lane, message] of lanes) {
+        expect(result.stdout).toContain(`${lane} stdout`);
+        expect(result.stdout).toContain(`${lane} stderr`);
+        if (failure === lane || failure === "all") {
+          expect(result.stdout).toContain(`pre-push FAILED: ${message}`);
+        } else {
+          expect(result.stdout).not.toContain(`pre-push FAILED: ${message}`);
+        }
       }
-    }
-    if (failure === "none") {
-      expect(result.stdout).toContain("pre-push passed:");
-    } else {
-      expect(result.stdout).not.toContain("pre-push passed:");
-    }
-  });
+      if (failure === "none") {
+        expect(result.stdout).toContain("pre-push passed:");
+      } else {
+        expect(result.stdout).not.toContain("pre-push passed:");
+      }
+    },
+  );
 
   it("rejects an environment guard failure before launching any lane", () => {
     const result = runHook("preflight");

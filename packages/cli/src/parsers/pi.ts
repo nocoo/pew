@@ -48,20 +48,13 @@ export function normalizePiUsage(u: Record<string, unknown>): TokenDelta {
   // Clamp reasoning to the
   // conversation output (orchestration output is a separate bucket) so a
   // malformed row can never push outputTokens negative.
-  const reasoning = Math.min(
-    conversationOutput,
-    toNonNegInt(u?.reasoningTokens ?? u?.reasoning),
-  );
+  const reasoning = Math.min(conversationOutput, toNonNegInt(u?.reasoningTokens ?? u?.reasoning));
 
   return {
     inputTokens:
-      toNonNegInt(u?.input) +
-      toNonNegInt(u?.cacheWrite) +
-      toNonNegInt(orchestration?.input),
-    cachedInputTokens:
-      toNonNegInt(u?.cacheRead) + toNonNegInt(orchestration?.cacheRead),
-    outputTokens:
-      conversationOutput - reasoning + toNonNegInt(orchestration?.output),
+      toNonNegInt(u?.input) + toNonNegInt(u?.cacheWrite) + toNonNegInt(orchestration?.input),
+    cachedInputTokens: toNonNegInt(u?.cacheRead) + toNonNegInt(orchestration?.cacheRead),
+    outputTokens: conversationOutput - reasoning + toNonNegInt(orchestration?.output),
     reasoningOutputTokens: reasoning,
   };
 }
@@ -114,9 +107,7 @@ export async function parsePiFile(opts: {
 
   try {
     for await (const chunk of stream) {
-      const piece: Uint8Array = Buffer.isBuffer(chunk)
-        ? chunk
-        : Buffer.from(chunk as string);
+      const piece: Uint8Array = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
       if (pending.length === 0) {
         pending = piece;
       } else {
@@ -139,7 +130,12 @@ export async function parsePiFile(opts: {
         const line = Buffer.from(lineBuf).toString("utf8");
 
         // Fast-path: skip lines that can't contain usage data
-        if (!line.includes('"usage"') && !line.includes('"session"') && !line.includes('"model_change"')) continue;
+        if (
+          !line.includes('"usage"') &&
+          !line.includes('"session"') &&
+          !line.includes('"model_change"')
+        )
+          continue;
 
         let obj: Record<string, unknown>;
         try {
@@ -163,26 +159,61 @@ export async function parsePiFile(opts: {
 
         const beforeCursor = readStart + completeBytes <= startOffset;
         if (obj.type === "compaction") {
-          if (!sessionId || typeof obj.id !== "string" || !obj.id ||
-            typeof obj.timestamp !== "string" || !Number.isFinite(Date.parse(obj.timestamp)) ||
-            !obj.usage || typeof obj.usage !== "object") continue;
+          if (
+            !sessionId ||
+            typeof obj.id !== "string" ||
+            !obj.id ||
+            typeof obj.timestamp !== "string" ||
+            !Number.isFinite(Date.parse(obj.timestamp)) ||
+            !obj.usage ||
+            typeof obj.usage !== "object"
+          )
+            continue;
           // Pi copies entry IDs and timestamps when forking into a NEW session
           // header. Scope by the immutable entry tuple, not pathname/header.
           // The timestamp also separates reused short entry IDs in new calls.
-          const eventId = evidenceId(["pi", "compaction", obj.id, new Date(obj.timestamp).toISOString()]);
+          const eventId = evidenceId([
+            "pi",
+            "compaction",
+            obj.id,
+            new Date(obj.timestamp).toISOString(),
+          ]);
           const tokens = normalizePiUsage(obj.usage as Record<string, unknown>);
           if (isAllZero(tokens)) continue;
           if (seenCompactions.has(eventId)) continue;
           seenCompactions.add(eventId);
           if (beforeCursor) continue;
           const model = obj.model ? usageLabel(obj.model) : obj.fromHook ? "unknown" : currentModel;
-          deltas.push({ source, model, timestamp: obj.timestamp, tokens,
-            ...(opts.includeAccounting ? { accounting: piAccounting(tokens, obj.usage as Record<string, unknown>, model, currentProvider, true) } : {}), evidence: {
-            eventId, groupId: eventId,
-            callType: "compaction", origin: "pi-session", provider: currentProvider,
-            granularity: "operation", timePrecision: "exact",
-            intervalStart: null, intervalEnd: null, callCount: null, snapshotSeq: 1,
-          } });
+          deltas.push({
+            source,
+            model,
+            timestamp: obj.timestamp,
+            tokens,
+            ...(opts.includeAccounting
+              ? {
+                  accounting: piAccounting(
+                    tokens,
+                    obj.usage as Record<string, unknown>,
+                    model,
+                    currentProvider,
+                    true,
+                  ),
+                }
+              : {}),
+            evidence: {
+              eventId,
+              groupId: eventId,
+              callType: "compaction",
+              origin: "pi-session",
+              provider: currentProvider,
+              granularity: "operation",
+              timePrecision: "exact",
+              intervalStart: null,
+              intervalEnd: null,
+              callCount: null,
+              snapshotSeq: 1,
+            },
+          });
           continue;
         }
 
@@ -204,16 +235,21 @@ export async function parsePiFile(opts: {
         if (beforeCursor) continue;
 
         // Extract timestamp from the outer JSONL entry
-        const timestamp =
-          typeof obj.timestamp === "string" ? obj.timestamp : null;
+        const timestamp = typeof obj.timestamp === "string" ? obj.timestamp : null;
         if (!timestamp) continue;
 
         // Normalize and filter zero deltas
         const delta = normalizePiUsage(usage);
         if (isAllZero(delta)) continue;
 
-        deltas.push({ source, model, timestamp, tokens: delta,
-          ...(opts.includeAccounting ? { accounting: piAccounting(delta, usage, model, msg.provider ?? currentProvider) } : {}),
+        deltas.push({
+          source,
+          model,
+          timestamp,
+          tokens: delta,
+          ...(opts.includeAccounting
+            ? { accounting: piAccounting(delta, usage, model, msg.provider ?? currentProvider) }
+            : {}),
         });
       }
 

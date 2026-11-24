@@ -61,8 +61,8 @@ describe("syncSeasonRosters", () => {
     expect(mockDbRead.getRosterUserIds).toHaveBeenCalledWith("season-1", "team-1");
 
     // Should INSERT user-2 and user-3 (not user-1 since already in roster)
-    const insertCalls = mockDbWrite.execute.mock.calls.filter(
-      (c: unknown[]) => (c[0] as string).includes("INSERT OR IGNORE"),
+    const insertCalls = mockDbWrite.execute.mock.calls.filter((c: unknown[]) =>
+      (c[0] as string).includes("INSERT OR IGNORE"),
     );
     expect(insertCalls).toHaveLength(2);
     expect(insertCalls[0]![1]).toContain("user-2");
@@ -79,8 +79,8 @@ describe("syncSeasonRosters", () => {
     await syncSeasonRosters(mockDbRead as never, mockDbWrite as never, "team-1");
 
     // Should DELETE user-2 (departed from team)
-    const deleteCalls = mockDbWrite.execute.mock.calls.filter(
-      (c: unknown[]) => (c[0] as string).includes("DELETE"),
+    const deleteCalls = mockDbWrite.execute.mock.calls.filter((c: unknown[]) =>
+      (c[0] as string).includes("DELETE"),
     );
     expect(deleteCalls).toHaveLength(1);
     expect(deleteCalls[0]![1]).toContain("user-2");
@@ -97,8 +97,8 @@ describe("syncSeasonRosters", () => {
     // Should not throw
     await syncSeasonRosters(mockDbRead as never, mockDbWrite as never, "team-1");
 
-    const insertCalls = mockDbWrite.execute.mock.calls.filter(
-      (c: unknown[]) => (c[0] as string).includes("INSERT OR IGNORE"),
+    const insertCalls = mockDbWrite.execute.mock.calls.filter((c: unknown[]) =>
+      (c[0] as string).includes("INSERT OR IGNORE"),
     );
     expect(insertCalls).toHaveLength(2);
   });
@@ -117,8 +117,8 @@ describe("syncSeasonRosters", () => {
     expect(mockDbRead.getRosterUserIds).toHaveBeenCalledTimes(2);
 
     // 2 INSERTs (user-1 into each season)
-    const insertCalls = mockDbWrite.execute.mock.calls.filter(
-      (c: unknown[]) => (c[0] as string).includes("INSERT OR IGNORE"),
+    const insertCalls = mockDbWrite.execute.mock.calls.filter((c: unknown[]) =>
+      (c[0] as string).includes("INSERT OR IGNORE"),
     );
     expect(insertCalls).toHaveLength(2);
   });
@@ -141,7 +141,11 @@ describe("syncAllRostersForSeason", () => {
   it("should return 0 when no teams are registered", async () => {
     mockDbRead.getRegisteredTeamIds.mockResolvedValueOnce([]);
 
-    const count = await syncAllRostersForSeason(mockDbRead as never, mockDbWrite as never, "season-1");
+    const count = await syncAllRostersForSeason(
+      mockDbRead as never,
+      mockDbWrite as never,
+      "season-1",
+    );
 
     expect(count).toBe(0);
     expect(mockDbRead.getRegisteredTeamIds).toHaveBeenCalledWith("season-1");
@@ -155,13 +159,17 @@ describe("syncAllRostersForSeason", () => {
 
     mockDbWrite.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
 
-    const count = await syncAllRostersForSeason(mockDbRead as never, mockDbWrite as never, "season-1");
+    const count = await syncAllRostersForSeason(
+      mockDbRead as never,
+      mockDbWrite as never,
+      "season-1",
+    );
 
     expect(count).toBe(1);
 
     // Should INSERT user-2 only
-    const insertCalls = mockDbWrite.execute.mock.calls.filter(
-      (c: unknown[]) => (c[0] as string).includes("INSERT OR IGNORE"),
+    const insertCalls = mockDbWrite.execute.mock.calls.filter((c: unknown[]) =>
+      (c[0] as string).includes("INSERT OR IGNORE"),
     );
     expect(insertCalls).toHaveLength(1);
     expect(insertCalls[0]![1]).toContain("user-2");
@@ -174,12 +182,16 @@ describe("syncAllRostersForSeason", () => {
 
     mockDbWrite.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
 
-    const count = await syncAllRostersForSeason(mockDbRead as never, mockDbWrite as never, "season-1");
+    const count = await syncAllRostersForSeason(
+      mockDbRead as never,
+      mockDbWrite as never,
+      "season-1",
+    );
 
     expect(count).toBe(1);
 
-    const deleteCalls = mockDbWrite.execute.mock.calls.filter(
-      (c: unknown[]) => (c[0] as string).includes("DELETE"),
+    const deleteCalls = mockDbWrite.execute.mock.calls.filter((c: unknown[]) =>
+      (c[0] as string).includes("DELETE"),
     );
     expect(deleteCalls).toHaveLength(1);
     expect(deleteCalls[0]![1]).toContain("user-2");
@@ -194,7 +206,11 @@ describe("syncAllRostersForSeason", () => {
 
     mockDbWrite.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
 
-    const count = await syncAllRostersForSeason(mockDbRead as never, mockDbWrite as never, "season-1");
+    const count = await syncAllRostersForSeason(
+      mockDbRead as never,
+      mockDbWrite as never,
+      "season-1",
+    );
 
     expect(count).toBe(2);
 
@@ -202,8 +218,8 @@ describe("syncAllRostersForSeason", () => {
     expect(mockDbRead.getRosterUserIds).toHaveBeenCalledTimes(2);
 
     // 2 INSERTs: user-1 into team-1, user-4 into team-2
-    const insertCalls = mockDbWrite.execute.mock.calls.filter(
-      (c: unknown[]) => (c[0] as string).includes("INSERT OR IGNORE"),
+    const insertCalls = mockDbWrite.execute.mock.calls.filter((c: unknown[]) =>
+      (c[0] as string).includes("INSERT OR IGNORE"),
     );
     expect(insertCalls).toHaveLength(2);
     expect(insertCalls[0]![1]).toContain("user-1");
@@ -215,7 +231,11 @@ describe("syncAllRostersForSeason", () => {
     mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["user-1"]);
     mockDbRead.getRosterUserIds.mockResolvedValueOnce(["user-1"]);
 
-    const count = await syncAllRostersForSeason(mockDbRead as never, mockDbWrite as never, "season-1");
+    const count = await syncAllRostersForSeason(
+      mockDbRead as never,
+      mockDbWrite as never,
+      "season-1",
+    );
 
     expect(count).toBe(1);
     expect(mockDbWrite.execute).not.toHaveBeenCalled();

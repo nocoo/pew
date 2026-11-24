@@ -7,13 +7,15 @@ import type { ByteOffsetCursor } from "@pew/core";
 import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
 /** Helper: create a Pi assistant message JSONL line with usage */
-function piAssistantLine(opts: {
-  model?: string;
-  input?: number;
-  output?: number;
-  cacheRead?: number;
-  cacheWrite?: number;
-} = {}): string {
+function piAssistantLine(
+  opts: {
+    model?: string;
+    input?: number;
+    output?: number;
+    cacheRead?: number;
+    cacheWrite?: number;
+  } = {},
+): string {
   const {
     model = "claude-sonnet-4-20250514",
     input = 1000,
@@ -68,15 +70,9 @@ describe("piTokenDriver", () => {
     it("discovers JSONL files under piSessionsDir", async () => {
       const sessDir = join(tempDir, "--Users-test-project--");
       await mkdir(sessDir, { recursive: true });
-      await writeFile(
-        join(sessDir, "session.jsonl"),
-        `${piSessionLine()}\n${piAssistantLine()}\n`,
-      );
+      await writeFile(join(sessDir, "session.jsonl"), `${piSessionLine()}\n${piAssistantLine()}\n`);
 
-      const files = await piTokenDriver.discover(
-        { piSessionsDir: tempDir },
-        ctx,
-      );
+      const files = await piTokenDriver.discover({ piSessionsDir: tempDir }, ctx);
       expect(files).toHaveLength(1);
       expect(files[0]).toContain("session.jsonl");
     });
@@ -169,8 +165,10 @@ describe("piTokenDriver", () => {
     it("parses Pi JSONL and builds cursor", async () => {
       const filePath = join(tempDir, "session.jsonl");
       const content =
-        piSessionLine() + "\n" +
-        piAssistantLine({ input: 1000, output: 200, cacheRead: 100, cacheWrite: 50 }) + "\n";
+        piSessionLine() +
+        "\n" +
+        piAssistantLine({ input: 1000, output: 200, cacheRead: 100, cacheWrite: 50 }) +
+        "\n";
       await writeFile(filePath, content);
 
       const resume = { kind: "byte-offset" as const, startOffset: 0 };
@@ -192,23 +190,29 @@ describe("piTokenDriver", () => {
 
     it("resumes from offset and emits no duplicates", async () => {
       const filePath = join(tempDir, "session.jsonl");
-      const content =
-        piSessionLine() + "\n" +
-        piAssistantLine() + "\n";
+      const content = `${piSessionLine()}\n${piAssistantLine()}\n`;
       await writeFile(filePath, content);
 
       // First parse
-      const result1 = await piTokenDriver.parse(filePath, {
-        kind: "byte-offset",
-        startOffset: 0,
-      }, ctx);
+      const result1 = await piTokenDriver.parse(
+        filePath,
+        {
+          kind: "byte-offset",
+          startOffset: 0,
+        },
+        ctx,
+      );
       expect(result1.deltas.length).toBeGreaterThanOrEqual(1);
 
       // Resume from end — no new data
-      const result2 = await piTokenDriver.parse(filePath, {
-        kind: "byte-offset",
-        startOffset: result1.endOffset,
-      }, ctx);
+      const result2 = await piTokenDriver.parse(
+        filePath,
+        {
+          kind: "byte-offset",
+          startOffset: result1.endOffset,
+        },
+        ctx,
+      );
       expect(result2.deltas).toHaveLength(0);
     });
   });

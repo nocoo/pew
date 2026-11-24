@@ -39,10 +39,7 @@ function createMockFetch(
   let callIndex = 0;
   const calls: Array<{ url: string; init: RequestInit }> = [];
 
-  const fetchFn = async (
-    url: string | URL | Request,
-    init?: RequestInit,
-  ): Promise<Response> => {
+  const fetchFn = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
     calls.push({ url: String(url), init: init ?? {} });
     const resp = responses[callIndex] ?? responses[responses.length - 1];
     callIndex++;
@@ -140,9 +137,7 @@ describe("upload-engine", () => {
 
     await queue.appendBatch([makeRecord(1), makeRecord(2)]);
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 2 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
     const engine = createUploadEngine(config);
     const result = await engine.execute({
@@ -166,11 +161,7 @@ describe("upload-engine", () => {
     await cm.save({ token: "pk_test" });
 
     // Two records with same id — preprocess deduplicates
-    await queue.appendBatch([
-      makeRecord(1, 10),
-      makeRecord(1, 20),
-      makeRecord(2, 30),
-    ]);
+    await queue.appendBatch([makeRecord(1, 10), makeRecord(1, 20), makeRecord(2, 30)]);
 
     const config: UploadEngineConfig<TestRecord> = {
       queue,
@@ -184,9 +175,7 @@ describe("upload-engine", () => {
       },
     };
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 2 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
     const engine = createUploadEngine(config);
     const result = await engine.execute({
@@ -215,9 +204,7 @@ describe("upload-engine", () => {
 
     await queue.append(makeRecord(2));
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const engine = createUploadEngine(config);
     const result = await engine.execute({
@@ -243,9 +230,7 @@ describe("upload-engine", () => {
 
     await queue.append(makeRecord(1));
 
-    const { fetchFn } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const engine = createUploadEngine(config);
     await engine.execute({
@@ -305,9 +290,7 @@ describe("upload-engine", () => {
 
     await queue.append(makeRecord(1));
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 401, body: { error: "Unauthorized" } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 401, body: { error: "Unauthorized" } }]);
 
     const engine = createUploadEngine(config);
     const result = await engine.execute({
@@ -510,9 +493,7 @@ describe("upload-engine", () => {
 
     await queue.appendBatch([makeRecord(1), makeRecord(2)]);
 
-    const { fetchFn } = createMockFetch([
-      { status: 200, body: { ingested: 2 } },
-    ]);
+    const { fetchFn } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
     const events: UploadProgressEvent[] = [];
     const engine = createUploadEngine(config);
@@ -615,9 +596,7 @@ describe("upload-engine", () => {
 
     await queue.append(makeRecord(1));
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const engine = createUploadEngine(config);
     const result = await engine.execute({
@@ -643,9 +622,7 @@ describe("upload-engine", () => {
 
     await queue.append(makeRecord(1));
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const engine = createUploadEngine(config);
     const result = await engine.execute({
@@ -668,9 +645,7 @@ describe("upload-engine", () => {
 
     await queue.append(makeRecord(1));
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 1 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
     const engine = createUploadEngine(config);
     const result = await engine.execute({
@@ -736,11 +711,7 @@ describe("upload-engine", () => {
   describe("dirty-keys filtering", () => {
     /** Helper: create engine with a recordKey extractor for dirty-keys support */
     function createDirtyKeysEngine(testDir: string) {
-      const queue = new BaseQueue<TestRecord>(
-        testDir,
-        "test.jsonl",
-        "test.state.json",
-      );
+      const queue = new BaseQueue<TestRecord>(testDir, "test.jsonl", "test.state.json");
       const config: UploadEngineConfig<TestRecord> = {
         queue,
         endpoint: "/api/test-ingest",
@@ -757,19 +728,12 @@ describe("upload-engine", () => {
       await cm.save({ token: "pk_test" });
 
       // Queue has 4 records
-      await queue.appendBatch([
-        makeRecord(1),
-        makeRecord(2),
-        makeRecord(3),
-        makeRecord(4),
-      ]);
+      await queue.appendBatch([makeRecord(1), makeRecord(2), makeRecord(3), makeRecord(4)]);
 
       // Only 2 keys are dirty
       await queue.saveDirtyKeys(["key-2", "key-4"]);
 
-      const { fetchFn, calls } = createMockFetch([
-        { status: 200, body: { ingested: 2 } },
-      ]);
+      const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
       const engine = createUploadEngine(config);
       const result = await engine.execute({
@@ -828,9 +792,7 @@ describe("upload-engine", () => {
       // dirtyKeys is undefined (legacy state) — should use offset
       // Don't call saveDirtyKeys at all, so it stays undefined
 
-      const { fetchFn, calls } = createMockFetch([
-        { status: 200, body: { ingested: 1 } },
-      ]);
+      const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
       const engine = createUploadEngine(config);
       const result = await engine.execute({
@@ -856,9 +818,7 @@ describe("upload-engine", () => {
       await queue.appendBatch([makeRecord(1), makeRecord(2)]);
       await queue.saveDirtyKeys(["key-1", "key-2"]);
 
-      const { fetchFn } = createMockFetch([
-        { status: 200, body: { ingested: 2 } },
-      ]);
+      const { fetchFn } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
       const engine = createUploadEngine(config);
       await engine.execute({
@@ -915,9 +875,7 @@ describe("upload-engine", () => {
       // But dirtyKeys says record 1 changed
       await queue.saveDirtyKeys(["key-1"]);
 
-      const { fetchFn, calls } = createMockFetch([
-        { status: 200, body: { ingested: 1 } },
-      ]);
+      const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 1 } }]);
 
       const engine = createUploadEngine(config);
       const result = await engine.execute({
@@ -980,9 +938,7 @@ describe("upload-engine", () => {
     const line4 = `${JSON.stringify(makeRecord(2))}\n`;
     await writeFile(queue.queuePath, line1 + line2 + line3 + line4);
 
-    const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 2 } },
-    ]);
+    const { fetchFn, calls } = createMockFetch([{ status: 200, body: { ingested: 2 } }]);
 
     const engine = createUploadEngine(config);
     const result = await engine.execute({

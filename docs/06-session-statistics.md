@@ -22,14 +22,14 @@ session found in the raw log files.
 
 Fully independent from the token pipeline:
 
-| Concern | Token Pipeline | Session Pipeline |
-|---------|---------------|-----------------|
-| Queue file | `queue.jsonl` | `session-queue.jsonl` |
-| Cursor file | `cursors.json` | `session-cursors.json` |
-| API endpoint | `POST /api/ingest` | `POST /api/ingest/sessions` |
-| DB table | `usage_records` | `session_records` |
-| Aggregation | Sum (additive) | Dedup (latest snapshot wins) |
-| File strategy | Byte-offset incremental | Full-scan, mtime+size skip |
+| Concern       | Token Pipeline          | Session Pipeline             |
+| ------------- | ----------------------- | ---------------------------- |
+| Queue file    | `queue.jsonl`           | `session-queue.jsonl`        |
+| Cursor file   | `cursors.json`          | `session-cursors.json`       |
+| API endpoint  | `POST /api/ingest`      | `POST /api/ingest/sessions`  |
+| DB table      | `usage_records`         | `session_records`            |
+| Aggregation   | Sum (additive)          | Dedup (latest snapshot wins) |
+| File strategy | Byte-offset incremental | Full-scan, mtime+size skip   |
 
 ---
 
@@ -109,12 +109,12 @@ export interface SessionCursorState {
 
 Each tool needs a stable, deterministic key that survives re-scans:
 
-| Tool | Session Key | Rationale |
-|------|-------------|-----------|
-| Claude Code | `claude:{sessionId}` | JSONL records contain `sessionId` field |
-| Gemini CLI | `gemini:{sessionId}` or `gemini:sha256(path)` | Session JSON has `sessionId` at top level |
-| OpenCode | `opencode:{sessionID}` | `msg_*.json` files contain `sessionID` (e.g. `ses_xxx`) |
-| OpenClaw | `openclaw:sha256(absolutePath)` | No native sessionId; one session per file |
+| Tool        | Session Key                                   | Rationale                                               |
+| ----------- | --------------------------------------------- | ------------------------------------------------------- |
+| Claude Code | `claude:{sessionId}`                          | JSONL records contain `sessionId` field                 |
+| Gemini CLI  | `gemini:{sessionId}` or `gemini:sha256(path)` | Session JSON has `sessionId` at top level               |
+| OpenCode    | `opencode:{sessionID}`                        | `msg_*.json` files contain `sessionID` (e.g. `ses_xxx`) |
+| OpenClaw    | `openclaw:sha256(absolutePath)`               | No native sessionId; one session per file               |
 
 ---
 
@@ -221,9 +221,7 @@ export interface SessionSyncResult {
  * Unlike token's aggregateRecords() which SUMS, session dedup
  * keeps only the LATEST snapshot per session_key.
  */
-export function deduplicateSessionRecords(
-  records: SessionQueueRecord[]
-): SessionQueueRecord[] {
+export function deduplicateSessionRecords(records: SessionQueueRecord[]): SessionQueueRecord[] {
   const map = new Map<string, SessionQueueRecord>();
   for (const r of records) {
     const existing = map.get(r.session_key);
@@ -299,6 +297,7 @@ from retries never overwrite newer data.
 ### Worker Extension
 
 Extend `packages/worker/src/index.ts` with URL-path-based routing:
+
 - `POST /ingest/tokens` — existing token handler (rename from root POST)
 - `POST /ingest/sessions` — new session handler
 
@@ -311,11 +310,11 @@ Extend `packages/worker/src/index.ts` with URL-path-based routing:
 
 ## Dashboard Components (Phase 4)
 
-| Component | Description |
-|-----------|-------------|
-| **SessionOverview** | Stat cards: total sessions, total hours, avg duration, avg messages |
-| **WorkingHoursHeatmap** | Hour-of-day × day-of-week grid showing session activity |
-| **MessageStats** | Bar chart: user vs assistant messages by day |
+| Component               | Description                                                         |
+| ----------------------- | ------------------------------------------------------------------- |
+| **SessionOverview**     | Stat cards: total sessions, total hours, avg duration, avg messages |
+| **WorkingHoursHeatmap** | Hour-of-day × day-of-week grid showing session activity             |
+| **MessageStats**        | Bar chart: user vs assistant messages by day                        |
 
 ---
 
@@ -323,53 +322,53 @@ Extend `packages/worker/src/index.ts` with URL-path-based routing:
 
 ### Phase 1: Core Types + Session Collectors (Commits 1-10)
 
-| # | Type | Description | Status |
-|---|------|-------------|--------|
-| 1 | `docs` | Add session statistics design document | ✅ |
-| 2 | `feat` | Add session types to `@pew/core` | ✅ |
-| 3 | `test` | RED: Claude session collector tests | ✅ |
-| 4 | `feat` | GREEN: Implement Claude session collector | ✅ |
-| 5 | `test` | RED: Gemini session collector tests | ✅ |
-| 6 | `feat` | GREEN: Implement Gemini session collector | ✅ |
-| 7 | `test` | RED: OpenCode session collector tests | ✅ |
-| 8 | `feat` | GREEN: Implement OpenCode session collector | ✅ |
-| 9 | `test` | RED: OpenClaw session collector tests | ✅ |
-| 10 | `feat` | GREEN: Implement OpenClaw session collector | ✅ |
+| #   | Type   | Description                                 | Status |
+| --- | ------ | ------------------------------------------- | ------ |
+| 1   | `docs` | Add session statistics design document      | ✅     |
+| 2   | `feat` | Add session types to `@pew/core`            | ✅     |
+| 3   | `test` | RED: Claude session collector tests         | ✅     |
+| 4   | `feat` | GREEN: Implement Claude session collector   | ✅     |
+| 5   | `test` | RED: Gemini session collector tests         | ✅     |
+| 6   | `feat` | GREEN: Implement Gemini session collector   | ✅     |
+| 7   | `test` | RED: OpenCode session collector tests       | ✅     |
+| 8   | `feat` | GREEN: Implement OpenCode session collector | ✅     |
+| 9   | `test` | RED: OpenClaw session collector tests       | ✅     |
+| 10  | `feat` | GREEN: Implement OpenClaw session collector | ✅     |
 
 ### Phase 2: Session Sync + Queue (Commits 11-18) ✅
 
-| # | Type | Description | Status |
-|---|------|-------------|--------|
-| 11 | `feat` | Add SessionQueue class | ✅ |
-| 12 | `feat` | Add SessionCursorStore class | ✅ |
-| 13 | `test` | RED: session dedup tests | ✅ |
-| 14 | `feat` | GREEN: Implement deduplicateSessionRecords | ✅ |
-| 15 | `test` | RED: session-sync orchestrator tests | ✅ |
-| 16 | `feat` | GREEN: Implement executeSessionSync | ✅ |
-| 17 | `test` | RED: session-upload tests | ✅ |
-| 18 | `feat` | GREEN: Implement executeSessionUpload | ✅ |
+| #   | Type   | Description                                | Status |
+| --- | ------ | ------------------------------------------ | ------ |
+| 11  | `feat` | Add SessionQueue class                     | ✅     |
+| 12  | `feat` | Add SessionCursorStore class               | ✅     |
+| 13  | `test` | RED: session dedup tests                   | ✅     |
+| 14  | `feat` | GREEN: Implement deduplicateSessionRecords | ✅     |
+| 15  | `test` | RED: session-sync orchestrator tests       | ✅     |
+| 16  | `feat` | GREEN: Implement executeSessionSync        | ✅     |
+| 17  | `test` | RED: session-upload tests                  | ✅     |
+| 18  | `feat` | GREEN: Implement executeSessionUpload      | ✅     |
 
 ### Phase 3: Server-side (Commits 19-26)
 
-| # | Type | Description | Status |
-|---|------|-------------|--------|
-| 19 | `feat` | D1 schema: add session_records table | |
-| 20 | `test` | RED: Worker session ingest tests | |
-| 21 | `feat` | GREEN: Extend Worker with session handler | |
-| 22 | `test` | RED: Next.js session ingest route tests | |
-| 23 | `feat` | GREEN: Implement POST /api/ingest/sessions | |
-| 24 | `test` | RED: GET /api/sessions tests | |
-| 25 | `feat` | GREEN: Implement GET /api/sessions | |
-| 26 | `feat` | Wire session sync into CLI pew sync command | |
+| #   | Type   | Description                                 | Status |
+| --- | ------ | ------------------------------------------- | ------ |
+| 19  | `feat` | D1 schema: add session_records table        |        |
+| 20  | `test` | RED: Worker session ingest tests            |        |
+| 21  | `feat` | GREEN: Extend Worker with session handler   |        |
+| 22  | `test` | RED: Next.js session ingest route tests     |        |
+| 23  | `feat` | GREEN: Implement POST /api/ingest/sessions  |        |
+| 24  | `test` | RED: GET /api/sessions tests                |        |
+| 25  | `feat` | GREEN: Implement GET /api/sessions          |        |
+| 26  | `feat` | Wire session sync into CLI pew sync command |        |
 
 ### Phase 4: Dashboard (Commits 27-33)
 
-| # | Type | Description | Status |
-|---|------|-------------|--------|
-| 27 | `test` | RED: session data helper tests (all 3 helpers) | done |
-| 28 | `feat` | GREEN: Implement session data helpers | done |
-| 29-32 | `feat` | SessionOverview, WorkingHoursHeatmap, MessageStats components | done |
-| 33 | `feat` | Sessions page, useSessionData hook, sidebar nav entry | done |
+| #     | Type   | Description                                                   | Status |
+| ----- | ------ | ------------------------------------------------------------- | ------ |
+| 27    | `test` | RED: session data helper tests (all 3 helpers)                | done   |
+| 28    | `feat` | GREEN: Implement session data helpers                         | done   |
+| 29-32 | `feat` | SessionOverview, WorkingHoursHeatmap, MessageStats components | done   |
+| 33    | `feat` | Sessions page, useSessionData hook, sidebar nav entry         | done   |
 
 ---
 

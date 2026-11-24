@@ -32,7 +32,11 @@ function AppLink({
     );
   }
   return (
-    <NextLink href={href} className={className} {...(props as Omit<ComponentProps<typeof NextLink>, "href">)}>
+    <NextLink
+      href={href}
+      className={className}
+      {...(props as Omit<ComponentProps<typeof NextLink>, "href">)}
+    >
       {children}
     </NextLink>
   );

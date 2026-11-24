@@ -32,19 +32,23 @@ describe("Docker CD contract", () => {
   });
 
   it("uses only the pinned existing release chain and exact CI provenance", () => {
-    expect(release).toContain(`uses: nocoo/base-ci/.github/workflows/deploy-docker.yml@${revision}`);
+    expect(release).toContain(
+      `uses: nocoo/base-ci/.github/workflows/deploy-docker.yml@${revision}`,
+    );
     expect(release).toContain("workflow_run:");
     expect(release).toContain("- CI");
     expect(release).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(release).toContain("github.event.workflow_run.head_branch == 'main'");
-    expect(release).toContain(`source-run-id: \${{ github.event_name == 'workflow_run' && format('{0}', github.event.workflow_run.id) || inputs.ci-run-id }}`);
+    expect(release).toContain(
+      `source-run-id: \${{ github.event_name == 'workflow_run' && format('{0}', github.event.workflow_run.id) || inputs.ci-run-id }}`,
+    );
     expect(release).toContain("tailscale: true");
     expect(release).toContain("environment: pew / production");
     expect(release).toMatch(/TS_OAUTH_CLIENT_ID: \$\{\{ secrets\.TS_OAUTH_CLIENT_ID \}\}/);
     expect(release).toMatch(/TS_AUDIENCE: \$\{\{ secrets\.TS_AUDIENCE \}\}/);
     expect(release).toContain("id-token: write");
     expect(release).toContain("deploy-directory: /opt/pew");
-    expect(release).toContain("images: '[{\"image\":\"ghcr.io/nocoo/pew\",\"service\":\"web\"}]'");
+    expect(release).toContain('images: \'[{"image":"ghcr.io/nocoo/pew","service":"web"}]\'');
     expect(release).not.toMatch(/build-args|BUILD_ARGS|secrets: inherit|railway|lizheng|firefly/i);
     for (const variable of ["DEPLOY_PHASE", "DEPLOY_URL", "DEPLOY_ORIGIN_MARKER"]) {
       expect(release).toContain(`toJSON(vars.${variable})`);
@@ -57,7 +61,9 @@ describe("Docker CD contract", () => {
     expect(compose).toContain(`image: ghcr.io/nocoo/pew:\${IMAGE_SHA:?IMAGE_SHA is required}`);
     expect(compose).toContain("container_name: pew-app");
     expect(compose).toContain("- path: .env.runtime\n        required: true\n        format: raw");
-    expect(compose).toContain('environment:\n      PORT: "7020"\n      HOSTNAME: 0.0.0.0\n    ports:');
+    expect(compose).toContain(
+      'environment:\n      PORT: "7020"\n      HOSTNAME: 0.0.0.0\n    ports:',
+    );
     expect(compose).toContain("127.0.0.1:17020:7020");
     expect(compose).toContain("mem_limit: 8000000000\n");
     expect(compose).toContain("networks:\n  edge:\n    external: true");

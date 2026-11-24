@@ -3,10 +3,7 @@
 import { estimateUsageCost, accountedTotal, displayCounters } from "@/lib/accounting";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "@nocoo/basalt/icons";
-import {
-  useUsageData,
-  sourceLabel,
-} from "@/hooks/use-usage-data";
+import { useUsageData, sourceLabel } from "@/hooks/use-usage-data";
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/error-banner";
@@ -26,7 +23,13 @@ import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { formatTokens } from "@/lib/utils";
-import { MODEL_SERIES_LIMIT, groupByDate, toHourlyByAgent, toHourlyByModel, toHourlyByDevice } from "@/lib/usage-helpers";
+import {
+  MODEL_SERIES_LIMIT,
+  groupByDate,
+  toHourlyByAgent,
+  toHourlyByModel,
+  toHourlyByDevice,
+} from "@/lib/usage-helpers";
 import type { DailyGroup } from "@/lib/usage-helpers";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
@@ -61,10 +64,7 @@ function toHalfHourPoints(
   const SLOT_MS = 30 * 60_000;
 
   // --- 1. aggregate records by their UTC 30-min key -------------------------
-  const byUtcKey = new Map<
-    number,
-    { input: number; output: number; total: number }
-  >();
+  const byUtcKey = new Map<number, { input: number; output: number; total: number }>();
   for (const r of records) {
     const display = displayCounters(r);
     // Floor to 30-min boundary in UTC
@@ -73,13 +73,13 @@ function toHalfHourPoints(
 
     const existing = byUtcKey.get(key);
     if (existing) {
-      existing.input += (display.input_tokens + display.cached_input_tokens);
-      existing.output += (display.output_tokens + display.reasoning_output_tokens);
+      existing.input += display.input_tokens + display.cached_input_tokens;
+      existing.output += display.output_tokens + display.reasoning_output_tokens;
       existing.total += accountedTotal(r);
     } else {
       byUtcKey.set(key, {
-        input: (display.input_tokens + display.cached_input_tokens),
-        output: (display.output_tokens + display.reasoning_output_tokens),
+        input: display.input_tokens + display.cached_input_tokens,
+        output: display.output_tokens + display.reasoning_output_tokens,
         total: accountedTotal(r),
       });
     }
@@ -116,13 +116,7 @@ function toHalfHourPoints(
 // Expandable day row (mirrors daily-usage pattern)
 // ---------------------------------------------------------------------------
 
-function DayRow({
-  group,
-  pricingMap,
-}: {
-  group: DailyGroup;
-  pricingMap: PricingMap;
-}) {
+function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingMap }) {
   const [expanded, setExpanded] = useState(false);
 
   const modelRows = useMemo(() => {
@@ -147,7 +141,7 @@ function DayRow({
 
       if (existing) {
         existing.input += display.input_tokens;
-        existing.output += (display.output_tokens + display.reasoning_output_tokens);
+        existing.output += display.output_tokens + display.reasoning_output_tokens;
         existing.cached += display.cached_input_tokens;
         existing.total += accountedTotal(r);
         existing.cost += cost.totalCost;
@@ -156,7 +150,7 @@ function DayRow({
           source: r.source,
           model: r.model,
           input: display.input_tokens,
-          output: (display.output_tokens + display.reasoning_output_tokens),
+          output: display.output_tokens + display.reasoning_output_tokens,
           cached: display.cached_input_tokens,
           total: accountedTotal(r),
           cost: cost.totalCost,
@@ -187,11 +181,7 @@ function DayRow({
                 setExpanded(!expanded);
               }}
             >
-              {expanded ? (
-                <ChevronDown strokeWidth={1.5} />
-              ) : (
-                <ChevronRight strokeWidth={1.5} />
-              )}
+              {expanded ? <ChevronDown strokeWidth={1.5} /> : <ChevronRight strokeWidth={1.5} />}
             </Button>
             <span className="font-medium">{formatDate(group.date)}</span>
           </div>
@@ -219,9 +209,7 @@ function DayRow({
             className="border-b border-basalt-border/30 last:border-0 bg-basalt-accent/30"
           >
             <td className="pl-10 pr-4 py-2.5 text-xs text-basalt-muted-foreground">
-              <span className="text-basalt-foreground/70">
-                {sourceLabel(row.source)}
-              </span>
+              <span className="text-basalt-foreground/70">{sourceLabel(row.source)}</span>
               <span className="mx-1.5 text-basalt-border">/</span>
               <span className="font-mono text-basalt-foreground/60">{row.model}</span>
               <ModelInfoTooltip model={row.model} className="ml-1.5" />
@@ -301,24 +289,48 @@ function RecentSkeleton() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-basalt-border">
-                  <th className="px-4 py-3 text-left"><Skeleton style={{ width: undefined }} className="h-3 w-12" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+                  <th className="px-4 py-3 text-left">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-12" />
+                  </th>
+                  <th className="px-4 py-3 text-right">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
+                  <th className="px-4 py-3 text-right">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
+                  <th className="px-4 py-3 text-right hidden md:table-cell">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
+                  <th className="px-4 py-3 text-right">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
+                  <th className="px-4 py-3 text-right hidden sm:table-cell">
+                    <Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: 3 }).map((_, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
                   <tr key={`slot-${i}`} className="border-b border-basalt-border/50">
-                    <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-20" /></td>
-                    <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3 hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
+                    <td className="px-4 py-3">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-20" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <Skeleton style={{ width: undefined }} className="h-4 w-12 ml-auto" />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -361,7 +373,11 @@ export default function RecentPage() {
     return new Date().toISOString();
   }, []);
 
-  const { data, loading: usageLoading, error } = useUsageData({
+  const {
+    data,
+    loading: usageLoading,
+    error,
+  } = useUsageData({
     from: recentFrom,
     to: recentTo,
     granularity: "half-hour",
@@ -410,9 +426,7 @@ export default function RecentPage() {
   const { pricingMap, loading: pricingLoading } = usePricingMap();
 
   const halfHourPoints = useMemo(() => {
-    return data
-      ? toHalfHourPoints(data.records, tzOffset, recentFrom, recentTo)
-      : [];
+    return data ? toHalfHourPoints(data.records, tzOffset, recentFrom, recentTo) : [];
   }, [data, tzOffset, recentFrom, recentTo]);
 
   const dailyGroups = useMemo(
@@ -421,16 +435,10 @@ export default function RecentPage() {
   );
 
   // Compute hourly breakdowns from 30-day data
-  const dateRange = useMemo(
-    () => ({ from: patternFrom, to: patternTo }),
-    [patternFrom, patternTo],
-  );
+  const dateRange = useMemo(() => ({ from: patternFrom, to: patternTo }), [patternFrom, patternTo]);
 
   const hourlyByAgent = useMemo(
-    () =>
-      patternData
-        ? toHourlyByAgent(patternData.records, dateRange, tzOffset)
-        : [],
+    () => (patternData ? toHourlyByAgent(patternData.records, dateRange, tzOffset) : []),
     [patternData, dateRange, tzOffset],
   );
 
@@ -445,12 +453,7 @@ export default function RecentPage() {
   const hourlyByDevice = useMemo(
     () =>
       patternData && deviceData
-        ? toHourlyByDevice(
-            patternData.records,
-            deviceData.deviceDetails,
-            dateRange,
-            tzOffset,
-          )
+        ? toHourlyByDevice(patternData.records, deviceData.deviceDetails, dateRange, tzOffset)
         : [],
     [patternData, deviceData, dateRange, tzOffset],
   );
@@ -463,7 +466,13 @@ export default function RecentPage() {
       <PageHeader
         title="Hourly Usage"
         description="Token usage over the last 72 hours."
-        actions={<UsageInformation records={data?.records ?? []} pricingMap={pricingMap} loading={pricingLoading} />}
+        actions={
+          <UsageInformation
+            records={data?.records ?? []}
+            pricingMap={pricingMap}
+            loading={pricingLoading}
+          />
+        }
       />
 
       {/* Error */}
@@ -473,103 +482,99 @@ export default function RecentPage() {
       {allLoading && <RecentSkeleton />}
 
       {/* Content */}
-      {!allLoading && data && (
-        data.summary.total_tokens > 0 ? (
-            <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
-              {/* Left column: Timeline charts + Detail table (3/4) */}
-              <div className="xl:col-span-3 space-y-4 md:space-y-6">
-                <DashboardSegment title="72-Hour Timeline">
-                  <div className="space-y-4">
-                    {/* Input / Output */}
-                    <TimelineInOutChart data={halfHourPoints} />
+      {!allLoading &&
+        data &&
+        (data.summary.total_tokens > 0 ? (
+          <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
+            {/* Left column: Timeline charts + Detail table (3/4) */}
+            <div className="xl:col-span-3 space-y-4 md:space-y-6">
+              <DashboardSegment title="72-Hour Timeline">
+                <div className="space-y-4">
+                  {/* Input / Output */}
+                  <TimelineInOutChart data={halfHourPoints} />
 
-                    {/* By Device */}
-                    {recentDeviceData?.timeline && recentDeviceData?.devices && (
-                      <TimelineDeviceChart
-                        deviceTimeline={recentDeviceData.timeline}
-                        devices={recentDeviceData.devices}
-                      />
-                    )}
-
-                    {/* By Agent */}
-                    <TimelineAgentChart
-                      records={data.records}
-                      tzOffset={tzOffset}
-                      fromISO={recentFrom}
-                      toISO={recentTo}
+                  {/* By Device */}
+                  {recentDeviceData?.timeline && recentDeviceData?.devices && (
+                    <TimelineDeviceChart
+                      deviceTimeline={recentDeviceData.timeline}
+                      devices={recentDeviceData.devices}
                     />
-
-                    {/* By Model */}
-                    <TimelineModelChart
-                      records={data.records}
-                      tzOffset={tzOffset}
-                      fromISO={recentFrom}
-                      toISO={recentTo}
-                      topN={MODEL_SERIES_LIMIT}
-                    />
-                  </div>
-
-                  {/* Per-day detail table */}
-                  {dailyGroups.length > 0 && (
-                    <div className="mt-6 rounded-xl bg-basalt-background/50 p-1 overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-basalt-border">
-                            <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                              Date
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                              Input
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                              Output
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
-                              Cached
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
-                              Total
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
-                              Est. Cost
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {dailyGroups.map((group) => (
-                            <DayRow
-                              key={group.date}
-                              group={group}
-                              pricingMap={pricingMap}
-                            />
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
                   )}
-                </DashboardSegment>
-              </div>
 
-              {/* Right column: Hourly pattern charts (1/4) */}
-              <div className="xl:col-span-1 space-y-4 md:space-y-6">
-                <DashboardSegment title="Hourly Patterns">
-                  <div className="space-y-4">
-                    <HourlyAgentChart data={hourlyByAgent} compact />
-                    <HourlyModelChart data={hourlyByModel} compact />
-                    {devices.length > 0 && (
-                      <HourlyDeviceChart data={hourlyByDevice} deviceDetails={devices} compact />
-                    )}
+                  {/* By Agent */}
+                  <TimelineAgentChart
+                    records={data.records}
+                    tzOffset={tzOffset}
+                    fromISO={recentFrom}
+                    toISO={recentTo}
+                  />
+
+                  {/* By Model */}
+                  <TimelineModelChart
+                    records={data.records}
+                    tzOffset={tzOffset}
+                    fromISO={recentFrom}
+                    toISO={recentTo}
+                    topN={MODEL_SERIES_LIMIT}
+                  />
+                </div>
+
+                {/* Per-day detail table */}
+                {dailyGroups.length > 0 && (
+                  <div className="mt-6 rounded-xl bg-basalt-background/50 p-1 overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-basalt-border">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                            Date
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                            Input
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                            Output
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
+                            Cached
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
+                            Total
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
+                            Est. Cost
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dailyGroups.map((group) => (
+                          <DayRow key={group.date} group={group} pricingMap={pricingMap} />
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </DashboardSegment>
-              </div>
+                )}
+              </DashboardSegment>
             </div>
-          ) : (
-            <Empty
-              title="No usage data in the last 72 hours."
-              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-            />
-          )
-      )}
+
+            {/* Right column: Hourly pattern charts (1/4) */}
+            <div className="xl:col-span-1 space-y-4 md:space-y-6">
+              <DashboardSegment title="Hourly Patterns">
+                <div className="space-y-4">
+                  <HourlyAgentChart data={hourlyByAgent} compact />
+                  <HourlyModelChart data={hourlyByModel} compact />
+                  {devices.length > 0 && (
+                    <HourlyDeviceChart data={hourlyByDevice} deviceDetails={devices} compact />
+                  )}
+                </div>
+              </DashboardSegment>
+            </div>
+          </div>
+        ) : (
+          <Empty
+            title="No usage data in the last 72 hours."
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+          />
+        ))}
     </div>
   );
 }

@@ -67,7 +67,11 @@ describe("Admin cache API", () => {
       const body = await res.json();
       expect(body.keys).toEqual(["k1", "k2"]);
       expect(body.count).toBe(2);
-      expect(body.leaderboardMemory).toMatchObject({ entries: 0, serializedBytes: 0, maxEntries: 128 });
+      expect(body.leaderboardMemory).toMatchObject({
+        entries: 0,
+        serializedBytes: 0,
+        maxEntries: 128,
+      });
       expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     });
 

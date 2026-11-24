@@ -287,19 +287,19 @@ pew notify 进程 A                    pew notify 进程 B
 
 ### 关键行为
 
-| 场景 | 行为 |
-|------|------|
-| 首次 notify，无 sync 在跑 | 获取锁（immediate），截断 signal，执行 sync |
-| sync 运行中，新 notify 到达 | 新进程获取锁失败 → append signal → 阻塞等锁 → 拿到锁后 waiter dedup check |
-| waiter 拿到锁，signal size > 0 | 截断 signal，执行 sync |
-| waiter 拿到锁，signal size == 0 | 前一个 follow-up 已消化 → 释放锁，exit 0（skippedSync: true） |
-| sync 完成，signal size > 0 | dirty follow-up，截断 signal，再跑一轮 |
-| sync 完成，signal size == 0 | 释放锁，正常退出 |
-| sync 运行中，N 个 notify 到达 | 所有都 append + 阻塞等锁；持锁者 follow-up 消化 dirty；等锁者依次拿锁后 dedup check — signal 为空则直接退出，避免 N 次冗余 sync |
-| follow-up 运行中又有 notify | 再检查一轮（最多 maxFollowUps 次） |
-| sync 执行抛异常 | 捕获异常，记录 error，仍然检查 dirty follow-up |
-| 文件锁获取异常（非 EAGAIN） | 记录 warning，直接执行 sync（降级为无锁） |
-| 阻塞等锁超时（lockTimeoutMs） | fd.close() 取消挂起锁 → 返回 result with error，不跑 sync |
+| 场景                            | 行为                                                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 首次 notify，无 sync 在跑       | 获取锁（immediate），截断 signal，执行 sync                                                                                     |
+| sync 运行中，新 notify 到达     | 新进程获取锁失败 → append signal → 阻塞等锁 → 拿到锁后 waiter dedup check                                                       |
+| waiter 拿到锁，signal size > 0  | 截断 signal，执行 sync                                                                                                          |
+| waiter 拿到锁，signal size == 0 | 前一个 follow-up 已消化 → 释放锁，exit 0（skippedSync: true）                                                                   |
+| sync 完成，signal size > 0      | dirty follow-up，截断 signal，再跑一轮                                                                                          |
+| sync 完成，signal size == 0     | 释放锁，正常退出                                                                                                                |
+| sync 运行中，N 个 notify 到达   | 所有都 append + 阻塞等锁；持锁者 follow-up 消化 dirty；等锁者依次拿锁后 dedup check — signal 为空则直接退出，避免 N 次冗余 sync |
+| follow-up 运行中又有 notify     | 再检查一轮（最多 maxFollowUps 次）                                                                                              |
+| sync 执行抛异常                 | 捕获异常，记录 error，仍然检查 dirty follow-up                                                                                  |
+| 文件锁获取异常（非 EAGAIN）     | 记录 warning，直接执行 sync（降级为无锁）                                                                                       |
+| 阻塞等锁超时（lockTimeoutMs）   | fd.close() 取消挂起锁 → 返回 result with error，不跑 sync                                                                       |
 
 ### 文件锁实现
 
@@ -370,22 +370,22 @@ async function truncateSignal(stateDir: string, fs: FsOps): Promise<void>;
 
 ### 测试矩阵（`coordinator.test.ts`）
 
-| # | 测试用例 | 断言 |
-|---|---------|------|
-| 1 | 单次 trigger，锁空闲 | executeSyncFn 被调用 1 次，signal 被截断 |
-| 2 | 锁被占用 → 阻塞等锁 → 拿到锁后跑 sync | executeSyncFn 被调用，返回 CoordinatorRunResult |
-| 3 | sync 期间 signal 有 append（size > 0）| dirty follow-up，executeSyncFn 被调用 2 次 |
-| 4 | sync 期间 signal 无 append（size == 0）| executeSyncFn 只调用 1 次 |
-| 5 | 多轮 follow-up（每轮期间都有新 append）| executeSyncFn 调用 ≤ maxFollowUps+1 次 |
-| 6 | 超过 maxFollowUps 上限 | 停止 follow-up，正常退出 |
-| 7 | sync 失败后仍检查 dirty | executeSyncFn 抛异常，follow-up 仍执行 |
-| 8 | 文件锁 API 异常（非 EAGAIN）| 降级无锁执行，result 有 warning |
-| 9 | signal 文件不存在 | 不 follow-up（size == 0） |
-| 10 | runId 格式正确 | ISO 时间戳 + 随机后缀 |
-| 11 | 阻塞等锁超时 → fd.close() 取消挂起锁 | 返回 result with error + skippedSync: true，executeSyncFn 不被调用，fd 已关闭 |
-| 12 | 截断发生在 sync 之前（持锁保护下） | truncate 在 executeSyncFn 之前被调用 |
-| 13 | waiter dedup: 阻塞等锁后 signal size == 0 | executeSyncFn 不被调用，skippedSync: true，waitedForLock: true |
-| 14 | waiter dedup: 阻塞等锁后 signal size > 0 | executeSyncFn 正常调用，skippedSync: false |
+| #   | 测试用例                                  | 断言                                                                          |
+| --- | ----------------------------------------- | ----------------------------------------------------------------------------- |
+| 1   | 单次 trigger，锁空闲                      | executeSyncFn 被调用 1 次，signal 被截断                                      |
+| 2   | 锁被占用 → 阻塞等锁 → 拿到锁后跑 sync     | executeSyncFn 被调用，返回 CoordinatorRunResult                               |
+| 3   | sync 期间 signal 有 append（size > 0）    | dirty follow-up，executeSyncFn 被调用 2 次                                    |
+| 4   | sync 期间 signal 无 append（size == 0）   | executeSyncFn 只调用 1 次                                                     |
+| 5   | 多轮 follow-up（每轮期间都有新 append）   | executeSyncFn 调用 ≤ maxFollowUps+1 次                                        |
+| 6   | 超过 maxFollowUps 上限                    | 停止 follow-up，正常退出                                                      |
+| 7   | sync 失败后仍检查 dirty                   | executeSyncFn 抛异常，follow-up 仍执行                                        |
+| 8   | 文件锁 API 异常（非 EAGAIN）              | 降级无锁执行，result 有 warning                                               |
+| 9   | signal 文件不存在                         | 不 follow-up（size == 0）                                                     |
+| 10  | runId 格式正确                            | ISO 时间戳 + 随机后缀                                                         |
+| 11  | 阻塞等锁超时 → fd.close() 取消挂起锁      | 返回 result with error + skippedSync: true，executeSyncFn 不被调用，fd 已关闭 |
+| 12  | 截断发生在 sync 之前（持锁保护下）        | truncate 在 executeSyncFn 之前被调用                                          |
+| 13  | waiter dedup: 阻塞等锁后 signal size == 0 | executeSyncFn 不被调用，skippedSync: true，waitedForLock: true                |
+| 14  | waiter dedup: 阻塞等锁后 signal size > 0  | executeSyncFn 正常调用，skippedSync: false                                    |
 
 **提交信息**：`feat: add coordinator with file-lock mutex and signal-based dirty follow-up`
 
@@ -418,15 +418,17 @@ notify.cjs 需要可靠地找到 `pew` 可执行文件。**在 `pew init` 时固
 
 ```js
 // notify.cjs（编译时注入）
-const PEW_BIN = "/home/user/.bun/bin/pew";  // pew init 时解析的绝对路径
+const PEW_BIN = "/home/user/.bun/bin/pew"; // pew init 时解析的绝对路径
 ```
 
 解析优先级（在 `pew init` 执行时）：
+
 1. `process.argv[1]` 所在目录的 `pew` 二进制（如果 init 是通过 `pew init` 调用的）
 2. `which pew` 的结果
 3. 如果都找不到 → 报错退出 init，提示用户确保 pew 在 PATH
 
 **fallback 链**（运行时，如果绝对路径不存在）：
+
 1. 使用烤入的绝对路径 `PEW_BIN`
 2. fallback 到 `npx @nocoo/pew notify`（最后手段，有冷启动开销）
 
@@ -504,7 +506,7 @@ interface WriteNotifyHandlerOptions {
   /** The source code to write */
   source: string;
   /** Injected fs operations for testability */
-  fs?: { writeFile, mkdir, readFile };
+  fs?: { writeFile; mkdir; readFile };
 }
 
 /** Write notify.cjs to disk, returns { changed, path, backupPath? } */
@@ -520,18 +522,18 @@ async function resolvePewBin(): Promise<string>;
 
 ### 测试矩阵（`notify-handler.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | 生成的源码包含 PEW_NOTIFY_HANDLER marker |
-| 2 | 生成的源码包含正确的 stateDir |
-| 3 | 生成的源码包含正确的 pewBin 绝对路径 |
-| 4 | 生成的源码是合法的 JS（`new Function()` 不抛异常） |
-| 5 | 首次写入创建 bin 目录和文件 |
-| 6 | 相同内容重复写入返回 changed=false |
-| 7 | 内容变化时创建 backup |
-| 8 | 生成的源码对 codex source 包含原始 notify 链式调用 |
-| 9 | 生成的源码对非 codex source 不链式调用 |
-| 10 | 生成的源码在 PEW_BIN 不存在时 fallback 到 npx |
+| #   | 测试用例                                           |
+| --- | -------------------------------------------------- |
+| 1   | 生成的源码包含 PEW_NOTIFY_HANDLER marker           |
+| 2   | 生成的源码包含正确的 stateDir                      |
+| 3   | 生成的源码包含正确的 pewBin 绝对路径               |
+| 4   | 生成的源码是合法的 JS（`new Function()` 不抛异常） |
+| 5   | 首次写入创建 bin 目录和文件                        |
+| 6   | 相同内容重复写入返回 changed=false                 |
+| 7   | 内容变化时创建 backup                              |
+| 8   | 生成的源码对 codex source 包含原始 notify 链式调用 |
+| 9   | 生成的源码对非 codex source 不链式调用             |
+| 10  | 生成的源码在 PEW_BIN 不存在时 fallback 到 npx      |
 
 **提交信息**：`feat: add notify.cjs handler generator`
 
@@ -607,30 +609,30 @@ function resolveNotifierPaths(
 
 ### 环境变量映射
 
-| 环境变量 | 影响的路径 | 默认值 |
-|---------|-----------|--------|
-| `$GEMINI_HOME` | `geminiDir`, `geminiSettingsPath` | `~/.gemini` |
-| `$OPENCODE_CONFIG_DIR` | `opencodeConfigDir`, `opencodePluginDir` | (see below) |
-| `$XDG_CONFIG_HOME` | `opencodeConfigDir`（当 `$OPENCODE_CONFIG_DIR` 未设时） | `~/.config` |
-| `$CODEX_HOME` | `codexHome`, `codexConfigPath` | `~/.codex` |
-| `$OPENCLAW_STATE_DIR` | `openclawHome` | `~/.openclaw` |
-| `$OPENCLAW_CONFIG_PATH` | `openclawConfigPath` | `~/.openclaw/openclaw.json` |
+| 环境变量                | 影响的路径                                              | 默认值                      |
+| ----------------------- | ------------------------------------------------------- | --------------------------- |
+| `$GEMINI_HOME`          | `geminiDir`, `geminiSettingsPath`                       | `~/.gemini`                 |
+| `$OPENCODE_CONFIG_DIR`  | `opencodeConfigDir`, `opencodePluginDir`                | (see below)                 |
+| `$XDG_CONFIG_HOME`      | `opencodeConfigDir`（当 `$OPENCODE_CONFIG_DIR` 未设时） | `~/.config`                 |
+| `$CODEX_HOME`           | `codexHome`, `codexConfigPath`                          | `~/.codex`                  |
+| `$OPENCLAW_STATE_DIR`   | `openclawHome`                                          | `~/.openclaw`               |
+| `$OPENCLAW_CONFIG_PATH` | `openclawConfigPath`                                    | `~/.openclaw/openclaw.json` |
 
 OpenCode 配置目录解析优先级：`$OPENCODE_CONFIG_DIR` > `$XDG_CONFIG_HOME/opencode` > `~/.config/opencode`
 
 ### 测试矩阵（`notifier-paths.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | 无环境变量 → 所有路径使用默认值 |
-| 2 | $GEMINI_HOME 设置 → geminiDir 和 geminiSettingsPath 跟随 |
-| 3 | $OPENCODE_CONFIG_DIR 设置 → opencodeConfigDir 和 opencodePluginDir 跟随 |
-| 4 | $XDG_CONFIG_HOME 设置（无 $OPENCODE_CONFIG_DIR）→ opencode 路径跟随 |
-| 5 | $OPENCODE_CONFIG_DIR 优先于 $XDG_CONFIG_HOME |
-| 6 | $CODEX_HOME 设置 → codexHome 和 codexConfigPath 跟随 |
-| 7 | $OPENCLAW_STATE_DIR 设置 → openclawHome 跟随 |
-| 8 | $OPENCLAW_CONFIG_PATH 设置 → openclawConfigPath 跟随 |
-| 9 | 纯函数：相同输入始终相同输出 |
+| #   | 测试用例                                                                |
+| --- | ----------------------------------------------------------------------- |
+| 1   | 无环境变量 → 所有路径使用默认值                                         |
+| 2   | $GEMINI_HOME 设置 → geminiDir 和 geminiSettingsPath 跟随                |
+| 3   | $OPENCODE_CONFIG_DIR 设置 → opencodeConfigDir 和 opencodePluginDir 跟随 |
+| 4   | $XDG_CONFIG_HOME 设置（无 $OPENCODE_CONFIG_DIR）→ opencode 路径跟随     |
+| 5   | $OPENCODE_CONFIG_DIR 优先于 $XDG_CONFIG_HOME                            |
+| 6   | $CODEX_HOME 设置 → codexHome 和 codexConfigPath 跟随                    |
+| 7   | $OPENCLAW_STATE_DIR 设置 → openclawHome 跟随                            |
+| 8   | $OPENCLAW_CONFIG_PATH 设置 → openclawConfigPath 跟随                    |
+| 9   | 纯函数：相同输入始终相同输出                                            |
 
 **提交信息**：`feat: add unified notifier path resolver`
 
@@ -676,7 +678,7 @@ interface ClaudeHookOptions {
   /** Path to notify.cjs */
   notifyPath: string;
   /** Injected fs operations */
-  fs?: { readFile, writeFile, mkdir, copyFile, access };
+  fs?: { readFile; writeFile; mkdir; copyFile; access };
 }
 
 function installClaudeHook(opts: ClaudeHookOptions): Promise<NotifierOperationResult>;
@@ -710,19 +712,19 @@ function getClaudeHookStatus(opts: ClaudeHookOptions): Promise<NotifierStatus>;
 
 ### 测试矩阵（`claude-hook.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | settings.json 不存在 → 创建新文件，安装 hook |
-| 2 | settings.json 存在但无 hooks → 添加 hooks.SessionEnd |
-| 3 | settings.json 已有其他 hook → 追加，不覆盖 |
-| 4 | hook 已正确安装 → changed=false |
-| 5 | hook 存在但 type 缺失 → 修正为 command |
-| 6 | 卸载：移除匹配 entry，保留其他 |
-| 7 | 卸载：settings 不存在 → skip |
-| 8 | 卸载：清理空 hooks 对象 |
-| 9 | status：已安装返回 installed |
-| 10 | status：未安装返回 not-installed |
-| 11 | 安装时创建 backup 文件 |
+| #   | 测试用例                                             |
+| --- | ---------------------------------------------------- |
+| 1   | settings.json 不存在 → 创建新文件，安装 hook         |
+| 2   | settings.json 存在但无 hooks → 添加 hooks.SessionEnd |
+| 3   | settings.json 已有其他 hook → 追加，不覆盖           |
+| 4   | hook 已正确安装 → changed=false                      |
+| 5   | hook 存在但 type 缺失 → 修正为 command               |
+| 6   | 卸载：移除匹配 entry，保留其他                       |
+| 7   | 卸载：settings 不存在 → skip                         |
+| 8   | 卸载：清理空 hooks 对象                              |
+| 9   | status：已安装返回 installed                         |
+| 10  | status：未安装返回 not-installed                     |
+| 11  | 安装时创建 backup 文件                               |
 
 **提交信息**：`feat: add Claude Code hook installer`
 
@@ -760,13 +762,13 @@ function getClaudeHookStatus(opts: ClaudeHookOptions): Promise<NotifierStatus>;
 
 ### 与 Claude 的区别
 
-| 方面 | Claude | Gemini |
-|------|--------|--------|
-| `tools.enableHooks` | 不需要 | **必须设为 true** |
-| hook `name` 字段 | 无 | `"pew-tracker"` |
-| `matcher` 字段 | 无 | `"exit\|clear\|logout\|prompt_input_exit\|other"` |
-| 匹配方式 | command 字符串 | name **或** command |
-| 配置目录 env var | 无 | `$GEMINI_HOME` |
+| 方面                | Claude         | Gemini                                            |
+| ------------------- | -------------- | ------------------------------------------------- |
+| `tools.enableHooks` | 不需要         | **必须设为 true**                                 |
+| hook `name` 字段    | 无             | `"pew-tracker"`                                   |
+| `matcher` 字段      | 无             | `"exit\|clear\|logout\|prompt_input_exit\|other"` |
+| 匹配方式            | command 字符串 | name **或** command                               |
+| 配置目录 env var    | 无             | `$GEMINI_HOME`                                    |
 
 ### 接口
 
@@ -785,17 +787,17 @@ Options 接收 `settingsPath` 和 `notifyPath`（由 `resolveNotifierPaths` 提�
 
 ### 测试矩阵（`gemini-hook.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | 全新安装（无 settings.json） |
-| 2 | 已有 settings 但无 hooks → 添加 + 设置 enableHooks |
-| 3 | 已有 enableHooks=false → 修正为 true |
-| 4 | hook 已正确安装 → changed=false |
-| 5 | 通过 name 匹配到旧 command → 更新 command |
-| 6 | matcher 缺失 → 补充 |
-| 7 | 卸载：移除匹配 entry |
-| 8 | 卸载：不移除 enableHooks（可能有其他 hook 依赖） |
-| 9 | status 检测 |
+| #   | 测试用例                                           |
+| --- | -------------------------------------------------- |
+| 1   | 全新安装（无 settings.json）                       |
+| 2   | 已有 settings 但无 hooks → 添加 + 设置 enableHooks |
+| 3   | 已有 enableHooks=false → 修正为 true               |
+| 4   | hook 已正确安装 → changed=false                    |
+| 5   | 通过 name 匹配到旧 command → 更新 command          |
+| 6   | matcher 缺失 → 补充                                |
+| 7   | 卸载：移除匹配 entry                               |
+| 8   | 卸载：不移除 enableHooks（可能有其他 hook 依赖）   |
+| 9   | status 检测                                        |
 
 **提交信息**：`feat: add Gemini CLI hook installer`
 
@@ -829,7 +831,7 @@ export const PewTrackerPlugin = async ({ $ }) => {
         const proc = $`/usr/bin/env node ${notifyPath} --source=opencode`;
         if (proc && typeof proc.catch === "function") proc.catch(() => {});
       } catch (_) {}
-    }
+    },
   };
 };
 ```
@@ -849,7 +851,7 @@ interface OpenCodePluginOptions {
   /** Plugin filename (default: "pew-tracker.js") */
   pluginName?: string;
   /** Injected fs operations */
-  fs?: { readFile, writeFile, mkdir, unlink, access };
+  fs?: { readFile; writeFile; mkdir; unlink; access };
 }
 
 function installOpenCodePlugin(opts: OpenCodePluginOptions): Promise<NotifierOperationResult>;
@@ -874,16 +876,16 @@ function getOpenCodePluginStatus(opts: OpenCodePluginOptions): Promise<NotifierS
 
 ### 测试矩阵（`opencode-plugin.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | 全新安装（目录不存在） |
-| 2 | 相同内容 → changed=false |
-| 3 | 不同内容 → 备份 + 覆盖 |
-| 4 | 卸载有 marker 的文件 |
-| 5 | 拒绝卸载无 marker 的文件 |
-| 6 | 卸载不存在的文件 → skip |
-| 7 | status 检测 |
-| 8 | 生成的插件源码合法 |
+| #   | 测试用例                 |
+| --- | ------------------------ |
+| 1   | 全新安装（目录不存在）   |
+| 2   | 相同内容 → changed=false |
+| 3   | 不同内容 → 备份 + 覆盖   |
+| 4   | 卸载有 marker 的文件     |
+| 5   | 拒绝卸载无 marker 的文件 |
+| 6   | 卸载不存在的文件 → skip  |
+| 7   | status 检测              |
+| 8   | 生成的插件源码合法       |
 
 **提交信息**：`feat: add OpenCode plugin installer`
 
@@ -896,6 +898,7 @@ function getOpenCodePluginStatus(opts: OpenCodePluginOptions): Promise<NotifierS
 ### 机制
 
 OpenClaw 使用 session plugin，需要：
+
 1. 写入 3 个文件到 plugin 目录
 2. 通过 `openclaw plugins install --link` 和 `openclaw plugins enable` 注册
 
@@ -911,6 +914,7 @@ OpenClaw 使用 session plugin，需要：
 ### 三个文件内容
 
 **package.json**：
+
 ```json
 {
   "name": "@pew/openclaw-session-sync",
@@ -922,6 +926,7 @@ OpenClaw 使用 session plugin，需要：
 ```
 
 **openclaw.plugin.json**：
+
 ```json
 {
   "id": "pew-session-sync",
@@ -948,7 +953,7 @@ interface OpenClawHookOptions {
   /** Path to OpenClaw config (from resolveNotifierPaths().openclawConfigPath) */
   openclawConfigPath: string;
   /** Injected fs operations */
-  fs?: { readFile, writeFile, mkdir, rm, access };
+  fs?: { readFile; writeFile; mkdir; rm; access };
   /** Injected spawn for CLI commands */
   spawn?: (cmd: string, args: string[], opts?: object) => { status: number | null };
 }
@@ -982,16 +987,16 @@ function getOpenClawHookStatus(opts: OpenClawHookOptions): Promise<NotifierStatu
 
 ### 测试矩阵（`openclaw-hook.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | 全新安装（mock spawn 成功） |
-| 2 | openclaw CLI 不存在 → skip + warning |
-| 3 | 文件已存在且相同 → changed=false |
-| 4 | spawn install 失败 → warning 但不 throw |
-| 5 | 卸载：清理配置 + 删除目录 |
-| 6 | 卸载：配置不存在 → skip |
-| 7 | status：检查 openclaw.json 中的 plugin 状态 |
-| 8 | 生成的 index.js 包含正确的事件监听 |
+| #   | 测试用例                                    |
+| --- | ------------------------------------------- |
+| 1   | 全新安装（mock spawn 成功）                 |
+| 2   | openclaw CLI 不存在 → skip + warning        |
+| 3   | 文件已存在且相同 → changed=false            |
+| 4   | spawn install 失败 → warning 但不 throw     |
+| 5   | 卸载：清理配置 + 删除目录                   |
+| 6   | 卸载：配置不存在 → skip                     |
+| 7   | status：检查 openclaw.json 中的 plugin 状态 |
+| 8   | 生成的 index.js 包含正确的事件监听          |
 
 **提交信息**：`feat: add OpenClaw session plugin installer`
 
@@ -1026,6 +1031,7 @@ Codex 的 `notify` 字段只能有一个值。如果用户已经配置了别的 
 3. **在 notify.cjs 中链式调用原始 notify**（读取 backup JSON，spawn 原始命令）
 
 卸载时：
+
 1. 从 backup JSON 恢复原始 notify
 2. 如果无 backup → 移除整个 notify 行
 
@@ -1040,7 +1046,7 @@ interface CodexNotifierOptions {
   /** Path to store original notify backup (from resolveNotifierPaths().codexNotifyOriginalPath) */
   originalBackupPath: string;
   /** Injected fs operations */
-  fs?: { readFile, writeFile, copyFile, access };
+  fs?: { readFile; writeFile; copyFile; access };
 }
 
 function installCodexNotifier(opts: CodexNotifierOptions): Promise<NotifierOperationResult>;
@@ -1059,18 +1065,18 @@ function getCodexNotifierStatus(opts: CodexNotifierOptions): Promise<NotifierSta
 
 ### 测试矩阵（`codex-notifier.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | config.toml 无 notify 行 → 插入（含 --source=codex） |
-| 2 | config.toml 已有其他 notify → 保存原始 + 替换 |
-| 3 | config.toml 已有 pew notify（含 --source=codex） → changed=false |
-| 4 | 多行 TOML 数组格式处理 |
-| 5 | 卸载：有原始 backup → 恢复 |
-| 6 | 卸载：无原始 backup → 移除 notify 行 |
-| 7 | config.toml 不存在 → skip |
-| 8 | 原始 notify backup 只写一次（不覆盖） |
-| 9 | status 检测 |
-| 10 | 备份文件创建 |
+| #   | 测试用例                                                         |
+| --- | ---------------------------------------------------------------- |
+| 1   | config.toml 无 notify 行 → 插入（含 --source=codex）             |
+| 2   | config.toml 已有其他 notify → 保存原始 + 替换                    |
+| 3   | config.toml 已有 pew notify（含 --source=codex） → changed=false |
+| 4   | 多行 TOML 数组格式处理                                           |
+| 5   | 卸载：有原始 backup → 恢复                                       |
+| 6   | 卸载：无原始 backup → 移除 notify 行                             |
+| 7   | config.toml 不存在 → skip                                        |
+| 8   | 原始 notify backup 只写一次（不覆盖）                            |
+| 9   | status 检测                                                      |
+| 10  | 备份文件创建                                                     |
 
 **提交信息**：`feat: add Codex TOML notify installer`
 
@@ -1099,8 +1105,16 @@ interface NotifierDriver {
 /** Registry API */
 function getAllDrivers(): NotifierDriver[];
 function getDriver(source: Source): NotifierDriver | undefined;
-function installAll(paths: NotifierPaths, fs?: object, spawn?: Function): Promise<NotifierOperationResult[]>;
-function uninstallAll(paths: NotifierPaths, fs?: object, spawn?: Function): Promise<NotifierOperationResult[]>;
+function installAll(
+  paths: NotifierPaths,
+  fs?: object,
+  spawn?: Function,
+): Promise<NotifierOperationResult[]>;
+function uninstallAll(
+  paths: NotifierPaths,
+  fs?: object,
+  spawn?: Function,
+): Promise<NotifierOperationResult[]>;
 function statusAll(paths: NotifierPaths, fs?: object): Promise<Record<Source, NotifierStatus>>;
 ```
 
@@ -1124,25 +1138,25 @@ const claudeDriver: NotifierDriver = {
 
 ### 注册的 5 个 driver
 
-| Source | displayName | 安装器模块 |
-|--------|------------|-----------|
-| `claude-code` | Claude Code | `claude-hook.ts` |
-| `gemini-cli` | Gemini CLI | `gemini-hook.ts` |
-| `opencode` | OpenCode | `opencode-plugin.ts` |
-| `openclaw` | OpenClaw | `openclaw-hook.ts` |
-| `codex` | Codex | `codex-notifier.ts` |
+| Source        | displayName | 安装器模块           |
+| ------------- | ----------- | -------------------- |
+| `claude-code` | Claude Code | `claude-hook.ts`     |
+| `gemini-cli`  | Gemini CLI  | `gemini-hook.ts`     |
+| `opencode`    | OpenCode    | `opencode-plugin.ts` |
+| `openclaw`    | OpenClaw    | `openclaw-hook.ts`   |
+| `codex`       | Codex       | `codex-notifier.ts`  |
 
 ### 测试矩阵（`registry.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | getAllDrivers 返回 5 个 driver |
-| 2 | getDriver 按 source 查找 |
-| 3 | getDriver 不存在的 source → undefined |
-| 4 | installAll 调用所有 5 个 driver.install，传入正确的路径子集 |
-| 5 | uninstallAll 调用所有 5 个 driver.uninstall |
-| 6 | statusAll 返回 5 个 source 的状态 |
-| 7 | 单个 driver 失败不影响其他 |
+| #   | 测试用例                                                    |
+| --- | ----------------------------------------------------------- |
+| 1   | getAllDrivers 返回 5 个 driver                              |
+| 2   | getDriver 按 source 查找                                    |
+| 3   | getDriver 不存在的 source → undefined                       |
+| 4   | installAll 调用所有 5 个 driver.install，传入正确的路径子集 |
+| 5   | uninstallAll 调用所有 5 个 driver.uninstall                 |
+| 6   | statusAll 返回 5 个 source 的状态                           |
+| 7   | 单个 driver 失败不影响其他                                  |
 
 **提交信息**：`feat: add notifier registry`
 
@@ -1162,11 +1176,11 @@ const claudeDriver: NotifierDriver = {
 pew notify --source=claude-code [--file=<path>]
 ```
 
-| 参数 | 类型 | 必须 | 说明 |
-|------|------|------|------|
-| `--source` | string | 是 | AI 工具标识（`claude-code`, `codex`, `gemini-cli`, `opencode`, `openclaw`） |
-| `--file` | string | 否 | 文件路径提示（未来 Plan Layer 可用于 targeted sync） |
-| `--dev` | boolean | 否 | 使用 dev 环境 |
+| 参数       | 类型    | 必须 | 说明                                                                        |
+| ---------- | ------- | ---- | --------------------------------------------------------------------------- |
+| `--source` | string  | 是   | AI 工具标识（`claude-code`, `codex`, `gemini-cli`, `opencode`, `openclaw`） |
+| `--file`   | string  | 否   | 文件路径提示（未来 Plan Layer 可用于 targeted sync）                        |
+| `--dev`    | boolean | 否   | 使用 dev 环境                                                               |
 
 ### 执行流程
 
@@ -1212,16 +1226,16 @@ async function executeNotify(opts: NotifyOptions): Promise<CoordinatorRunResult>
 
 ### 测试矩阵（`notify-command.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | 有效 source，锁空闲 → 执行 sync |
-| 2 | 有效 source，锁被占用 → 阻塞等锁 → 拿到锁后执行 sync |
-| 3 | 无效 source → 报错退出 |
-| 4 | sync 成功 → 返回 result 含 runId |
-| 5 | sync 失败 → result.error 有值 |
-| 6 | --file 参数透传到 trigger |
-| 7 | dirty follow-up 执行 |
-| 8 | 阻塞等锁超时 → result.error 有值 |
+| #   | 测试用例                                             |
+| --- | ---------------------------------------------------- |
+| 1   | 有效 source，锁空闲 → 执行 sync                      |
+| 2   | 有效 source，锁被占用 → 阻塞等锁 → 拿到锁后执行 sync |
+| 3   | 无效 source → 报错退出                               |
+| 4   | sync 成功 → 返回 result 含 runId                     |
+| 5   | sync 失败 → result.error 有值                        |
+| 6   | --file 参数透传到 trigger                            |
+| 7   | dirty follow-up 执行                                 |
+| 8   | 阻塞等锁超时 → result.error 有值                     |
 
 **提交信息**：`feat: add pew notify command`
 
@@ -1241,11 +1255,11 @@ async function executeNotify(opts: NotifyOptions): Promise<CoordinatorRunResult>
 pew init [--dry-run] [--source=<source>]
 ```
 
-| 参数 | 类型 | 必须 | 说明 |
-|------|------|------|------|
-| `--dry-run` | boolean | 否 | 只预览，不实际修改 |
-| `--source` | string | 否 | 只安装指定 source 的 hook（默认全部） |
-| `--dev` | boolean | 否 | 使用 dev 环境 |
+| 参数        | 类型    | 必须 | 说明                                  |
+| ----------- | ------- | ---- | ------------------------------------- |
+| `--dry-run` | boolean | 否   | 只预览，不实际修改                    |
+| `--source`  | string  | 否   | 只安装指定 source 的 hook（默认全部） |
+| `--dev`     | boolean | 否   | 使用 dev 环境                         |
 
 ### 执行流程
 
@@ -1318,7 +1332,7 @@ interface InitOptions {
   home: string;
   env?: Record<string, string | undefined>;
   dryRun?: boolean;
-  sources?: Source[];  // 为空则安装全部
+  sources?: Source[]; // 为空则安装全部
   /** Injected fs and spawn */
   fs?: object;
   spawn?: Function;
@@ -1340,18 +1354,18 @@ async function executeInit(opts: InitOptions): Promise<InitResult>;
 
 ### 测试矩阵（`init-command.test.ts`）
 
-| # | 测试用例 |
-|---|---------|
-| 1 | 全新安装（5 个 hook 全部成功） |
-| 2 | 部分 source 已安装 → 跳过已安装的 |
-| 3 | dry-run 模式 → 不写入任何文件 |
-| 4 | --source 过滤 → 只安装指定 source |
-| 5 | 创建 stateDir 和 bin 目录 |
-| 6 | notify.cjs 已存在且相同 → 不覆盖 |
-| 7 | 单个 hook 失败不影响其他 |
-| 8 | 结果包含所有 5 个 source 的状态 |
-| 9 | 结果包含解析的 pewBin 路径 |
-| 10 | pewBin 解析失败 → 报错，不继续安装 |
+| #   | 测试用例                           |
+| --- | ---------------------------------- |
+| 1   | 全新安装（5 个 hook 全部成功）     |
+| 2   | 部分 source 已安装 → 跳过已安装的  |
+| 3   | dry-run 模式 → 不写入任何文件      |
+| 4   | --source 过滤 → 只安装指定 source  |
+| 5   | 创建 stateDir 和 bin 目录          |
+| 6   | notify.cjs 已存在且相同 → 不覆盖   |
+| 7   | 单个 hook 失败不影响其他           |
+| 8   | 结果包含所有 5 个 source 的状态    |
+| 9   | 结果包含解析的 pewBin 路径         |
+| 10  | pewBin 解析失败 → 报错，不继续安装 |
 
 **提交信息**：`feat: add pew init command with hook installation`
 
@@ -1390,6 +1404,7 @@ Step 3.5: notifier paths resolver                   │
 ```
 
 **依赖说明**：
+
 - Step 3.5（路径解析器）是新增步骤，在安装器之前，提供统一路径
 - Step 4-8（5 个安装器）可以并行开发，互不依赖，但都依赖 Step 3.5 的路径
 - Step 9（registry）依赖 Step 4-8 + Step 3.5
@@ -1450,15 +1465,15 @@ return {
 
 ## 风险与缓解
 
-| 风险 | 影响 | 缓解措施 |
-|------|------|---------|
-| hook 写入破坏用户 settings.json | 用户丢失 AI 工具配置 | 所有写入前创建 `.bak` 备份；JSON 解析失败 → 不写入 |
-| TOML 启发式解析不够健壮 | Codex notify 设置错误 | 测试覆盖单行/多行/嵌套场景；保存原始值用于恢复 |
-| `openclaw` CLI 版本变化 | 安装失败 | spawn 有 timeout；失败只 warn 不 throw |
-| pew 二进制路径变化 | hook 触发后 sync 不执行 | init 时固化绝对路径 + npx fallback；输出中打印路径方便验证 |
-| 跨进程并发 sync | 状态竞争 | 文件锁（flock）保证互斥；O_APPEND signal 原子追加保证不丢 notify |
-| flock 在某些文件系统不可靠（NFS） | 锁失效 | state dir 通常在本地盘；若 lock() 不可用则降级为无锁执行 |
-| at-most-once sync 语义下崩溃丢数据 | 少量 token 数据丢失 | 见"已知局限"章节；hook 驱动缩小增量窗口；后续阶段改 staged commit |
+| 风险                               | 影响                    | 缓解措施                                                          |
+| ---------------------------------- | ----------------------- | ----------------------------------------------------------------- |
+| hook 写入破坏用户 settings.json    | 用户丢失 AI 工具配置    | 所有写入前创建 `.bak` 备份；JSON 解析失败 → 不写入                |
+| TOML 启发式解析不够健壮            | Codex notify 设置错误   | 测试覆盖单行/多行/嵌套场景；保存原始值用于恢复                    |
+| `openclaw` CLI 版本变化            | 安装失败                | spawn 有 timeout；失败只 warn 不 throw                            |
+| pew 二进制路径变化                 | hook 触发后 sync 不执行 | init 时固化绝对路径 + npx fallback；输出中打印路径方便验证        |
+| 跨进程并发 sync                    | 状态竞争                | 文件锁（flock）保证互斥；O_APPEND signal 原子追加保证不丢 notify  |
+| flock 在某些文件系统不可靠（NFS）  | 锁失效                  | state dir 通常在本地盘；若 lock() 不可用则降级为无锁执行          |
+| at-most-once sync 语义下崩溃丢数据 | 少量 token 数据丢失     | 见"已知局限"章节；hook 驱动缩小增量窗口；后续阶段改 staged commit |
 
 ---
 

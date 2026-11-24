@@ -128,9 +128,7 @@ export function toDailyPoints(records: UsageRow[], tzOffset = 0): DailyPoint[] {
     }
   }
 
-  return Array.from(byDate.values()).sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** Aggregate records by source */

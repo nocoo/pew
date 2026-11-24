@@ -50,11 +50,7 @@ export function FilterDropdown({
         style={{ minWidth: panelMinWidth }}
       >
         {items.map((item) => (
-          <DropdownMenuItem
-            key={item.key}
-            className="gap-2"
-            onSelect={() => onChange(item.key)}
-          >
+          <DropdownMenuItem key={item.key} className="gap-2" onSelect={() => onChange(item.key)}>
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: item.color }}

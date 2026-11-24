@@ -2,14 +2,26 @@ import { localIsolatedEnv } from "./local-e2e-bindings";
 
 const abort = new AbortController();
 let release: () => void;
-const closing = new Promise<void>((done) => { release = done; });
-process.on("message", (message) => {
-  if (message === "dispose") { abort.abort(); release(); }
+const closing = new Promise<void>((done) => {
+  release = done;
 });
-process.on("disconnect", () => { abort.abort(); release(); });
+process.on("message", (message) => {
+  if (message === "dispose") {
+    abort.abort();
+    release();
+  }
+});
+process.on("disconnect", () => {
+  abort.abort();
+  release();
+});
 let local: Awaited<ReturnType<typeof localIsolatedEnv>> | undefined;
 try {
-  local = await localIsolatedEnv(undefined, abort.signal, process.env.PEW_SEED_READINESS === "true");
+  local = await localIsolatedEnv(
+    undefined,
+    abort.signal,
+    process.env.PEW_SEED_READINESS === "true",
+  );
   process.send?.({ env: local.env, state: local.state });
   await closing;
 } catch (error) {

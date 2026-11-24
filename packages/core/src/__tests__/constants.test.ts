@@ -46,7 +46,14 @@ describe("SOURCES", () => {
 describe("VALID_SOURCES", () => {
   it("retains all historical identities independently of active support", () => {
     expect(VALID_SOURCES.size).toBe(15);
-    expect(RETIRED_SOURCES).toEqual(["gemini-cli", "kosmos", "omp", "pmstudio", "vscode-copilot", "zcode"]);
+    expect(RETIRED_SOURCES).toEqual([
+      "gemini-cli",
+      "kosmos",
+      "omp",
+      "pmstudio",
+      "vscode-copilot",
+      "zcode",
+    ]);
     expect(SOURCES.some((source) => RETIRED_SOURCES.includes(source))).toBe(false);
     for (const s of [...SOURCES, ...RETIRED_SOURCES]) {
       expect(VALID_SOURCES.has(s)).toBe(true);

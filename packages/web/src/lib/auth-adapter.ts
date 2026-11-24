@@ -41,7 +41,7 @@ export function D1AuthAdapter(dbRead: DbRead, dbWrite: DbWrite): Adapter {
           user.name ?? null,
           user.image ?? null,
           user.emailVerified?.toISOString() ?? null,
-        ]
+        ],
       );
       return { ...user, id };
     },
@@ -78,7 +78,7 @@ export function D1AuthAdapter(dbRead: DbRead, dbWrite: DbWrite): Adapter {
           account.type,
           account.provider,
           account.providerAccountId,
-        ]
+        ],
       );
     },
 
@@ -107,10 +107,7 @@ export function D1AuthAdapter(dbRead: DbRead, dbWrite: DbWrite): Adapter {
       if (sets.length > 0) {
         sets.push("updated_at = datetime('now')");
         params.push(user.id);
-        await dbWrite.execute(
-          `UPDATE users SET ${sets.join(", ")} WHERE id = ?`,
-          params
-        );
+        await dbWrite.execute(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`, params);
       }
 
       // Return updated user

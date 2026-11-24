@@ -42,7 +42,12 @@ export function TeamLogoIcon({
   name: string;
   className?: string;
 }) {
-  const fallback = <Users className={cn("h-3.5 w-3.5 shrink-0 text-basalt-muted-foreground", className)} strokeWidth={1.5} />;
+  const fallback = (
+    <Users
+      className={cn("h-3.5 w-3.5 shrink-0 text-basalt-muted-foreground", className)}
+      strokeWidth={1.5}
+    />
+  );
 
   if (!logoUrl) return fallback;
 
@@ -90,7 +95,12 @@ export function OrgLogoIcon({
   name: string;
   className?: string;
 }) {
-  const fallback = <Building2 className={cn("h-3.5 w-3.5 shrink-0 text-basalt-muted-foreground", className)} strokeWidth={1.5} />;
+  const fallback = (
+    <Building2
+      className={cn("h-3.5 w-3.5 shrink-0 text-basalt-muted-foreground", className)}
+      strokeWidth={1.5}
+    />
+  );
 
   if (!logoUrl) return fallback;
 

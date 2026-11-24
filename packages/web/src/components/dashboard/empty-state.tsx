@@ -42,7 +42,10 @@ function EmptyState({
       icon={<Icon strokeWidth={1.5} />}
       title={title}
       description={description}
-      className={cn("rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 md:p-12", className)}
+      className={cn(
+        "rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 md:p-12",
+        className,
+      )}
       {...(actionNode ? { action: actionNode } : {})}
     >
       {tips && tips.length > 0 ? (

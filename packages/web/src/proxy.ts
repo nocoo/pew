@@ -87,11 +87,7 @@ export function resolveProxyAction(
 // We must `await` the result before calling it.
 export async function proxy(request: NextRequest) {
   const authHandler = await auth((req) => {
-    const action = resolveProxyAction(
-      req.nextUrl.pathname,
-      !!req.auth,
-      SKIP_AUTH,
-    );
+    const action = resolveProxyAction(req.nextUrl.pathname, !!req.auth, SKIP_AUTH);
 
     if (action === "next") return NextResponse.next();
     const target = action === "redirect:/dashboard" ? "/dashboard" : "/login";

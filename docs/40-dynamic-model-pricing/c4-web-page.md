@@ -100,6 +100,7 @@ Auth pattern (`useAdmin()` + redirect/forbidden view) matches existing `/admin/p
 ### `pricing-meta-banner.tsx` (client)
 
 Renders:
+
 - `lastSyncedAt` as relative time + absolute UTC tooltip.
 - Stale warning (yellow) when `lastSyncedAt > 36h ago`; danger (red) when `> 7d ago`.
 - `servedFrom: 'baseline'` → orange banner: "Showing bundled baseline — KV cache is empty (cold start) or worker-read is unreachable."
@@ -114,6 +115,7 @@ Columns:
 | Model | Provider | Display name | Input | Output | Cached | Context | Origin | Updated |
 
 Features:
+
 - Sort by any column (default: provider asc, model asc).
 - Filter input: case-insensitive substring match on model + displayName + provider.
 - Origin column rendered as a colored chip per the main design doc (baseline=gray, models.dev=green, openrouter=blue, admin=purple).
@@ -128,12 +130,12 @@ Pure presentation; no data fetching. Receives `entries` as a prop.
 ### `route.test.ts`
 
 ```typescript
-test('401 when unauthenticated')
-test('403 when authenticated but not admin')
-test('returns entries + meta + servedFrom for admin')
-test('503 with fallback shape when worker-read throws')
-test('cache-control: private, no-store')
-test('contract: response shape round-trips a representative DynamicPricingEntry/Meta')
+test("401 when unauthenticated");
+test("403 when authenticated but not admin");
+test("returns entries + meta + servedFrom for admin");
+test("503 with fallback shape when worker-read throws");
+test("cache-control: private, no-store");
+test("contract: response shape round-trips a representative DynamicPricingEntry/Meta");
 ```
 
 Mocks `getDbRead()` and `isAdminUser()` per existing `app/api/organizations/mine/route.test.ts` pattern; no real worker-read.
@@ -143,13 +145,13 @@ Mocks `getDbRead()` and `isAdminUser()` per existing `app/api/organizations/mine
 The C4 spec deliberately keeps table behavior in pure helpers because the project does **not** currently depend on `@testing-library/react` (verified — no such dep in `packages/web/package.json`). Introducing a UI test library is out of scope.
 
 ```typescript
-test('sortEntries: default sort is [provider asc, model asc]')
-test('sortEntries: column toggle reverses direction')
-test('sortEntries: numeric columns sort numerically not lexicographically')
-test('filterEntries: case-insensitive substring match on model + displayName + provider')
-test('filterEntries: empty filter returns all entries')
-test('originChipClass: returns the expected color class per origin')
-test('formatNullable: null context renders as "—"')
+test("sortEntries: default sort is [provider asc, model asc]");
+test("sortEntries: column toggle reverses direction");
+test("sortEntries: numeric columns sort numerically not lexicographically");
+test("filterEntries: case-insensitive substring match on model + displayName + provider");
+test("filterEntries: empty filter returns all entries");
+test("originChipClass: returns the expected color class per origin");
+test('formatNullable: null context renders as "—"');
 ```
 
 The React components themselves are thin wrappers around these helpers and validated manually via `bun run dev`. If a future commit adds `@testing-library/react`, component-level tests can be filled in then.

@@ -1,7 +1,5 @@
 {
   "setup": [],
   "teardown": [],
-  "run": [
-    "bun run dev"
-  ]
+  "run": ["bun run dev"]
 }

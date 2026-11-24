@@ -29,7 +29,9 @@ export function RowListSkeleton({
         // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
         <div key={`row-${i}`} className="rounded-xl bg-basalt-secondary p-4">
           <div className="flex items-center gap-4">
-            {leadingClassName ? <Skeleton style={{ width: undefined }} className={leadingClassName} /> : null}
+            {leadingClassName ? (
+              <Skeleton style={{ width: undefined }} className={leadingClassName} />
+            ) : null}
             {middle.map((w, j) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; middle widths are stable per render and w may repeat, so index is authoritative.
               <Skeleton style={{ width: undefined }} key={`m${j}`} className={`h-4 ${w}`} />

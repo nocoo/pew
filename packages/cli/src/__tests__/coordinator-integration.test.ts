@@ -33,22 +33,20 @@ describe("concurrent coordinatedSync serialization", () => {
     const events: string[] = [];
     let resolveFirst: (() => void) | null = null;
 
-    const executeSyncFn = vi.fn(
-      async (_triggers: SyncTrigger[]): Promise<SyncCycleResult> => {
-        const callNum = executeSyncFn.mock.calls.length;
-        events.push(`start-${callNum}`);
+    const executeSyncFn = vi.fn(async (_triggers: SyncTrigger[]): Promise<SyncCycleResult> => {
+      const callNum = executeSyncFn.mock.calls.length;
+      events.push(`start-${callNum}`);
 
-        if (callNum === 1) {
-          // First sync: wait until we signal it to finish
-          await new Promise<void>((r) => {
-            resolveFirst = r;
-          });
-        }
+      if (callNum === 1) {
+        // First sync: wait until we signal it to finish
+        await new Promise<void>((r) => {
+          resolveFirst = r;
+        });
+      }
 
-        events.push(`end-${callNum}`);
-        return {};
-      },
-    );
+      events.push(`end-${callNum}`);
+      return {};
+    });
 
     // Launch two concurrent coordinatedSync calls
     const promise1 = coordinatedSync(trigger, {
@@ -73,8 +71,7 @@ describe("concurrent coordinatedSync serialization", () => {
     const [result1, result2] = await Promise.all([promise1, promise2]);
 
     // At least one should have run sync
-    const totalCycles =
-      result1.cycles.length + result2.cycles.length;
+    const totalCycles = result1.cycles.length + result2.cycles.length;
     expect(totalCycles).toBeGreaterThanOrEqual(1);
 
     // No overlapping execution: start-N must always be followed by end-N
@@ -87,27 +84,23 @@ describe("concurrent coordinatedSync serialization", () => {
     }
 
     // Lockfile should be cleaned up
-    await expect(
-      stat(join(stateDir, "sync.lock")),
-    ).rejects.toThrow();
+    await expect(stat(join(stateDir, "sync.lock"))).rejects.toThrow();
   });
 
   it("dirty follow-up ensures late signals are not lost", async () => {
     let syncCount = 0;
 
-    const executeSyncFn = vi.fn(
-      async (_triggers: SyncTrigger[]): Promise<SyncCycleResult> => {
-        syncCount++;
-        return {
-          tokenSync: {
-            totalDeltas: syncCount,
-            totalRecords: syncCount,
-            filesScanned: {},
-            sources: {},
-          },
-        };
-      },
-    );
+    const executeSyncFn = vi.fn(async (_triggers: SyncTrigger[]): Promise<SyncCycleResult> => {
+      syncCount++;
+      return {
+        tokenSync: {
+          totalDeltas: syncCount,
+          totalRecords: syncCount,
+          filesScanned: {},
+          sources: {},
+        },
+      };
+    });
 
     const result = await coordinatedSync(trigger, {
       stateDir,
@@ -153,14 +146,16 @@ describe("concurrent coordinatedSync serialization", () => {
   });
 
   it("writes run log with correct structure after real filesystem sync", async () => {
-    const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => ({
-      tokenSync: {
-        totalDeltas: 5,
-        totalRecords: 3,
-        filesScanned: { claude: 2 },
-        sources: { "claude-code": 3 },
-      },
-    }));
+    const executeSyncFn = vi.fn(
+      async (): Promise<SyncCycleResult> => ({
+        tokenSync: {
+          totalDeltas: 5,
+          totalRecords: 3,
+          filesScanned: { claude: 2 },
+          sources: { "claude-code": 3 },
+        },
+      }),
+    );
 
     const result = await coordinatedSync(trigger, {
       stateDir,
@@ -204,14 +199,16 @@ describe("cooldown integration", () => {
   };
 
   it("second run is cooldown-skipped immediately after a successful first run", async () => {
-    const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => ({
-      tokenSync: {
-        totalDeltas: 3,
-        totalRecords: 2,
-        filesScanned: {},
-        sources: {},
-      },
-    }));
+    const executeSyncFn = vi.fn(
+      async (): Promise<SyncCycleResult> => ({
+        tokenSync: {
+          totalDeltas: 3,
+          totalRecords: 2,
+          filesScanned: {},
+          sources: {},
+        },
+      }),
+    );
 
     // First run — should execute
     const result1 = await coordinatedSync(trigger, {
@@ -245,14 +242,16 @@ describe("cooldown integration", () => {
   it("runs sync after cooldown expires (controlled via now())", async () => {
     let clock = Date.parse("2026-03-10T12:00:00.000Z");
 
-    const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => ({
-      tokenSync: {
-        totalDeltas: 1,
-        totalRecords: 1,
-        filesScanned: {},
-        sources: {},
-      },
-    }));
+    const executeSyncFn = vi.fn(
+      async (): Promise<SyncCycleResult> => ({
+        tokenSync: {
+          totalDeltas: 1,
+          totalRecords: 1,
+          filesScanned: {},
+          sources: {},
+        },
+      }),
+    );
 
     // First run at T+0
     const result1 = await coordinatedSync(trigger, {

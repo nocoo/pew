@@ -62,9 +62,7 @@ describe("toSessionOverview", () => {
   });
 
   it("should handle a single session", () => {
-    const records = [
-      makeSession({ duration_seconds: 7200, total_messages: 50 }),
-    ];
+    const records = [makeSession({ duration_seconds: 7200, total_messages: 50 })];
 
     const result = toSessionOverview(records);
 
@@ -93,15 +91,7 @@ describe("toWorkingHoursGrid", () => {
   it("should have days in order: Mon, Tue, Wed, Thu, Fri, Sat, Sun", () => {
     const grid = toWorkingHoursGrid([]);
 
-    expect(grid.map((d) => d.day)).toEqual([
-      "Mon",
-      "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
-      "Sat",
-      "Sun",
-    ]);
+    expect(grid.map((d) => d.day)).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
   });
 
   it("should count sessions by day-of-week and hour (UTC, tzOffset=0)", () => {
@@ -139,9 +129,7 @@ describe("toWorkingHoursGrid", () => {
 
   it("should shift hours with positive tzOffset (PST, UTC-8 = 480)", () => {
     // 2026-03-09 Monday 02:00 UTC → Sunday 18:00 PST (shifted back 8h, crosses midnight)
-    const records = [
-      makeSession({ started_at: "2026-03-09T02:00:00Z" }),
-    ];
+    const records = [makeSession({ started_at: "2026-03-09T02:00:00Z" })];
 
     const grid = toWorkingHoursGrid(records, 480);
 
@@ -155,9 +143,7 @@ describe("toWorkingHoursGrid", () => {
 
   it("should shift hours with negative tzOffset (JST, UTC+9 = -540)", () => {
     // 2026-03-08 Sunday 22:00 UTC → 2026-03-09 Monday 07:00 JST
-    const records = [
-      makeSession({ started_at: "2026-03-08T22:00:00Z" }),
-    ];
+    const records = [makeSession({ started_at: "2026-03-08T22:00:00Z" })];
 
     const grid = toWorkingHoursGrid(records, -540);
 
@@ -171,9 +157,7 @@ describe("toWorkingHoursGrid", () => {
 
   it("should default to UTC when tzOffset is omitted", () => {
     // 2026-03-08 is a Sunday, 10:00 UTC
-    const records = [
-      makeSession({ started_at: "2026-03-08T10:00:00Z" }),
-    ];
+    const records = [makeSession({ started_at: "2026-03-08T10:00:00Z" })];
 
     const grid = toWorkingHoursGrid(records);
 
@@ -247,11 +231,7 @@ describe("toMessageDailyStats", () => {
 
     const daily = toMessageDailyStats(records);
 
-    expect(daily.map((d) => d.date)).toEqual([
-      "2026-03-08",
-      "2026-03-09",
-      "2026-03-10",
-    ]);
+    expect(daily.map((d) => d.date)).toEqual(["2026-03-08", "2026-03-09", "2026-03-10"]);
   });
 
   it("should shift day boundary for west-of-UTC timezone (tzOffset=480, PST)", () => {
@@ -326,9 +306,7 @@ describe("toMessageDailyStats", () => {
 // computeTokensPerHour
 // ---------------------------------------------------------------------------
 
-function makeOverview(
-  overrides: Partial<SessionOverview> = {},
-): SessionOverview {
+function makeOverview(overrides: Partial<SessionOverview> = {}): SessionOverview {
   return {
     totalSessions: 10,
     totalHours: 5,
@@ -358,10 +336,7 @@ describe("computeTokensPerHour", () => {
 
   it("should handle high throughput values", () => {
     // 10M tokens over 2 hours = 5M tok/hr
-    const result = computeTokensPerHour(
-      10_000_000,
-      makeOverview({ totalHours: 2 }),
-    );
+    const result = computeTokensPerHour(10_000_000, makeOverview({ totalHours: 2 }));
 
     expect(result.tokensPerHour).toBe(5_000_000);
     expect(result.totalCodingHours).toBe(2);
@@ -402,14 +377,16 @@ describe("toMessagesByDimension", () => {
 
   it("groups by model when dimension=model and falls back to 'Unknown' for null", () => {
     const sessions: SessionRow[] = [
-      makeSession({ model: "claude-sonnet-4", started_at: "2026-03-08T10:00:00Z", total_messages: 4 }),
+      makeSession({
+        model: "claude-sonnet-4",
+        started_at: "2026-03-08T10:00:00Z",
+        total_messages: 4,
+      }),
       makeSession({ model: null, started_at: "2026-03-08T11:00:00Z", total_messages: 2 }),
     ];
     const { data, keys } = toMessagesByDimension(sessions, 0, "model");
     expect(keys).toEqual(["Unknown", "claude-sonnet-4"]);
-    expect(data).toEqual([
-      { date: "2026-03-08", "claude-sonnet-4": 4, Unknown: 2 },
-    ]);
+    expect(data).toEqual([{ date: "2026-03-08", "claude-sonnet-4": 4, Unknown: 2 }]);
   });
 
   it("respects tzOffset when bucketing by local date", () => {

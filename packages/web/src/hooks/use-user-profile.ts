@@ -51,9 +51,7 @@ interface UseUserProfileResult {
   refetch: () => void;
 }
 
-type ProfileResult =
-  | { kind: "ok"; data: UserProfileData }
-  | { kind: "not_found" };
+type ProfileResult = { kind: "ok"; data: UserProfileData } | { kind: "not_found" };
 
 async function userProfileFetcher(url: string): Promise<ProfileResult> {
   const res = await fetch(url);
@@ -65,9 +63,7 @@ async function userProfileFetcher(url: string): Promise<ProfileResult> {
   return { kind: "ok", data };
 }
 
-export function useUserProfile(
-  options: UseUserProfileOptions,
-): UseUserProfileResult {
+export function useUserProfile(options: UseUserProfileOptions): UseUserProfileResult {
   const { slug, days = 30, from, to, source } = options;
 
   const url = useMemo(() => {
@@ -83,10 +79,7 @@ export function useUserProfile(
     return `/api/users/${slug}?${params.toString()}`;
   }, [slug, days, from, to, source]);
 
-  const { data: result, error, isLoading, mutate } = useSWR<ProfileResult>(
-    url,
-    userProfileFetcher,
-  );
+  const { data: result, error, isLoading, mutate } = useSWR<ProfileResult>(url, userProfileFetcher);
 
   const data = result?.kind === "ok" ? result.data : null;
   const notFound = result?.kind === "not_found";

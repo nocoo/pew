@@ -89,10 +89,7 @@ export async function POST(request: Request) {
 
   const name = body.name;
   if (typeof name !== "string" || name.length < 1 || name.length > 64) {
-    return NextResponse.json(
-      { error: "name must be 1-64 characters" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "name must be 1-64 characters" }, { status: 400 });
   }
 
   // Auto-generate slug from name
@@ -111,9 +108,7 @@ export async function POST(request: Request) {
     // Ensure unique slug
     const existing = await dbRead.checkTeamSlugExists(slug);
 
-    const finalSlug = existing
-      ? `${slug}-${crypto.randomUUID().slice(0, 6)}`
-      : slug;
+    const finalSlug = existing ? `${slug}-${crypto.randomUUID().slice(0, 6)}` : slug;
 
     // Generate invite code — 128 bits of entropy (32 hex chars)
     const inviteCode = randomBytes(16).toString("hex");
@@ -133,14 +128,17 @@ export async function POST(request: Request) {
       [crypto.randomUUID(), teamId, authResult.userId],
     );
 
-    return NextResponse.json({
-      id: teamId,
-      name,
-      slug: finalSlug,
-      invite_code: inviteCode,
-      member_count: 1,
-      logoUrl: null,
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        id: teamId,
+        name,
+        slug: finalSlug,
+        invite_code: inviteCode,
+        member_count: 1,
+        logoUrl: null,
+      },
+      { status: 201 },
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("no such table")) {

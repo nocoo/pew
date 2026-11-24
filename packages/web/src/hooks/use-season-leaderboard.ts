@@ -60,12 +60,12 @@ interface UseSeasonLeaderboardResult {
   loadingTeamIds: Set<string>;
 }
 
-export function useSeasonLeaderboard(
-  seasonIdOrSlug: string | null,
-): UseSeasonLeaderboardResult {
+export function useSeasonLeaderboard(seasonIdOrSlug: string | null): UseSeasonLeaderboardResult {
   const key = seasonIdOrSlug ? `/api/seasons/${seasonIdOrSlug}/leaderboard` : null;
-  const { data, error, isLoading, isValidating, mutate } =
-    useSWR<SeasonLeaderboardData>(key, fetcher);
+  const { data, error, isLoading, isValidating, mutate } = useSWR<SeasonLeaderboardData>(
+    key,
+    fetcher,
+  );
 
   const fetchedTeamsRef = useRef<Set<string>>(new Set());
   const loadingTeamIdsRef = useRef<Set<string>>(new Set());
@@ -113,8 +113,9 @@ export function useSeasonLeaderboard(
               if (!prev) return prev;
               return {
                 ...prev,
-                entries: prev.entries.map((entry): SeasonTeamEntry =>
-                  entry.team.id === teamId ? { ...entry, members } : entry,
+                entries: prev.entries.map(
+                  (entry): SeasonTeamEntry =>
+                    entry.team.id === teamId ? { ...entry, members } : entry,
                 ),
               };
             },

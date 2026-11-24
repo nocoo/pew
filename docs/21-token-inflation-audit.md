@@ -65,6 +65,7 @@ constructor(configDir: string, dev = false) {
 **结果**：如果 N 次 cursor reset + sync 在同一次 upload 前发生（unread records 累积了 N 份重复快照），则 D1 值 = N × 真实值。
 
 **代码位置**:
+
 - Queue append: `packages/cli/src/storage/base-queue.ts:39-43` (`appendBatch`)
 - Aggregation SUM: `packages/cli/src/commands/upload.ts:52-72` (`aggregateRecords`)
 - Upload reads from savedOffset: `packages/cli/src/commands/upload-engine.ts:112-114`
@@ -75,14 +76,14 @@ constructor(configDir: string, dev = false) {
 
 本机原始数据 vs D1 (prod device `7f2bdbdb-...`) 对比：
 
-| Source | Local Raw | D1 Prod | Ratio |
-|--------|-----------|---------|-------|
-| opencode | 7,450,016,338 | 17,607,707,877 | **2.36x** |
-| claude-code | 354,044,326 | 1,416,682,362 | **4.00x** |
-| codex | 301,976,679 | 1,187,600,717 | **3.93x** |
-| gemini-cli | 5,423,314 | 21,693,256 | **4.00x** |
-| vscode-copilot | 2,980,668 | 11,922,672 | **4.00x** |
-| **Total** | **8,114,441,325** | **20,245,606,884** | **2.49x** |
+| Source         | Local Raw         | D1 Prod            | Ratio     |
+| -------------- | ----------------- | ------------------ | --------- |
+| opencode       | 7,450,016,338     | 17,607,707,877     | **2.36x** |
+| claude-code    | 354,044,326       | 1,416,682,362      | **4.00x** |
+| codex          | 301,976,679       | 1,187,600,717      | **3.93x** |
+| gemini-cli     | 5,423,314         | 21,693,256         | **4.00x** |
+| vscode-copilot | 2,980,668         | 11,922,672         | **4.00x** |
+| **Total**      | **8,114,441,325** | **20,245,606,884** | **2.49x** |
 
 claude-code / codex / gemini-cli / vscode-copilot 均精确 **4.00x**，说明进行了 4 次 cursor reset，且每次 reset 前 upload 尚未完成（unread records 累积）。
 opencode 为 2.36x 因为 opencode 数据随时间变化（新增 session 改变了累积值）。
@@ -113,10 +114,10 @@ opencode 为 2.36x 因为 opencode 数据随时间变化（新增 session 改变
 
 两种 parser 策略：
 
-| 策略 | Sources | 原始格式 | 增量机制 |
-|------|---------|----------|----------|
-| **Per-event absolute** | Claude, OpenClaw, VSCode Copilot | JSONL，每行带独立 usage | byte offset resume，只读新字节 |
-| **Cumulative diff** | Codex, Gemini, OpenCode | 累积 totals | `diffTotals(current, lastTotals)` 产出增量 |
+| 策略                   | Sources                          | 原始格式                | 增量机制                                   |
+| ---------------------- | -------------------------------- | ----------------------- | ------------------------------------------ |
+| **Per-event absolute** | Claude, OpenClaw, VSCode Copilot | JSONL，每行带独立 usage | byte offset resume，只读新字节             |
+| **Cumulative diff**    | Codex, Gemini, OpenCode          | 累积 totals             | `diffTotals(current, lastTotals)` 产出增量 |
 
 无论哪种策略，**cursor reset（offset=0 / lastTotals=null）都会导致全部数据被重新产出为 delta**。re-scan 的总量等于首次 scan 的总量。
 
@@ -129,6 +130,7 @@ opencode 为 2.36x 因为 opencode 数据随时间变化（新增 session 改变
 sync 完成后 `appendBatch(records)` 写入 queue 的每条 record，是**本次 sync 中新解析到的所有 delta 按 (source, model, hour_start) 聚合后的增量值**。
 
 关键推论：
+
 - **正常增量 sync**：queue record 只包含上次 sync 以来的新增 token（因为 parser 从 cursor 位置开始）
 - **Cursor reset 后的 sync**：queue record 包含从文件开头到末尾的所有 token（parser 从 byte 0 开始，重新产出全部 delta）
 - **同一个 bucket key 的两次增量 sync**：两条 record 的值相加才是该 bucket 的真实总量
@@ -150,6 +152,7 @@ Worker 的 `ON CONFLICT DO UPDATE SET total_tokens = excluded.total_tokens` 是�
 **对外一句话**："升级新版 CLI 后，执行一次 `pew reset`，再同步一次，状态就恢复正常。"
 
 核心保证：
+
 1. `pew reset` 能彻底清掉会导致 token inflation 的本地坏状态
 2. reset 后第一次 sync 产出正确的 queue 和正确的上传值
 3. 之后的 sync 永远安全，不因 cursor reset、upload 失败、重复扫描而膨胀
@@ -183,6 +186,7 @@ upload:   readFromOffset(0) → POST (records already aggregated) → saveOffset
 Queue records 是**增量 delta**，不是累积快照。同一个 bucket key 可能在多次 sync 中各产出一条增量 record，它们的**正确合并方式是 SUM**。
 
 MAX 不成立的场景：
+
 - 第 1 次 sync：bucket X 产出 100 tokens（新增活动）
 - 第 2 次 sync：bucket X 又产出 30 tokens（同一半小时内继续有新活动）
 - queue 中有两条 record：100 和 30
@@ -218,17 +222,18 @@ upload:   readFromOffset(0) → POST → saveOffset(newOffset)
 
 这为什么是正确的：
 
-| 场景 | 发生了什么 | Queue 内容 | 上传值 |
-|------|-----------|-----------|--------|
-| **正常增量 sync** | Parser 从 cursor 位置开始，只产出新 delta | 仅包含本次新增的增量 | ✅ 正确（增量覆盖 D1） |
-| **Cursor reset 后 sync** | Parser 从头解析，产出全量 delta | 全量值（覆盖了之前的增量） | ✅ 正确（全量覆盖 D1） |
-| **Upload 失败后再次 sync** | 新 sync 再次 overwrite queue | 最新的增量值（覆盖了上次未上传的） | ✅ 正确 |
+| 场景                       | 发生了什么                                | Queue 内容                         | 上传值                 |
+| -------------------------- | ----------------------------------------- | ---------------------------------- | ---------------------- |
+| **正常增量 sync**          | Parser 从 cursor 位置开始，只产出新 delta | 仅包含本次新增的增量               | ✅ 正确（增量覆盖 D1） |
+| **Cursor reset 后 sync**   | Parser 从头解析，产出全量 delta           | 全量值（覆盖了之前的增量）         | ✅ 正确（全量覆盖 D1） |
+| **Upload 失败后再次 sync** | 新 sync 再次 overwrite queue              | 最新的增量值（覆盖了上次未上传的） | ✅ 正确                |
 
 **等一下——正常增量 sync 只覆盖新增量，但之前未上传的旧增量不就丢了吗？**
 
 是的。这是 overwrite-only 的代价：**如果上次 sync 产出了 records 但 upload 尚未完成，下次 sync 的 overwrite 会丢掉那些未上传的增量。**
 
 场景：
+
 1. Sync A：产出 bucket X = 50（新增量），写入 queue
 2. Upload 失败（或还没跑）
 3. Sync B：产出 bucket X = 30（更多新增量），overwrite queue
@@ -236,6 +241,7 @@ upload:   readFromOffset(0) → POST → saveOffset(newOffset)
 5. Upload：D1 收到 30，正确值应该是 80
 
 **这在 cursor-before-queue 的写入顺序下不会发生。** 因为：
+
 - Sync A 先 save cursor 到位置 P₁，然后 overwrite queue
 - Sync B 从 P₁ 开始解析，只产出 P₁ 之后的新增量 30
 - 但 P₁ 之前的增量已经在 Sync A 的 queue 中，被 Sync B 的 overwrite 覆盖丢失了
@@ -254,17 +260,18 @@ sync.ts 尾部（替换 sync.ts:339-350）：
 
 **Crash safety 分析**：
 
-| Crash 时机 | 状态 | 下次 sync |
-|-----------|------|-----------|
-| overwrite 前 | queue = 旧内容，cursor = 旧 | 重新解析 + overwrite → 正确 |
+| Crash 时机                   | 状态                          | 下次 sync                                                                                                          |
+| ---------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| overwrite 前                 | queue = 旧内容，cursor = 旧   | 重新解析 + overwrite → 正确                                                                                        |
 | overwrite 后、cursor save 前 | queue = 本次结果，cursor = 旧 | cursor 指向旧位置，parser 重扫本次范围 + 之前的范围，产出更大的全量值 → overwrite queue → **D1 收到的值 ≥ 真实值** |
-| cursor save 后 | queue = 本次结果，cursor = 新 | 正常增量 → 正确 |
+| cursor save 后               | queue = 本次结果，cursor = 新 | 正常增量 → 正确                                                                                                    |
 
 **第二种 crash 场景会导致部分数据重复计入吗？**
 
 是的。如果 crash 发生在 queue overwrite 之后但 cursor save 之前，下次 sync 会用旧 cursor 重扫，产出的值包含了"本次已经 overwrite 到 queue 中的增量"加上之前累积的部分。这意味着 queue 中的值可能 > 真实值。
 
 但这比 cursor-before-queue 的 inflate-on-reset 要好得多：
+
 1. **只发生在 crash 时**，不是正常操作流程
 2. **只在 queue overwrite 到 cursor save 之间极短的窗口内**
 3. **最坏情况是一次 sync 周期的增量被多算一次**，不是 Nx 倍数膨胀
@@ -273,10 +280,12 @@ sync.ts 尾部（替换 sync.ts:339-350）：
 **但还有更好的方案吗？**
 
 有。**先保存 cursor，再 overwrite queue — 与现有代码相同的顺序。** Crash safety：
+
 - Cursor saved + queue 没 overwrite → 下次 sync 从新 cursor 开始，产出的是纯增量，但 queue 里还有旧的内容
 - 问题：旧 queue 内容 + 新 overwrite 内容 = ？
 
 **不对。overwrite 是全量覆盖，不是 append。** 如果 cursor saved 但 queue 没 overwrite，下次 sync：
+
 1. Cursor 指向新位置 P₂
 2. Parser 从 P₂ 开始，只产出 P₂ 之后的增量
 3. `overwrite(newRecords)` 把 queue 替换为仅 P₂ 之后的增量
@@ -291,6 +300,7 @@ sync.ts 尾部（替换 sync.ts:339-350）：
 写入顺序必须改为 **queue overwrite → offset save → cursor save**。
 
 crash safety 的取舍是：用"极端 crash 场景下极短窗口内的微量多算"，换取"正常操作下（包括 cursor reset）永远不膨胀"。这是正确的取舍，因为：
+
 - Cursor reset 是实际发生的（已经导致 4x 膨胀）
 - 两步写入之间的 crash 是理论边界情况
 - `pew reset` 提供了兜底恢复手段
@@ -302,11 +312,11 @@ crash safety 的取舍是：用"极端 crash 场景下极短窗口内的微量�
 ```typescript
 // ---------- Write to queue (overwrite, not append) ----------
 if (records.length > 0) {
-  await queue.overwrite(records);    // atomic: write tmp → rename
+  await queue.overwrite(records); // atomic: write tmp → rename
 } else {
-  await queue.overwrite([]);         // clear queue if no records
+  await queue.overwrite([]); // clear queue if no records
 }
-await queue.saveOffset(0);           // offset = 0 (entire file is unread)
+await queue.saveOffset(0); // offset = 0 (entire file is unread)
 
 // ---------- Save cursor state AFTER queue ----------
 // Queue must be written before cursor so that a crash between the two
@@ -330,14 +340,17 @@ async overwrite(records: T[]): Promise<void>
 `upload-engine.ts` 的 offset 逻辑不变：upload 从 savedOffset 读取 records，上传成功后 saveOffset。sync 结束后 offset = 0，所以 upload 会读到完整 queue。
 
 **关键不变量**：
+
 > 每次 sync 完成后，queue 文件仅包含本次 sync 产出的 records，offset = 0。Upload 时读到的就是本次 sync 的完整输出，无需 merge、无重复。
 
 **修改文件**：
+
 - `packages/cli/src/commands/sync.ts` — 尾部 queue 写入逻辑改为 overwrite + cursor-after-queue
 - `packages/cli/src/storage/base-queue.ts` — 新增 `overwrite()` 方法（atomic tmp → rename）
 - `packages/cli/src/commands/upload.ts` — `aggregateRecords()` 保留作为 defense-in-depth
 
 **验证**：
+
 - L1 单元测试：cursor reset + 二次 sync → queue 中值不膨胀（等于全量重扫值）
 - L1 单元测试：sync 后 upload 失败 → 再次 sync → queue 值正确（不累积）
 - L1 单元测试：两次增量 sync（无 upload）→ 第二次 overwrite 不丢第一次数据（因为 parser 从旧 cursor 开始，产出的增量包含第一次的范围 — **注意：这需要验证**）
@@ -347,6 +360,7 @@ async overwrite(records: T[]): Promise<void>
 两次 sync 之间如果 upload 没有执行，第二次 sync 的 overwrite 会丢掉第一次 sync 的增量吗？
 
 分析：
+
 1. Sync 1：cursor 从 P₀ → P₁，产出 delta [P₀, P₁)，overwrite queue，save cursor = P₁
 2. （没有 upload）
 3. Sync 2：cursor 从 P₁ → P₂，产出 delta [P₁, P₂)，overwrite queue，save cursor = P₂
@@ -370,6 +384,7 @@ sync:     parse deltas → aggregate into buckets (newRecords)
 这样 queue 始终是"从第一次 sync 到现在所有增量的累积 SUM"。每次 sync 把自己的新增量加到累积值上，然后 overwrite。
 
 **Cursor reset 场景**：
+
 1. Queue 中 bucket X = 130（之前所有 sync 的 SUM）
 2. `rm cursors.json && pew sync`
 3. Parser 从头解析，产出 newRecords 中 bucket X = 130（全量重扫值，恰好等于累积值）
@@ -383,6 +398,7 @@ sync:     parse deltas → aggregate into buckets (newRecords)
 #### 根本矛盾与正确方案
 
 矛盾总结：
+
 - Queue records 是增量 → 正常 sync 需要 SUM 来累积
 - Cursor reset 后 records 变成全量 → SUM 会膨胀，需要 REPLACE
 - **但代码无法区分"这次 sync 的 records 是增量还是全量"**
@@ -405,23 +421,23 @@ sync:     parse deltas → aggregate into buckets (newRecords)
 
 **验证所有场景**：
 
-| 场景 | Cursor 状态 | 分支 | Queue 操作 | 结果 |
-|------|------------|------|-----------|------|
-| 首次 sync（空 cursor） | empty | full-scan | overwrite(全量) | ✅ 正确 |
-| 正常增量 sync | exists | incremental | SUM(old + new) → overwrite | ✅ 正确：old 累积 + new 增量 = 新累积 |
-| Cursor reset 后 sync | empty (刚删了) | full-scan | overwrite(全量) | ✅ 正确：丢弃旧 queue，用全量替换 |
-| Upload 失败后增量 sync | exists | incremental | SUM(old + new) → overwrite | ✅ 正确：未上传的 old 被保留 |
-| Upload 失败后 cursor reset | empty | full-scan | overwrite(全量) | ✅ 正确 |
-| 两次增量 sync（无 upload） | exists | incremental | SUM(old + new₁) → SUM(result + new₂) | ✅ 正确 |
-| Crash: overwrite 后 cursor 前 | — | — | queue = 本次结果，cursor = 旧 | 下次判断为 incremental（cursor 存在但过时），SUM(queue + re-scan) → 重扫范围内的增量可能被多算一次 |
+| 场景                          | Cursor 状态    | 分支        | Queue 操作                           | 结果                                                                                               |
+| ----------------------------- | -------------- | ----------- | ------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| 首次 sync（空 cursor）        | empty          | full-scan   | overwrite(全量)                      | ✅ 正确                                                                                            |
+| 正常增量 sync                 | exists         | incremental | SUM(old + new) → overwrite           | ✅ 正确：old 累积 + new 增量 = 新累积                                                              |
+| Cursor reset 后 sync          | empty (刚删了) | full-scan   | overwrite(全量)                      | ✅ 正确：丢弃旧 queue，用全量替换                                                                  |
+| Upload 失败后增量 sync        | exists         | incremental | SUM(old + new) → overwrite           | ✅ 正确：未上传的 old 被保留                                                                       |
+| Upload 失败后 cursor reset    | empty          | full-scan   | overwrite(全量)                      | ✅ 正确                                                                                            |
+| 两次增量 sync（无 upload）    | exists         | incremental | SUM(old + new₁) → SUM(result + new₂) | ✅ 正确                                                                                            |
+| Crash: overwrite 后 cursor 前 | —              | —           | queue = 本次结果，cursor = 旧        | 下次判断为 incremental（cursor 存在但过时），SUM(queue + re-scan) → 重扫范围内的增量可能被多算一次 |
 
 **Crash safety 分析（cursor-after-queue 顺序）**：
 
-| Crash 时机 | Queue | Cursor | 下次 sync | 影响 |
-|-----------|-------|--------|-----------|------|
-| overwrite 前 | 旧 | 旧 | 完整重做本次 sync → 正确 | 无 |
-| overwrite 后、cursor save 前 | 新 | 旧 | Cursor 存在 → incremental 分支 → SUM(新 queue + 重扫旧→新区间的 delta) | **重扫范围内的增量可能被多算一次（范围取决于旧 cursor 与新 cursor 之间的距离，不一定恰好等于一个 sync 周期）** |
-| cursor save 后 | 新 | 新 | 正常增量 | 无 |
+| Crash 时机                   | Queue | Cursor | 下次 sync                                                              | 影响                                                                                                           |
+| ---------------------------- | ----- | ------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| overwrite 前                 | 旧    | 旧     | 完整重做本次 sync → 正确                                               | 无                                                                                                             |
+| overwrite 后、cursor save 前 | 新    | 旧     | Cursor 存在 → incremental 分支 → SUM(新 queue + 重扫旧→新区间的 delta) | **重扫范围内的增量可能被多算一次（范围取决于旧 cursor 与新 cursor 之间的距离，不一定恰好等于一个 sync 周期）** |
+| cursor save 后               | 新    | 新     | 正常增量                                                               | 无                                                                                                             |
 
 第二种 crash 场景的影响是有限的：重扫范围内的增量被多算一次（而不是 Nx 倍数膨胀），且只在 crash 这种极端场景下发生。多算的范围取决于旧 cursor 与实际解析终点之间的距离，通常是上一个 sync 周期左右，但不应做精确承诺。`pew reset` 可以恢复。
 
@@ -443,7 +459,7 @@ sync:     parse deltas → aggregate into buckets (newRecords)
 // or after pew reset). The records represent the complete picture and
 // should replace the queue entirely. Otherwise it's an incremental scan
 // and records are deltas that must be SUM'd with existing queue contents.
-const isFullScan = initialCursorEmpty;  // captured at start of executeSync
+const isFullScan = initialCursorEmpty; // captured at start of executeSync
 
 // ---------- Write to queue ----------
 if (isFullScan) {
@@ -472,11 +488,13 @@ function sumRecords(records: QueueRecord[]): QueueRecord[] {
 ```
 
 **修改文件**：
+
 - `packages/cli/src/commands/sync.ts` — 尾部 queue 写入逻辑改为 full-scan/incremental 双分支
 - `packages/cli/src/storage/base-queue.ts` — 新增 `overwrite()` 方法（atomic tmp → rename）
 - `packages/cli/src/commands/upload.ts` — `aggregateRecords()` 保留作为 defense-in-depth
 
 **验证**：
+
 - L1 单元测试：cursor reset + 二次 sync → queue 中值不膨胀（等于全量重扫值）
 - L1 单元测试：sync 后 upload 失败 → 再次增量 sync → queue 值正确（old + new SUM）
 - L1 单元测试：两次增量 sync（无 upload）→ 值正确累积（SUM）
@@ -487,18 +505,19 @@ function sumRecords(records: QueueRecord[]): QueueRecord[] {
 **目标**：一条命令清除所有会导致 token inflation 的本地状态，然后全量重建。
 
 **安全约束**：
+
 - **绝不触碰用户原始数据**（`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/` 等）
 - 只删除 pew 自身的状态文件（`~/.config/pew/` 下）
 
 **清理范围**（6 个文件）：
 
-| 文件 | 用途 |
-|------|------|
-| `cursors.json` | Token sync 游标 |
-| `queue.jsonl` | Token upload 队列 |
-| `queue.state.json` | Token upload offset |
-| `session-cursors.json` | Session sync 游标 |
-| `session-queue.jsonl` | Session upload 队列 |
+| 文件                       | 用途                  |
+| -------------------------- | --------------------- |
+| `cursors.json`             | Token sync 游标       |
+| `queue.jsonl`              | Token upload 队列     |
+| `queue.state.json`         | Token upload offset   |
+| `session-cursors.json`     | Session sync 游标     |
+| `session-queue.jsonl`      | Session upload 队列   |
 | `session-queue.state.json` | Session upload offset |
 
 **行为**：
@@ -513,6 +532,7 @@ pew reset [--dev]
 `pew reset` 只负责清理，不自动触发 sync + upload。用户手动执行 `pew sync` 来重建（sync 默认 `--upload`），这样用户对整个流程有完整控制。
 
 **修改文件**：
+
 - `packages/cli/src/commands/reset.ts` — 新建
 - `packages/cli/src/cli.ts` — 注册 `reset` 子命令
 
@@ -544,6 +564,7 @@ pew reset [--dev]
 3. **Worker 端**：无需修改。Worker 只接受来自 Next.js 的内部请求（WORKER_SECRET 认证），版本校验在 Next.js 层完成。
 
 **修改文件**：
+
 - `packages/cli/src/commands/upload-engine.ts` — `sendBatchWithRetry` 添加版本 header
 - `packages/web/src/lib/ingest-handler.ts` — 添加版本校验
 - `packages/core/src/constants.ts` — 导出 `MIN_CLIENT_VERSION`
@@ -571,6 +592,7 @@ DELETE FROM device_aliases;
 **方案**：将 `deviceId` 存储在独立的 `device.json` 文件中，不区分 dev/prod。`config.json` 和 `config.dev.json` 只存 `token`。
 
 **修改文件**：
+
 - `packages/cli/src/config/manager.ts` — `ensureDeviceId()` 改为读写 `device.json`
 - `packages/core/src/types.ts` — `PewConfig` 中移除 `deviceId` 字段（或保留向后兼容）
 

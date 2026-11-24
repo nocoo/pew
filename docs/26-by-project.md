@@ -110,10 +110,10 @@ interface Project {
   id: string;
   name: string;
   aliases: ProjectAlias[];
-  tags: string[];              // NEW
+  tags: string[]; // NEW
   session_count: number;
-  last_active: string | null;           // period-scoped when from/to active
-  absolute_last_active: string | null;  // NEW — always all-time, never period-scoped
+  last_active: string | null; // period-scoped when from/to active
+  absolute_last_active: string | null; // NEW — always all-time, never period-scoped
   total_messages: number;
   total_duration: number;
   models: string[];
@@ -141,7 +141,7 @@ interface Project {
 interface ProjectAlias {
   source: string;
   project_ref: string;
-  session_count: number;  // NEW — period-scoped, 0 when no sessions in range
+  session_count: number; // NEW — period-scoped, 0 when no sessions in range
 }
 ```
 
@@ -278,10 +278,10 @@ For trend/timeline data, we need a new endpoint (see 4.6).
 
 Three cards matching the `/devices` pattern:
 
-| Card | Value | Source |
-|------|-------|--------|
-| Projects | Count of named projects | `projects.length` |
-| Most Active | Name of project with highest session count | Client-side sort by `session_count` desc, take first. **Do not** rely on API order — `GET /api/projects` returns projects ordered by `created_at DESC`, not by activity. |
+| Card        | Value                                                                  | Source                                                                                                                                                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Projects    | Count of named projects                                                | `projects.length`                                                                                                                                                                                                                                                                     |
+| Most Active | Name of project with highest session count                             | Client-side sort by `session_count` desc, take first. **Do not** rely on API order — `GET /api/projects` returns projects ordered by `created_at DESC`, not by activity.                                                                                                              |
 | Active (7d) | Count of projects with `absolute_last_active` within 7 wall-clock days | Always computed from wall-clock `now - 7d` using `absolute_last_active` (not period-scoped `last_active`). This matches the `/devices` page pattern (`page.tsx:45`). When a period is active, this card still shows real recency — it is intentionally **not** scoped by `from`/`to`. |
 
 #### Project Breakdown Chart
@@ -293,7 +293,7 @@ The data comes from `useProjects()` rather than `useSessionData()`:
 
 ```typescript
 const breakdownData: ProjectBreakdownItem[] = [
-  ...projects.map(p => ({
+  ...projects.map((p) => ({
     projectName: p.name,
     sessions: p.session_count,
     totalHours: p.total_duration / 3600,
@@ -306,8 +306,9 @@ const breakdownData: ProjectBreakdownItem[] = [
     totalHours: unassigned.reduce((s, r) => s + r.total_duration, 0) / 3600,
     totalMessages: unassigned.reduce((s, r) => s + r.total_messages, 0),
   },
-].filter(d => d.sessions > 0)
- .sort((a, b) => b.sessions - a.sessions || b.totalHours - a.totalHours);
+]
+  .filter((d) => d.sessions > 0)
+  .sort((a, b) => b.sessions - a.sessions || b.totalHours - a.totalHours);
 ```
 
 #### Project Trend Chart (new)
@@ -330,15 +331,15 @@ Similar to `DeviceShareChart`.
 
 Full-width table at the bottom with columns:
 
-| Column | Content | Responsive |
-|--------|---------|------------|
-| Project | Name + color dot | Always |
-| Tools | Source chips — **period-scoped** (see note below) | `hidden lg:table-cell` |
-| Sessions | `session_count` | Always |
-| Messages | `total_messages` | `hidden sm:table-cell` |
-| Duration | `total_duration` formatted | `hidden md:table-cell` |
-| Tags | Tag chips with quick-add | Always |
-| Last Active | Relative time | `hidden md:table-cell` |
+| Column      | Content                                           | Responsive             |
+| ----------- | ------------------------------------------------- | ---------------------- |
+| Project     | Name + color dot                                  | Always                 |
+| Tools       | Source chips — **period-scoped** (see note below) | `hidden lg:table-cell` |
+| Sessions    | `session_count`                                   | Always                 |
+| Messages    | `total_messages`                                  | `hidden sm:table-cell` |
+| Duration    | `total_duration` formatted                        | `hidden md:table-cell` |
+| Tags        | Tag chips with quick-add                          | Always                 |
+| Last Active | Relative time                                     | `hidden md:table-cell` |
 
 > **Tools column scoping**: When a period is active, the Tools column must show
 > only the sources that had sessions in the selected period, not the full
@@ -520,23 +521,23 @@ Update `useProjects()` hook to accept optional `{ from, to }` options.
 
 ## 6. File Changes Checklist
 
-| # | File | Action | Description |
-|---|------|--------|-------------|
-| 1 | `scripts/migrations/001-init.sql` | Edit | Add `project_tags` table |
-| 2 | `scripts/migrations/008-project-tags.sql` | Create | Standalone migration for `project_tags` |
-| 3 | `packages/web/src/app/api/projects/route.ts` | Edit | Add tags to GET response; add `from`/`to` filtering (JOIN ON, not WHERE) |
-| 4 | `packages/web/src/app/api/projects/[id]/route.ts` | Edit | Add `add_tags`/`remove_tags` to PATCH |
-| 5 | `packages/web/src/app/api/projects/timeline/route.ts` | Create | `GET` — daily session counts per project |
-| 6 | `packages/web/src/hooks/use-projects.ts` | Edit | Add `tags` to types; add `from`/`to` options; derive `allTags` client-side |
-| 7 | `packages/web/src/lib/navigation.ts` | Edit | Add "By Project" to Analytics group + `ROUTE_LABELS` |
-| 8 | `packages/web/src/components/layout/sidebar.tsx` | Edit | Add `FolderGit2` to `ICON_MAP` |
-| 9 | `packages/web/src/app/(dashboard)/by-project/page.tsx` | Create | Main analytics page |
-| 10 | `packages/web/src/components/dashboard/project-trend-chart.tsx` | Create | Stacked area chart for daily project sessions |
-| 11 | `packages/web/src/components/dashboard/project-share-chart.tsx` | Create | Pie/donut chart for project session share |
-| 12 | `packages/web/src/app/(dashboard)/sessions/page.tsx` | Edit | Remove project filter + breakdown chart |
-| 13 | `packages/web/src/hooks/use-session-data.ts` | Edit | Remove `project` option (now unused) |
-| 14 | `packages/web/src/app/api/sessions/route.ts` | Edit | Remove `?project=` filter support |
-| 15 | `packages/worker/src/index.ts` | Edit | Add `project_tags` to Worker migration if applicable |
+| #   | File                                                            | Action | Description                                                                |
+| --- | --------------------------------------------------------------- | ------ | -------------------------------------------------------------------------- |
+| 1   | `scripts/migrations/001-init.sql`                               | Edit   | Add `project_tags` table                                                   |
+| 2   | `scripts/migrations/008-project-tags.sql`                       | Create | Standalone migration for `project_tags`                                    |
+| 3   | `packages/web/src/app/api/projects/route.ts`                    | Edit   | Add tags to GET response; add `from`/`to` filtering (JOIN ON, not WHERE)   |
+| 4   | `packages/web/src/app/api/projects/[id]/route.ts`               | Edit   | Add `add_tags`/`remove_tags` to PATCH                                      |
+| 5   | `packages/web/src/app/api/projects/timeline/route.ts`           | Create | `GET` — daily session counts per project                                   |
+| 6   | `packages/web/src/hooks/use-projects.ts`                        | Edit   | Add `tags` to types; add `from`/`to` options; derive `allTags` client-side |
+| 7   | `packages/web/src/lib/navigation.ts`                            | Edit   | Add "By Project" to Analytics group + `ROUTE_LABELS`                       |
+| 8   | `packages/web/src/components/layout/sidebar.tsx`                | Edit   | Add `FolderGit2` to `ICON_MAP`                                             |
+| 9   | `packages/web/src/app/(dashboard)/by-project/page.tsx`          | Create | Main analytics page                                                        |
+| 10  | `packages/web/src/components/dashboard/project-trend-chart.tsx` | Create | Stacked area chart for daily project sessions                              |
+| 11  | `packages/web/src/components/dashboard/project-share-chart.tsx` | Create | Pie/donut chart for project session share                                  |
+| 12  | `packages/web/src/app/(dashboard)/sessions/page.tsx`            | Edit   | Remove project filter + breakdown chart                                    |
+| 13  | `packages/web/src/hooks/use-session-data.ts`                    | Edit   | Remove `project` option (now unused)                                       |
+| 14  | `packages/web/src/app/api/sessions/route.ts`                    | Edit   | Remove `?project=` filter support                                          |
+| 15  | `packages/worker/src/index.ts`                                  | Edit   | Add `project_tags` to Worker migration if applicable                       |
 
 ---
 
@@ -579,20 +580,20 @@ Update `useProjects()` hook to accept optional `{ from, to }` options.
 
 ### Unit Tests
 
-| Test | File | Description |
-|------|------|-------------|
-| Tag validation | `packages/web/src/__tests__/project-tags.test.ts` | Validates tag format rules (`/^[a-z0-9-]{1,30}$/`) |
+| Test                    | File                                                    | Description                                                     |
+| ----------------------- | ------------------------------------------------------- | --------------------------------------------------------------- |
+| Tag validation          | `packages/web/src/__tests__/project-tags.test.ts`       | Validates tag format rules (`/^[a-z0-9-]{1,30}$/`)              |
 | Breakdown from projects | `packages/web/src/__tests__/by-project-helpers.test.ts` | Tests `ProjectBreakdownItem[]` assembly from `useProjects` data |
-| Timeline aggregation | `packages/web/src/__tests__/project-timeline.test.ts` | Tests SQL result → timeline response transformation |
+| Timeline aggregation    | `packages/web/src/__tests__/project-timeline.test.ts`   | Tests SQL result → timeline response transformation             |
 
 ### E2E / Integration
 
-| Test | Description |
-|------|-------------|
-| Projects API tags | POST project → PATCH add_tags → GET verify tags → PATCH remove_tags → GET verify |
-| Timeline API | Seed sessions → GET timeline → verify daily counts per project |
-| Sessions page regression | Verify project filter is gone; page still renders correctly |
-| By Project page | Navigate to `/by-project` → verify stat grid, charts, table render |
+| Test                     | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| Projects API tags        | POST project → PATCH add_tags → GET verify tags → PATCH remove_tags → GET verify |
+| Timeline API             | Seed sessions → GET timeline → verify daily counts per project                   |
+| Sessions page regression | Verify project filter is gone; page still renders correctly                      |
+| By Project page          | Navigate to `/by-project` → verify stat grid, charts, table render               |
 
 ---
 

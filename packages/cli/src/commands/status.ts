@@ -57,7 +57,13 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
   if (filePath.startsWith(dirs.copilotCliLogsDir)) return "copilot-cli";
   for (const path of dirs.copilotCliOtelPaths) {
     const child = relative(path, filePath);
-    if (!isAbsolute(child) && child !== ".." && !child.startsWith("../") && !child.startsWith("..\\")) return "copilot-cli";
+    if (
+      !isAbsolute(child) &&
+      child !== ".." &&
+      !child.startsWith("../") &&
+      !child.startsWith("..\\")
+    )
+      return "copilot-cli";
   }
   return "unknown";
 }

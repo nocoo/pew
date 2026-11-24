@@ -20,19 +20,19 @@ Showcase is a community feature where pew users can submit their GitHub projects
 
 Consistent with existing leaderboard:
 
-| Action | Auth Required |
-|--------|---------------|
-| Browse showcases | No (public) |
-| View single showcase | No (public, if `is_public=1`) |
-| Submit showcase | Yes |
-| Upvote/un-upvote | Yes |
-| Edit own showcase | Yes (owner only) |
-| Delete own showcase | Yes (owner only) |
-| View hidden showcase | Yes (owner/admin only) |
-| Refresh from GitHub | Yes (owner only) |
-| **Admin: list all showcases** | Yes (admin only) |
-| **Admin: edit any showcase** | Yes (admin only) |
-| **Admin: delete any showcase** | Yes (admin only) |
+| Action                         | Auth Required                 |
+| ------------------------------ | ----------------------------- |
+| Browse showcases               | No (public)                   |
+| View single showcase           | No (public, if `is_public=1`) |
+| Submit showcase                | Yes                           |
+| Upvote/un-upvote               | Yes                           |
+| Edit own showcase              | Yes (owner only)              |
+| Delete own showcase            | Yes (owner only)              |
+| View hidden showcase           | Yes (owner/admin only)        |
+| Refresh from GitHub            | Yes (owner only)              |
+| **Admin: list all showcases**  | Yes (admin only)              |
+| **Admin: edit any showcase**   | Yes (admin only)              |
+| **Admin: delete any showcase** | Yes (admin only)              |
 
 ## Database Schema
 
@@ -117,17 +117,18 @@ POST /api/showcases              — submit new showcase (auth required)
 
 #### GET Query Parameters
 
-| Param | Type | Description |
-|-------|------|-------------|
-| `mine` | `"1"` | If set, return current user's showcases (auth required) |
-| `limit` | number | Max results (default 20, max 100) |
-| `offset` | number | Skip first N results (default 0) |
+| Param    | Type   | Description                                             |
+| -------- | ------ | ------------------------------------------------------- |
+| `mine`   | `"1"`  | If set, return current user's showcases (auth required) |
+| `limit`  | number | Max results (default 20, max 100)                       |
+| `offset` | number | Skip first N results (default 0)                        |
 
 #### Pagination Strategy: Offset/Limit
 
 **v1 uses simple offset/limit pagination** instead of cursor-based pagination.
 
 Rationale:
+
 - Showcase list is expected to be small in v1 (<1000 items)
 - Offset/limit is simpler to implement and debug
 - Trade-off: deep pagination may show duplicates/gaps if data changes mid-browse — acceptable for v1 given small dataset
@@ -146,8 +147,8 @@ interface ShowcaseListResponse {
     description: string | null;
     tagline: string | null;
     og_image_url: string | null;
-    upvote_count: number;           // computed via COUNT(*)
-    is_public: boolean;             // included for mine=1 and admin; always true for public list
+    upvote_count: number; // computed via COUNT(*)
+    is_public: boolean; // included for mine=1 and admin; always true for public list
     created_at: string;
     user: {
       id: string;
@@ -156,15 +157,16 @@ interface ShowcaseListResponse {
       image: string | null;
       slug: string | null;
     };
-    has_upvoted: boolean | null;    // null if not logged in
+    has_upvoted: boolean | null; // null if not logged in
   }>;
-  total: number;                    // total count for pagination UI
+  total: number; // total count for pagination UI
   limit: number;
   offset: number;
 }
 ```
 
 **Behavior:**
+
 - Without `mine`: returns `is_public=1` showcases only, `is_public` always `true` in response
 - With `mine=1`: returns all showcases owned by current user (requires auth), includes actual `is_public` value
 - `has_upvoted` is `null` for unauthenticated requests
@@ -205,12 +207,13 @@ Implementation note: Use two separate SQL strings based on auth state. Do NOT pa
 
 ```typescript
 interface CreateShowcaseRequest {
-  github_url: string;   // must be https://github.com/{owner}/{repo} format
-  tagline?: string;     // optional recommendation (max 280 chars)
+  github_url: string; // must be https://github.com/{owner}/{repo} format
+  tagline?: string; // optional recommendation (max 280 chars)
 }
 ```
 
 **Response codes:**
+
 - `201` — Created successfully
 - `400` — Invalid URL format
 - `401` — Not authenticated
@@ -237,15 +240,16 @@ interface PreviewRequest {
 ```typescript
 interface PreviewResponse {
   repo_key: string;
-  github_url: string;        // normalized display URL
+  github_url: string; // normalized display URL
   title: string;
   description: string | null;
   og_image_url: string;
-  already_exists: boolean;   // true if repo_key already in showcases
+  already_exists: boolean; // true if repo_key already in showcases
 }
 ```
 
 **Response codes:**
+
 - `200` — Preview fetched successfully
 - `400` — Invalid URL format
 - `401` — Not authenticated
@@ -269,12 +273,13 @@ DELETE /api/showcases/[id]       — delete showcase (owner or admin)
 
 ```typescript
 interface UpdateShowcaseRequest {
-  tagline?: string | null;   // user recommendation (null to clear)
-  is_public?: boolean;       // visibility toggle
+  tagline?: string | null; // user recommendation (null to clear)
+  is_public?: boolean; // visibility toggle
 }
 ```
 
 **Access:**
+
 - Owner can edit own showcase
 - Admin can edit any showcase (for moderation — e.g., hide inappropriate content)
 
@@ -300,13 +305,14 @@ interface RefreshResponse {
   title: string;
   description: string | null;
   og_image_url: string;
-  repo_key: string;          // may change if renamed
-  github_url: string;        // may change if renamed
+  repo_key: string; // may change if renamed
+  github_url: string; // may change if renamed
   refreshed_at: string;
 }
 ```
 
 **Behavior:**
+
 - Re-fetches metadata from GitHub API
 - Updates `title`, `description`, `og_image_url`, `refreshed_at`
 - If repo was renamed/transferred:
@@ -317,6 +323,7 @@ interface RefreshResponse {
 - If repo no longer exists (404), returns `410` but does NOT delete showcase
 
 **Response codes:**
+
 - `200` — Refreshed successfully
 - `401` — Not authenticated
 - `403` — Not owner
@@ -335,8 +342,8 @@ POST /api/showcases/[id]/upvote  — toggle upvote (auth required)
 
 ```typescript
 interface UpvoteResponse {
-  upvoted: boolean;       // new state after toggle
-  upvote_count: number;   // fresh COUNT(*) from showcase_upvotes
+  upvoted: boolean; // new state after toggle
+  upvote_count: number; // fresh COUNT(*) from showcase_upvotes
 }
 ```
 
@@ -382,12 +389,12 @@ GET /api/admin/showcases         — list all showcases (admin only)
 
 #### GET Query Parameters
 
-| Param | Type | Description |
-|-------|------|-------------|
+| Param       | Type           | Description                         |
+| ----------- | -------------- | ----------------------------------- |
 | `is_public` | `"0"` or `"1"` | Filter by visibility (omit for all) |
-| `user_id` | string | Filter by submitter |
-| `limit` | number | Max results (default 50, max 200) |
-| `offset` | number | Skip first N results (default 0) |
+| `user_id`   | string         | Filter by submitter                 |
+| `limit`     | number         | Max results (default 50, max 200)   |
+| `offset`    | number         | Skip first N results (default 0)    |
 
 #### GET Response
 
@@ -410,7 +417,7 @@ interface AdminShowcaseListResponse {
     // Admin-only: full user info for moderation
     user: {
       id: string;
-      email: string;            // admin-only field
+      email: string; // admin-only field
       name: string | null;
       nickname: string | null;
       image: string | null;
@@ -426,6 +433,7 @@ interface AdminShowcaseListResponse {
 Note: This is NOT the same type as public `ShowcaseListResponse`. Do not reuse — admin response includes `user.email` and omits `has_upvoted` (not relevant for moderation).
 
 **Response codes:**
+
 - `200` — Success
 - `401` — Not authenticated
 - `403` — Not admin
@@ -435,11 +443,13 @@ Note: This is NOT the same type as public `ShowcaseListResponse`. Do not reuse �
 ### URL Validation
 
 Valid formats:
+
 - `https://github.com/owner/repo`
 - `https://github.com/owner/repo/`
 - `http://github.com/owner/repo` (normalized to https)
 
 Invalid formats (rejected with 400):
+
 - `https://github.com/owner` (user/org page)
 - `https://github.com/owner/repo/blob/main/file.ts` (file path)
 - `https://github.com/owner/repo/tree/main` (branch/path)
@@ -447,6 +457,7 @@ Invalid formats (rejected with 400):
 - `https://gitlab.com/...` (wrong host)
 
 Regex:
+
 ```typescript
 const GITHUB_REPO_PATTERN = /^https?:\/\/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)\/?$/;
 ```
@@ -458,7 +469,7 @@ async function fetchGitHubMetadata(owner: string, repo: string): Promise<GitHubM
   const url = `https://api.github.com/repos/${owner}/${repo}`;
   const res = await fetch(url, {
     headers: { "User-Agent": "pew-showcase/1.0" },
-    signal: AbortSignal.timeout(5000),  // 5s timeout
+    signal: AbortSignal.timeout(5000), // 5s timeout
   });
 
   if (res.status === 404) {
@@ -482,20 +493,20 @@ async function fetchGitHubMetadata(owner: string, repo: string): Promise<GitHubM
     name: data.name || repo,
     title: data.name || `${owner}/${repo}`,
     description: data.description || null,
-    fullName: data.full_name,  // "current_owner/current_name" for rename detection
+    fullName: data.full_name, // "current_owner/current_name" for rename detection
   };
 }
 ```
 
 ### Error Mapping
 
-| GitHub Status | API Response | Message |
-|---------------|--------------|---------|
-| 404 | 404 | "Repository not found or is private" |
-| 403 (rate limit) | 422 | "GitHub API rate limit exceeded. Try again later." |
-| 403 (other) | 422 | "Cannot access repository" |
-| 5xx / timeout | 422 | "GitHub is temporarily unavailable. Try again later." |
-| Network error | 422 | "Failed to connect to GitHub" |
+| GitHub Status    | API Response | Message                                               |
+| ---------------- | ------------ | ----------------------------------------------------- |
+| 404              | 404          | "Repository not found or is private"                  |
+| 403 (rate limit) | 422          | "GitHub API rate limit exceeded. Try again later."    |
+| 403 (other)      | 422          | "Cannot access repository"                            |
+| 5xx / timeout    | 422          | "GitHub is temporarily unavailable. Try again later." |
+| Network error    | 422          | "Failed to connect to GitHub"                         |
 
 ### OG Image Strategy
 
@@ -518,14 +529,7 @@ function ShowcaseImage({ url, repoKey }: { url: string | null; repoKey: string }
     );
   }
 
-  return (
-    <img
-      src={url}
-      alt={repoKey}
-      className="object-cover"
-      onError={() => setError(true)}
-    />
-  );
+  return <img src={url} alt={repoKey} className="object-cover" onError={() => setError(true)} />;
 }
 ```
 
@@ -536,6 +540,7 @@ function ShowcaseImage({ url, repoKey }: { url: string | null; repoKey: string }
 New tab in LeaderboardNav alongside Individual, Seasons, Achievements.
 
 **Layout:**
+
 - "Add Showcase" button (top right, shown only if logged in)
 - ProductHunt-style card list
 - Each card shows:
@@ -548,10 +553,12 @@ New tab in LeaderboardNav alongside Individual, Seasons, Achievements.
 **Sorting:** `created_at DESC, id DESC` (newest first, stable)
 
 **Upvote interaction:**
+
 - Not logged in: clicking upvote shows "Login to upvote" tooltip or redirects
 - Logged in: optimistic toggle with rollback on error
 
 **Add Showcase (from leaderboard):**
+
 - Click "Add Showcase" → opens modal
 - Same modal as settings page
 
@@ -560,6 +567,7 @@ New tab in LeaderboardNav alongside Individual, Seasons, Achievements.
 Dashboard page for managing user's showcases.
 
 **Layout:**
+
 - Header: "My Showcases" with "Add Showcase" button
 - List of user's showcases (cards):
   - OG image thumbnail (80px)
@@ -569,6 +577,7 @@ Dashboard page for managing user's showcases.
   - Actions: Edit (tagline + visibility), Refresh, Delete
 
 **Add Showcase Modal:**
+
 1. Input: GitHub URL
 2. Click "Preview" or auto-fetch on blur
 3. Show preview: image, title, description (read-only)
@@ -576,6 +585,7 @@ Dashboard page for managing user's showcases.
 5. Submit button
 
 **Edit Showcase Modal:**
+
 - Tagline input (editable)
 - Public/Hidden toggle
 - "Refresh from GitHub" button (updates title/description)
@@ -587,6 +597,7 @@ Dashboard page for managing user's showcases.
 Admin page for moderating all showcases.
 
 **Layout:**
+
 - Header: "Showcase Moderation"
 - Filters: visibility (all/public/hidden), search by user
 - Table view with columns:
@@ -599,6 +610,7 @@ Admin page for moderating all showcases.
   - Actions: View, Edit, Hide/Unhide, Delete
 
 **Actions:**
+
 - **View**: Opens showcase in new tab
 - **Edit**: Opens modal to edit tagline and visibility
 - **Hide/Unhide**: Quick toggle for `is_public`
@@ -695,6 +707,7 @@ docs: update README index with 34-showcase-system
 ### L2 — Integration Tests (API E2E)
 
 **Auth & Access:**
+
 - Guest can GET `/api/showcases` (list public)
 - Guest cannot POST `/api/showcases` (401)
 - Guest cannot POST upvote (401)
@@ -706,6 +719,7 @@ docs: update README index with 34-showcase-system
 - Non-admin gets 403 on `/api/admin/showcases`
 
 **CRUD:**
+
 - Create with valid URL → 201 + metadata populated
 - Create with invalid URL format → 400
 - Create with non-existent repo → 404
@@ -718,6 +732,7 @@ docs: update README index with 34-showcase-system
 - Admin hide any → 200
 
 **Refresh:**
+
 - Owner refresh → 200 + updated metadata
 - Non-owner refresh → 403
 - Refresh deleted repo → 410
@@ -726,18 +741,21 @@ docs: update README index with 34-showcase-system
 - Refresh renamed repo (conflict exists) → 409
 
 **Upvote:**
+
 - Toggle on → upvoted=true, count+1
 - Toggle off → upvoted=false, count-1
 - Idempotent: double toggle = original state
 - Verify returned count matches actual COUNT(*)
 
 **Pagination:**
+
 - offset=0, limit=10 returns first 10
 - offset=10, limit=10 returns next 10
 - offset beyond total returns empty array
 - total count is accurate
 
 **Edge cases:**
+
 - GitHub API rate limit simulation → 422
 - GitHub timeout → 422
 - Empty description from GitHub → null stored

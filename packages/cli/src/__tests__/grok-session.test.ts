@@ -21,18 +21,24 @@ describe("parseGrokSession", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it.each(["git_root_dir", "cwd"])("hashes a raw hash-shaped identifier from %s before upload", async (field) => {
-    const raw = "0123456789abcdef";
-    await writeFile(join(sessionDir, "summary.json"), JSON.stringify({
-      info: { id: "hex-project", ...(field === "cwd" ? { cwd: raw } : {}) },
-      ...(field === "git_root_dir" ? { git_root_dir: raw } : {}),
-      created_at: "2026-09-25T00:00:00Z",
-    }));
-    const snapshot = await parseGrokSession(sessionDir);
-    const expected = createHash("sha256").update(raw).digest("hex").slice(0, 16);
-    expect(snapshot?.projectRef).toBe(expected);
-    expect(toQueueRecord(snapshot!).project_ref).toBe(expected);
-  });
+  it.each(["git_root_dir", "cwd"])(
+    "hashes a raw hash-shaped identifier from %s before upload",
+    async (field) => {
+      const raw = "0123456789abcdef";
+      await writeFile(
+        join(sessionDir, "summary.json"),
+        JSON.stringify({
+          info: { id: "hex-project", ...(field === "cwd" ? { cwd: raw } : {}) },
+          ...(field === "git_root_dir" ? { git_root_dir: raw } : {}),
+          created_at: "2026-09-25T00:00:00Z",
+        }),
+      );
+      const snapshot = await parseGrokSession(sessionDir);
+      const expected = createHash("sha256").update(raw).digest("hex").slice(0, 16);
+      expect(snapshot?.projectRef).toBe(expected);
+      expect(toQueueRecord(snapshot!).project_ref).toBe(expected);
+    },
+  );
 
   it("parses complete summary.json + signals.json", async () => {
     await writeFile(

@@ -38,13 +38,19 @@ export const openClawTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     return fileUnchanged(cursor, fingerprint);
   },
 
-  resumeState(cursor: ByteOffsetCursor | undefined, fingerprint: FileFingerprint): ByteOffsetResumeState {
-    const startOffset =
-      cursor && cursor.inode === fingerprint.inode ? (cursor.offset ?? 0) : 0;
+  resumeState(
+    cursor: ByteOffsetCursor | undefined,
+    fingerprint: FileFingerprint,
+  ): ByteOffsetResumeState {
+    const startOffset = cursor && cursor.inode === fingerprint.inode ? (cursor.offset ?? 0) : 0;
     return { kind: "byte-offset", startOffset };
   },
 
-  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<OpenClawParseResult> {
+  async parse(
+    filePath: string,
+    resume: ResumeState,
+    _ctx: SyncContext,
+  ): Promise<OpenClawParseResult> {
     const r = resume as ByteOffsetResumeState;
     const result = await parseOpenClawFile({
       filePath,

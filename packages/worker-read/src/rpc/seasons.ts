@@ -272,10 +272,7 @@ export type SeasonsRpcRequest =
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handleListSeasons(
-  db: D1Database,
-  kv: KVNamespace
-): Promise<Response> {
+async function handleListSeasons(db: D1Database, kv: KVNamespace): Promise<Response> {
   const { data, cached } = await withCache(
     kv,
     CACHE_KEY_SEASONS_LIST,
@@ -290,21 +287,18 @@ async function handleListSeasons(
            FROM seasons s
            LEFT JOIN season_teams st ON st.season_id = s.id
            GROUP BY s.id
-           ORDER BY s.start_date DESC`
+           ORDER BY s.start_date DESC`,
         )
         .all<SeasonRow>();
       return results.results;
     },
-    { ttlSeconds: TTL_10M }
+    { ttlSeconds: TTL_10M },
   );
 
   return Response.json({ result: data, _cached: cached });
 }
 
-async function handleGetSeasonById(
-  req: GetSeasonByIdRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetSeasonById(req: GetSeasonByIdRequest, db: D1Database): Promise<Response> {
   if (!req.seasonId) {
     return Response.json({ error: "seasonId is required" }, { status: 400 });
   }
@@ -314,7 +308,7 @@ async function handleGetSeasonById(
       `SELECT id, name, slug, start_date, end_date, snapshot_ready,
               allow_late_registration, allow_roster_changes, allow_late_withdrawal,
               created_at, updated_at
-       FROM seasons WHERE id = ?`
+       FROM seasons WHERE id = ?`,
     )
     .bind(req.seasonId)
     .first<SeasonDetailRow>();
@@ -324,7 +318,7 @@ async function handleGetSeasonById(
 
 async function handleGetSeasonBySlug(
   req: GetSeasonBySlugRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.slug) {
     return Response.json({ error: "slug is required" }, { status: 400 });
@@ -335,7 +329,7 @@ async function handleGetSeasonBySlug(
       `SELECT id, name, slug, start_date, end_date, snapshot_ready,
               allow_late_registration, allow_roster_changes, allow_late_withdrawal,
               created_at, updated_at
-       FROM seasons WHERE slug = ?`
+       FROM seasons WHERE slug = ?`,
     )
     .bind(req.slug)
     .first<SeasonDetailRow>();
@@ -345,20 +339,17 @@ async function handleGetSeasonBySlug(
 
 async function handleGetSeasonRegistration(
   req: GetSeasonRegistrationRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId || !req.teamId) {
-    return Response.json(
-      { error: "seasonId and teamId are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "seasonId and teamId are required" }, { status: 400 });
   }
 
   const result = await db
     .prepare(
       `SELECT id, season_id, team_id, registered_by, registered_at
        FROM season_teams
-       WHERE season_id = ? AND team_id = ?`
+       WHERE season_id = ? AND team_id = ?`,
     )
     .bind(req.seasonId, req.teamId)
     .first<SeasonTeamRegistrationRow>();
@@ -368,20 +359,17 @@ async function handleGetSeasonRegistration(
 
 async function handleCheckSeasonMemberConflict(
   req: CheckSeasonMemberConflictRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId || !req.userIds || req.userIds.length === 0) {
-    return Response.json(
-      { error: "seasonId and userIds are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "seasonId and userIds are required" }, { status: 400 });
   }
 
   const result = await db
     .prepare(
       `SELECT user_id FROM season_team_members
        WHERE season_id = ? AND user_id IN (SELECT value FROM json_each(?))
-       LIMIT 1`
+       LIMIT 1`,
     )
     .bind(req.seasonId, JSON.stringify(req.userIds))
     .first<{ user_id: string }>();
@@ -391,15 +379,15 @@ async function handleCheckSeasonMemberConflict(
 
 async function handleGetSeasonSnapshots(
   req: GetSeasonSnapshotsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId) {
     return Response.json({ error: "seasonId is required" }, { status: 400 });
   }
 
-    const results = await db
-      .prepare(
-        `SELECT
+  const results = await db
+    .prepare(
+      `SELECT
           ss.team_id,
           t.name AS team_name,
           t.slug AS team_slug,
@@ -412,16 +400,16 @@ async function handleGetSeasonSnapshots(
         FROM season_snapshots ss
         JOIN teams t ON t.id = ss.team_id
         WHERE ss.season_id = ?
-        ORDER BY ss.rank ASC`
-      )
-      .bind(req.seasonId)
-      .all<SeasonSnapshotRow>();
+        ORDER BY ss.rank ASC`,
+    )
+    .bind(req.seasonId)
+    .all<SeasonSnapshotRow>();
   return Response.json({ result: results.results, _cached: false });
 }
 
 async function handleGetSeasonMemberSnapshots(
   req: GetSeasonMemberSnapshotsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId) {
     return Response.json({ error: "seasonId is required" }, { status: 400 });
@@ -456,13 +444,10 @@ async function handleGetSeasonMemberSnapshots(
 
 async function handleGetSeasonTeamTokens(
   req: GetSeasonTeamTokensRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId || !req.fromDate || !req.toDate) {
-    return Response.json(
-      { error: "seasonId, fromDate, and toDate are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "seasonId, fromDate, and toDate are required" }, { status: 400 });
   }
 
   const results = await db
@@ -484,7 +469,7 @@ async function handleGetSeasonTeamTokens(
         AND ur.hour_start < ?
       WHERE st.season_id = ?
       GROUP BY st.team_id
-      ORDER BY total_tokens DESC`
+      ORDER BY total_tokens DESC`,
     )
     .bind(req.fromDate, req.toDate, req.seasonId)
     .all<TeamTokenRow>();
@@ -494,12 +479,12 @@ async function handleGetSeasonTeamTokens(
 
 async function handleGetSeasonMemberTokens(
   req: GetSeasonMemberTokensRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId || !req.teamIds || req.teamIds.length === 0 || !req.fromDate || !req.toDate) {
     return Response.json(
       { error: "seasonId, teamIds, fromDate, and toDate are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -539,12 +524,12 @@ async function handleGetSeasonMemberTokens(
 
 async function handleGetSeasonTeamSessionStats(
   req: GetSeasonTeamSessionStatsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId || !req.teamIds || req.teamIds.length === 0 || !req.fromDate || !req.toDate) {
     return Response.json(
       { error: "seasonId, teamIds, fromDate, and toDate are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -559,7 +544,7 @@ async function handleGetSeasonTeamSessionStats(
          AND sr.started_at < ?
        WHERE stm.season_id = ?
          AND stm.team_id IN (SELECT value FROM json_each(?))
-       GROUP BY stm.team_id`
+       GROUP BY stm.team_id`,
     )
     .bind(req.fromDate, req.toDate, req.seasonId, JSON.stringify(req.teamIds))
     .all<TeamSessionStatsRow>();
@@ -569,12 +554,12 @@ async function handleGetSeasonTeamSessionStats(
 
 async function handleGetSeasonMemberSessionStats(
   req: GetSeasonMemberSessionStatsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId || !req.teamIds || req.teamIds.length === 0 || !req.fromDate || !req.toDate) {
     return Response.json(
       { error: "seasonId, teamIds, fromDate, and toDate are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -590,7 +575,7 @@ async function handleGetSeasonMemberSessionStats(
          AND sr.started_at < ?
        WHERE stm.season_id = ?
          AND stm.team_id IN (SELECT value FROM json_each(?))
-       GROUP BY stm.team_id, stm.user_id`
+       GROUP BY stm.team_id, stm.user_id`,
     )
     .bind(req.fromDate, req.toDate, req.seasonId, JSON.stringify(req.teamIds))
     .all<MemberSessionStatsRow>();
@@ -600,7 +585,7 @@ async function handleGetSeasonMemberSessionStats(
 
 async function handleGetSeasonTeamMembers(
   req: GetSeasonTeamMembersRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.teamId) {
     return Response.json({ error: "teamId is required" }, { status: 400 });
@@ -616,13 +601,10 @@ async function handleGetSeasonTeamMembers(
 
 async function handleAggregateTeamTokens(
   req: AggregateTeamTokensRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId || !req.fromDate || !req.toDate) {
-    return Response.json(
-      { error: "seasonId, fromDate, and toDate are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "seasonId, fromDate, and toDate are required" }, { status: 400 });
   }
 
   const results = await db
@@ -640,7 +622,7 @@ async function handleAggregateTeamTokens(
         AND ur.hour_start < ?
       WHERE st.season_id = ?
       GROUP BY st.team_id
-      ORDER BY total_tokens DESC`
+      ORDER BY total_tokens DESC`,
     )
     .bind(req.fromDate, req.toDate, req.seasonId)
     .all<TeamAggRow>();
@@ -650,12 +632,12 @@ async function handleAggregateTeamTokens(
 
 async function handleAggregateMemberTokens(
   req: AggregateMemberTokensRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId || !req.fromDate || !req.toDate || !req.teamIds?.length) {
     return Response.json(
       { error: "seasonId, fromDate, toDate, and teamIds are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -675,7 +657,7 @@ async function handleAggregateMemberTokens(
       WHERE tm.season_id = ?
         AND tm.team_id IN (SELECT value FROM json_each(?))
       GROUP BY tm.team_id, tm.user_id
-      ORDER BY total_tokens DESC`
+      ORDER BY total_tokens DESC`,
     )
     .bind(req.fromDate, req.toDate, req.seasonId, JSON.stringify(req.teamIds))
     .all<MemberAggRow>();
@@ -690,50 +672,62 @@ async function handleAggregateMemberTokens(
 export async function handleSeasonsRpc(
   request: SeasonsRpcRequest,
   db: D1Database,
-  kv: KVNamespace
+  kv: KVNamespace,
 ): Promise<Response> {
   switch (request.method) {
     case "seasons.listAutoRegisterTeams": {
       if (typeof request.seasonId !== "string" || !request.seasonId) {
         return Response.json({ error: "seasonId is required" }, { status: 400 });
       }
-      const rows = await db.prepare(
-        `SELECT t.id, t.created_by FROM teams t
+      const rows = await db
+        .prepare(
+          `SELECT t.id, t.created_by FROM teams t
          WHERE t.auto_register_season = 1
-           AND t.id NOT IN (SELECT team_id FROM season_teams WHERE season_id = ?)`
-      ).bind(request.seasonId).all<{ id: string; created_by: string }>();
+           AND t.id NOT IN (SELECT team_id FROM season_teams WHERE season_id = ?)`,
+        )
+        .bind(request.seasonId)
+        .all<{ id: string; created_by: string }>();
       return Response.json({ result: rows.results });
     }
     case "seasons.listRosterSyncSeasons": {
       if (typeof request.teamId !== "string" || !request.teamId) {
         return Response.json({ error: "teamId is required" }, { status: 400 });
       }
-      const rows = await db.prepare(
-        `SELECT st.season_id FROM season_teams st
+      const rows = await db
+        .prepare(
+          `SELECT st.season_id FROM season_teams st
          JOIN seasons s ON s.id = st.season_id
          WHERE st.team_id = ? AND s.allow_roster_changes = 1
            AND datetime(s.start_date) <= datetime('now')
-           AND datetime(s.end_date, '+1 minute') > datetime('now')`
-      ).bind(request.teamId).all<{ season_id: string }>();
+           AND datetime(s.end_date, '+1 minute') > datetime('now')`,
+        )
+        .bind(request.teamId)
+        .all<{ season_id: string }>();
       return Response.json({ result: rows.results.map((row) => row.season_id) });
     }
     case "seasons.getRegisteredTeamIds": {
       if (typeof request.seasonId !== "string" || !request.seasonId) {
         return Response.json({ error: "seasonId is required" }, { status: 400 });
       }
-      const rows = await db.prepare("SELECT team_id FROM season_teams WHERE season_id = ?")
-        .bind(request.seasonId).all<{ team_id: string }>();
+      const rows = await db
+        .prepare("SELECT team_id FROM season_teams WHERE season_id = ?")
+        .bind(request.seasonId)
+        .all<{ team_id: string }>();
       return Response.json({ result: rows.results.map((row) => row.team_id) });
     }
     case "seasons.getRosterUserIds": {
       if (
-        typeof request.seasonId !== "string" || !request.seasonId ||
-        typeof request.teamId !== "string" || !request.teamId
+        typeof request.seasonId !== "string" ||
+        !request.seasonId ||
+        typeof request.teamId !== "string" ||
+        !request.teamId
       ) {
         return Response.json({ error: "seasonId and teamId are required" }, { status: 400 });
       }
-      const rows = await db.prepare("SELECT user_id FROM season_team_members WHERE season_id = ? AND team_id = ?")
-        .bind(request.seasonId, request.teamId).all<{ user_id: string }>();
+      const rows = await db
+        .prepare("SELECT user_id FROM season_team_members WHERE season_id = ? AND team_id = ?")
+        .bind(request.seasonId, request.teamId)
+        .all<{ user_id: string }>();
       return Response.json({ result: rows.results.map((row) => row.user_id) });
     }
     case "seasons.list":
@@ -767,7 +761,7 @@ export async function handleSeasonsRpc(
     default:
       return Response.json(
         { error: `Unknown seasons method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

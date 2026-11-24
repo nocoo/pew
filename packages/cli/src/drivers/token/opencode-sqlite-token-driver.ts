@@ -54,13 +54,9 @@ export function createOpenCodeSqliteTokenDriver(
 
       // If inode changed (DB recreated), reset cursor
       const lastTimeCreated =
-        prevCursor && prevCursor.inode === dbInode
-          ? prevCursor.lastTimeCreated
-          : 0;
+        prevCursor && prevCursor.inode === dbInode ? prevCursor.lastTimeCreated : 0;
       const prevProcessedIds = new Set(
-        prevCursor && prevCursor.inode === dbInode
-          ? (prevCursor.lastProcessedIds ?? [])
-          : [],
+        prevCursor && prevCursor.inode === dbInode ? (prevCursor.lastProcessedIds ?? []) : [],
       );
 
       const handle = opts.openMessageDb(opts.dbPath);
@@ -82,9 +78,8 @@ export function createOpenCodeSqliteTokenDriver(
         // Query uses >= to avoid missing same-millisecond rows.
         // We dedup previously-processed IDs from the prior batch.
         const rawRows = handle.queryMessages(lastTimeCreated);
-        const rows = prevProcessedIds.size > 0
-          ? rawRows.filter((r) => !prevProcessedIds.has(r.id))
-          : rawRows;
+        const rows =
+          prevProcessedIds.size > 0 ? rawRows.filter((r) => !prevProcessedIds.has(r.id)) : rawRows;
 
         // Read messageKeys from context for cross-source dedup.
         // During the overlap window, both JSON and SQLite sources contain
@@ -98,15 +93,15 @@ export function createOpenCodeSqliteTokenDriver(
           return !jsonMessageKeys.has(key);
         });
 
-        const result = processOpenCodeMessages(filteredRows, ...(ctx.collectAccounting ? [true] as const : []));
+        const result = processOpenCodeMessages(
+          filteredRows,
+          ...(ctx.collectAccounting ? ([true] as const) : []),
+        );
 
         // Update cursor — advance past ALL rows (including deduped).
-        const maxTime = rawRows.length > 0
-          ? rawRows[rawRows.length - 1].time_created
-          : lastTimeCreated;
-        const idsAtMax = rawRows
-          .filter((r) => r.time_created === maxTime)
-          .map((r) => r.id);
+        const maxTime =
+          rawRows.length > 0 ? rawRows[rawRows.length - 1].time_created : lastTimeCreated;
+        const idsAtMax = rawRows.filter((r) => r.time_created === maxTime).map((r) => r.id);
 
         return {
           deltas: result.deltas,

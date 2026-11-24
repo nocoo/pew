@@ -8,7 +8,7 @@ import { getDbRead, getDbWrite } from "@/lib/db";
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ orgId: string; userId: string }> }
+  { params }: { params: Promise<{ orgId: string; userId: string }> },
 ) {
   const admin = await resolveAdmin(request);
   if (!admin) {
@@ -35,24 +35,18 @@ export async function DELETE(
     }
 
     // Remove member
-    await dbWrite.execute(
-      "DELETE FROM organization_members WHERE org_id = ? AND user_id = ?",
-      [orgId, userId]
-    );
+    await dbWrite.execute("DELETE FROM organization_members WHERE org_id = ? AND user_id = ?", [
+      orgId,
+      userId,
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Organization tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Organization tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to remove organization member:", err);
-    return NextResponse.json(
-      { error: "Failed to remove member" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to remove member" }, { status: 500 });
   }
 }

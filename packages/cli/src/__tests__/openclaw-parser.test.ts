@@ -116,11 +116,7 @@ describe("parseOpenClawFile", () => {
 
   it("should skip empty lines and malformed JSON", async () => {
     const filePath = join(tempDir, "session.jsonl");
-    const lines = [
-      "",
-      "not valid json but has \"usage\" and totalTokens",
-      openclawLine(),
-    ];
+    const lines = ["", 'not valid json but has "usage" and totalTokens', openclawLine()];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });

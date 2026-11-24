@@ -102,7 +102,12 @@ describe("parseCodexFile", () => {
   it("counts unique last_token_usage edges instead of an inherited absolute prefix", async () => {
     const filePath = join(tempDir, "rollout.jsonl");
     const inherited = tokenCount(
-      { inputTokens: 10_000, cachedInputTokens: 8_000, outputTokens: 1_000, reasoningOutputTokens: 400 },
+      {
+        inputTokens: 10_000,
+        cachedInputTokens: 8_000,
+        outputTokens: 1_000,
+        reasoningOutputTokens: 400,
+      },
       "2026-03-09T10:00:05.000Z",
       { inputTokens: 1_000, cachedInputTokens: 800, outputTokens: 100, reasoningOutputTokens: 40 },
     );
@@ -133,11 +138,19 @@ describe("parseCodexFile", () => {
       sessionMeta(),
       turnContext("gpt-5.4"),
       responseItem("user"),
-      tokenCount({ inputTokens: 1000, cachedInputTokens: 200, outputTokens: 300, reasoningOutputTokens: 50 }, "2026-03-09T10:00:05.000Z"),
+      tokenCount(
+        { inputTokens: 1000, cachedInputTokens: 200, outputTokens: 300, reasoningOutputTokens: 50 },
+        "2026-03-09T10:00:05.000Z",
+      ),
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].source).toBe("codex");
     expect(result.deltas[0].model).toBe("gpt-5.4");
@@ -169,7 +182,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(3);
 
     // First: absolute (no previous totals)
@@ -194,7 +212,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const r1 = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const r1 = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(r1.deltas).toHaveLength(2);
 
     // Append more data
@@ -223,7 +246,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].model).toBe("gpt-5.3-codex");
   });
@@ -237,7 +265,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas[0].model).toBe("gpt-5.4");
   });
 
@@ -250,7 +283,12 @@ describe("parseCodexFile", () => {
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     // turn_context with non-string model is ignored → session_meta model is retained.
     expect(result.deltas[0].model).toBe("gpt-5.3-codex");
   });
@@ -265,7 +303,12 @@ describe("parseCodexFile", () => {
     const result = await parseCodexFile({
       filePath,
       startOffset: 0,
-      lastTotals: { inputTokens: 3000, cachedInputTokens: 0, outputTokens: 500, reasoningOutputTokens: 0 },
+      lastTotals: {
+        inputTokens: 3000,
+        cachedInputTokens: 0,
+        outputTokens: 500,
+        reasoningOutputTokens: 0,
+      },
       lastModel: "gpt-5.4",
     });
     expect(result.deltas).toHaveLength(1);
@@ -275,12 +318,15 @@ describe("parseCodexFile", () => {
 
   it("should use 'unknown' when no model is available", async () => {
     const filePath = join(tempDir, "rollout.jsonl");
-    const lines = [
-      tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
-    ];
+    const lines = [tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z")];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].model).toBe("unknown");
   });
@@ -297,7 +343,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(2);
   });
 
@@ -321,7 +372,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(500);
   });
@@ -340,7 +396,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
   });
 
@@ -356,7 +417,12 @@ describe("parseCodexFile", () => {
     const result = await parseCodexFile({
       filePath,
       startOffset: 0,
-      lastTotals: { inputTokens: 500, cachedInputTokens: 0, outputTokens: 200, reasoningOutputTokens: 0 },
+      lastTotals: {
+        inputTokens: 500,
+        cachedInputTokens: 0,
+        outputTokens: 200,
+        reasoningOutputTokens: 0,
+      },
       lastModel: "gpt-5.4",
     });
     // Should treat as absolute (counter reset)
@@ -369,7 +435,12 @@ describe("parseCodexFile", () => {
     const filePath = join(tempDir, "rollout.jsonl");
     await writeFile(filePath, `${tokenCount({ inputTokens: 500, outputTokens: 100 })}\n`);
 
-    const r1 = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const r1 = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     const r2 = await parseCodexFile({
       filePath,
       startOffset: r1.endOffset,
@@ -388,13 +459,23 @@ describe("parseCodexFile", () => {
         "2026-03-09T10:00:05.000Z",
       ),
       tokenCount(
-        { inputTokens: 2500, cachedInputTokens: 800, outputTokens: 600, reasoningOutputTokens: 150 },
+        {
+          inputTokens: 2500,
+          cachedInputTokens: 800,
+          outputTokens: 600,
+          reasoningOutputTokens: 150,
+        },
         "2026-03-09T10:00:10.000Z",
       ),
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     // raw delta: in=1500 cached=500 out=400 rea=100
     // disjoint: in=1000 cached=500 out=300 rea=100
     expect(result.deltas[1].tokens).toEqual({
@@ -423,7 +504,12 @@ describe("parseCodexFile", () => {
     const filePath = join(tempDir, "rollout.jsonl");
     await writeFile(filePath, "");
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(0);
     expect(result.endOffset).toBe(0);
   });
@@ -438,7 +524,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(2);
     expect(result.deltas[0].model).toBe("gpt-5.4");
     expect(result.deltas[1].model).toBe("o3");
@@ -464,7 +555,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(1000);
   });
@@ -485,7 +581,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(500);
   });
@@ -509,7 +610,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(500);
   });
@@ -524,7 +630,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].model).toBe("gpt-5.3-codex");
   });
@@ -539,7 +650,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(500);
   });
@@ -556,7 +672,12 @@ describe("parseCodexFile", () => {
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 
-    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+    });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(500);
   });

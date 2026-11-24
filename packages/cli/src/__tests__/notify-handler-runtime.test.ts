@@ -294,8 +294,12 @@ describe("handler runtime — sync gate + forward gate (Codex)", () => {
     const fs = emptyState();
     const spawns: SpawnRecord[] = [];
     callHandler(compileHandler(STATE_DIR, PEW_BIN), {
-      stateDir: STATE_DIR, pewBin: PEW_BIN, source: "claude-code", now: T,
-      fsState: fs, spawnRecords: spawns,
+      stateDir: STATE_DIR,
+      pewBin: PEW_BIN,
+      source: "claude-code",
+      now: T,
+      fsState: fs,
+      spawnRecords: spawns,
     });
     expect(spawns).toEqual([]);
     expect(JSON.parse(fs.files.get(`${STATE_DIR}/last-notify-guard.json`)!.data)).toMatchObject({
@@ -348,9 +352,7 @@ describe("handler runtime — sync gate + forward gate (Codex)", () => {
         spawnRecords: spawns,
       });
     }
-    const backupReads = fs.reads.filter(
-      (p) => p === `${STATE_DIR}/codex_notify_original.json`,
-    );
+    const backupReads = fs.reads.filter((p) => p === `${STATE_DIR}/codex_notify_original.json`);
     expect(backupReads).toHaveLength(1);
   });
 

@@ -4,14 +4,8 @@ import { isRetiredSource } from "../utils/retired-sources.js";
 import { repairRetiredNotifyHandler } from "../notifier/notify-handler.js";
 import type { CoordinatorRunResult, Source, SyncCycleResult, SyncTrigger } from "@pew/core";
 import { executeSync, type SyncOptions } from "./sync.js";
-import {
-  executeSessionSync,
-  type SessionSyncOptions,
-} from "./session-sync.js";
-import {
-  coordinatedSync,
-  type CoordinatorOptions,
-} from "../notifier/coordinator.js";
+import { executeSessionSync, type SessionSyncOptions } from "./session-sync.js";
+import { coordinatedSync, type CoordinatorOptions } from "../notifier/coordinator.js";
 
 const ADMISSION_WINDOW_MS = 2_000;
 const GATE_GRACE_BUCKETS = 2;
@@ -24,7 +18,7 @@ export interface NotifyOptions extends SyncOptions {
   multicaCodexDirs?: string[];
   /** Factory for opening the OpenCode SQLite DB for sessions (DI for testability) */
   openSessionDb?: SessionSyncOptions["openSessionDb"];
-    /** CLI version string for run log */
+  /** CLI version string for run log */
   version?: string;
   /**
    * Handler-supplied bucket-end timestamp (epoch ms). Worker sleeps until
@@ -43,14 +37,24 @@ export interface NotifyOptions extends SyncOptions {
   executeSyncFn?: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>;
 }
 
-export async function executeNotify(
-  opts: NotifyOptions,
-): Promise<CoordinatorRunResult> {
-  if (isRetiredSource(opts.source) && (typeof opts.notBefore !== "number" || !Number.isFinite(opts.notBefore) ||
-    !await repairRetiredNotifyHandler(opts.stateDir))) return {
-    runId: "retired-source", triggers: [], cycles: [], hadFollowUp: false, followUpCount: 0,
-    waitedForLock: false, skippedSync: true, skippedReason: "retired-source", degradedToUnlocked: false,
-  };
+export async function executeNotify(opts: NotifyOptions): Promise<CoordinatorRunResult> {
+  if (
+    isRetiredSource(opts.source) &&
+    (typeof opts.notBefore !== "number" ||
+      !Number.isFinite(opts.notBefore) ||
+      !(await repairRetiredNotifyHandler(opts.stateDir)))
+  )
+    return {
+      runId: "retired-source",
+      triggers: [],
+      cycles: [],
+      hadFollowUp: false,
+      followUpCount: 0,
+      waitedForLock: false,
+      skippedSync: true,
+      skippedReason: "retired-source",
+      degradedToUnlocked: false,
+    };
   const coordinatedSyncFn = opts.coordinatedSyncFn ?? coordinatedSync;
   const executeSyncFn =
     opts.executeSyncFn ??
@@ -81,7 +85,6 @@ export async function executeNotify(
           copilotCliOtelPaths: opts.copilotCliOtelPaths,
           grokLogsPath: opts.grokLogsPath,
           grokSessionsDir: opts.grokSessionsDir,
-
         });
         cycle.tokenSync = {
           totalDeltas: tokenResult.totalDeltas,
@@ -111,7 +114,6 @@ export async function executeNotify(
           piSessionsDir: opts.piSessionsDir,
           grokLogsPath: opts.grokLogsPath,
           grokSessionsDir: opts.grokSessionsDir,
-
         });
         cycle.sessionSync = {
           totalSnapshots: sessionResult.totalSnapshots,
@@ -145,9 +147,7 @@ export async function executeNotify(
   // that a lengthy sync.lock wait doesn't let the residual gate count
   // drift up (see doc 45 §10.2 residual ≤ 4).
   const nowFn = opts.nowFn ?? Date.now;
-  const delayFn =
-    opts.delayFn ??
-    ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const delayFn = opts.delayFn ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   if (typeof opts.notBefore === "number") {
     const delayMs = Math.max(0, opts.notBefore - nowFn());
     await delayFn(delayMs);
@@ -188,10 +188,7 @@ export async function executeNotify(
  * unlink is treated as best-effort — cleanup failure never affects
  * correctness (the next worker retries).
  */
-async function cleanupExpiredGates(
-  stateDir: string,
-  now: number,
-): Promise<void> {
+async function cleanupExpiredGates(stateDir: string, now: number): Promise<void> {
   const admissionDir = join(stateDir, "notify-admission");
   const currentBucket = Math.floor(now / ADMISSION_WINDOW_MS);
   const cutoff = currentBucket - GATE_GRACE_BUCKETS;
@@ -281,11 +278,17 @@ async function tryAcquireTrailingLock(lockPath: string): Promise<boolean> {
   const ownerPid = await readTrailingLockPid(lockPath);
   if (ownerPid === null) {
     // Corrupted/unreadable — remove and retry
-    try { await unlink(lockPath); } catch { return false; }
+    try {
+      await unlink(lockPath);
+    } catch {
+      return false;
+    }
     try {
       await writeFile(lockPath, lockContent, { flag: "wx" });
       return true;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
 
   // Check if owner PID is alive
@@ -300,11 +303,17 @@ async function tryAcquireTrailingLock(lockPath: string): Promise<boolean> {
   }
 
   // Dead PID — remove stale lock and retry
-  try { await unlink(lockPath); } catch { return false; }
+  try {
+    await unlink(lockPath);
+  } catch {
+    return false;
+  }
   try {
     await writeFile(lockPath, lockContent, { flag: "wx" });
     return true;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 /**

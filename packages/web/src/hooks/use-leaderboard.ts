@@ -58,7 +58,7 @@ export async function fetchLeaderboardPage(
     signal.throwIfAborted();
   }
   if (!res.ok) await throwApiError(res);
-  const data = await res.json() as LeaderboardData;
+  const data = (await res.json()) as LeaderboardData;
   signal.throwIfAborted();
   return { data, restarted };
 }
@@ -106,12 +106,17 @@ function makeFilterKey(
   model: string | null | undefined,
   limit: number,
 ): string {
-  return JSON.stringify([period, teamId ?? null, orgId ?? null, source ?? null, model ?? null, limit]);
+  return JSON.stringify([
+    period,
+    teamId ?? null,
+    orgId ?? null,
+    source ?? null,
+    model ?? null,
+    limit,
+  ]);
 }
 
-export function useLeaderboard(
-  options: UseLeaderboardOptions = {},
-): UseLeaderboardResult {
+export function useLeaderboard(options: UseLeaderboardOptions = {}): UseLeaderboardResult {
   const { period = "week", limit = 20, teamId, orgId, source, model, enabled = true } = options;
 
   // All accumulated entries
@@ -181,10 +186,15 @@ export function useLeaderboard(
           params.set("model", model);
         }
 
-        const snapshotId = isLoadMore && snapshotRef.current?.filterKey === filterKey
-          ? snapshotRef.current.id : null;
+        const snapshotId =
+          isLoadMore && snapshotRef.current?.filterKey === filterKey
+            ? snapshotRef.current.id
+            : null;
         const { data: json, restarted } = await fetchLeaderboardPage(
-          params, snapshotId, resetPagination, controller.signal,
+          params,
+          snapshotId,
+          resetPagination,
+          controller.signal,
         );
 
         // Double-check staleness after JSON parse (in case another request started)
@@ -250,11 +260,14 @@ export function useLeaderboard(
     }
   }, [enabled, filterKey, fetchPage]);
 
-  useEffect(() => () => {
-    controllerRef.current?.abort();
-    ++requestIdRef.current;
-    lastFilterKeyRef.current = null;
-  }, []);
+  useEffect(
+    () => () => {
+      controllerRef.current?.abort();
+      ++requestIdRef.current;
+      lastFilterKeyRef.current = null;
+    },
+    [],
+  );
 
   // Load more handler
   const loadMore = useCallback(() => {

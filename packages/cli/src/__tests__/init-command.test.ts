@@ -71,10 +71,11 @@ describe("executeInit", () => {
       resolveNotifierPathsFn: createPaths,
       writeNotifyHandlerFn,
       installAllFn,
-      getAllDriversFn: () => [
-        { source: "claude-code", displayName: "Claude Code" },
-        { source: "codex", displayName: "Codex" },
-      ] as Array<{ source: Source; displayName: string }>,
+      getAllDriversFn: () =>
+        [
+          { source: "claude-code", displayName: "Claude Code" },
+          { source: "codex", displayName: "Codex" },
+        ] as Array<{ source: Source; displayName: string }>,
       mkdirFn,
     });
 
@@ -115,15 +116,12 @@ describe("executeInit", () => {
   });
 
   it("continues filtering installs when one selected source throws", async () => {
-    const installDriverFn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("boom"))
-      .mockResolvedValueOnce({
-        source: "gemini-cli",
-        action: "install",
-        changed: true,
-        detail: "ok",
-      });
+    const installDriverFn = vi.fn().mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce({
+      source: "gemini-cli",
+      action: "install",
+      changed: true,
+      detail: "ok",
+    });
 
     const result = await executeInit({
       stateDir: "/tmp/pew",

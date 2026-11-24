@@ -23,7 +23,10 @@ const BASE_URL = `http://localhost:${E2E_PORT}`;
 const TEST_USER_ID = process.env.E2E_TEST_USER_ID || "e2e-test-user-id";
 const TEST_USER_EMAIL = process.env.E2E_TEST_USER_EMAIL || "e2e@test.local";
 // Stable slug derived from user id so concurrent CI runs don't collide
-const RUN_SUFFIX = TEST_USER_ID.replace("e2e-test-user-", "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "local";
+const RUN_SUFFIX =
+  TEST_USER_ID.replace("e2e-test-user-", "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 8) || "local";
 const TEST_USER_SLUG = `e2e-user-${RUN_SUFFIX}`;
 
 /** Headers for ingest requests — includes version gate header */
@@ -307,9 +310,12 @@ describe("POST /api/ingest", () => {
   });
 
   it("ignores new zcode reports while keeping historical tokens readable", async () => {
-    await d1.execute(`INSERT INTO usage_records
+    await d1.execute(
+      `INSERT INTO usage_records
       (user_id,device_id,source,model,hour_start,input_tokens,cached_input_tokens,output_tokens,reasoning_output_tokens,total_tokens)
-      VALUES (?, 'e2e-zcode-device','zcode','GLM-5.2','2026-07-10T01:00:00.000Z',11242,52992,1329,0,65563)`, [TEST_USER_ID]);
+      VALUES (?, 'e2e-zcode-device','zcode','GLM-5.2','2026-07-10T01:00:00.000Z',11242,52992,1329,0,65563)`,
+      [TEST_USER_ID],
+    );
     const ingest = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
       headers: INGEST_HEADERS,
@@ -356,20 +362,46 @@ describe("POST /api/ingest", () => {
     const historicalTime = "2024-10-01T01:00:00.000Z";
     try {
       for (const source of sources) {
-        await d1.execute(`INSERT INTO usage_records
+        await d1.execute(
+          `INSERT INTO usage_records
           (user_id,device_id,source,model,hour_start,input_tokens,total_tokens)
-          VALUES (?, 'retirement-fixture', ?, 'historical-model', ?, 123, 123)`, [TEST_USER_ID, source, historicalTime]);
-        await d1.execute(`INSERT INTO session_records
+          VALUES (?, 'retirement-fixture', ?, 'historical-model', ?, 123, 123)`,
+          [TEST_USER_ID, source, historicalTime],
+        );
+        await d1.execute(
+          `INSERT INTO session_records
           (user_id,session_key,source,started_at,last_message_at,duration_seconds,user_messages,assistant_messages,total_messages,model,snapshot_at)
           VALUES (?, ?, ?, ?, ?, 0, 1, 1, 2, 'historical-model', ?)`,
-          [TEST_USER_ID, `retired:${source}`, source, historicalTime, historicalTime, historicalTime]);
-        const token = await fetch(`${BASE_URL}/api/ingest`, { method: "POST", headers: INGEST_HEADERS,
-          body: JSON.stringify([makeRecord({ source, device_id: "retirement-fixture", model: "historical-model",
-            hour_start: historicalTime, total_tokens: "unsafe", prompt: "PRIVATE_SYNTHETIC_BODY" })]) });
+          [
+            TEST_USER_ID,
+            `retired:${source}`,
+            source,
+            historicalTime,
+            historicalTime,
+            historicalTime,
+          ],
+        );
+        const token = await fetch(`${BASE_URL}/api/ingest`, {
+          method: "POST",
+          headers: INGEST_HEADERS,
+          body: JSON.stringify([
+            makeRecord({
+              source,
+              device_id: "retirement-fixture",
+              model: "historical-model",
+              hour_start: historicalTime,
+              total_tokens: "unsafe",
+              prompt: "PRIVATE_SYNTHETIC_BODY",
+            }),
+          ]),
+        });
         expect(token.status).toBe(200);
         expect(await token.json()).toMatchObject({ ingested: 0, ignored: 1 });
-        const session = await fetch(`${BASE_URL}/api/ingest/sessions`, { method: "POST", headers: INGEST_HEADERS,
-          body: JSON.stringify([{ source, session_key: `retired:${source}`, total_messages: -1 }]) });
+        const session = await fetch(`${BASE_URL}/api/ingest/sessions`, {
+          method: "POST",
+          headers: INGEST_HEADERS,
+          body: JSON.stringify([{ source, session_key: `retired:${source}`, total_messages: -1 }]),
+        });
         expect(session.status).toBe(200);
         expect(await session.json()).toMatchObject({ ingested: 0, ignored: 1 });
         const query = `source=${source}&from=2024-10-01&to=2024-10-02`;
@@ -379,45 +411,90 @@ describe("POST /api/ingest", () => {
           expect((await response.json()).summary.total_tokens).toBe(123);
         }
         const stored = await d1.firstOrNull<{ total_messages: number }>(
-          "SELECT total_messages FROM session_records WHERE user_id=? AND session_key=?", [TEST_USER_ID, `retired:${source}`]);
+          "SELECT total_messages FROM session_records WHERE user_id=? AND session_key=?",
+          [TEST_USER_ID, `retired:${source}`],
+        );
         expect(stored?.total_messages).toBe(2);
         const ranked = await fetch(`${BASE_URL}/api/leaderboard?period=all&source=${source}`);
         expect(ranked.status).toBe(200);
-        expect((await ranked.json()).entries.some((entry: { user: { id: string }; total_tokens: number }) =>
-          entry.user.id === TEST_USER_ID && entry.total_tokens >= 123)).toBe(true);
+        expect(
+          (await ranked.json()).entries.some(
+            (entry: { user: { id: string }; total_tokens: number }) =>
+              entry.user.id === TEST_USER_ID && entry.total_tokens >= 123,
+          ),
+        ).toBe(true);
       }
-      const active = makeRecord({ source: "pi", device_id: "retirement-fixture", model: "active-model", hour_start: historicalTime });
-      const mixed = await fetch(`${BASE_URL}/api/ingest`, { method: "POST", headers: INGEST_HEADERS,
-        body: JSON.stringify([...sources.map((source) => ({ source, private_body: "IGNORE" })), active]) });
+      const active = makeRecord({
+        source: "pi",
+        device_id: "retirement-fixture",
+        model: "active-model",
+        hour_start: historicalTime,
+      });
+      const mixed = await fetch(`${BASE_URL}/api/ingest`, {
+        method: "POST",
+        headers: INGEST_HEADERS,
+        body: JSON.stringify([
+          ...sources.map((source) => ({ source, private_body: "IGNORE" })),
+          active,
+        ]),
+      });
       expect(mixed.status).toBe(200);
       expect(await mixed.json()).toMatchObject({ ingested: 1, ignored: 6 });
     } finally {
-      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND device_id='retirement-fixture'", [TEST_USER_ID]);
-      await d1.execute("DELETE FROM session_records WHERE user_id=? AND session_key LIKE 'retired:%'", [TEST_USER_ID]);
+      await d1.execute(
+        "DELETE FROM usage_records WHERE user_id=? AND device_id='retirement-fixture'",
+        [TEST_USER_ID],
+      );
+      await d1.execute(
+        "DELETE FROM session_records WHERE user_id=? AND session_key LIKE 'retired:%'",
+        [TEST_USER_ID],
+      );
     }
   });
 
   it("round-trips Antigravity disjoint counters and deduplicates uploads", async () => {
-    const record = makeRecord({ source: "antigravity", model: "gemini-3.8-flash-n",
-      hour_start: "2026-10-01T01:00:00.000Z", device_id: "e2e-antigravity-device",
-      input_tokens: 100, cached_input_tokens: 900, output_tokens: 40, reasoning_output_tokens: 60, total_tokens: 1100 });
+    const record = makeRecord({
+      source: "antigravity",
+      model: "gemini-3.8-flash-n",
+      hour_start: "2026-10-01T01:00:00.000Z",
+      device_id: "e2e-antigravity-device",
+      input_tokens: 100,
+      cached_input_tokens: 900,
+      output_tokens: 40,
+      reasoning_output_tokens: 60,
+      total_tokens: 1100,
+    });
     for (let i = 0; i < 2; i++) {
       const res = await fetch(`${BASE_URL}/api/ingest`, {
-        method: "POST", headers: INGEST_HEADERS, body: JSON.stringify([record]),
+        method: "POST",
+        headers: INGEST_HEADERS,
+        body: JSON.stringify([record]),
       });
       expect(res.status).toBe(200);
     }
     const query = "source=antigravity&from=2026-10-01&to=2026-10-02";
-    for (const path of ["/api/usage", "/api/sessions", "/api/leaderboard", `/api/users/${TEST_USER_SLUG}`]) {
+    for (const path of [
+      "/api/usage",
+      "/api/sessions",
+      "/api/leaderboard",
+      `/api/users/${TEST_USER_SLUG}`,
+    ]) {
       expect((await fetch(`${BASE_URL}${path}?${query}`)).status, path).toBe(200);
     }
     const res = await fetch(`${BASE_URL}/api/usage?${query}`);
     const body = await res.json();
-    expect(body.summary).toMatchObject({ input_tokens: 100, cached_input_tokens: 900,
-      output_tokens: 40, reasoning_output_tokens: 60, total_tokens: 1100 });
+    expect(body.summary).toMatchObject({
+      input_tokens: 100,
+      cached_input_tokens: 900,
+      output_tokens: 40,
+      reasoning_output_tokens: 60,
+      total_tokens: 1100,
+    });
     expect(body.records).toHaveLength(1);
     const summary = body.summary;
-    expect(summary.cached_input_tokens / (summary.input_tokens + summary.cached_input_tokens)).toBe(0.9);
+    expect(summary.cached_input_tokens / (summary.input_tokens + summary.cached_input_tokens)).toBe(
+      0.9,
+    );
   });
 });
 
@@ -430,7 +507,8 @@ describe("CLI upgrade notice persistence", () => {
     expect(second.status).toBe(200);
     expect(await second.json()).toEqual({ show: false });
     const row = await d1.firstOrNull<{ cli_upgrade_notice_seen_at: string }>(
-      "SELECT cli_upgrade_notice_seen_at FROM users WHERE id = ?", [TEST_USER_ID],
+      "SELECT cli_upgrade_notice_seen_at FROM users WHERE id = ?",
+      [TEST_USER_ID],
     );
     expect(row?.cli_upgrade_notice_seen_at).toBeTruthy();
   });
@@ -442,9 +520,7 @@ describe("CLI upgrade notice persistence", () => {
 
 describe("GET /api/usage", () => {
   it("should return records for the test user", async () => {
-    const res = await fetch(
-      `${BASE_URL}/api/usage?from=2026-03-01&to=2026-03-02`,
-    );
+    const res = await fetch(`${BASE_URL}/api/usage?from=2026-03-01&to=2026-03-02`);
     expect(res.status).toBe(200);
     const body = await res.json();
 
@@ -456,9 +532,7 @@ describe("GET /api/usage", () => {
   });
 
   it("should filter by source", async () => {
-    const res = await fetch(
-      `${BASE_URL}/api/usage?from=2026-03-01&to=2026-03-02&source=pi`,
-    );
+    const res = await fetch(`${BASE_URL}/api/usage?from=2026-03-01&to=2026-03-02&source=pi`);
     expect(res.status).toBe(200);
     const body = await res.json();
 
@@ -468,9 +542,7 @@ describe("GET /api/usage", () => {
   });
 
   it("should aggregate by day granularity", async () => {
-    const res = await fetch(
-      `${BASE_URL}/api/usage?from=2026-03-01&to=2026-03-02&granularity=day`,
-    );
+    const res = await fetch(`${BASE_URL}/api/usage?from=2026-03-01&to=2026-03-02&granularity=day`);
     expect(res.status).toBe(200);
     const body = await res.json();
 
@@ -493,9 +565,7 @@ describe("GET /api/usage", () => {
   });
 
   it("should return empty when date range has no data", async () => {
-    const res = await fetch(
-      `${BASE_URL}/api/usage?from=2020-01-01&to=2020-01-02`,
-    );
+    const res = await fetch(`${BASE_URL}/api/usage?from=2020-01-01&to=2020-01-02`);
     expect(res.status).toBe(200);
     const body = await res.json();
 
@@ -528,10 +598,9 @@ describe("GET /api/auth/cli", () => {
   });
 
   it("should return 400 for non-localhost callback", async () => {
-    const res = await fetch(
-      `${BASE_URL}/api/auth/cli?callback=https://evil.com/cb`,
-      { redirect: "manual" },
-    );
+    const res = await fetch(`${BASE_URL}/api/auth/cli?callback=https://evil.com/cb`, {
+      redirect: "manual",
+    });
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toContain("localhost");
@@ -539,10 +608,9 @@ describe("GET /api/auth/cli", () => {
 
   it("should redirect to localhost callback with api_key", async () => {
     const callback = "http://localhost:19876/callback";
-    const res = await fetch(
-      `${BASE_URL}/api/auth/cli?callback=${encodeURIComponent(callback)}`,
-      { redirect: "manual" },
-    );
+    const res = await fetch(`${BASE_URL}/api/auth/cli?callback=${encodeURIComponent(callback)}`, {
+      redirect: "manual",
+    });
 
     // Should be a redirect (307 from NextResponse.redirect)
     expect(res.status).toBe(307);
@@ -566,21 +634,17 @@ describe("GET /api/auth/cli", () => {
 
   it("should return same api_key on subsequent calls", async () => {
     const callback = "http://localhost:19876/callback";
-    const res1 = await fetch(
-      `${BASE_URL}/api/auth/cli?callback=${encodeURIComponent(callback)}`,
-      { redirect: "manual" },
-    );
-    const res2 = await fetch(
-      `${BASE_URL}/api/auth/cli?callback=${encodeURIComponent(callback)}`,
-      { redirect: "manual" },
-    );
+    const res1 = await fetch(`${BASE_URL}/api/auth/cli?callback=${encodeURIComponent(callback)}`, {
+      redirect: "manual",
+    });
+    const res2 = await fetch(`${BASE_URL}/api/auth/cli?callback=${encodeURIComponent(callback)}`, {
+      redirect: "manual",
+    });
 
     const url1 = new URL(res1.headers.get("Location")!);
     const url2 = new URL(res2.headers.get("Location")!);
 
-    expect(url1.searchParams.get("api_key")).toBe(
-      url2.searchParams.get("api_key"),
-    );
+    expect(url1.searchParams.get("api_key")).toBe(url2.searchParams.get("api_key"));
   });
 });
 
@@ -671,26 +735,39 @@ describe("GET /api/leaderboard", () => {
   });
 
   it("reuses ranked snapshots and revokes them immediately after privacy changes", async () => {
-    const settings = async (is_public: boolean) => fetch(`${BASE_URL}/api/settings`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_public }),
-    });
+    const settings = async (is_public: boolean) =>
+      fetch(`${BASE_URL}/api/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_public }),
+      });
     expect((await settings(true)).status).toBe(200);
     try {
       const first = await (await fetch(`${BASE_URL}/api/leaderboard?period=all&limit=100`)).json();
-      expect(first.entries.some((entry: { user: { id: string } }) => entry.user.id === TEST_USER_ID)).toBe(true);
+      expect(
+        first.entries.some((entry: { user: { id: string } }) => entry.user.id === TEST_USER_ID),
+      ).toBe(true);
       expect(first.snapshotId).toMatch(/^[a-f0-9]{64}$/);
       const warm = await (await fetch(`${BASE_URL}/api/leaderboard?period=all&limit=1`)).json();
       expect(warm.snapshotId).toBe(first.snapshotId);
       expect(warm.expiresAt).toBe(first.expiresAt);
       expect((await settings(false)).status).toBe(200);
-      const stale = await fetch(`${BASE_URL}/api/leaderboard?period=all&offset=1&snapshot=${first.snapshotId}`);
+      const stale = await fetch(
+        `${BASE_URL}/api/leaderboard?period=all&offset=1&snapshot=${first.snapshotId}`,
+      );
       expect(stale.status).toBe(409);
       expect((await stale.json()).code).toBe("LEADERBOARD_CHANGED");
       const fresh = await fetch(`${BASE_URL}/api/leaderboard?period=all&limit=100`);
       expect(fresh.status).toBe(200);
       expect(fresh.headers.get("Cache-Control")).toBe("private, no-store");
-      expect((await fresh.json()).entries.some((entry: { user: { id: string } }) => entry.user.id === TEST_USER_ID)).toBe(false);
-    } finally { expect((await settings(true)).status).toBe(200); }
+      expect(
+        (await fresh.json()).entries.some(
+          (entry: { user: { id: string } }) => entry.user.id === TEST_USER_ID,
+        ),
+      ).toBe(false);
+    } finally {
+      expect((await settings(true)).status).toBe(200);
+    }
   });
 
   it("should reject invalid period", async () => {
@@ -720,100 +797,270 @@ describe("GET /api/devices", () => {
   it("deletes management metadata but preserves history and revocation until an explicit restore", async () => {
     const deviceId = "e2e-device-lifecycle";
     const sessionKey = "e2e-device-lifecycle-session";
-    const original = makeRecord({ device_id: deviceId, source: "pi", model: "lifecycle-model",
-      hour_start: "2026-03-01T10:00:00.000Z", input_tokens: 100, cached_input_tokens: 20,
-      output_tokens: 30, reasoning_output_tokens: 10, total_tokens: 160 });
-    const count = async (sql: string, params: unknown[]) => (await d1.query<{ n: number }>(sql, params)).results[0]?.n;
+    const original = makeRecord({
+      device_id: deviceId,
+      source: "pi",
+      model: "lifecycle-model",
+      hour_start: "2026-03-01T10:00:00.000Z",
+      input_tokens: 100,
+      cached_input_tokens: 20,
+      output_tokens: 30,
+      reasoning_output_tokens: 10,
+      total_tokens: 160,
+    });
+    const count = async (sql: string, params: unknown[]) =>
+      (await d1.query<{ n: number }>(sql, params)).results[0]?.n;
     const cleanup = async () => {
-      await d1.execute("DELETE FROM usage_details WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
-      await d1.execute("DELETE FROM usage_evidence WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
-      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
-      await d1.execute("DELETE FROM session_records WHERE user_id=? AND session_key=?", [TEST_USER_ID, sessionKey]);
-      await d1.execute("DELETE FROM device_aliases WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
-      await d1.execute("DELETE FROM device_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
-      await d1.execute("DELETE FROM device_revocations WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
+      await d1.execute("DELETE FROM usage_details WHERE user_id=? AND device_id=?", [
+        TEST_USER_ID,
+        deviceId,
+      ]);
+      await d1.execute("DELETE FROM usage_evidence WHERE user_id=? AND device_id=?", [
+        TEST_USER_ID,
+        deviceId,
+      ]);
+      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND device_id=?", [
+        TEST_USER_ID,
+        deviceId,
+      ]);
+      await d1.execute("DELETE FROM session_records WHERE user_id=? AND session_key=?", [
+        TEST_USER_ID,
+        sessionKey,
+      ]);
+      await d1.execute("DELETE FROM device_aliases WHERE user_id=? AND device_id=?", [
+        TEST_USER_ID,
+        deviceId,
+      ]);
+      await d1.execute("DELETE FROM device_records WHERE user_id=? AND device_id=?", [
+        TEST_USER_ID,
+        deviceId,
+      ]);
+      await d1.execute("DELETE FROM device_revocations WHERE user_id=? AND device_id=?", [
+        TEST_USER_ID,
+        deviceId,
+      ]);
     };
 
     await cleanup();
     try {
-      const ingest = async (rows: unknown[]) => fetch(`${BASE_URL}/api/ingest`, {
-        method: "POST", headers: INGEST_HEADERS, body: JSON.stringify(rows),
+      const ingest = async (rows: unknown[]) =>
+        fetch(`${BASE_URL}/api/ingest`, {
+          method: "POST",
+          headers: INGEST_HEADERS,
+          body: JSON.stringify(rows),
+        });
+      expect((await ingest([original])).status).toBe(200);
+      const firstList = (await (await fetch(`${BASE_URL}/api/devices`)).json()) as {
+        devices: Array<{ device_id: string; revoked: boolean }>;
+      };
+      expect(firstList.devices.find((device) => device.device_id === deviceId)?.revoked).toBe(
+        false,
+      );
+      expect(
+        (
+          await fetch(`${BASE_URL}/api/devices`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ device_id: deviceId, alias: "Lifecycle alias" }),
+          })
+        ).status,
+      ).toBe(200);
+
+      const removed = await fetch(`${BASE_URL}/api/devices`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId }),
       });
-      expect((await ingest([original])).status).toBe(200);
-      const firstList = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string; revoked: boolean }> };
-      expect(firstList.devices.find((device) => device.device_id === deviceId)?.revoked).toBe(false);
-      expect((await fetch(`${BASE_URL}/api/devices`, { method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId, alias: "Lifecycle alias" }) })).status).toBe(200);
-
-      const removed = await fetch(`${BASE_URL}/api/devices`, { method: "DELETE", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId }) });
       expect(removed.status).toBe(200);
-      const afterDelete = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string }> };
+      const afterDelete = (await (await fetch(`${BASE_URL}/api/devices`)).json()) as {
+        devices: Array<{ device_id: string }>;
+      };
       expect(afterDelete.devices.some((device) => device.device_id === deviceId)).toBe(false);
-      expect(await count("SELECT COUNT(*) AS n FROM device_aliases WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId])).toBe(0);
-      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId])).toBe(1);
+      expect(
+        await count("SELECT COUNT(*) AS n FROM device_aliases WHERE user_id=? AND device_id=?", [
+          TEST_USER_ID,
+          deviceId,
+        ]),
+      ).toBe(0);
+      expect(
+        await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=?", [
+          TEST_USER_ID,
+          deviceId,
+        ]),
+      ).toBe(1);
 
       expect((await ingest([original])).status).toBe(200);
-      const reappeared = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string; alias: string | null }> };
-      expect(reappeared.devices.find((device) => device.device_id === deviceId)).toMatchObject({ device_id: deviceId, alias: null });
+      const reappeared = (await (await fetch(`${BASE_URL}/api/devices`)).json()) as {
+        devices: Array<{ device_id: string; alias: string | null }>;
+      };
+      expect(reappeared.devices.find((device) => device.device_id === deviceId)).toMatchObject({
+        device_id: deviceId,
+        alias: null,
+      });
 
-      const revoke = await fetch(`${BASE_URL}/api/devices`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId, revoked: true }) });
+      const revoke = await fetch(`${BASE_URL}/api/devices`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId, revoked: true }),
+      });
       expect(revoke.status).toBe(200);
-      const rejected = await ingest([original, { ...original, device_id: "e2e-device-lifecycle-active", model: "active-model" }]);
+      const rejected = await ingest([
+        original,
+        { ...original, device_id: "e2e-device-lifecycle-active", model: "active-model" },
+      ]);
       expect(await rejected.json()).toMatchObject({ ingested: 2 });
-      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=? AND model='lifecycle-model'", [TEST_USER_ID, deviceId])).toBe(1);
-      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id='e2e-device-lifecycle-active' AND model='active-model'", [TEST_USER_ID])).toBe(1);
-      const revokedList = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string; revoked: boolean }> };
-      expect(revokedList.devices.find((device) => device.device_id === deviceId)?.revoked).toBe(true);
+      expect(
+        await count(
+          "SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=? AND model='lifecycle-model'",
+          [TEST_USER_ID, deviceId],
+        ),
+      ).toBe(1);
+      expect(
+        await count(
+          "SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id='e2e-device-lifecycle-active' AND model='active-model'",
+          [TEST_USER_ID],
+        ),
+      ).toBe(1);
+      const revokedList = (await (await fetch(`${BASE_URL}/api/devices`)).json()) as {
+        devices: Array<{ device_id: string; revoked: boolean }>;
+      };
+      expect(revokedList.devices.find((device) => device.device_id === deviceId)?.revoked).toBe(
+        true,
+      );
 
-      const session = { source: "codex", session_key: sessionKey, kind: "human", started_at: original.hour_start,
-        last_message_at: original.hour_start, duration_seconds: 60, user_messages: 1, assistant_messages: 1,
-        total_messages: 2, project_ref: null, model: "lifecycle-model", snapshot_at: original.hour_start };
-      const sessionResponse = await fetch(`${BASE_URL}/api/ingest/sessions`, { method: "POST", headers: INGEST_HEADERS, body: JSON.stringify([session]) });
+      const session = {
+        source: "codex",
+        session_key: sessionKey,
+        kind: "human",
+        started_at: original.hour_start,
+        last_message_at: original.hour_start,
+        duration_seconds: 60,
+        user_messages: 1,
+        assistant_messages: 1,
+        total_messages: 2,
+        project_ref: null,
+        model: "lifecycle-model",
+        snapshot_at: original.hour_start,
+      };
+      const sessionResponse = await fetch(`${BASE_URL}/api/ingest/sessions`, {
+        method: "POST",
+        headers: INGEST_HEADERS,
+        body: JSON.stringify([session]),
+      });
       expect(sessionResponse.status).toBe(200);
-      expect(await count("SELECT COUNT(*) AS n FROM session_records WHERE user_id=? AND session_key=?", [TEST_USER_ID, sessionKey])).toBe(1);
+      expect(
+        await count("SELECT COUNT(*) AS n FROM session_records WHERE user_id=? AND session_key=?", [
+          TEST_USER_ID,
+          sessionKey,
+        ]),
+      ).toBe(1);
       const historicalUsage = await fetch(`${BASE_URL}/api/usage/by-device?from=2020-01-01`);
       const historicalBody: ByDeviceResponse = await historicalUsage.json();
-      expect(historicalBody.devices.find((device) => device.device_id === deviceId)?.total_tokens).toBe(160);
+      expect(
+        historicalBody.devices.find((device) => device.device_id === deviceId)?.total_tokens,
+      ).toBe(160);
 
-      expect((await fetch(`${BASE_URL}/api/devices`, { method: "DELETE", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId }) })).status).toBe(200);
+      expect(
+        (
+          await fetch(`${BASE_URL}/api/devices`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ device_id: deviceId }),
+          })
+        ).status,
+      ).toBe(200);
       const blockedAfterDelete = await ingest([{ ...original, model: "blocked-after-delete" }]);
       expect(await blockedAfterDelete.json()).toMatchObject({ ingested: 1 });
-      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=? AND model='blocked-after-delete'", [TEST_USER_ID, deviceId])).toBe(0);
-      const hiddenRevoked = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string }> };
+      expect(
+        await count(
+          "SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=? AND model='blocked-after-delete'",
+          [TEST_USER_ID, deviceId],
+        ),
+      ).toBe(0);
+      const hiddenRevoked = (await (await fetch(`${BASE_URL}/api/devices`)).json()) as {
+        devices: Array<{ device_id: string }>;
+      };
       expect(hiddenRevoked.devices.some((device) => device.device_id === deviceId)).toBe(false);
-      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId])).toBe(1);
+      expect(
+        await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=?", [
+          TEST_USER_ID,
+          deviceId,
+        ]),
+      ).toBe(1);
 
-      expect((await fetch(`${BASE_URL}/api/devices`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId, revoked: false }) })).status).toBe(200);
+      expect(
+        (
+          await fetch(`${BASE_URL}/api/devices`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ device_id: deviceId, revoked: false }),
+          })
+        ).status,
+      ).toBe(200);
       expect((await ingest([{ ...original, model: "restored-sync" }])).status).toBe(200);
-      const restored = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string; revoked: boolean }> };
+      const restored = (await (await fetch(`${BASE_URL}/api/devices`)).json()) as {
+        devices: Array<{ device_id: string; revoked: boolean }>;
+      };
       expect(restored.devices.find((device) => device.device_id === deviceId)?.revoked).toBe(false);
     } finally {
       await cleanup();
-      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, "e2e-device-lifecycle-active"]);
+      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND device_id=?", [
+        TEST_USER_ID,
+        "e2e-device-lifecycle-active",
+      ]);
     }
   });
 
   it("revokes explicitly tagged default uploads but accepts legacy records without device_id", async () => {
-    const count = async (sql: string, params: unknown[]) => (await d1.query<{ n: number }>(sql, params)).results[0]?.n;
-    const legacy = makeRecord({ source: "pi", model: "e2e-untagged-legacy", hour_start: "2026-03-01T10:00:00.000Z" });
+    const count = async (sql: string, params: unknown[]) =>
+      (await d1.query<{ n: number }>(sql, params)).results[0]?.n;
+    const legacy = makeRecord({
+      source: "pi",
+      model: "e2e-untagged-legacy",
+      hour_start: "2026-03-01T10:00:00.000Z",
+    });
     const tagged = { ...legacy, model: "e2e-tagged-default", device_id: "default" };
-    await d1.execute("DELETE FROM usage_records WHERE user_id=? AND model IN (?,?)", [TEST_USER_ID, legacy.model, tagged.model]);
-    const revoked = await fetch(`${BASE_URL}/api/devices`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device_id: "default", revoked: true }) });
+    await d1.execute("DELETE FROM usage_records WHERE user_id=? AND model IN (?,?)", [
+      TEST_USER_ID,
+      legacy.model,
+      tagged.model,
+    ]);
+    const revoked = await fetch(`${BASE_URL}/api/devices`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_id: "default", revoked: true }),
+    });
     expect(revoked.status).toBe(200);
     try {
-      const response = await fetch(`${BASE_URL}/api/ingest`, { method: "POST", headers: INGEST_HEADERS, body: JSON.stringify([legacy, tagged]) });
+      const response = await fetch(`${BASE_URL}/api/ingest`, {
+        method: "POST",
+        headers: INGEST_HEADERS,
+        body: JSON.stringify([legacy, tagged]),
+      });
       expect(response.status).toBe(200);
-      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND model=? AND device_id='default'", [TEST_USER_ID, legacy.model])).toBe(1);
-      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND model=?", [TEST_USER_ID, tagged.model])).toBe(0);
+      expect(
+        await count(
+          "SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND model=? AND device_id='default'",
+          [TEST_USER_ID, legacy.model],
+        ),
+      ).toBe(1);
+      expect(
+        await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND model=?", [
+          TEST_USER_ID,
+          tagged.model,
+        ]),
+      ).toBe(0);
     } finally {
-      await fetch(`${BASE_URL}/api/devices`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: "default", revoked: false }) });
-      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND model IN (?,?)", [TEST_USER_ID, legacy.model, tagged.model]);
+      await fetch(`${BASE_URL}/api/devices`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: "default", revoked: false }),
+      });
+      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND model IN (?,?)", [
+        TEST_USER_ID,
+        legacy.model,
+        tagged.model,
+      ]);
     }
   });
 });
@@ -897,35 +1144,80 @@ describe("GET /api/usage/by-device", () => {
     expect(res.status).toBe(200);
     const body: ByDeviceResponse = await res.json();
     const expected = [
-      { device_id: "default", date: "2026-03-01", input_tokens: 2300, cached_input_tokens: 300,
-        output_tokens: 1100, reasoning_output_tokens: 150, total_tokens: 3850 },
-      { device_id: "e2e-grok-device", date: "2026-03-15", input_tokens: 25315, cached_input_tokens: 63872,
-        output_tokens: 1571, reasoning_output_tokens: 111, total_tokens: 90869 },
-      { device_id: "e2e-zcode-device", date: "2026-07-10", input_tokens: 11242, cached_input_tokens: 52992,
-        output_tokens: 1329, reasoning_output_tokens: 0, total_tokens: 65563 },
-      { device_id: "e2e-antigravity-device", date: "2026-10-01", input_tokens: 100, cached_input_tokens: 900,
-        output_tokens: 40, reasoning_output_tokens: 60, total_tokens: 1100 },
+      {
+        device_id: "default",
+        date: "2026-03-01",
+        input_tokens: 2300,
+        cached_input_tokens: 300,
+        output_tokens: 1100,
+        reasoning_output_tokens: 150,
+        total_tokens: 3850,
+      },
+      {
+        device_id: "e2e-grok-device",
+        date: "2026-03-15",
+        input_tokens: 25315,
+        cached_input_tokens: 63872,
+        output_tokens: 1571,
+        reasoning_output_tokens: 111,
+        total_tokens: 90869,
+      },
+      {
+        device_id: "e2e-zcode-device",
+        date: "2026-07-10",
+        input_tokens: 11242,
+        cached_input_tokens: 52992,
+        output_tokens: 1329,
+        reasoning_output_tokens: 0,
+        total_tokens: 65563,
+      },
+      {
+        device_id: "e2e-antigravity-device",
+        date: "2026-10-01",
+        input_tokens: 100,
+        cached_input_tokens: 900,
+        output_tokens: 40,
+        reasoning_output_tokens: 60,
+        total_tokens: 1100,
+      },
     ];
     expect(body.devices).toHaveLength(4);
     expect(body.timeline).toHaveLength(4);
     expect(body.deviceDetails).toHaveLength(6);
     for (const { date, ...device } of expected) {
       expect(body.devices.find((row) => row.device_id === device.device_id)).toMatchObject(device);
-      expect(body.timeline.find((row) => row.device_id === device.device_id)).toMatchObject({ ...device, date });
-      expect(body.deviceDetails.filter((row) => row.device_id === device.device_id))
-        .toHaveLength(device.device_id === "default" ? 3 : 1);
+      expect(body.timeline.find((row) => row.device_id === device.device_id)).toMatchObject({
+        ...device,
+        date,
+      });
+      expect(body.deviceDetails.filter((row) => row.device_id === device.device_id)).toHaveLength(
+        device.device_id === "default" ? 3 : 1,
+      );
     }
 
     const usage = await fetch(`${BASE_URL}/api/usage?from=2020-01-01`);
     expect(usage.status).toBe(200);
     const { summary } = await usage.json();
-    for (const field of ["input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens"] as const) {
+    for (const field of [
+      "input_tokens",
+      "cached_input_tokens",
+      "output_tokens",
+      "reasoning_output_tokens",
+      "total_tokens",
+    ] as const) {
       expect(summary[field]).toBe(expected.reduce((sum, row) => sum + row[field], 0));
       for (const rows of [body.devices, body.timeline, body.deviceDetails]) {
-        expect(rows.reduce((sum, row) => sum + row[field], 0), field).toBe(summary[field]);
+        expect(
+          rows.reduce((sum, row) => sum + row[field], 0),
+          field,
+        ).toBe(summary[field]);
         for (const device of expected) {
-          expect(rows.filter((row) => row.device_id === device.device_id)
-            .reduce((sum, row) => sum + row[field], 0), `${device.device_id}.${field}`).toBe(device[field]);
+          expect(
+            rows
+              .filter((row) => row.device_id === device.device_id)
+              .reduce((sum, row) => sum + row[field], 0),
+            `${device.device_id}.${field}`,
+          ).toBe(device[field]);
         }
       }
     }
@@ -951,11 +1243,14 @@ describe("GET /api/teams", () => {
 // ===========================================================================
 
 describe("organization lists", () => {
-  it.each(["/api/organizations", "/api/organizations/mine"])("returns an empty list from %s", async (path) => {
-    const res = await fetch(`${BASE_URL}${path}`);
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ organizations: [] });
-  });
+  it.each(["/api/organizations", "/api/organizations/mine"])(
+    "returns an empty list from %s",
+    async (path) => {
+      const res = await fetch(`${BASE_URL}${path}`);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ organizations: [] });
+    },
+  );
 });
 
 // ===========================================================================
@@ -963,45 +1258,50 @@ describe("organization lists", () => {
 // ===========================================================================
 
 describe("POST /api/ingest/sessions", () => {
-  it.each(["grok", "antigravity"])("ingests and reads %s sessions after project tables are retired", async (source) => {
-    const record = {
-      session_key: `${source}:e2e-${RUN_SUFFIX}`,
-      source,
-      kind: "human",
-      started_at: "2026-09-13T10:00:00.000Z",
-      last_message_at: "2026-09-13T10:10:00.000Z",
-      duration_seconds: 600,
-      user_messages: 2,
-      assistant_messages: 3,
-      total_messages: 5,
-      project_ref: "0123456789abcdef",
-      model: "test-model",
-      snapshot_at: "2026-09-13T10:10:00.000Z",
-    };
-    for (let replay = 0; replay < 2; replay++) {
-      const response = await fetch(`${BASE_URL}/api/ingest/sessions`, {
-        method: "POST",
-        headers: INGEST_HEADERS,
-        body: JSON.stringify([record]),
-      });
-      expect(response.status).toBe(200);
-      expect((await response.json()).ingested).toBe(1);
-    }
-
-    const response = await fetch(`${BASE_URL}/api/sessions?source=${source}&kind=human&from=2026-09-13&to=2026-09-13`);
-    expect(response.status).toBe(200);
-    const { snapshot_at: _snapshot, ...expected } = record;
-    expect(await response.json()).toEqual({
-      records: [expected],
-      summary: {
-        total_sessions: 1,
-        total_duration_seconds: 600,
-        total_user_messages: 2,
-        total_assistant_messages: 3,
+  it.each(["grok", "antigravity"])(
+    "ingests and reads %s sessions after project tables are retired",
+    async (source) => {
+      const record = {
+        session_key: `${source}:e2e-${RUN_SUFFIX}`,
+        source,
+        kind: "human",
+        started_at: "2026-09-13T10:00:00.000Z",
+        last_message_at: "2026-09-13T10:10:00.000Z",
+        duration_seconds: 600,
+        user_messages: 2,
+        assistant_messages: 3,
         total_messages: 5,
-      },
-    });
-  });
+        project_ref: "0123456789abcdef",
+        model: "test-model",
+        snapshot_at: "2026-09-13T10:10:00.000Z",
+      };
+      for (let replay = 0; replay < 2; replay++) {
+        const response = await fetch(`${BASE_URL}/api/ingest/sessions`, {
+          method: "POST",
+          headers: INGEST_HEADERS,
+          body: JSON.stringify([record]),
+        });
+        expect(response.status).toBe(200);
+        expect((await response.json()).ingested).toBe(1);
+      }
+
+      const response = await fetch(
+        `${BASE_URL}/api/sessions?source=${source}&kind=human&from=2026-09-13&to=2026-09-13`,
+      );
+      expect(response.status).toBe(200);
+      const { snapshot_at: _snapshot, ...expected } = record;
+      expect(await response.json()).toEqual({
+        records: [expected],
+        summary: {
+          total_sessions: 1,
+          total_duration_seconds: 600,
+          total_user_messages: 2,
+          total_assistant_messages: 3,
+          total_messages: 5,
+        },
+      });
+    },
+  );
 
   it("should reject requests without client version header", async () => {
     const res = await fetch(`${BASE_URL}/api/ingest/sessions`, {
@@ -1075,9 +1375,15 @@ describe("POST /api/auth/code", () => {
     expect(body.code).toMatch(/^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/);
     expect(new Date(body.expires_at).getTime()).toBeGreaterThan(started);
     const row = await d1.firstOrNull(
-      "SELECT user_id, expires_at, used_at, failed_attempts FROM auth_codes WHERE code = ?", [body.code],
+      "SELECT user_id, expires_at, used_at, failed_attempts FROM auth_codes WHERE code = ?",
+      [body.code],
     );
-    expect(row).toEqual({ user_id: TEST_USER_ID, expires_at: body.expires_at, used_at: null, failed_attempts: 0 });
+    expect(row).toEqual({
+      user_id: TEST_USER_ID,
+      expires_at: body.expires_at,
+      used_at: null,
+      failed_attempts: 0,
+    });
   });
 });
 
@@ -1337,9 +1643,12 @@ describe("POST /api/admin/organizations/[orgId]/members", () => {
 
 describe("DELETE /api/admin/organizations/[orgId]/members/[userId]", () => {
   it("should return 403 for non-admin", async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent/members/non-existent`, {
-      method: "DELETE",
-    });
+    const res = await fetch(
+      `${BASE_URL}/api/admin/organizations/non-existent/members/non-existent`,
+      {
+        method: "DELETE",
+      },
+    );
     await logUnexpectedStatus(res, 403);
     expect(res.status).toBe(403);
   });
@@ -1409,7 +1718,7 @@ describe("DELETE /api/teams/[teamId]/members/[userId]", () => {
     await logUnexpectedStatus(res, 403);
     expect(res.status).toBe(403);
   });
-})
+});
 
 // Removed endpoints must not expose feature data or accept new submissions.
 describe("retired feature endpoints", () => {

@@ -29,10 +29,7 @@ const JPEG_QUALITY = 80;
 // POST — upload logo
 // ---------------------------------------------------------------------------
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ teamId: string }> },
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ teamId: string }> }) {
   const authResult = await resolveUser(request);
   if (!authResult) {
     return unauthorizedResponse();
@@ -50,53 +47,43 @@ export async function POST(
   }
 
   if (role !== "owner") {
-    return NextResponse.json(
-      { error: "Only the team owner can change the logo" },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: "Only the team owner can change the logo" }, { status: 403 });
   }
 
   // Parse multipart form data
   let formData: FormData;
   try {
     const body = await readBoundedBody(request, MAX_FILE_SIZE + 64 * 1024);
-    formData = await new Response(body, { headers: { "Content-Type": request.headers.get("Content-Type") ?? "" } }).formData();
+    formData = await new Response(body, {
+      headers: { "Content-Type": request.headers.get("Content-Type") ?? "" },
+    }).formData();
   } catch (error) {
-    if (error instanceof BodyTooLargeError) return NextResponse.json({ error: error.message }, { status: 413 });
-    return NextResponse.json(
-      { error: "Expected multipart/form-data" },
-      { status: 400 },
-    );
+    if (error instanceof BodyTooLargeError)
+      return NextResponse.json({ error: error.message }, { status: 413 });
+    return NextResponse.json({ error: "Expected multipart/form-data" }, { status: 400 });
   }
 
   const file = formData.get("file");
   if (!file || !(file instanceof File)) {
-    return NextResponse.json(
-      { error: "Missing file field" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Missing file field" }, { status: 400 });
   }
 
   let fieldCount = 0;
-  formData.forEach(() => { fieldCount++; });
+  formData.forEach(() => {
+    fieldCount++;
+  });
   if (fieldCount !== 1) {
     return NextResponse.json({ error: "Expected a single file field" }, { status: 400 });
   }
 
   // Validate MIME type
   if (!ACCEPTED_TYPES.has(file.type)) {
-    return NextResponse.json(
-      { error: "Only PNG and JPEG images are accepted" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Only PNG and JPEG images are accepted" }, { status: 400 });
   }
 
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json(
-      { error: "File too large (max 2 MB)" },
-      { status: 413 },
-    );
+    return NextResponse.json({ error: "File too large (max 2 MB)" }, { status: 413 });
   }
 
   // Read file buffer
@@ -111,10 +98,7 @@ export async function POST(
       .jpeg({ quality: JPEG_QUALITY })
       .toBuffer();
   } catch {
-    return NextResponse.json(
-      { error: "Invalid image file" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid image file" }, { status: 400 });
   }
 
   // Upload to R2 (returns new unique CDN URL)
@@ -123,10 +107,7 @@ export async function POST(
     newLogoUrl = await putTeamLogo(teamId, jpegBuffer);
   } catch (err) {
     console.error("Failed to upload team logo to R2:", err);
-    return NextResponse.json(
-      { error: "Failed to store logo" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to store logo" }, { status: 500 });
   }
 
   // Persist new URL to DB — compensate by deleting the new R2 object on failure
@@ -134,10 +115,7 @@ export async function POST(
   try {
     oldLogoUrl = await dbRead.getTeamLogoUrl(teamId);
 
-    await dbWrite.execute("UPDATE teams SET logo_url = ? WHERE id = ?", [
-      newLogoUrl,
-      teamId,
-    ]);
+    await dbWrite.execute("UPDATE teams SET logo_url = ? WHERE id = ?", [newLogoUrl, teamId]);
   } catch (err) {
     console.error("Failed to persist logo URL to DB:", err);
     // Compensate: delete the just-uploaded R2 object to avoid orphan
@@ -147,10 +125,7 @@ export async function POST(
       // Double-fault: log but accept potential orphan
       console.error("Compensating R2 delete also failed for:", newLogoUrl);
     }
-    return NextResponse.json(
-      { error: "Failed to save logo" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to save logo" }, { status: 500 });
   }
 
   // Best-effort delete old R2 object
@@ -190,10 +165,7 @@ export async function DELETE(
   }
 
   if (role !== "owner") {
-    return NextResponse.json(
-      { error: "Only the team owner can remove the logo" },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: "Only the team owner can remove the logo" }, { status: 403 });
   }
 
   // Read current logo URL before clearing
@@ -203,15 +175,10 @@ export async function DELETE(
   // If this fails, return 500 and leave R2 untouched (no dangling reference).
   // If R2 delete later fails, accept storage leak (user state is already correct).
   try {
-    await dbWrite.execute("UPDATE teams SET logo_url = NULL WHERE id = ?", [
-      teamId,
-    ]);
+    await dbWrite.execute("UPDATE teams SET logo_url = NULL WHERE id = ?", [teamId]);
   } catch (err) {
     console.error("Failed to clear logo_url in DB:", err);
-    return NextResponse.json(
-      { error: "Failed to remove logo" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to remove logo" }, { status: 500 });
   }
 
   // Best-effort delete from R2

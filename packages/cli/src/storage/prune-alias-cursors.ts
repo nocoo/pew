@@ -123,9 +123,7 @@ export async function pruneAliasCursors<TCursor>(
     return trimmed;
   });
   const isProtected = (path: string): boolean =>
-    prefixes.some((prefix) =>
-      path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}\\`),
-    );
+    prefixes.some((prefix) => path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}\\`));
 
   // "In-discovery" guards against evicting a cursor that the parse
   // loop already touched this run (whether or not it succeeded). The

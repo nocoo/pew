@@ -53,24 +53,15 @@ describe("codexSessionDriver", () => {
       // Primary dir
       const primaryDir = join(tempDir, "primary", "2026", "03", "07");
       await mkdir(primaryDir, { recursive: true });
-      await writeFile(
-        join(primaryDir, "rollout-primary.jsonl"),
-        `${codexLine()}\n`,
-      );
+      await writeFile(join(primaryDir, "rollout-primary.jsonl"), `${codexLine()}\n`);
 
       // Multica extra dirs
       const multicaDir1 = join(tempDir, "multica", "ws1", "task1", "sessions");
       const multicaDir2 = join(tempDir, "multica", "ws2", "task2", "sessions");
       await mkdir(multicaDir1, { recursive: true });
       await mkdir(multicaDir2, { recursive: true });
-      await writeFile(
-        join(multicaDir1, "rollout-multica1.jsonl"),
-        `${codexLine()}\n`,
-      );
-      await writeFile(
-        join(multicaDir2, "rollout-multica2.jsonl"),
-        `${codexLine()}\n`,
-      );
+      await writeFile(join(multicaDir1, "rollout-multica1.jsonl"), `${codexLine()}\n`);
+      await writeFile(join(multicaDir2, "rollout-multica2.jsonl"), `${codexLine()}\n`);
 
       const files = await codexSessionDriver.discover({
         codexSessionsDir: join(tempDir, "primary"),
@@ -122,9 +113,20 @@ describe("codexSessionDriver", () => {
     it("parses rollout JSONL and returns session snapshot", async () => {
       const filePath = join(tempDir, "rollout-uuid.jsonl");
       const content =
-        codexLine() + "\n" +
-        JSON.stringify({ type: "response_item", timestamp: "2026-03-07T10:01:00.000Z", payload: { role: "user" } }) + "\n" +
-        JSON.stringify({ type: "response_item", timestamp: "2026-03-07T10:02:00.000Z", payload: { role: "assistant" } }) + "\n";
+        codexLine() +
+        "\n" +
+        JSON.stringify({
+          type: "response_item",
+          timestamp: "2026-03-07T10:01:00.000Z",
+          payload: { role: "user" },
+        }) +
+        "\n" +
+        JSON.stringify({
+          type: "response_item",
+          timestamp: "2026-03-07T10:02:00.000Z",
+          payload: { role: "assistant" },
+        }) +
+        "\n";
       await writeFile(filePath, content);
 
       const snapshots = await codexSessionDriver.parse(filePath);

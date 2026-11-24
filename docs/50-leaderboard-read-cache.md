@@ -133,11 +133,11 @@ No new index, migration, dependency or approximate counter is introduced.
 Read-only production A/B queries used the same batch and cutoff
 2026-09-26T11:10:00.000Z. All result rows matched exactly:
 
-| Query | Old rows read | New rows read | Old SQL ms | New SQL ms |
-| --- | ---: | ---: | ---: | ---: |
-| Week + Codex | 1,070,122 | 1,503 | 177.42 | 2.34 |
-| Week, all sources | 1,070,278 | 1,503 | 175.41 | 2.48 |
-| All time | 2,138,932 | 1,011,493 | 6,755.66 | 1,268.10 |
+| Query             | Old rows read | New rows read | Old SQL ms | New SQL ms |
+| ----------------- | ------------: | ------------: | ---------: | ---------: |
+| Week + Codex      |     1,070,122 |         1,503 |     177.42 |       2.34 |
+| Week, all sources |     1,070,278 |         1,503 |     175.41 |       2.48 |
+| All time          |     2,138,932 |     1,011,493 |   6,755.66 |   1,268.10 |
 
 These are single-query execution receipts, not steady-state site savings.
 Eight native SQLite cases verify result equality and index SEARCH plans across

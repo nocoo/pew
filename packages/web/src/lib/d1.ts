@@ -17,16 +17,29 @@ export interface D1Config {
   apiToken: string;
 }
 
-export function localD1BaseUrl(config: D1Config, env: Record<string, string | undefined>): string | undefined {
+export function localD1BaseUrl(
+  config: D1Config,
+  env: Record<string, string | undefined>,
+): string | undefined {
   if (!env.PEW_LOCAL_D1_URL) return undefined;
   const url = new URL(env.PEW_LOCAL_D1_URL);
   if (
-    env.NODE_ENV === "production" || env.RAILWAY_ENVIRONMENT ||
-    env.RESOURCE_ENV !== "test" || env.E2E_SKIP_AUTH !== "true" ||
-    config.accountId !== "pew-local-test" || config.databaseId !== "pew-local-test" ||
-    url.protocol !== "http:" || url.hostname !== "127.0.0.1" || !url.port ||
-    url.username || url.password || url.pathname !== "/" || url.search || url.hash
-  ) throw new Error("Local D1 requires an isolated loopback test environment");
+    env.NODE_ENV === "production" ||
+    env.RAILWAY_ENVIRONMENT ||
+    env.RESOURCE_ENV !== "test" ||
+    env.E2E_SKIP_AUTH !== "true" ||
+    config.accountId !== "pew-local-test" ||
+    config.databaseId !== "pew-local-test" ||
+    url.protocol !== "http:" ||
+    url.hostname !== "127.0.0.1" ||
+    !url.port ||
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  )
+    throw new Error("Local D1 requires an isolated loopback test environment");
   return url.origin;
 }
 
@@ -56,7 +69,7 @@ export class D1Error extends Error {
   constructor(
     message: string,
     public readonly status?: number,
-    public readonly errors?: Array<{ message: string }>
+    public readonly errors?: Array<{ message: string }>,
   ) {
     super(message);
     this.name = "D1Error";
@@ -76,7 +89,8 @@ export class D1Client {
     if (!config.databaseId) throw new Error("databaseId is required");
     if (!config.apiToken) throw new Error("apiToken is required");
 
-    this.baseUrl = localD1BaseUrl(config, process.env) ??
+    this.baseUrl =
+      localD1BaseUrl(config, process.env) ??
       `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/d1/database/${config.databaseId}`;
     this.headers = {
       Authorization: `Bearer ${config.apiToken}`,
@@ -89,7 +103,7 @@ export class D1Client {
    */
   async query<T = Record<string, unknown>>(
     sql: string,
-    params: unknown[] = []
+    params: unknown[] = [],
   ): Promise<D1QueryResult<T>> {
     const body = JSON.stringify({ sql, params });
     const data = await this.request(`${this.baseUrl}/query`, body);
@@ -109,14 +123,18 @@ export class D1Client {
     return result.meta;
   }
 
-  async batch(
-    statements: D1BatchStatement[]
-  ): Promise<D1QueryResult[]> {
+  async batch(statements: D1BatchStatement[]): Promise<D1QueryResult[]> {
     if (statements.length === 0) return [];
-    const data = await this.request(`${this.baseUrl}/query`, JSON.stringify({
-      batch: statements.map(({ sql, params = [] }) => ({ sql, params })),
-    }));
-    if (data.result?.length !== statements.length || data.result.some((result) => result.success === false)) {
+    const data = await this.request(
+      `${this.baseUrl}/query`,
+      JSON.stringify({
+        batch: statements.map(({ sql, params = [] }) => ({ sql, params })),
+      }),
+    );
+    if (
+      data.result?.length !== statements.length ||
+      data.result.some((result) => result.success === false)
+    ) {
       throw new D1Error("Invalid D1 batch result");
     }
     return data.result.map((result) => ({
@@ -130,7 +148,7 @@ export class D1Client {
    */
   async firstOrNull<T = Record<string, unknown>>(
     sql: string,
-    params: unknown[] = []
+    params: unknown[] = [],
   ): Promise<T | null> {
     const result = await this.query<T>(sql, params);
     return result.results[0] ?? null;
@@ -140,7 +158,10 @@ export class D1Client {
   // Internal
   // ---------------------------------------------------------------------------
 
-  private async request(url: string, body: string): Promise<{
+  private async request(
+    url: string,
+    body: string,
+  ): Promise<{
     success: boolean;
     result?: Array<{ success?: boolean; results?: unknown[]; meta?: D1Meta }>;
     errors?: Array<{ message: string }>;
@@ -153,16 +174,13 @@ export class D1Client {
         body,
       });
     } catch (err) {
-      throw new D1Error(
-        `D1 network error: ${err instanceof Error ? err.message : String(err)}`
-      );
+      throw new D1Error(`D1 network error: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     const data = await response.json();
 
     if (!response.ok || !data.success) {
-      const msg =
-        data.errors?.[0]?.message ?? `D1 HTTP ${response.status}`;
+      const msg = data.errors?.[0]?.message ?? `D1 HTTP ${response.status}`;
       throw new D1Error(msg, response.status, data.errors);
     }
 

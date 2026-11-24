@@ -49,7 +49,13 @@ describe("GET /api/pricing", () => {
 
     expect(res.status).toBe(200);
     const publicMap = await res.json();
-    const signedInMap = await (await GET(new Request("http://localhost:7020/api/pricing", { headers: { Authorization: "Bearer synthetic" } }))).json();
+    const signedInMap = await (
+      await GET(
+        new Request("http://localhost:7020/api/pricing", {
+          headers: { Authorization: "Bearer synthetic" },
+        }),
+      )
+    ).json();
     expect(publicMap).toEqual(signedInMap);
     expect(resolveUser).not.toHaveBeenCalled();
   });
@@ -84,9 +90,7 @@ describe("GET /api/pricing", () => {
 
   it("should fall back to defaults when dynamic call rejects", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockDbRead.getDynamicPricing.mockRejectedValueOnce(
-      new Error("KV unavailable"),
-    );
+    mockDbRead.getDynamicPricing.mockRejectedValueOnce(new Error("KV unavailable"));
 
     const res = await GET(new Request("http://localhost:7020/api/pricing"));
 

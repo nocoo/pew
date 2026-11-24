@@ -18,9 +18,7 @@ import { GET } from "@/app/api/seasons/[seasonId]/leaderboard/route";
 import * as dbModule from "@/lib/db";
 import { createMockDbRead } from "./test-utils";
 
-function makeRequest(
-  url = "http://localhost:7020/api/seasons/season-1/leaderboard"
-): Request {
+function makeRequest(url = "http://localhost:7020/api/seasons/season-1/leaderboard"): Request {
   return new Request(url, { method: "GET" });
 }
 
@@ -122,7 +120,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     expect(mockDbRead.getSeasonTeamTokens).toHaveBeenCalledWith(
       "season-1",
       "2026-03-01T00:00:00.000Z",
-      "2026-04-01T00:00:00.000Z"
+      "2026-04-01T00:00:00.000Z",
     );
   });
 
@@ -141,7 +139,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     expect(mockDbRead.getSeasonTeamTokens).toHaveBeenCalledWith(
       "season-1",
       "2026-03-01T00:00:00.000Z",
-      "2026-03-16T00:00:00.000Z"
+      "2026-03-16T00:00:00.000Z",
     );
   });
 
@@ -205,8 +203,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     mockDbRead.getSeasonTeamSessionStats.mockResolvedValueOnce([]);
     mockDbRead.getSeasonMemberSessionStats.mockResolvedValueOnce([]);
 
-    const url =
-      "http://localhost:7020/api/seasons/season-1/leaderboard?expand=members";
+    const url = "http://localhost:7020/api/seasons/season-1/leaderboard?expand=members";
     const res = await GET(makeRequest(url), { params: routeParams });
     const data = await res.json();
 
@@ -326,8 +323,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     mockDbRead.getSeasonTeamSessionStats.mockResolvedValueOnce([]);
     mockDbRead.getSeasonMemberSessionStats.mockResolvedValueOnce([]);
 
-    const url =
-      "http://localhost:7020/api/seasons/season-1/leaderboard?expand=members";
+    const url = "http://localhost:7020/api/seasons/season-1/leaderboard?expand=members";
     const res = await GET(makeRequest(url), {
       params: Promise.resolve({ seasonId: "season-2" }),
     });
@@ -379,9 +375,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       mockDbRead.getSeasonById.mockResolvedValueOnce(ACTIVE_SEASON);
       mockDbRead.getSeasonTeamTokens.mockResolvedValueOnce([]);
 
-      const req = makeRequest(
-        `http://localhost:7020/api/seasons/${UUID_SEASON_ID}/leaderboard`
-      );
+      const req = makeRequest(`http://localhost:7020/api/seasons/${UUID_SEASON_ID}/leaderboard`);
       await GET(req, {
         params: Promise.resolve({ seasonId: UUID_SEASON_ID }),
       });
@@ -395,9 +389,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       mockDbRead.getSeasonBySlug.mockResolvedValueOnce(ACTIVE_SEASON);
       mockDbRead.getSeasonTeamTokens.mockResolvedValueOnce([]);
 
-      const req = makeRequest(
-        `http://localhost:7020/api/seasons/${SLUG_SEASON_ID}/leaderboard`
-      );
+      const req = makeRequest(`http://localhost:7020/api/seasons/${SLUG_SEASON_ID}/leaderboard`);
       await GET(req, {
         params: Promise.resolve({ seasonId: SLUG_SEASON_ID }),
       });
@@ -425,10 +417,8 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       mockDbRead.getSeasonTeamSessionStats.mockResolvedValueOnce([]);
 
       const uuidRes = await GET(
-        makeRequest(
-          `http://localhost:7020/api/seasons/${UUID_SEASON_ID}/leaderboard`
-        ),
-        { params: Promise.resolve({ seasonId: UUID_SEASON_ID }) }
+        makeRequest(`http://localhost:7020/api/seasons/${UUID_SEASON_ID}/leaderboard`),
+        { params: Promise.resolve({ seasonId: UUID_SEASON_ID }) },
       );
       const uuidData = await uuidRes.json();
 
@@ -453,10 +443,8 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       mockDbRead.getSeasonTeamSessionStats.mockResolvedValueOnce([]);
 
       const slugRes = await GET(
-        makeRequest(
-          `http://localhost:7020/api/seasons/${SLUG_SEASON_ID}/leaderboard`
-        ),
-        { params: Promise.resolve({ seasonId: SLUG_SEASON_ID }) }
+        makeRequest(`http://localhost:7020/api/seasons/${SLUG_SEASON_ID}/leaderboard`),
+        { params: Promise.resolve({ seasonId: SLUG_SEASON_ID }) },
       );
       const slugData = await slugRes.json();
 
@@ -467,9 +455,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       expect(Object.keys(uuidData.season)).toEqual(Object.keys(slugData.season));
       expect(uuidData.entries).toHaveLength(1);
       expect(slugData.entries).toHaveLength(1);
-      expect(Object.keys(uuidData.entries[0])).toEqual(
-        Object.keys(slugData.entries[0])
-      );
+      expect(Object.keys(uuidData.entries[0])).toEqual(Object.keys(slugData.entries[0]));
     });
 
     it("should treat uppercase UUID as UUID (case-insensitive)", async () => {
@@ -477,12 +463,9 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       mockDbRead.getSeasonById.mockResolvedValueOnce(ACTIVE_SEASON);
       mockDbRead.getSeasonTeamTokens.mockResolvedValueOnce([]);
 
-      await GET(
-        makeRequest(
-          `http://localhost:7020/api/seasons/${upperUUID}/leaderboard`
-        ),
-        { params: Promise.resolve({ seasonId: upperUUID }) }
-      );
+      await GET(makeRequest(`http://localhost:7020/api/seasons/${upperUUID}/leaderboard`), {
+        params: Promise.resolve({ seasonId: upperUUID }),
+      });
 
       expect(mockDbRead.getSeasonById).toHaveBeenCalledTimes(1);
       expect(mockDbRead.getSeasonBySlug).not.toHaveBeenCalled();
@@ -500,9 +483,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
   });
 
   it("should handle no-such-table gracefully", async () => {
-    mockDbRead.getSeasonBySlug.mockRejectedValueOnce(
-      new Error("no such table: seasons")
-    );
+    mockDbRead.getSeasonBySlug.mockRejectedValueOnce(new Error("no such table: seasons"));
 
     const res = await GET(makeRequest(), { params: routeParams });
     const data = await res.json();
@@ -591,8 +572,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
         },
       ]);
 
-      const url =
-        "http://localhost:7020/api/seasons/season-1/leaderboard?expand=members";
+      const url = "http://localhost:7020/api/seasons/season-1/leaderboard?expand=members";
       const res = await GET(makeRequest(url), { params: routeParams });
       const data = await res.json();
 
@@ -711,9 +691,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
   describe("error handling", () => {
     it("should return 503 when season tables not migrated", async () => {
-      mockDbRead.getSeasonBySlug.mockRejectedValueOnce(
-        new Error("no such table: seasons"),
-      );
+      mockDbRead.getSeasonBySlug.mockRejectedValueOnce(new Error("no such table: seasons"));
 
       const res = await GET(makeRequest(), { params: routeParams });
       expect(res.status).toBe(503);

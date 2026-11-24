@@ -16,19 +16,15 @@ import {
 import { chromeIconClassName } from "@/lib/ghost-icon";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import {
-  Ban,
-  Eye,
-  Info,
-  Monitor,
-  RotateCcw,
-  Terminal,
-  Trash2,
-  X,
-} from "@nocoo/basalt/icons";
+import { Ban, Eye, Info, Monitor, RotateCcw, Terminal, Trash2, X } from "@nocoo/basalt/icons";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
-import { deviceLabel, shortDeviceId, sortRecentActivityRecords, formatRecentActivityRelativeTime } from "@/lib/device-helpers";
+import {
+  deviceLabel,
+  shortDeviceId,
+  sortRecentActivityRecords,
+  formatRecentActivityRelativeTime,
+} from "@/lib/device-helpers";
 import { agentColor } from "@/lib/palette";
 import { useDevices } from "@/hooks/use-devices";
 import { useUsageData } from "@/hooks/use-usage-data";
@@ -36,11 +32,7 @@ import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 import { DevicesEmptyState } from "@/components/dashboard/empty-state";
 import type { DeviceSummary } from "@pew/core";
 import { ConfirmDialog } from "@nocoo/basalt/components/confirm-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@nocoo/basalt/components/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt/components/tooltip";
 
 function SourceBadge({ source }: { source: string }) {
   const color = agentColor(source);
@@ -83,7 +75,11 @@ function DeviceCard({
   const restoreDeleteFocus = useRestoreDialogFocus(confirmDelete);
   const restoreRevokeFocus = useRestoreDialogFocus(confirmRevoke);
   const deleteSucceededRef = useRef(false);
-  const { data: recentUsage, loading: recentLoading, error: recentError } = useUsageData({
+  const {
+    data: recentUsage,
+    loading: recentLoading,
+    error: recentError,
+  } = useUsageData({
     days: 30,
     deviceId: device.device_id,
     granularity: "half-hour",
@@ -171,7 +167,10 @@ function DeviceCard({
   }
 
   return (
-    <div data-device-card className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-3">
+    <div
+      data-device-card
+      className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-3"
+    >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -187,11 +186,13 @@ function DeviceCard({
                 maxLength={50}
                 disabled={saving}
                 placeholder={isDefault ? "Legacy Device" : shortDeviceId(device.device_id)}
-                className={cn("w-full max-w-xs", aliasError && "ring-basalt-danger", saving && "opacity-50")}
+                className={cn(
+                  "w-full max-w-xs",
+                  aliasError && "ring-basalt-danger",
+                  saving && "opacity-50",
+                )}
               />
-              {aliasError && (
-                <Banner tone="danger" size="sm" description={aliasError} />
-              )}
+              {aliasError && <Banner tone="danger" size="sm" description={aliasError} />}
             </div>
           ) : (
             <Button
@@ -237,7 +238,9 @@ function DeviceCard({
             {revoked && (
               <>
                 <span>·</span>
-                <Badge tone="danger" variant="solid" className="rounded-full">Revoked</Badge>
+                <Badge tone="danger" variant="solid" className="rounded-full">
+                  Revoked
+                </Badge>
               </>
             )}
           </div>
@@ -351,9 +354,7 @@ function DeviceCard({
         </div>
       )}
 
-      {actionError && (
-        <Banner tone="danger" size="sm" description={actionError} />
-      )}
+      {actionError && <Banner tone="danger" size="sm" description={actionError} />}
 
       <ConfirmDialog
         open={confirmRevoke}
@@ -404,7 +405,9 @@ function DeviceCard({
           </DialogHeader>
 
           {revoked && (
-            <Badge tone="danger" variant="solid" className="w-fit rounded-full">Revoked</Badge>
+            <Badge tone="danger" variant="solid" className="w-fit rounded-full">
+              Revoked
+            </Badge>
           )}
 
           <h3 className="text-sm font-medium text-basalt-foreground">Recent activity</h3>
@@ -425,7 +428,9 @@ function DeviceCard({
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <SourceBadge source={record.source} />
-                        <span className="truncate text-xs font-mono text-basalt-foreground">{record.model}</span>
+                        <span className="truncate text-xs font-mono text-basalt-foreground">
+                          {record.model}
+                        </span>
                       </div>
                       <p className="text-xs text-basalt-muted-foreground">
                         {record.hour_start ? relativeTime(record.hour_start) : "Recent"}
@@ -529,73 +534,78 @@ function AuthCodeModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="sm" showCloseButton={false} onCloseAutoFocus={restoreFocus}>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`absolute top-4 right-4 ${chromeIconClassName}`}
-              aria-label="Close"
-            >
-              <X aria-hidden="true" strokeWidth={1.5} />
-            </Button>
-          </DialogClose>
-          <DialogHeader>
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-basalt-primary/10">
-                <Terminal className="h-4 w-4 text-basalt-primary" strokeWidth={1.5} />
-              </div>
-              <DialogTitle className="text-base">CLI Login Code</DialogTitle>
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute top-4 right-4 ${chromeIconClassName}`}
+            aria-label="Close"
+          >
+            <X aria-hidden="true" strokeWidth={1.5} />
+          </Button>
+        </DialogClose>
+        <DialogHeader>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-basalt-primary/10">
+              <Terminal className="h-4 w-4 text-basalt-primary" strokeWidth={1.5} />
             </div>
-            <DialogDescription>
-              Generate a one-time code to authenticate the pew CLI on a headless machine (no browser).
-            </DialogDescription>
-          </DialogHeader>
+            <DialogTitle className="text-base">CLI Login Code</DialogTitle>
+          </div>
+          <DialogDescription>
+            Generate a one-time code to authenticate the pew CLI on a headless machine (no browser).
+          </DialogDescription>
+        </DialogHeader>
 
-          {authCode ? (
-            <div className="space-y-4">
-              {/* Code display */}
-              <ClipboardText text={authCode} className="w-full" />
+        {authCode ? (
+          <div className="space-y-4">
+            {/* Code display */}
+            <ClipboardText text={authCode} className="w-full" />
 
-              {/* Expiry countdown */}
-              <div className="flex items-center justify-center gap-2 text-sm">
-                <span className="text-basalt-muted-foreground">Expires in</span>
-                <span className={cn(
+            {/* Expiry countdown */}
+            <div className="flex items-center justify-center gap-2 text-sm">
+              <span className="text-basalt-muted-foreground">Expires in</span>
+              <span
+                className={cn(
                   "font-mono font-semibold tabular-nums",
-                  authCodeRemaining <= 60 ? "text-basalt-destructive" : "text-basalt-foreground"
-                )}>
-                  {Math.floor(authCodeRemaining / 60)}:{String(authCodeRemaining % 60).padStart(2, "0")}
-                </span>
-              </div>
-
-              {/* Command preview */}
-              <div className="rounded-lg bg-basalt-secondary/50 border border-basalt-border/50 p-3">
-                <p className="text-[11px] text-basalt-muted-foreground mb-1.5">Run on your machine:</p>
-                <code className="block text-sm font-mono text-basalt-foreground">
-                  pew login --code {authCode}
-                </code>
-              </div>
-
-              {/* Regenerate button */}
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleGenerateAuthCode}
-                disabled={generatingCode}
-                loading={generatingCode}
+                  authCodeRemaining <= 60 ? "text-basalt-destructive" : "text-basalt-foreground",
+                )}
               >
-                Generate New Code
-              </Button>
+                {Math.floor(authCodeRemaining / 60)}:
+                {String(authCodeRemaining % 60).padStart(2, "0")}
+              </span>
             </div>
-          ) : (
+
+            {/* Command preview */}
+            <div className="rounded-lg bg-basalt-secondary/50 border border-basalt-border/50 p-3">
+              <p className="text-[11px] text-basalt-muted-foreground mb-1.5">
+                Run on your machine:
+              </p>
+              <code className="block text-sm font-mono text-basalt-foreground">
+                pew login --code {authCode}
+              </code>
+            </div>
+
+            {/* Regenerate button */}
             <Button
+              variant="outline"
               className="w-full"
               onClick={handleGenerateAuthCode}
               disabled={generatingCode}
               loading={generatingCode}
             >
-              Generate Code
+              Generate New Code
             </Button>
-          )}
+          </div>
+        ) : (
+          <Button
+            className="w-full"
+            onClick={handleGenerateAuthCode}
+            disabled={generatingCode}
+            loading={generatingCode}
+          >
+            Generate Code
+          </Button>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -638,9 +648,10 @@ export default function ManageDevicesPage() {
         requestAnimationFrame(() => {
           const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-device-card]"));
           const targetIndex = Math.min(index, cards.length - 1);
-          const survivingDetail = targetIndex >= 0
-            ? cards[targetIndex]?.querySelector<HTMLElement>("[data-device-detail]")
-            : null;
+          const survivingDetail =
+            targetIndex >= 0
+              ? cards[targetIndex]?.querySelector<HTMLElement>("[data-device-detail]")
+              : null;
           if (survivingDetail) {
             survivingDetail.focus();
             return;
@@ -658,7 +669,12 @@ export default function ManageDevicesPage() {
         title="Devices"
         description="Manage your synced devices and set aliases."
         actions={
-          <Button variant="outline" size="sm" aria-label="CLI Login Code" onClick={() => setShowAuthCodeModal(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="CLI Login Code"
+            onClick={() => setShowAuthCodeModal(true)}
+          >
             <Terminal className="h-3.5 w-3.5" strokeWidth={1.5} />
             CLI Login Code
           </Button>
@@ -666,20 +682,13 @@ export default function ManageDevicesPage() {
       />
 
       {/* Auth Code Modal */}
-      <AuthCodeModal
-        open={showAuthCodeModal}
-        onOpenChange={setShowAuthCodeModal}
-      />
+      <AuthCodeModal open={showAuthCodeModal} onOpenChange={setShowAuthCodeModal} />
 
       {/* Error */}
-      {error && (
-        <Banner tone="danger" description={error} />
-      )}
+      {error && <Banner tone="danger" description={error} />}
 
       {/* Empty state */}
-      {devices.length === 0 && (
-        <DevicesEmptyState />
-      )}
+      {devices.length === 0 && <DevicesEmptyState />}
 
       {/* Device list */}
       {devices.length > 0 && (
@@ -699,9 +708,7 @@ export default function ManageDevicesPage() {
               <DeviceCard
                 key={device.device_id}
                 device={device}
-                onUpdateAlias={(alias) =>
-                  updateAlias(device.device_id, alias)
-                }
+                onUpdateAlias={(alias) => updateAlias(device.device_id, alias)}
                 onDelete={() => deleteDeviceWithFocus(device.device_id, index)}
                 onSetRevoked={(revoked) => setRevoked(device.device_id, revoked)}
               />
@@ -713,7 +720,10 @@ export default function ManageDevicesPage() {
       {/* Footer info */}
       {devices.length > 0 && (
         <div className="flex items-start gap-2 rounded-lg bg-basalt-accent/30 px-4 py-3">
-          <Info className="h-4 w-4 text-basalt-muted-foreground mt-0.5 shrink-0" strokeWidth={1.5} />
+          <Info
+            className="h-4 w-4 text-basalt-muted-foreground mt-0.5 shrink-0"
+            strokeWidth={1.5}
+          />
           <p className="text-xs text-basalt-muted-foreground">
             Device IDs are auto-generated per machine when you first run{" "}
             <code className="font-mono text-[11px]">pew sync</code>.

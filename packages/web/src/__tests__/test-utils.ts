@@ -255,7 +255,6 @@ export function createMockDbWrite() {
  */
 export function createMockClient() {
   return {
-
     execute: vi.fn(),
     batch: vi.fn(),
     // Users RPC methods
@@ -290,10 +289,7 @@ export function createMockClient() {
 const BASE = "http://localhost:7020";
 
 /** Build a GET request with optional query params. */
-export function makeGetRequest(
-  path: string,
-  params: Record<string, string> = {},
-): Request {
+export function makeGetRequest(path: string, params: Record<string, string> = {}): Request {
   const url = new URL(`${BASE}${path}`);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
@@ -302,11 +298,7 @@ export function makeGetRequest(
 }
 
 /** Build a JSON request with method + optional body. */
-export function makeJsonRequest(
-  method: string,
-  path: string,
-  body?: unknown,
-): Request {
+export function makeJsonRequest(method: string, path: string, body?: unknown): Request {
   const init: RequestInit = { method };
   if (body !== undefined) {
     init.headers = { "Content-Type": "application/json" };

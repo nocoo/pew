@@ -77,10 +77,7 @@ describe("jsonl continuity through executeSync", () => {
     claudeDir = join(tempDir, ".claude");
     const claudeProj = join(claudeDir, "projects", "p1");
     await mkdir(claudeProj, { recursive: true });
-    await writeFile(
-      join(claudeProj, "s.jsonl"),
-      `${claudeLine("2026-03-07T10:00:00.000Z", 7)}\n`,
-    );
+    await writeFile(join(claudeProj, "s.jsonl"), `${claudeLine("2026-03-07T10:00:00.000Z", 7)}\n`);
   });
 
   afterEach(async () => {
@@ -160,20 +157,16 @@ describe("jsonl continuity through executeSync", () => {
         if (event.phase === "warn" && event.message) warnings.push(event.message);
       },
     });
-    expect(warnings.some((m) => m.includes("continuity lost") && m.includes("grok"))).toBe(
-      true,
-    );
+    expect(warnings.some((m) => m.includes("continuity lost") && m.includes("grok"))).toBe(true);
     expect(second.sources.grok).toBe(0);
     expect(second.sources.claude).toBe(0);
     expect(await grokQueueInput(stateDir)).toBe(600);
 
-    const cursors = JSON.parse(
-      await readFile(join(stateDir, "cursors.json"), "utf8"),
-    ) as { files: Record<string, { offset: number; continuityBroken?: boolean }> };
+    const cursors = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf8")) as {
+      files: Record<string, { offset: number; continuityBroken?: boolean }>;
+    };
     expect(cursors.files[grokLog]?.continuityBroken).toBe(true);
-    expect(cursors.files[grokLog]?.offset).toBeLessThanOrEqual(
-      (await stat(grokLog)).size,
-    );
+    expect(cursors.files[grokLog]?.offset).toBeLessThanOrEqual((await stat(grokLog)).size);
   });
 
   it("appends after a continuity skip instead of warning forever", async () => {
@@ -192,10 +185,9 @@ describe("jsonl continuity through executeSync", () => {
     });
     await writeFile(
       grokLog,
-      `${[
-        grokLine("2026-03-08T10:00:00.000Z", 9),
-        grokLine("2026-03-08T10:01:00.000Z", 9),
-      ].join("\n")}\n`,
+      `${[grokLine("2026-03-08T10:00:00.000Z", 9), grokLine("2026-03-08T10:01:00.000Z", 9)].join(
+        "\n",
+      )}\n`,
     );
     await executeSync({
       stateDir,
@@ -206,10 +198,7 @@ describe("jsonl continuity through executeSync", () => {
     expect(await grokQueueInput(stateDir)).toBe(300);
 
     const extra = grokLine("2026-03-08T10:02:00.000Z", 40);
-    await writeFile(
-      grokLog,
-      `${(await readFile(grokLog, "utf8")).trimEnd()}\n${extra}\n`,
-    );
+    await writeFile(grokLog, `${(await readFile(grokLog, "utf8")).trimEnd()}\n${extra}\n`);
     const warnings: string[] = [];
     const third = await executeSync({
       stateDir,
@@ -257,10 +246,7 @@ describe("jsonl continuity through executeSync", () => {
     await writeFile(cursorsPath, `${JSON.stringify(cursors)}\n`);
 
     const extra = grokLine("2026-03-07T10:02:00.000Z", 50);
-    await writeFile(
-      grokLog,
-      `${(await readFile(grokLog, "utf8")).trimEnd()}\n${extra}\n`,
-    );
+    await writeFile(grokLog, `${(await readFile(grokLog, "utf8")).trimEnd()}\n${extra}\n`);
     const second = await executeSync({
       stateDir,
       deviceId: "dev-1",

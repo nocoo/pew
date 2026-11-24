@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, computeCostPerToken, toDailyCacheRates, computeReasoningRatio } from "@/lib/cost-helpers";
+import {
+  computeTotalCost,
+  toDailyCostPoints,
+  computeCacheSavings,
+  forecastMonthlyCost,
+  computeCostPerToken,
+  toDailyCacheRates,
+  computeReasoningRatio,
+} from "@/lib/cost-helpers";
 import type { DailyCostPoint } from "@/lib/cost-helpers";
 import type { ModelAggregate, UsageRow, UsageSummary } from "@/hooks/use-usage-data";
 import { getDefaultPricingMap } from "@/lib/pricing";
@@ -75,7 +83,13 @@ describe("computeTotalCost", () => {
   it("uses fallback pricing for unknown models", () => {
     // Fallback: input=$3, output=$15, cached=$0.3
     const models = [
-      makeAggregate({ model: "totally-unknown-model", source: "unknown-source", input: 1_000_000, output: 0, cached: 0 }),
+      makeAggregate({
+        model: "totally-unknown-model",
+        source: "unknown-source",
+        input: 1_000_000,
+        output: 0,
+        cached: 0,
+      }),
     ];
     const cost = computeTotalCost(models, makePricingMap());
     expect(cost).toBeCloseTo(3, 2); // 1M input * $3/M
@@ -110,30 +124,55 @@ describe("toDailyCostPoints", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.date).toBe("2026-03-10");
     expect(result[0]!.totalCost).toBeCloseTo(1.056, 3);
-    expect(result[0]!.inputCost).toBeCloseTo(0.30, 3);
+    expect(result[0]!.inputCost).toBeCloseTo(0.3, 3);
     expect(result[0]!.outputCost).toBeCloseTo(0.75, 3);
     expect(result[0]!.cachedCost).toBeCloseTo(0.006, 3);
   });
 
   it("aggregates multiple rows on the same day", () => {
     const rows = [
-      makeRow({ hour_start: "2026-03-10", input_tokens: 100_000, cached_input_tokens: 0, output_tokens: 0 }),
-      makeRow({ hour_start: "2026-03-10", input_tokens: 0, cached_input_tokens: 0, output_tokens: 100_000 }),
+      makeRow({
+        hour_start: "2026-03-10",
+        input_tokens: 100_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
+      makeRow({
+        hour_start: "2026-03-10",
+        input_tokens: 0,
+        cached_input_tokens: 0,
+        output_tokens: 100_000,
+      }),
     ];
     const result = toDailyCostPoints(rows, pm);
     expect(result).toHaveLength(1);
     // First:  input 100k * $3/M = $0.30
     // Second: output 100k * $15/M = $1.50
-    expect(result[0]!.inputCost).toBeCloseTo(0.30, 3);
-    expect(result[0]!.outputCost).toBeCloseTo(1.50, 3);
-    expect(result[0]!.totalCost).toBeCloseTo(1.80, 3);
+    expect(result[0]!.inputCost).toBeCloseTo(0.3, 3);
+    expect(result[0]!.outputCost).toBeCloseTo(1.5, 3);
+    expect(result[0]!.totalCost).toBeCloseTo(1.8, 3);
   });
 
   it("handles multiple days sorted by date", () => {
     const rows = [
-      makeRow({ hour_start: "2026-03-12", input_tokens: 100_000, cached_input_tokens: 0, output_tokens: 0 }),
-      makeRow({ hour_start: "2026-03-10", input_tokens: 200_000, cached_input_tokens: 0, output_tokens: 0 }),
-      makeRow({ hour_start: "2026-03-11", input_tokens: 300_000, cached_input_tokens: 0, output_tokens: 0 }),
+      makeRow({
+        hour_start: "2026-03-12",
+        input_tokens: 100_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
+      makeRow({
+        hour_start: "2026-03-10",
+        input_tokens: 200_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
+      makeRow({
+        hour_start: "2026-03-11",
+        input_tokens: 300_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
     ];
     const result = toDailyCostPoints(rows, pm);
     expect(result).toHaveLength(3);
@@ -142,13 +181,26 @@ describe("toDailyCostPoints", () => {
     expect(result[1]!.date).toBe("2026-03-11");
     expect(result[2]!.date).toBe("2026-03-12");
     // 200k input * $3/M = $0.60
-    expect(result[0]!.totalCost).toBeCloseTo(0.60, 3);
+    expect(result[0]!.totalCost).toBeCloseTo(0.6, 3);
   });
 
   it("handles multiple models on the same day with different pricing", () => {
     const rows = [
-      makeRow({ hour_start: "2026-03-10", model: "claude-sonnet-4-20250514", input_tokens: 1_000_000, cached_input_tokens: 0, output_tokens: 0 }),
-      makeRow({ hour_start: "2026-03-10", model: "gemini-2.5-pro", source: "gemini-cli", input_tokens: 1_000_000, cached_input_tokens: 0, output_tokens: 0 }),
+      makeRow({
+        hour_start: "2026-03-10",
+        model: "claude-sonnet-4-20250514",
+        input_tokens: 1_000_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
+      makeRow({
+        hour_start: "2026-03-10",
+        model: "gemini-2.5-pro",
+        source: "gemini-cli",
+        input_tokens: 1_000_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
     ];
     const result = toDailyCostPoints(rows, pm);
     expect(result).toHaveLength(1);
@@ -170,21 +222,36 @@ describe("toDailyCostPoints", () => {
   it("shifts records across midnight with positive tzOffset (UTC-8)", () => {
     // 2026-03-11T03:00Z → 2026-03-10T19:00 PST → local date 2026-03-10
     const rows = [
-      makeRow({ hour_start: "2026-03-10T20:00:00Z", input_tokens: 100_000, cached_input_tokens: 0, output_tokens: 0 }),
-      makeRow({ hour_start: "2026-03-11T03:00:00Z", input_tokens: 200_000, cached_input_tokens: 0, output_tokens: 0 }),
+      makeRow({
+        hour_start: "2026-03-10T20:00:00Z",
+        input_tokens: 100_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
+      makeRow({
+        hour_start: "2026-03-11T03:00:00Z",
+        input_tokens: 200_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
     ];
     const result = toDailyCostPoints(rows, pm, 480); // UTC-8
 
     expect(result).toHaveLength(1);
     expect(result[0]!.date).toBe("2026-03-10");
     // 300k input * $3/M = $0.90
-    expect(result[0]!.inputCost).toBeCloseTo(0.90, 3);
+    expect(result[0]!.inputCost).toBeCloseTo(0.9, 3);
   });
 
   it("shifts records across midnight with negative tzOffset (UTC+9)", () => {
     // 2026-03-10T20:00Z → 2026-03-11T05:00 JST → local date 2026-03-11
     const rows = [
-      makeRow({ hour_start: "2026-03-10T20:00:00Z", input_tokens: 100_000, cached_input_tokens: 0, output_tokens: 0 }),
+      makeRow({
+        hour_start: "2026-03-10T20:00:00Z",
+        input_tokens: 100_000,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+      }),
     ];
     const result = toDailyCostPoints(rows, pm, -540); // UTC+9
 
@@ -217,7 +284,7 @@ describe("computeCacheSavings", () => {
     // savingsPercent = 0.54 / 0.60 * 100 = 90%
     const models = [makeAggregate({ cached: 200_000 })];
     const result = computeCacheSavings(models, pm);
-    expect(result.savedDollars).toBeCloseTo(0.60, 3);
+    expect(result.savedDollars).toBeCloseTo(0.6, 3);
     expect(result.actualCachedCost).toBeCloseTo(0.06, 3);
     expect(result.netSavings).toBeNull();
     expect(result.savingsPercent).toBeNull();
@@ -241,7 +308,7 @@ describe("computeCacheSavings", () => {
       makeAggregate({ model: "gemini-2.5-pro", source: "gemini-cli", cached: 400_000 }),
     ];
     const result = computeCacheSavings(models, pm);
-    expect(result.savedDollars).toBeCloseTo(1.10, 2);
+    expect(result.savedDollars).toBeCloseTo(1.1, 2);
     expect(result.actualCachedCost).toBeCloseTo(0.184, 3);
     expect(result.netSavings).toBeNull();
   });
@@ -276,7 +343,13 @@ describe("computeCacheSavings", () => {
 // ---------------------------------------------------------------------------
 
 function makeCostPoint(date: string, totalCost: number): DailyCostPoint {
-  return { date, inputCost: totalCost * 0.6, outputCost: totalCost * 0.3, cachedCost: totalCost * 0.1, totalCost };
+  return {
+    date,
+    inputCost: totalCost * 0.6,
+    outputCost: totalCost * 0.3,
+    cachedCost: totalCost * 0.1,
+    totalCost,
+  };
 }
 
 describe("forecastMonthlyCost", () => {
@@ -293,10 +366,7 @@ describe("forecastMonthlyCost", () => {
   });
 
   it("returns null when fewer than 3 days elapsed", () => {
-    const points = [
-      makeCostPoint("2026-03-01", 5),
-      makeCostPoint("2026-03-02", 10),
-    ];
+    const points = [makeCostPoint("2026-03-01", 5), makeCostPoint("2026-03-02", 10)];
     const result = forecastMonthlyCost(points, new Date("2026-03-02"));
     expect(result).toBeNull();
   });
@@ -339,7 +409,7 @@ describe("forecastMonthlyCost", () => {
   it("filters out data from other months", () => {
     // Points from Feb and March, "now" is March 5
     const points = [
-      makeCostPoint("2026-02-28", 100),  // should be ignored
+      makeCostPoint("2026-02-28", 100), // should be ignored
       makeCostPoint("2026-03-01", 10),
       makeCostPoint("2026-03-02", 10),
       makeCostPoint("2026-03-03", 10),
@@ -410,7 +480,14 @@ describe("computeCostPerToken", () => {
   it("filters out models with zero total tokens", () => {
     const models = [
       makeAggregate({ total: 0, input: 0, output: 0, cached: 0 }),
-      makeAggregate({ model: "gemini-2.5-pro", source: "gemini-cli", total: 1_000_000, input: 1_000_000, output: 0, cached: 0 }),
+      makeAggregate({
+        model: "gemini-2.5-pro",
+        source: "gemini-cli",
+        total: 1_000_000,
+        input: 1_000_000,
+        output: 0,
+        cached: 0,
+      }),
     ];
     const result = computeCostPerToken(models, pm);
     expect(result).toHaveLength(1);
@@ -475,9 +552,7 @@ describe("toDailyCacheRates", () => {
   });
 
   it("returns no cache rate for days with zero total input tokens", () => {
-    const rows = [
-      makeRow({ hour_start: "2026-03-10", input_tokens: 0, cached_input_tokens: 0 }),
-    ];
+    const rows = [makeRow({ hour_start: "2026-03-10", input_tokens: 0, cached_input_tokens: 0 })];
     const result = toDailyCacheRates(rows);
     expect(result).toHaveLength(1);
     expect(result[0]!.cacheRate).toBeNull();
@@ -488,8 +563,16 @@ describe("toDailyCacheRates", () => {
   it("shifts records across midnight with positive tzOffset (UTC-8)", () => {
     // 2026-03-11T03:00Z → 2026-03-10T19:00 PST → local date 2026-03-10
     const rows = [
-      makeRow({ hour_start: "2026-03-10T20:00:00Z", input_tokens: 40_000, cached_input_tokens: 60_000 }),
-      makeRow({ hour_start: "2026-03-11T03:00:00Z", input_tokens: 60_000, cached_input_tokens: 40_000 }),
+      makeRow({
+        hour_start: "2026-03-10T20:00:00Z",
+        input_tokens: 40_000,
+        cached_input_tokens: 60_000,
+      }),
+      makeRow({
+        hour_start: "2026-03-11T03:00:00Z",
+        input_tokens: 60_000,
+        cached_input_tokens: 40_000,
+      }),
     ];
     const result = toDailyCacheRates(rows, 480); // UTC-8
 
@@ -503,7 +586,11 @@ describe("toDailyCacheRates", () => {
   it("shifts records across midnight with negative tzOffset (UTC+9)", () => {
     // 2026-03-10T20:00Z → 2026-03-11T05:00 JST → local date 2026-03-11
     const rows = [
-      makeRow({ hour_start: "2026-03-10T20:00:00Z", input_tokens: 20_000, cached_input_tokens: 80_000 }),
+      makeRow({
+        hour_start: "2026-03-10T20:00:00Z",
+        input_tokens: 20_000,
+        cached_input_tokens: 80_000,
+      }),
     ];
     const result = toDailyCacheRates(rows, -540); // UTC+9
 

@@ -2,11 +2,11 @@
 
 Pi compaction and Hermes background/auxiliary usage are separate from the existing main-usage buckets. The CLI retains an `evidence-queue.jsonl` ledger of absolute records. `pew reset` removes parsing cursors and legacy queues but preserves this ledger and its pending upload state. It contains only counters, safe labels, UTC times and hashed identities. It never contains request/response bodies, source session IDs or billing URLs.
 
-| Evidence | Identity and count | Time semantics |
-| --- | --- | --- |
-| Pi top-level compaction | Hash of source kind, immutable entry ID and canonical entry timestamp; one operation may include several requests | Exact operation completion time, not a fabricated individual request time |
-| Hermes background review | Cumulative auxiliary ledger is authoritative; logs must uniquely match numbered calls and completion counters within the ledger's remaining budget | Verified API completion times are exact; unmatched historical counters remain at session start or unattributed |
-| Hermes other auxiliary/ACP | Nonempty `session_model_usage.task` rows only; source PK fields are hashed into a group; ACP main totals are already counted by the legacy parser | First observation is cumulative and coarse even if `first_seen == last_seen`; later increases can use adjacent source-ledger observation bounds |
+| Evidence                   | Identity and count                                                                                                                                 | Time semantics                                                                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pi top-level compaction    | Hash of source kind, immutable entry ID and canonical entry timestamp; one operation may include several requests                                  | Exact operation completion time, not a fabricated individual request time                                                                       |
+| Hermes background review   | Cumulative auxiliary ledger is authoritative; logs must uniquely match numbered calls and completion counters within the ledger's remaining budget | Verified API completion times are exact; unmatched historical counters remain at session start or unattributed                                  |
+| Hermes other auxiliary/ACP | Nonempty `session_model_usage.task` rows only; source PK fields are hashed into a group; ACP main totals are already counted by the legacy parser  | First observation is cumulative and coarse even if `first_seen == last_seen`; later increases can use adjacent source-ledger observation bounds |
 
 The existing four-counter normalization remains unchanged. Cache read/creation are not redesigned. Logs that omit reasoning cannot supply per-call reasoning; authoritative residual counters remain coarse. Unknown task labels become `auxiliary`; unsafe model/provider labels become `unknown`. Raven proxy traffic is not a second ingestion source or a source of inferred model mappings.
 

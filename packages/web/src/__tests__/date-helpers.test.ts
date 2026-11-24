@@ -56,20 +56,36 @@ describe("PERIOD_OPTIONS", () => {
 
 describe("periodToUtcRange", () => {
   it("provides rolling month options for Overview while keeping calendar options available elsewhere", () => {
-    expect(OVERVIEW_PERIOD_OPTIONS.map((option) => option.value)).toEqual(["all", "6m", "3m", "1m"]);
+    expect(OVERVIEW_PERIOD_OPTIONS.map((option) => option.value)).toEqual([
+      "all",
+      "6m",
+      "3m",
+      "1m",
+    ]);
     expect(PERIOD_OPTIONS.map((option) => option.value)).toEqual(["all", "month", "week"]);
-    for (const option of OVERVIEW_PERIOD_OPTIONS.slice(1)) expect(periodLabel(option.value)).toBe(option.label);
+    for (const option of OVERVIEW_PERIOD_OPTIONS.slice(1))
+      expect(periodLabel(option.value)).toBe(option.label);
   });
 
   it("counts calendar months backwards from the local date and includes today", () => {
-    for (const [period, start] of [["6m", "2026-03-15"], ["3m", "2026-06-15"], ["1m", "2026-08-15"]] as const) {
+    for (const [period, start] of [
+      ["6m", "2026-03-15"],
+      ["3m", "2026-06-15"],
+      ["1m", "2026-08-15"],
+    ] as const) {
       const result = periodToUtcRange(period, "2026-09-15", -480);
-      expect(result).toEqual({ start, end: "2026-09-15",
+      expect(result).toEqual({
+        start,
+        end: "2026-09-15",
         from: new Date(new Date(`${start}T00:00:00Z`).getTime() - 480 * 60_000).toISOString(),
-        to: "2026-09-15T16:00:00.000Z" });
+        to: "2026-09-15T16:00:00.000Z",
+      });
     }
     expect(periodToUtcRange("6m", "2026-01-15", 420)).toEqual({
-      start: "2025-07-15", end: "2026-01-15", from: "2025-07-15T07:00:00.000Z", to: "2026-01-16T07:00:00.000Z",
+      start: "2025-07-15",
+      end: "2026-01-15",
+      from: "2025-07-15T07:00:00.000Z",
+      to: "2026-01-16T07:00:00.000Z",
     });
   });
 
@@ -82,17 +98,24 @@ describe("periodToUtcRange", () => {
 
   it("preserves exact local calendar bounds, including year and leap-day transitions", () => {
     expect(periodToUtcRange("month", "2026-09-15", -480)).toEqual({
-      start: "2026-09-01", end: "2026-09-15",
-      from: "2026-08-31T16:00:00.000Z", to: "2026-09-15T16:00:00.000Z",
+      start: "2026-09-01",
+      end: "2026-09-15",
+      from: "2026-08-31T16:00:00.000Z",
+      to: "2026-09-15T16:00:00.000Z",
     });
     expect(periodToUtcRange("week", "2026-09-15", 420)).toEqual({
-      start: "2026-09-13", end: "2026-09-15",
-      from: "2026-09-13T07:00:00.000Z", to: "2026-09-16T07:00:00.000Z",
+      start: "2026-09-13",
+      end: "2026-09-15",
+      from: "2026-09-13T07:00:00.000Z",
+      to: "2026-09-16T07:00:00.000Z",
     });
     expect(periodToUtcRange("week", "2026-01-01", 0).start).toBe("2025-12-28");
     expect(periodToUtcRange("month", "2028-02-29", 0).to).toBe("2028-03-01T00:00:00.000Z");
     expect(periodToUtcRange("all", "2026-09-15", 0)).toEqual({
-      start: null, end: "2026-09-15", from: "2020-01-01T00:00:00.000Z", to: "2026-09-16T00:00:00.000Z",
+      start: null,
+      end: "2026-09-15",
+      from: "2020-01-01T00:00:00.000Z",
+      to: "2026-09-16T00:00:00.000Z",
     });
   });
 });
@@ -630,9 +653,7 @@ describe("fillTimelineGaps", () => {
   });
 
   it("extends to today with zero rows", () => {
-    const data: Row[] = [
-      { date: "2026-03-14", device_id: "a", tokens: 10 },
-    ];
+    const data: Row[] = [{ date: "2026-03-14", device_id: "a", tokens: 10 }];
     const result = fillTimelineGaps(data, "date", makeZeroRows, "2026-03-16");
     expect(result).toEqual([
       { date: "2026-03-14", device_id: "a", tokens: 10 },

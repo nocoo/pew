@@ -7,25 +7,36 @@
 
 import type { D1Database } from "@cloudflare/workers-types";
 import type {
-  CheckSharedSeasonRequest, CheckSharedTeamRequest, CheckSlugExistsRequest,
-  GetPublicUserBySlugOrIdRequest, GetUserApiKeyRequest, GetUserByApiKeyRequest,
-  GetUserByEmailRequest, GetUserByIdRequest, GetUserByOAuthAccountRequest,
-  GetUserBySlugRequest, GetUserEmailRequest, GetUserFirstSeenRequest,
-  GetUserNicknameSlugRequest, GetUserSettingsRequest, GetUserSlugOnlyRequest,
-  SearchUsersRequest, SearchUsersResult, UserApiKeyAuth, UserAuth, UserProfile,
-  UserSettings, UsersRpcRequest,
+  CheckSharedSeasonRequest,
+  CheckSharedTeamRequest,
+  CheckSlugExistsRequest,
+  GetPublicUserBySlugOrIdRequest,
+  GetUserApiKeyRequest,
+  GetUserByApiKeyRequest,
+  GetUserByEmailRequest,
+  GetUserByIdRequest,
+  GetUserByOAuthAccountRequest,
+  GetUserBySlugRequest,
+  GetUserEmailRequest,
+  GetUserFirstSeenRequest,
+  GetUserNicknameSlugRequest,
+  GetUserSettingsRequest,
+  GetUserSlugOnlyRequest,
+  SearchUsersRequest,
+  SearchUsersResult,
+  UserApiKeyAuth,
+  UserAuth,
+  UserProfile,
+  UserSettings,
+  UsersRpcRequest,
 } from "./users-types";
 export type * from "./users-types";
-
 
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
-export async function handleUsersRpc(
-  request: UsersRpcRequest,
-  db: D1Database,
-): Promise<Response> {
+export async function handleUsersRpc(request: UsersRpcRequest, db: D1Database): Promise<Response> {
   switch (request.method) {
     case "users.getById":
       return handleGetUserById(request, db);
@@ -71,28 +82,20 @@ export async function handleUsersRpc(
 // Individual handlers
 // ---------------------------------------------------------------------------
 
-async function handleGetUserById(
-  req: GetUserByIdRequest,
-  db: D1Database,
-): Promise<Response> {
+async function handleGetUserById(req: GetUserByIdRequest, db: D1Database): Promise<Response> {
   if (!req.id) {
     return Response.json({ error: "Missing id" }, { status: 400 });
   }
 
   const row = await db
-    .prepare(
-      "SELECT id, email, name, image, email_verified FROM users WHERE id = ?",
-    )
+    .prepare("SELECT id, email, name, image, email_verified FROM users WHERE id = ?")
     .bind(req.id)
     .first<UserAuth>();
 
   return Response.json({ result: row ?? null });
 }
 
-async function handleGetUserBySlug(
-  req: GetUserBySlugRequest,
-  db: D1Database,
-): Promise<Response> {
+async function handleGetUserBySlug(req: GetUserBySlugRequest, db: D1Database): Promise<Response> {
   if (!req.slug) {
     return Response.json({ error: "Missing slug" }, { status: 400 });
   }
@@ -107,18 +110,13 @@ async function handleGetUserBySlug(
   return Response.json({ result: row ?? null });
 }
 
-async function handleGetUserByEmail(
-  req: GetUserByEmailRequest,
-  db: D1Database,
-): Promise<Response> {
+async function handleGetUserByEmail(req: GetUserByEmailRequest, db: D1Database): Promise<Response> {
   if (!req.email) {
     return Response.json({ error: "Missing email" }, { status: 400 });
   }
 
   const row = await db
-    .prepare(
-      "SELECT id, email, name, image, email_verified FROM users WHERE email = ?",
-    )
+    .prepare("SELECT id, email, name, image, email_verified FROM users WHERE email = ?")
     .bind(req.email)
     .first<UserAuth>();
 
@@ -146,10 +144,7 @@ async function handleGetUserByOAuthAccount(
   db: D1Database,
 ): Promise<Response> {
   if (!req.provider || !req.providerAccountId) {
-    return Response.json(
-      { error: "Missing provider or providerAccountId" },
-      { status: 400 },
-    );
+    return Response.json({ error: "Missing provider or providerAccountId" }, { status: 400 });
   }
 
   const row = await db
@@ -205,10 +200,7 @@ async function handleGetUserSettings(
   return Response.json({ result: row ?? null });
 }
 
-async function handleGetUserApiKey(
-  req: GetUserApiKeyRequest,
-  db: D1Database,
-): Promise<Response> {
+async function handleGetUserApiKey(req: GetUserApiKeyRequest, db: D1Database): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "Missing userId" }, { status: 400 });
   }
@@ -221,10 +213,7 @@ async function handleGetUserApiKey(
   return Response.json({ result: row ?? null });
 }
 
-async function handleGetUserEmail(
-  req: GetUserEmailRequest,
-  db: D1Database,
-): Promise<Response> {
+async function handleGetUserEmail(req: GetUserEmailRequest, db: D1Database): Promise<Response> {
   if (!req.userId) {
     return Response.json({ error: "Missing userId" }, { status: 400 });
   }
@@ -237,10 +226,7 @@ async function handleGetUserEmail(
   return Response.json({ result: row ?? null });
 }
 
-async function handleSearchUsers(
-  req: SearchUsersRequest,
-  db: D1Database,
-): Promise<Response> {
+async function handleSearchUsers(req: SearchUsersRequest, db: D1Database): Promise<Response> {
   if (!req.query) {
     return Response.json({ error: "Missing query" }, { status: 400 });
   }

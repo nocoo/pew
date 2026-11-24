@@ -81,7 +81,7 @@ export interface TokenDriverRegistryOpts {
   /** Additional Hermes profile DBs (e.g. ~/.hermes/profiles/<name>/state.db) */
   hermesProfileDbPaths?: Array<{ dbPath: string; dbKey: string }>;
   openHermesDb?: HermesSqliteTokenDriverOpts["openHermesDb"];
-    }
+}
 
 export interface TokenDriverSet {
   fileDrivers: FileTokenDriver<FileCursorBase>[];
@@ -181,7 +181,7 @@ export interface SessionDriverRegistryOpts {
   grokSessionsDir?: string;
   openCodeDbPath?: string;
   openSessionDb?: OpenCodeSqliteSessionDriverOpts["openSessionDb"];
-    }
+}
 
 export interface SessionDriverSet {
   fileDrivers: FileSessionDriver<SessionFileCursor | unknown>[];

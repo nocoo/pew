@@ -27,28 +27,28 @@ This document plans a comprehensive overhaul inspired by WoW's Achievement syste
 
 ### Token Data (usage_records)
 
-| Field | Achievement Potential |
-|-------|----------------------|
-| `total_tokens` | Power user tiers, lifetime totals |
-| `input_tokens` | Verbose prompts |
-| `output_tokens` | Chatty AI responses |
-| `cached_input_tokens` | Cache efficiency |
-| `reasoning_output_tokens` | Thinking model usage |
-| `source` | Tool-specific achievements |
-| `model` | Model loyalty / diversity |
-| `device_id` | Multi-device usage |
-| `hour_start` | Time-of-day, streaks, weekends |
+| Field                     | Achievement Potential             |
+| ------------------------- | --------------------------------- |
+| `total_tokens`            | Power user tiers, lifetime totals |
+| `input_tokens`            | Verbose prompts                   |
+| `output_tokens`           | Chatty AI responses               |
+| `cached_input_tokens`     | Cache efficiency                  |
+| `reasoning_output_tokens` | Thinking model usage              |
+| `source`                  | Tool-specific achievements        |
+| `model`                   | Model loyalty / diversity         |
+| `device_id`               | Multi-device usage                |
+| `hour_start`              | Time-of-day, streaks, weekends    |
 
 ### Session Data (session_records)
 
-| Field | Achievement Potential |
-|-------|----------------------|
+| Field              | Achievement Potential         |
+| ------------------ | ----------------------------- |
 | `duration_seconds` | Marathon sessions, quick wins |
-| `user_messages` | Conversation depth |
-| `total_messages` | Message count records |
-| `kind` | Human vs automated sessions |
-| `started_at` | Night owl, early bird |
-| `project_ref` | Project focus / diversity |
+| `user_messages`    | Conversation depth            |
+| `total_messages`   | Message count records         |
+| `kind`             | Human vs automated sessions   |
+| `started_at`       | Night owl, early bird         |
+| `project_ref`      | Project focus / diversity     |
 
 ### Derived Metrics
 
@@ -64,65 +64,65 @@ This document plans a comprehensive overhaul inspired by WoW's Achievement syste
 
 ### Category: Volume (Token Gluttony)
 
-| ID | Name | Flavor Text | Tiers |
-|----|------|-------------|-------|
-| `power-user` | **Insatiable** | "Your wallet weeps. Your AI rejoices." | 100K / 1M / 10M / 50M tokens |
-| `big-day` | **One More Turn** | "You said 'just one more prompt' 47 times." | 10K / 50K / 100K / 500K tokens/day |
-| `input-hog` | **The Novelist** | "Did you just paste your entire codebase again?" | 50K / 200K / 1M / 5M input |
-| `output-addict` | **Attention Seeker** | "You could've read the docs. But no." | 50K / 200K / 1M / 5M output |
-| `reasoning-junkie` | **Overthinker** | "Watching an AI think about thinking." | 10K / 100K / 500K / 2M reasoning |
+| ID                 | Name                 | Flavor Text                                      | Tiers                              |
+| ------------------ | -------------------- | ------------------------------------------------ | ---------------------------------- |
+| `power-user`       | **Insatiable**       | "Your wallet weeps. Your AI rejoices."           | 100K / 1M / 10M / 50M tokens       |
+| `big-day`          | **One More Turn**    | "You said 'just one more prompt' 47 times."      | 10K / 50K / 100K / 500K tokens/day |
+| `input-hog`        | **The Novelist**     | "Did you just paste your entire codebase again?" | 50K / 200K / 1M / 5M input         |
+| `output-addict`    | **Attention Seeker** | "You could've read the docs. But no."            | 50K / 200K / 1M / 5M output        |
+| `reasoning-junkie` | **Overthinker**      | "Watching an AI think about thinking."           | 10K / 100K / 500K / 2M reasoning   |
 
 ### Category: Consistency (The Grind)
 
-| ID | Name | Flavor Text | Tiers |
-|----|------|-------------|-------|
-| `streak` | **On Fire** | "Your streak is alive. Your social life is not." | 3 / 7 / 14 / 30 days |
-| `veteran` | **No Life** | "You've been here longer than some marriages." | 7 / 30 / 90 / 365 active days |
-| `weekend-warrior` | **No Rest for the Wicked** | "Saturday? More like Codeturday." | 4 / 12 / 26 / 52 weekend days ⚠️ |
-| `night-owl` | **Sleep is Overrated** | "2AM prompt submitted. 2:01AM regret." | 10 / 30 / 100 / 300 midnight-6am hours ⚠️ |
-| `early-bird` | **Dawn Debugger** | "The AI was your first conversation today." | 10 / 30 / 100 / 300 6am-9am hours ⚠️ |
+| ID                | Name                       | Flavor Text                                      | Tiers                                     |
+| ----------------- | -------------------------- | ------------------------------------------------ | ----------------------------------------- |
+| `streak`          | **On Fire**                | "Your streak is alive. Your social life is not." | 3 / 7 / 14 / 30 days                      |
+| `veteran`         | **No Life**                | "You've been here longer than some marriages."   | 7 / 30 / 90 / 365 active days             |
+| `weekend-warrior` | **No Rest for the Wicked** | "Saturday? More like Codeturday."                | 4 / 12 / 26 / 52 weekend days ⚠️          |
+| `night-owl`       | **Sleep is Overrated**     | "2AM prompt submitted. 2:01AM regret."           | 10 / 30 / 100 / 300 midnight-6am hours ⚠️ |
+| `early-bird`      | **Dawn Debugger**          | "The AI was your first conversation today."      | 10 / 30 / 100 / 300 6am-9am hours ⚠️      |
 
 > ⚠️ **Timezone-dependent achievements** (`weekend-warrior`, `night-owl`, `early-bird`): These require user timezone to compute accurately. See Decision 5 for social feature limitations and DST approximation notes.
 
 ### Category: Efficiency (Copium)
 
-| ID | Name | Flavor Text | Tiers |
-|----|------|-------------|-------|
-| `cache-master` | **Recycler** | "At least SOMETHING is being reused." | 10% / 25% / 50% / 75% cache rate |
-| `quick-draw` | **One and Done** | "In, out, shipped. Respect." | 10 / 50 / 200 / 500 sessions <5min |
-| `marathon` | **Send Help** | "This session is older than some startups." | 1 / 5 / 20 / 50 sessions >2hr |
+| ID             | Name             | Flavor Text                                 | Tiers                              |
+| -------------- | ---------------- | ------------------------------------------- | ---------------------------------- |
+| `cache-master` | **Recycler**     | "At least SOMETHING is being reused."       | 10% / 25% / 50% / 75% cache rate   |
+| `quick-draw`   | **One and Done** | "In, out, shipped. Respect."                | 10 / 50 / 200 / 500 sessions <5min |
+| `marathon`     | **Send Help**    | "This session is older than some startups." | 1 / 5 / 20 / 50 sessions >2hr      |
 
 ### Category: Spending (Financial Ruin)
 
-| ID | Name | Flavor Text | Tiers |
-|----|------|-------------|-------|
-| `big-spender` | **API Baron** | "Anthropic sends you a Christmas card." | $1 / $10 / $50 / $100 |
-| `daily-burn` | **Money Printer** | "Your daily API bill could feed a small village." | $0.50 / $2 / $10 / $50/day |
+| ID            | Name              | Flavor Text                                       | Tiers                      |
+| ------------- | ----------------- | ------------------------------------------------- | -------------------------- |
+| `big-spender` | **API Baron**     | "Anthropic sends you a Christmas card."           | $1 / $10 / $50 / $100      |
+| `daily-burn`  | **Money Printer** | "Your daily API bill could feed a small village." | $0.50 / $2 / $10 / $50/day |
 
 ### Category: Diversity (Tool Hoarding)
 
-| ID | Name | Flavor Text | Tiers |
-|----|------|-------------|-------|
-| `tool-hoarder` | **Commitment Issues** | "You've tried every CLI tool. Twice." | 2 / 4 / 5 / 7 sources |
-| `model-tourist` | **Model Agnostic** | "Opus? Sonnet? Haiku? Yes." | 3 / 5 / 8 / 12 models |
-| `device-nomad` | **Work From Anywhere** | "Your code runs on 4 different machines. None of them work." | 2 / 3 / 5 / 8 devices |
+| ID              | Name                   | Flavor Text                                                  | Tiers                 |
+| --------------- | ---------------------- | ------------------------------------------------------------ | --------------------- |
+| `tool-hoarder`  | **Commitment Issues**  | "You've tried every CLI tool. Twice."                        | 2 / 4 / 5 / 7 sources |
+| `model-tourist` | **Model Agnostic**     | "Opus? Sonnet? Haiku? Yes."                                  | 3 / 5 / 8 / 12 models |
+| `device-nomad`  | **Work From Anywhere** | "Your code runs on 4 different machines. None of them work." | 2 / 3 / 5 / 8 devices |
 
 ### Category: Sessions (Conversation Crimes)
 
-| ID | Name | Flavor Text | Tiers |
-|----|------|-------------|-------|
-| `chatterbox` | **Verbose Mode** | "Your sessions have more messages than group chats." | 50 / 100 / 500 / 1000 msg/session |
-| `session-hoarder` | **Context Collector** | "You've started more sessions than you've finished." | 100 / 500 / 2000 / 10000 sessions |
-| `automation-addict` | **The Machine** | "Let the robots talk to the robots." | 10 / 50 / 200 / 1000 automated sessions |
+| ID                  | Name                  | Flavor Text                                          | Tiers                                   |
+| ------------------- | --------------------- | ---------------------------------------------------- | --------------------------------------- |
+| `chatterbox`        | **Verbose Mode**      | "Your sessions have more messages than group chats." | 50 / 100 / 500 / 1000 msg/session       |
+| `session-hoarder`   | **Context Collector** | "You've started more sessions than you've finished." | 100 / 500 / 2000 / 10000 sessions       |
+| `automation-addict` | **The Machine**       | "Let the robots talk to the robots."                 | 10 / 50 / 200 / 1000 automated sessions |
 
 ### Category: Special (Hidden / Rare)
 
-| ID | Name | Flavor Text | Condition |
-|----|------|-------------|-----------|
-| `first-blood` | **Hello World** | "Your first token. The gateway drug." | First usage ever |
-| `centurion` | **Triple Digits** | "Day 100. Still no exit strategy." | 100 active days |
-| `millionaire` | **Club 1M** | "Welcome to the club nobody wanted to join." | 1M lifetime tokens |
-| `billionaire` | **Tokens Go Brrrr** | "Seriously, are you okay?" | 1B lifetime tokens (aspirational) |
+| ID            | Name                | Flavor Text                                  | Condition                         |
+| ------------- | ------------------- | -------------------------------------------- | --------------------------------- |
+| `first-blood` | **Hello World**     | "Your first token. The gateway drug."        | First usage ever                  |
+| `centurion`   | **Triple Digits**   | "Day 100. Still no exit strategy."           | 100 active days                   |
+| `millionaire` | **Club 1M**         | "Welcome to the club nobody wanted to join." | 1M lifetime tokens                |
+| `billionaire` | **Tokens Go Brrrr** | "Seriously, are you okay?"                   | 1B lifetime tokens (aspirational) |
 
 ## UI Design
 
@@ -197,18 +197,20 @@ Clicking opens the achievements page.
 Returns all achievement definitions + current user's progress.
 
 **Query Parameters**:
-| Param | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tzOffset` | number | No | Client's timezone offset in minutes (e.g., `-480` for UTC+8). Defaults to `0` (UTC) if omitted. |
+
+| Param      | Type   | Required | Description                                                                                     |
+| ---------- | ------ | -------- | ----------------------------------------------------------------------------------------------- |
+| `tzOffset` | number | No       | Client's timezone offset in minutes (e.g., `-480` for UTC+8). Defaults to `0` (UTC) if omitted. |
 
 **`tzOffset` usage by achievement type**:
 
-| Type | Achievements | Personal progress | Social features |
-|------|--------------|-------------------|-----------------|
-| **UTC-based** | `streak`, `big-day`, `veteran`, `daily-burn` | UTC (tzOffset ignored) | ✅ UTC |
-| **Timezone-dependent** | `weekend-warrior`, `night-owl`, `early-bird` | Uses tzOffset | ❌ Excluded |
+| Type                   | Achievements                                 | Personal progress      | Social features |
+| ---------------------- | -------------------------------------------- | ---------------------- | --------------- |
+| **UTC-based**          | `streak`, `big-day`, `veteran`, `daily-burn` | UTC (tzOffset ignored) | ✅ UTC          |
+| **Timezone-dependent** | `weekend-warrior`, `night-owl`, `early-bird` | Uses tzOffset          | ❌ Excluded     |
 
 **Design rationale**:
+
 - Day-based achievements (`streak`, `big-day`, `veteran`, `daily-burn`) use **UTC for both personal and social** to ensure the same achievement definition has consistent semantics. A user's "big day" is the same whether viewed on their own card or in the earnedBy list.
 - Timezone-dependent achievements (`weekend-warrior`, `night-owl`, `early-bird`) inherently require local time interpretation and cannot be meaningfully compared across users in different timezones — these are excluded from social features entirely (see Decision 5).
 
@@ -253,10 +255,11 @@ interface AchievementResponse {
 Paginated list of users who earned a specific achievement.
 
 **Error Responses**:
-| Status | Condition |
-|--------|-----------|
-| 404 | Achievement ID not found |
-| 404 | Achievement is timezone-dependent (`weekend-warrior`, `night-owl`, `early-bird`) — these have no social features |
+
+| Status | Condition                                                                                                        |
+| ------ | ---------------------------------------------------------------------------------------------------------------- |
+| 404    | Achievement ID not found                                                                                         |
+| 404    | Achievement is timezone-dependent (`weekend-warrior`, `night-owl`, `early-bird`) — these have no social features |
 
 ```typescript
 interface AchievementMembersResponse {
@@ -325,6 +328,7 @@ interface AchievementMembersResponse {
 ### Achievement Computation Strategy
 
 All achievement computation runs server-side in `GET /api/achievements`. The `achievement-helpers.ts` module provides:
+
 - `AchievementDef` type definitions (shared between API and any future client utilities)
 - `computeTierProgress()` helper (used by API route)
 - Formatting functions (`formatShortTokens`, `formatDollars`, etc.)
@@ -342,11 +346,13 @@ The existing client-side dashboard achievement panel will be replaced with a sim
 The `hour_start` field is stored in UTC.
 
 **Day-based achievements** (`streak`, `big-day`, `veteran`, `daily-burn`):
+
 - Use **UTC day boundaries** for both personal progress and social features
 - This ensures consistent semantics: if a user unlocked "big-day" with 100K tokens, they appear in the earnedBy list under the same criteria
 - Implementation: `toLocalDailyBuckets(rows, 0)` — always pass tzOffset=0
 
 **Timezone-dependent achievements** (`weekend-warrior`, `night-owl`, `early-bird`):
+
 - Require local hour-of-day or day-of-week, which varies by user timezone
 - Use client-provided `tzOffset` for personal progress
 - **Excluded from social features** — see Decision 5
@@ -392,6 +398,7 @@ This section resolves the blocking questions identified during review. These dec
 **Choice**: Compute all achievement state on-the-fly from existing `usage_records` and `session_records` tables. No `achievement_unlocks` table.
 
 **Rationale**:
+
 - Adding a persistence layer requires: (a) migration, (b) backfill job, (c) sync logic to keep snapshots current, (d) handling edge cases when users re-sync and totals decrease
 - The "earned at" timestamp shown on `/api/achievements/[id]/members` will be **approximate** — derived from the earliest `hour_start` (for usage-based) or `started_at` (for session-based) that would have crossed the tier threshold
 - This approximation is acceptable because:
@@ -400,6 +407,7 @@ This section resolves the blocking questions identified during review. These dec
   - Users won't notice if their "unlocked" date is off by a few hours
 
 **Implementation**:
+
 - For social queries, run a server-side aggregation per achievement that computes each user's current value, then derive the approximate unlock time by binary-searching historical data
 - Cache "earned by" lists for 5-10 minutes (low churn)
 - The dashboard "Top Achievement" widget shows the **highest-tier achievement** (not most recently unlocked), since we can't reliably track unlock order without persistence
@@ -409,6 +417,7 @@ This section resolves the blocking questions identified during review. These dec
 **Choice**: Migrate achievement computation to a server-side API (`GET /api/achievements`). The existing client-side `achievement-helpers.ts` becomes a shared utility library, but the actual computation runs on the server.
 
 **Rationale**:
+
 - New achievements require data not currently available in `AchievementInputs`:
   - `device_id` — only in `usage_records`, not exposed via `/api/usage`
   - `session_records` fields — `kind`, `duration_seconds`, `started_at`
@@ -419,6 +428,7 @@ This section resolves the blocking questions identified during review. These dec
   - Social data queries ("earned by") in the same request
 
 **Migration Path**:
+
 1. Phase 1: Move computation server-side, keep existing 6 achievements
 2. Phase 2: Add new achievements that require session/device data
 3. Phase 3: Remove client-side computation from dashboard (it becomes a simple fetch)
@@ -428,11 +438,13 @@ This section resolves the blocking questions identified during review. These dec
 **Choice**: "18 / 25 Unlocked" counts **achievement definitions with at least one tier unlocked**, not total tier unlocks.
 
 **Rationale**:
+
 - Users intuitively think "I have 18 achievements" not "I have 18 tier unlocks across 25 achievements"
 - WoW counts achievement definitions, not individual tiers
 - The current taxonomy has 25 achievement definitions (see count below), each with 4 tiers = 100 possible tier unlocks, but showing "18 / 100" is confusing
 
 **Taxonomy Count** (25 total):
+
 - Volume: 5 (power-user, big-day, input-hog, output-addict, reasoning-junkie)
 - Consistency: 5 (streak, veteran, weekend-warrior, night-owl, early-bird)
 - Efficiency: 3 (cache-master, quick-draw, marathon)
@@ -442,27 +454,28 @@ This section resolves the blocking questions identified during review. These dec
 - Special: 4 (first-blood, centurion, millionaire, billionaire)
 
 **Implementation**:
+
 - `totalAchievements` = count of all `AchievementDef` entries (currently 25)
 - `totalUnlocked` = count of definitions where `tier !== "locked"`
 - `diamondCount` = count of definitions where `tier === "diamond"`
 
 ### Decision 4: Input Data Requirements by Achievement Category
 
-| Category | Data Source | Fields Needed | Available Today |
-|----------|-------------|---------------|-----------------|
-| Volume | `usage_records` | `total_tokens`, `input_tokens`, `output_tokens`, `reasoning_output_tokens` | ✅ |
-| Consistency (streak, veteran) | `usage_records` | `hour_start` (distinct days) | ✅ |
-| Consistency (weekend-warrior, night-owl, early-bird) | `usage_records` | `hour_start` + **user timezone** | ⚠️ See Decision 5 |
-| Efficiency (cache-master) | `usage_records` | `cached_input_tokens`, `input_tokens` | ✅ |
-| Efficiency (quick-draw, marathon) | `session_records` | `duration_seconds` | ✅ |
-| Spending | `usage_records` + pricing | `total_tokens` by model | ✅ |
-| Diversity (tool-hoarder) | `usage_records` | `COUNT(DISTINCT source)` | ✅ |
-| Diversity (model-tourist) | `usage_records` | `COUNT(DISTINCT model)` | ✅ |
-| Diversity (device-nomad) | `usage_records` | `COUNT(DISTINCT device_id)` | ✅ |
-| Sessions (chatterbox) | `session_records` | `total_messages` | ✅ |
-| Sessions (session-hoarder) | `session_records` | `COUNT(*)` | ✅ |
-| Sessions (automation-addict) | `session_records` | `kind = 'automated'` | ✅ |
-| Special (first-blood) | `usage_records` | `MIN(hour_start)` | ✅ |
+| Category                                             | Data Source               | Fields Needed                                                              | Available Today   |
+| ---------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------- | ----------------- |
+| Volume                                               | `usage_records`           | `total_tokens`, `input_tokens`, `output_tokens`, `reasoning_output_tokens` | ✅                |
+| Consistency (streak, veteran)                        | `usage_records`           | `hour_start` (distinct days)                                               | ✅                |
+| Consistency (weekend-warrior, night-owl, early-bird) | `usage_records`           | `hour_start` + **user timezone**                                           | ⚠️ See Decision 5 |
+| Efficiency (cache-master)                            | `usage_records`           | `cached_input_tokens`, `input_tokens`                                      | ✅                |
+| Efficiency (quick-draw, marathon)                    | `session_records`         | `duration_seconds`                                                         | ✅                |
+| Spending                                             | `usage_records` + pricing | `total_tokens` by model                                                    | ✅                |
+| Diversity (tool-hoarder)                             | `usage_records`           | `COUNT(DISTINCT source)`                                                   | ✅                |
+| Diversity (model-tourist)                            | `usage_records`           | `COUNT(DISTINCT model)`                                                    | ✅                |
+| Diversity (device-nomad)                             | `usage_records`           | `COUNT(DISTINCT device_id)`                                                | ✅                |
+| Sessions (chatterbox)                                | `session_records`         | `total_messages`                                                           | ✅                |
+| Sessions (session-hoarder)                           | `session_records`         | `COUNT(*)`                                                                 | ✅                |
+| Sessions (automation-addict)                         | `session_records`         | `kind = 'automated'`                                                       | ✅                |
+| Special (first-blood)                                | `usage_records`           | `MIN(hour_start)`                                                          | ✅                |
 
 **Conclusion**: All planned achievements can be computed from existing tables. No schema changes required. However, `weekend-warrior`, `night-owl`, and `early-bird` have social feature limitations (see Decision 5).
 
@@ -471,22 +484,26 @@ This section resolves the blocking questions identified during review. These dec
 **Problem**: `weekend-warrior`, `night-owl`, and `early-bird` require converting UTC `hour_start` to the user's local time. The current `users` table has no `timezone` field.
 
 **Affected achievements**:
+
 - `weekend-warrior` — needs local Saturday/Sunday, not UTC Saturday/Sunday
 - `night-owl` — needs local midnight-6am
 - `early-bird` — needs local 6am-9am
 
 **Options considered**:
+
 1. Add `timezone` column to `users`, require users to set it, define rules for historical data backfill
 2. Exclude these achievements from social features ("earned by" list, `/api/achievements/[id]/members`)
 
 **Choice**: Option 2 — exclude from social features.
 
 **Rationale**:
+
 - Adding timezone persistence requires migration, UI for setting timezone, and complex historical backfill rules (user may have changed timezones)
 - These achievements are inherently personal ("when do I work?") — social value is low
 - "Earned by" for night-owl would be misleading anyway: a user in UTC+8 and one in UTC-8 could both qualify with the same raw data
 
 **Implementation**:
+
 - `GET /api/achievements` computes these three using the request's `tzOffset` query param (passed from client)
 - These achievements return `earnedBy: []` and `totalEarned: 0` in the response
 - `GET /api/achievements/[id]/members` returns 404 for these achievement IDs
@@ -502,6 +519,7 @@ const localHour = (utcHour - tzOffset / 60 + 24) % 24;
 ```
 
 The `tzOffset` from the client reflects the user's **current** timezone offset, but:
+
 - DST transitions shift the offset by 1 hour twice a year
 - Historical records from 6 months ago may have had a different offset
 
@@ -512,10 +530,12 @@ The `tzOffset` from the client reflects the user's **current** timezone offset, 
 ## Open Questions (Resolved)
 
 ~~1. **Persistence**: Should we store earned achievements in a separate table, or always compute on-the-fly?~~
-   - **Resolved**: On-demand computation. See Decision 1.
+
+- **Resolved**: On-demand computation. See Decision 1.
 
 ~~2. **Notifications**: How do we detect newly earned achievements?~~
-   - **Deferred to Phase 5**: Compare before/after on dashboard load. No background jobs.
+
+- **Deferred to Phase 5**: Compare before/after on dashboard load. No background jobs.
 
 3. **Rarity Display**: Show what percentage of users earned each achievement?
    - **Deferred**: Nice-to-have. Can add `totalUsers` to response and compute client-side.

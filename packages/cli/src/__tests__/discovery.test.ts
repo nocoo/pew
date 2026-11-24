@@ -4,10 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   discoverClaudeFiles,
-
   discoverOpenCodeFiles,
   discoverOpenClawFiles,
-
   discoverCopilotCliFiles,
   discoverCodexFiles,
   discoverPiFiles,
@@ -59,9 +57,7 @@ describe("discoverOpenCodeFiles", () => {
     await writeFile(join(sesDir, "msg_001.json"), "{}");
     await writeFile(join(sesDir, "msg_002.json"), "{}");
 
-    const result = await discoverOpenCodeFiles(
-      join(tempDir, "storage", "message"),
-    );
+    const result = await discoverOpenCodeFiles(join(tempDir, "storage", "message"));
     expect(result.files).toHaveLength(2);
     expect(result.files.every((f) => f.endsWith(".json"))).toBe(true);
     expect(result.skippedDirs).toBe(0);
@@ -265,10 +261,10 @@ describe("discoverCodexFiles", () => {
     await writeFile(join(extraDir1, "rollout-extra1.jsonl"), "{}");
     await writeFile(join(extraDir2, "rollout-extra2.jsonl"), "{}");
 
-    const { files, complete } = await discoverCodexFiles(
-      join(tempDir, "primary"),
-      [extraDir1, extraDir2],
-    );
+    const { files, complete } = await discoverCodexFiles(join(tempDir, "primary"), [
+      extraDir1,
+      extraDir2,
+    ]);
     expect(files).toHaveLength(3);
     expect(files.some((f) => f.includes("rollout-primary.jsonl"))).toBe(true);
     expect(files.some((f) => f.includes("rollout-extra1.jsonl"))).toBe(true);
@@ -303,10 +299,10 @@ describe("discoverCodexFiles", () => {
     await mkdir(primaryDir, { recursive: true });
     await writeFile(join(primaryDir, "rollout-primary.jsonl"), "{}");
 
-    const { files, complete } = await discoverCodexFiles(
-      join(tempDir, "primary"),
-      [join(tempDir, "nonexistent1"), join(tempDir, "nonexistent2")],
-    );
+    const { files, complete } = await discoverCodexFiles(join(tempDir, "primary"), [
+      join(tempDir, "nonexistent1"),
+      join(tempDir, "nonexistent2"),
+    ]);
     // Only primary dir files found
     expect(files).toHaveLength(1);
     expect(files[0]).toContain("rollout-primary.jsonl");

@@ -110,21 +110,14 @@ export type UsageRpcRequest =
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handleGetUsage(
-  req: GetUsageRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetUsage(req: GetUsageRequest, db: D1Database): Promise<Response> {
   if (!req.userId || !req.fromDate || !req.toDate) {
-    return Response.json(
-      { error: "userId, fromDate, and toDate are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId, fromDate, and toDate are required" }, { status: 400 });
   }
 
   const granularity = req.granularity ?? "half-hour";
   const rawTz = req.tzOffset ?? 0;
-  const tzOffset =
-    Number.isFinite(rawTz) && Math.abs(rawTz) <= 840 ? rawTz : 0;
+  const tzOffset = Number.isFinite(rawTz) && Math.abs(rawTz) <= 840 ? rawTz : 0;
 
   let timeColumn: string;
   let groupBy: string;
@@ -135,10 +128,8 @@ async function handleGetUsage(
       const offsetStr = String(-tzOffset);
       // Note: GROUP BY doesn't support parameterized ?, so we inline the offset
       // The offset is validated (integer, abs <= 840) so this is safe
-      timeColumn =
-        "date(datetime(hour_start, ? || ' minutes')) AS hour_start";
-      groupBy =
-        `date(datetime(hour_start, '${offsetStr} minutes')), source, model`;
+      timeColumn = "date(datetime(hour_start, ? || ' minutes')) AS hour_start";
+      groupBy = `date(datetime(hour_start, '${offsetStr} minutes')), source, model`;
       prependParams.push(offsetStr);
     } else {
       timeColumn = "date(hour_start) AS hour_start";
@@ -182,22 +173,23 @@ async function handleGetUsage(
   `;
 
   const stmt = db.prepare(sql);
-  const results = await stmt
-    .bind(...prependParams, ...params)
-    .all<UsageRow>();
+  const results = await stmt.bind(...prependParams, ...params).all<UsageRow>();
 
-  return Response.json({ result: mergeUsageRows(results.results, ["hour_start", "source", "model"], req.includeReportedCosts === true) });
+  return Response.json({
+    result: mergeUsageRows(
+      results.results,
+      ["hour_start", "source", "model"],
+      req.includeReportedCosts === true,
+    ),
+  });
 }
 
 async function handleGetDeviceSummary(
   req: GetDeviceSummaryRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId || !req.fromDate || !req.toDate) {
-    return Response.json(
-      { error: "userId, fromDate, and toDate are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId, fromDate, and toDate are required" }, { status: 400 });
   }
 
   const results = await db
@@ -219,7 +211,7 @@ async function handleGetDeviceSummary(
       LEFT JOIN device_aliases da
         ON da.user_id = ur.user_id AND da.device_id = ur.device_id
       GROUP BY ur.device_id, ur.accounting_json
-      ORDER BY total_tokens DESC`
+      ORDER BY total_tokens DESC`,
     )
     .bind(req.userId, req.fromDate, req.toDate)
     .all<DeviceSummaryRow>();
@@ -230,13 +222,10 @@ async function handleGetDeviceSummary(
 
 async function handleGetDeviceCostDetails(
   req: GetDeviceCostDetailsRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId || !req.fromDate || !req.toDate) {
-    return Response.json(
-      { error: "userId, fromDate, and toDate are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId, fromDate, and toDate are required" }, { status: 400 });
   }
 
   const results = await db
@@ -251,29 +240,27 @@ async function handleGetDeviceCostDetails(
         SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens,
         ur.accounting_json, COUNT(*) AS accounting_count
       FROM (${ACCOUNTED_USAGE_SQL}) ur
-      GROUP BY ur.device_id, ur.source, ur.model, ur.accounting_json`
+      GROUP BY ur.device_id, ur.source, ur.model, ur.accounting_json`,
     )
     .bind(req.userId, req.fromDate, req.toDate)
     .all<CostDetailRow>();
 
-  return Response.json({ result: mergeUsageRows(results.results, ["device_id", "source", "model"]) });
+  return Response.json({
+    result: mergeUsageRows(results.results, ["device_id", "source", "model"]),
+  });
 }
 
 async function handleGetDeviceTimeline(
   req: GetDeviceTimelineRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.userId || !req.fromDate || !req.toDate) {
-    return Response.json(
-      { error: "userId, fromDate, and toDate are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId, fromDate, and toDate are required" }, { status: 400 });
   }
 
   const granularity = req.granularity ?? "day";
   const rawTz = req.tzOffset ?? 0;
-  const tzOffset =
-    Number.isFinite(rawTz) && Math.abs(rawTz) <= 840 ? rawTz : 0;
+  const tzOffset = Number.isFinite(rawTz) && Math.abs(rawTz) <= 840 ? rawTz : 0;
 
   let dateExpr: string;
   let groupBy: string;
@@ -324,10 +311,7 @@ async function handleGetDeviceTimeline(
 // Router
 // ---------------------------------------------------------------------------
 
-export async function handleUsageRpc(
-  request: UsageRpcRequest,
-  db: D1Database
-): Promise<Response> {
+export async function handleUsageRpc(request: UsageRpcRequest, db: D1Database): Promise<Response> {
   switch (request.method) {
     case "usage.get":
       return handleGetUsage(request, db);
@@ -340,7 +324,7 @@ export async function handleUsageRpc(
     default:
       return Response.json(
         { error: `Unknown usage method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

@@ -16,15 +16,15 @@
 
 ### Committed Fixes
 
-| Commit | Description |
-|--------|-------------|
-| `06bfdf9` | Bug A (inode change → full rescan) + Bug B (no-op sync 不再重标 uploaded) |
-| `06bfdf9` + `94a2bb2` | Version bump 1.5.1 → 1.6.0 |
-| `2f2f343` | Bug A2: knownFilePaths 区分 "新文件" vs "cursor 丢失" |
-| `6aad9d7` | Bug C: reset 命令移除无用 --dev 参数 |
-| `72e0cd1` | Bug A2b: knownDbSources 追踪 SQLite cursor 丢失 |
-| `a427b9a` | `pew update` 自更新命令 |
-| `fef342d` | Bug A2b-edge: backfill 发现 SQLite cursor 已丢失时触发 full rescan |
+| Commit                | Description                                                               |
+| --------------------- | ------------------------------------------------------------------------- |
+| `06bfdf9`             | Bug A (inode change → full rescan) + Bug B (no-op sync 不再重标 uploaded) |
+| `06bfdf9` + `94a2bb2` | Version bump 1.5.1 → 1.6.0                                                |
+| `2f2f343`             | Bug A2: knownFilePaths 区分 "新文件" vs "cursor 丢失"                     |
+| `6aad9d7`             | Bug C: reset 命令移除无用 --dev 参数                                      |
+| `72e0cd1`             | Bug A2b: knownDbSources 追踪 SQLite cursor 丢失                           |
+| `a427b9a`             | `pew update` 自更新命令                                                   |
+| `fef342d`             | Bug A2b-edge: backfill 发现 SQLite cursor 已丢失时触发 full rescan        |
 
 ### Environment
 
@@ -37,6 +37,7 @@
 ### State Reset
 
 1. 清除本地所有 sync 状态文件（6 个文件，与 `reset.ts` 的 `STATE_FILES` 一致）：
+
    ```bash
    rm -f ~/.config/pew/{cursors,session-cursors}.json \
          ~/.config/pew/{queue,session-queue}.jsonl \
@@ -72,11 +73,11 @@ Upload: 3,691 records in 74 batches.
 
 sync 过程中（约 10 分钟），后台 **notifier 进程**触发了并发 sync，也 append 到 `session-queue.jsonl`。产生了 3 波数据：
 
-| Wave | Time | Records | Source |
-|------|------|---------|--------|
-| 1 | 02:30 | 15,512 | 2 concurrent notifiers |
-| 2 | 02:34 | 3,691 | Main sync (ours) |
-| 3 | 02:35 | 7,382 | 2 more notifiers |
+| Wave | Time  | Records | Source                 |
+| ---- | ----- | ------- | ---------------------- |
+| 1    | 02:30 | 15,512  | 2 concurrent notifiers |
+| 2    | 02:34 | 3,691   | Main sync (ours)       |
+| 3    | 02:35 | 7,382   | 2 more notifiers       |
 
 Upload engine 在读取时只看到 Wave 1+2（19,203 lines / 6.7MB），Wave 3 在读取之后追加。这不是 correctness bug — 下次 sync 会上传剩余部分，monotonic upsert 保证最终一致。
 
@@ -88,13 +89,13 @@ Upload engine 在读取时只看到 Wave 1+2（19,203 lines / 6.7MB），Wave 3 
 
 ### Result: PERFECT MATCH
 
-| Source | Records | input_tokens | output_tokens | cached_input | reasoning_output | total_tokens |
-|--------|---------|-------------|---------------|-------------|-----------------|-------------|
-| claude-code | 223 | 66,790,554 | 2,177,436 | 290,615,046 | 0 | 359,583,036 |
-| codex | 116 | 174,979,726 | 1,161,046 | 150,520,832 | 433,137 | 327,094,741 |
-| gemini-cli | 49 | 2,961,403 | 78,542 | 2,151,494 | 231,875 | 5,423,314 |
-| opencode | 2,589 | 1,007,223,879 | 54,871,158 | 6,473,078,748 | 2,929,832 | 7,538,103,617 |
-| vscode-copilot | 15 | 2,948,870 | 31,798 | 0 | 0 | 2,980,668 |
+| Source         | Records | input_tokens  | output_tokens | cached_input  | reasoning_output | total_tokens  |
+| -------------- | ------- | ------------- | ------------- | ------------- | ---------------- | ------------- |
+| claude-code    | 223     | 66,790,554    | 2,177,436     | 290,615,046   | 0                | 359,583,036   |
+| codex          | 116     | 174,979,726   | 1,161,046     | 150,520,832   | 433,137          | 327,094,741   |
+| gemini-cli     | 49      | 2,961,403     | 78,542        | 2,151,494     | 231,875          | 5,423,314     |
+| opencode       | 2,589   | 1,007,223,879 | 54,871,158    | 6,473,078,748 | 2,929,832        | 7,538,103,617 |
+| vscode-copilot | 15      | 2,948,870     | 31,798        | 0             | 0                | 2,980,668     |
 
 所有 5 个 source × 6 个字段 = **30 个数值完全匹配**。
 
@@ -108,12 +109,12 @@ Upload engine 在读取时只看到 Wave 1+2（19,203 lines / 6.7MB），Wave 3 
 
 ### Result: PERFECT MATCH
 
-| Source | Sessions | total_messages | user_messages | assistant_messages | duration_seconds |
-|--------|----------|---------------|---------------|--------------------|-----------------|
-| claude-code | 278 | 12,798 | 3,779 | 5,768 | 1,467,969 |
-| codex | 99 | 20,602 | 435 | 1,352 | 485,305 |
-| gemini-cli | 67 | 491 | 71 | 417 | 4,182 |
-| opencode | 7,313 | 151,203 | 16,855 | 134,348 | 7,791,342 |
+| Source      | Sessions | total_messages | user_messages | assistant_messages | duration_seconds |
+| ----------- | -------- | -------------- | ------------- | ------------------ | ---------------- |
+| claude-code | 278      | 12,798         | 3,779         | 5,768              | 1,467,969        |
+| codex       | 99       | 20,602         | 435           | 1,352              | 485,305          |
+| gemini-cli  | 67       | 491            | 71            | 417                | 4,182            |
+| opencode    | 7,313    | 151,203        | 16,855        | 134,348            | 7,791,342        |
 
 所有 4 个 source × 5 个字段 = **20 个数值完全匹配**。总计 **7,757 unique sessions**。
 
@@ -129,12 +130,12 @@ Upload engine 在读取时只看到 Wave 1+2（19,203 lines / 6.7MB），Wave 3 
 
 **Sync 4**: 上传了 1 条 token record — 当前 OpenCode 会话产生的新 token。D1 变化：
 
-| Field | Before | After | Delta |
-|-------|--------|-------|-------|
-| opencode cnt | 2,589 | 2,590 | +1 (new hour bucket) |
-| opencode input_tokens | 1,007,223,879 | 1,007,233,378 | +9,499 |
-| opencode output_tokens | 54,871,158 | 54,872,211 | +1,053 |
-| opencode cached_input | 6,473,078,748 | 6,473,127,567 | +48,819 |
+| Field                  | Before        | After         | Delta                |
+| ---------------------- | ------------- | ------------- | -------------------- |
+| opencode cnt           | 2,589         | 2,590         | +1 (new hour bucket) |
+| opencode input_tokens  | 1,007,223,879 | 1,007,233,378 | +9,499               |
+| opencode output_tokens | 54,871,158    | 54,872,211    | +1,053               |
+| opencode cached_input  | 6,473,078,748 | 6,473,127,567 | +48,819              |
 
 **其他 4 个 source 完全不变**。证明 overwrite upsert 语义正确 — 重复上传相同数据不会累积。
 

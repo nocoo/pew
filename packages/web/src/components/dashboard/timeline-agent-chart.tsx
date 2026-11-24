@@ -1,24 +1,13 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,7 +65,7 @@ function toAgentTimeline(
   records: UsageRow[],
   tzOffset: number,
   fromISO: string,
-  toISO: string
+  toISO: string,
 ): { data: AgentSlotPoint[]; sourceKeys: string[] } {
   const SLOT_MS = 30 * 60_000;
 
@@ -179,7 +168,7 @@ export function TimelineAgentChart({
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No agent data yet
@@ -199,7 +188,7 @@ export function TimelineAgentChart({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -207,10 +196,7 @@ export function TimelineAgentChart({
         <div className="flex flex-wrap items-center gap-4">
           {legendItems.map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ background: color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ background: color }} />
               <span className="text-xs text-basalt-muted-foreground">{label}</span>
             </div>
           ))}
@@ -219,10 +205,7 @@ export function TimelineAgentChart({
 
       <div className="h-[200px]">
         <DashboardResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={chartAxis}
@@ -255,9 +238,7 @@ export function TimelineAgentChart({
                 dataKey={source}
                 stackId="1"
                 fill={agentColor(source).color}
-                radius={
-                  i === sourceKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]
-                }
+                radius={i === sourceKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
               />
             ))}
           </BarChart>

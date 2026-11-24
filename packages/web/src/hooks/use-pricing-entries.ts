@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type {
-  DynamicPricingEntryDto,
-  DynamicPricingMetaDto,
-} from "@/lib/rpc-types";
+import type { DynamicPricingEntryDto, DynamicPricingMetaDto } from "@/lib/rpc-types";
 import { toErrorMessage } from "@/lib/error-message";
 
 // ---------------------------------------------------------------------------

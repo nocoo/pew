@@ -18,10 +18,7 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { valid: false, error: "Invalid JSON" },
-      { status: 400 }
-    );
+    return NextResponse.json({ valid: false, error: "Invalid JSON" }, { status: 400 });
   }
 
   const { code } = body;
@@ -30,7 +27,7 @@ export async function POST(request: Request) {
   if (!validateInviteCode(code)) {
     return NextResponse.json(
       { valid: false, error: "Invalid invite code format" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -43,7 +40,7 @@ export async function POST(request: Request) {
     if (!row || row.used_by !== null) {
       return NextResponse.json(
         { valid: false, error: "Invalid or already used invite code" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,7 +60,7 @@ export async function POST(request: Request) {
     console.error("Failed to verify invite code:", err);
     return NextResponse.json(
       { valid: false, error: "Failed to verify invite code" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

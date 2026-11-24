@@ -13,10 +13,7 @@ import { withStateLock } from "../storage/state-lock.js";
 import { evidenceKey } from "../utils/usage-evidence.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import { createUploadEngine } from "./upload-engine.js";
-import type {
-  UploadResult,
-  UploadProgressEvent,
-} from "./upload-engine.js";
+import type { UploadResult, UploadProgressEvent } from "./upload-engine.js";
 import type { AccountingRecord, EvidenceRecord, QueueRecord } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -106,26 +103,54 @@ async function uploadLocked(opts: UploadOptions): Promise<UploadResult> {
   const main = await engine.execute(opts);
   if (!main.success) return main;
   const supplemental = await createUploadEngine<EvidenceRecord>({
-    queue: new EvidenceQueue(opts.stateDir), endpoint: "/api/ingest/evidence",
-    entityName: "usage evidence", preprocess: (records) => records,
+    queue: new EvidenceQueue(opts.stateDir),
+    endpoint: "/api/ingest/evidence",
+    entityName: "usage evidence",
+    preprocess: (records) => records,
     recordKey: evidenceKey,
   }).execute(opts);
-  const usage = { ...supplemental, uploaded: main.uploaded + supplemental.uploaded, batches: main.batches + supplemental.batches };
+  const usage = {
+    ...supplemental,
+    uploaded: main.uploaded + supplemental.uploaded,
+    batches: main.batches + supplemental.batches,
+  };
   if (!supplemental.success) return usage;
   const details = await createUploadEngine<AccountingRecord>({
-    queue: new AccountingQueue(opts.stateDir), endpoint: "/api/ingest/details", entityName: "accounting details",
-    preprocess: (records) => records, recordKey: accountingKey, maxBatchSize: 25, maxBatchBytes: 600_000,
+    queue: new AccountingQueue(opts.stateDir),
+    endpoint: "/api/ingest/details",
+    entityName: "accounting details",
+    preprocess: (records) => records,
+    recordKey: accountingKey,
+    maxBatchSize: 25,
+    maxBatchBytes: 600_000,
     validateResponse: (body, batch) => {
       const value = body as { details_version?: unknown; acknowledgments?: unknown } | null;
-      if (value?.details_version !== 1 || !Array.isArray(value.acknowledgments) || value.acknowledgments.length !== batch.length) return "Server did not acknowledge accounting details v1";
+      if (
+        value?.details_version !== 1 ||
+        !Array.isArray(value.acknowledgments) ||
+        value.acknowledgments.length !== batch.length
+      )
+        return "Server did not acknowledge accounting details v1";
       for (let i = 0; i < batch.length; i++) {
-        const ack = value.acknowledgments[i]; const r = batch[i];
-        if (!ack || ack.key !== accountingKey(r) || ack.source_revision !== r.source_revision || ack.parser_revision !== r.parser_revision ||
-          ack.detail_revision !== r.detail_revision || !["applied", "duplicate", "superseded"].includes(ack.status)) return "Accounting details need reconciliation or a compatible server";
+        const ack = value.acknowledgments[i];
+        const r = batch[i];
+        if (
+          !ack ||
+          ack.key !== accountingKey(r) ||
+          ack.source_revision !== r.source_revision ||
+          ack.parser_revision !== r.parser_revision ||
+          ack.detail_revision !== r.detail_revision ||
+          !["applied", "duplicate", "superseded"].includes(ack.status)
+        )
+          return "Accounting details need reconciliation or a compatible server";
       }
       return null;
     },
   }).execute(opts);
-  return { ...usage, uploaded: usage.uploaded + details.uploaded, batches: usage.batches + details.batches,
-    ...(!details.success ? { warning: `Accounting details pending: ${details.error}` } : {}) };
+  return {
+    ...usage,
+    uploaded: usage.uploaded + details.uploaded,
+    batches: usage.batches + details.batches,
+    ...(!details.success ? { warning: `Accounting details pending: ${details.error}` } : {}),
+  };
 }

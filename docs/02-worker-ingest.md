@@ -5,16 +5,16 @@
 
 ## Status
 
-| # | Commit | Description | Status |
-|---|--------|-------------|--------|
-| 1 | `docs: add worker ingest migration plan` | This document | ✅ done |
-| 2 | `chore: add packages/worker workspace with wrangler config` | Scaffold worker package | ✅ done |
-| 3 | `feat: implement worker ingest endpoint with batch D1` | Worker entry point | ✅ done |
-| 4 | `test: add L1 unit tests for worker ingest` | Worker tests | ✅ done |
-| 5 | `refactor: replace D1 REST API with worker proxy in ingest route` | Next.js route rewrite | ✅ done |
-| 6 | `test: rewrite ingest route tests for worker proxy` | Ingest test rewrite | ✅ done |
-| 7 | `feat: reduce CLI batch size from 300 to 50` | CLI + server limit change | ✅ done |
-| 8 | `docs: update CLAUDE.md retrospective` | Lessons learned | ✅ done |
+| #   | Commit                                                            | Description               | Status  |
+| --- | ----------------------------------------------------------------- | ------------------------- | ------- |
+| 1   | `docs: add worker ingest migration plan`                          | This document             | ✅ done |
+| 2   | `chore: add packages/worker workspace with wrangler config`       | Scaffold worker package   | ✅ done |
+| 3   | `feat: implement worker ingest endpoint with batch D1`            | Worker entry point        | ✅ done |
+| 4   | `test: add L1 unit tests for worker ingest`                       | Worker tests              | ✅ done |
+| 5   | `refactor: replace D1 REST API with worker proxy in ingest route` | Next.js route rewrite     | ✅ done |
+| 6   | `test: rewrite ingest route tests for worker proxy`               | Ingest test rewrite       | ✅ done |
+| 7   | `feat: reduce CLI batch size from 300 to 50`                      | CLI + server limit change | ✅ done |
+| 8   | `docs: update CLAUDE.md retrospective`                            | Lessons learned           | ✅ done |
 
 ## Problem
 
@@ -33,12 +33,12 @@ CLI ──POST /api/ingest (≤300)──→ Next.js (Railway)
 
 ### Root Causes
 
-| Issue | Impact |
-|-------|--------|
-| D1 REST API has no batch endpoint | `d1.ts` `batch()` is a fake loop |
-| REST API rejects multi-row INSERT beyond ~5-7 rows | Forces `CHUNK_SIZE=5` |
-| No transaction wrapping | Partial failures leave inconsistent state |
-| SQLite param limit 999 (not 3400 as originally assumed) | Further constrains chunk size |
+| Issue                                                   | Impact                                    |
+| ------------------------------------------------------- | ----------------------------------------- |
+| D1 REST API has no batch endpoint                       | `d1.ts` `batch()` is a fake loop          |
+| REST API rejects multi-row INSERT beyond ~5-7 rows      | Forces `CHUNK_SIZE=5`                     |
+| No transaction wrapping                                 | Partial failures leave inconsistent state |
+| SQLite param limit 999 (not 3400 as originally assumed) | Further constrains chunk size             |
 
 ## Solution
 
@@ -69,14 +69,14 @@ records exceed 50, the CLI automatically sends multiple HTTP batches.
 
 ## Free Tier Budget
 
-| Resource | Free Limit | pew Estimate | OK? |
-|----------|-----------|---------------|-----|
-| Worker requests | 100K/day | ~tens/day | yes |
-| Worker CPU | 10ms/invocation | batch 50 → ~1-2ms | yes |
-| D1 queries/invocation | **50** | 50 statements | yes |
-| D1 rows written | 100K/day | 50 × few batches/day | yes |
-| D1 bound params/query | 100 | 9 params/stmt | yes |
-| D1 storage | 5 GB | tiny | yes |
+| Resource              | Free Limit      | pew Estimate         | OK? |
+| --------------------- | --------------- | -------------------- | --- |
+| Worker requests       | 100K/day        | ~tens/day            | yes |
+| Worker CPU            | 10ms/invocation | batch 50 → ~1-2ms    | yes |
+| D1 queries/invocation | **50**          | 50 statements        | yes |
+| D1 rows written       | 100K/day        | 50 × few batches/day | yes |
+| D1 bound params/query | 100             | 9 params/stmt        | yes |
+| D1 storage            | 5 GB            | tiny                 | yes |
 
 ## Architecture
 
@@ -135,16 +135,19 @@ Responses:
 ### Next.js Ingest Route Changes
 
 **Removed**:
+
 - `CHUNK_SIZE` constant
 - `buildMultiRowUpsert()` function
 - `getD1Client()` usage in ingest route
 - D1 chunking for-loop
 
 **Added**:
+
 - `fetch(WORKER_INGEST_URL)` with shared secret
 - New env vars: `WORKER_INGEST_URL`, `WORKER_SECRET`
 
 **Unchanged**:
+
 - `resolveUser()` authentication
 - Request validation (source, model, hour_start, token fields)
 - Response format `{ ingested: N }`
@@ -152,6 +155,7 @@ Responses:
 ### CLI Changes
 
 `packages/cli/src/commands/upload.ts`:
+
 - `DEFAULT_BATCH_SIZE`: 300 → 50
 - Server-side max also 300 → 50
 - All other logic (aggregation, retry, offset) unchanged
@@ -173,6 +177,7 @@ Files: `docs/02-worker-ingest.md`
 ### Commit 2: `chore: add packages/worker workspace with wrangler config`
 
 Files:
+
 - `package.json` (root) — add `packages/worker` to workspaces (if needed)
 - `packages/worker/package.json`
 - `packages/worker/wrangler.toml`
@@ -181,14 +186,17 @@ Files:
 ### Commit 3: `feat: implement worker ingest endpoint with batch D1`
 
 Files:
+
 - `packages/worker/src/index.ts`
 
 ### Commit 4: `test: add L1 unit tests for worker ingest`
 
 Files:
+
 - `packages/worker/src/index.test.ts`
 
 Test cases:
+
 - Rejects non-POST methods (405)
 - Rejects missing/wrong Authorization header (401)
 - Rejects missing userId (400)
@@ -201,15 +209,18 @@ Test cases:
 ### Commit 5: `refactor: replace D1 REST API with worker proxy in ingest route`
 
 Files:
+
 - `packages/web/src/app/api/ingest/route.ts`
 - `packages/web/.env.example`
 
 ### Commit 6: `test: rewrite ingest route tests for worker proxy`
 
 Files:
+
 - `packages/web/src/__tests__/ingest.test.ts`
 
 Changes:
+
 - Remove `buildMultiRowUpsert` tests (function deleted)
 - Remove `CHUNK_SIZE` import
 - Mock `fetch` for Worker URL instead of `D1Client.execute`
@@ -218,6 +229,7 @@ Changes:
 ### Commit 7: `feat: reduce CLI batch size from 300 to 50`
 
 Files:
+
 - `packages/cli/src/commands/upload.ts` — `DEFAULT_BATCH_SIZE = 50`
 - `packages/web/src/app/api/ingest/route.ts` — max records 300 → 50
 - `packages/cli/src/__tests__/upload.test.ts` — update batch size assertions
@@ -225,17 +237,18 @@ Files:
 ### Commit 8: `docs: update CLAUDE.md retrospective`
 
 Files:
+
 - `CLAUDE.md` — add retrospective entry about Worker migration
 
 ## Performance Comparison
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Network calls (50 records) | 10× Railway→CF REST API | 1× Railway→Worker |
-| DB operations | 10× independent INSERT | 1× batch (implicit txn) |
-| Atomicity | No transaction | All-or-nothing |
-| Latency (50 records) | ~500ms-1s | ~50-100ms |
-| Latency (300 records, if needed) | ~3-6s (60 HTTP) | ~300-600ms (6 batches × 1 HTTP) |
+| Metric                           | Before                  | After                           |
+| -------------------------------- | ----------------------- | ------------------------------- |
+| Network calls (50 records)       | 10× Railway→CF REST API | 1× Railway→Worker               |
+| DB operations                    | 10× independent INSERT  | 1× batch (implicit txn)         |
+| Atomicity                        | No transaction          | All-or-nothing                  |
+| Latency (50 records)             | ~500ms-1s               | ~50-100ms                       |
+| Latency (300 records, if needed) | ~3-6s (60 HTTP)         | ~300-600ms (6 batches × 1 HTTP) |
 
 ## Rollback Plan
 

@@ -13,11 +13,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead, getDbWrite } from "@/lib/db";
-import {
-  AUTH_CLI_RATE_LIMIT,
-  getClientIp,
-  inMemoryRateLimiter,
-} from "@/lib/rate-limit";
+import { AUTH_CLI_RATE_LIMIT, getClientIp, inMemoryRateLimiter } from "@/lib/rate-limit";
 
 /**
  * Resolve the public-facing origin.
@@ -39,10 +35,7 @@ export function getPublicOrigin(_request: Request): string {
 export async function GET(request: Request) {
   // Rate limit: 10 CLI auth attempts per hour per IP
   const ip = getClientIp(request);
-  const rl = inMemoryRateLimiter.check(
-    `auth-cli:${ip}`,
-    AUTH_CLI_RATE_LIMIT,
-  );
+  const rl = inMemoryRateLimiter.check(`auth-cli:${ip}`, AUTH_CLI_RATE_LIMIT);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
@@ -61,37 +54,25 @@ export async function GET(request: Request) {
     const returnUrl = url.pathname + url.search;
     const origin = getPublicOrigin(request);
     return NextResponse.redirect(
-      new URL(`/login?callbackUrl=${encodeURIComponent(returnUrl)}`, origin)
+      new URL(`/login?callbackUrl=${encodeURIComponent(returnUrl)}`, origin),
     );
   }
 
   // 2. Validate callback parameter
   if (!callback) {
-    return NextResponse.json(
-      { error: "Missing callback parameter" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing callback parameter" }, { status: 400 });
   }
 
   let callbackUrl: URL;
   try {
     callbackUrl = new URL(callback);
   } catch {
-    return NextResponse.json(
-      { error: "Invalid callback URL" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid callback URL" }, { status: 400 });
   }
 
   // Security: only allow localhost callbacks
-  if (
-    callbackUrl.hostname !== "localhost" &&
-    callbackUrl.hostname !== "127.0.0.1"
-  ) {
-    return NextResponse.json(
-      { error: "callback must be a localhost URL" },
-      { status: 400 }
-    );
+  if (callbackUrl.hostname !== "localhost" && callbackUrl.hostname !== "127.0.0.1") {
+    return NextResponse.json({ error: "callback must be a localhost URL" }, { status: 400 });
   }
 
   // 3. Get or generate api_key
@@ -108,7 +89,7 @@ export async function GET(request: Request) {
       apiKey = generateApiKey();
       await dbWrite.execute(
         "UPDATE users SET api_key = ?, updated_at = datetime('now') WHERE id = ?",
-        [apiKey, userId]
+        [apiKey, userId],
       );
     }
 
@@ -123,10 +104,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(redirectUrl.toString());
   } catch (err) {
     console.error("CLI auth error:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -134,8 +112,6 @@ export async function GET(request: Request) {
 function generateApiKey(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
-    ""
-  );
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   return `pk_${hex}`;
 }

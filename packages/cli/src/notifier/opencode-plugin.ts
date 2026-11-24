@@ -135,10 +135,7 @@ export const PewTrackerPlugin = async ({ $ }) => {
 `;
 }
 
-async function readOptional(
-  filePath: string,
-  fs: OpenCodePluginFs,
-): Promise<string | null> {
+async function readOptional(filePath: string, fs: OpenCodePluginFs): Promise<string | null> {
   try {
     return await fs.readFile(filePath, "utf8");
   } catch (err) {

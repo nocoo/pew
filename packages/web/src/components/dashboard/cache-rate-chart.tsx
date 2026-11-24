@@ -1,15 +1,7 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ReferenceLine,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis } from "@/lib/palette";
@@ -43,7 +35,10 @@ function fmtDate(dateStr: string): string {
 /** Compute the period-average cache rate across all data points. */
 function computeAverage(data: DailyCacheRate[]): number | null {
   const totalCached = data.reduce((sum, d) => sum + d.cachedTokens, 0);
-  const denom = data.reduce((sum, d) => sum + (d.coveredInputTokens ?? d.inputTokens + d.cachedTokens), 0);
+  const denom = data.reduce(
+    (sum, d) => sum + (d.coveredInputTokens ?? d.inputTokens + d.cachedTokens),
+    0,
+  );
   if (denom === 0) return null;
   return (totalCached / denom) * 100;
 }
@@ -70,7 +65,9 @@ function CacheRateTooltip({
         {point.cacheRate === null ? "Unknown" : `${point.cacheRate.toFixed(1)}%`}
       </p>
       <ChartTooltipSubtitle>
-        {formatTokens(point.cachedTokens)} cache reads / {formatTokens(point.coveredInputTokens ?? point.inputTokens + point.cachedTokens)} covered input
+        {formatTokens(point.cachedTokens)} cache reads /{" "}
+        {formatTokens(point.coveredInputTokens ?? point.inputTokens + point.cachedTokens)} covered
+        input
         {point.coverage !== undefined ? ` · ${Math.round(point.coverage * 100)}% coverage` : ""}
       </ChartTooltipSubtitle>
     </ChartTooltip>
@@ -110,9 +107,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
     >
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs md:text-sm text-basalt-muted-foreground">
-            Daily Cache Hit Rate
-          </p>
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">Daily Cache Hit Rate</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-basalt-muted-foreground">
           <div
@@ -129,10 +124,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
 
       <div className="h-[200px] md:h-[240px]">
         <DashboardResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={data}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <LineChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={chartAxis}
@@ -154,12 +146,14 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
               tickLine={false}
               width={44}
             />
-            {average !== null && <ReferenceLine
-              y={average}
-              stroke={chart.pink}
-              strokeDasharray="4 4"
-              strokeOpacity={0.6}
-            />}
+            {average !== null && (
+              <ReferenceLine
+                y={average}
+                stroke={chart.pink}
+                strokeDasharray="4 4"
+                strokeOpacity={0.6}
+              />
+            )}
             <Tooltip content={<CacheRateTooltip />} isAnimationActive={false} />
             <Line
               {...CHART_ANIMATION}

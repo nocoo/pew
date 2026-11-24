@@ -63,12 +63,35 @@ describe("runSync", () => {
     const fixtureDir = resolve(outputPath, "..");
     const orFile = resolve(fixtureDir, "openrouter.json");
     const mdFile = resolve(fixtureDir, "models-dev.json");
-    writeFileSync(orFile, JSON.stringify({ data: [{ id: "openai/test", pricing: {
-      prompt: "0.000002", completion: "0.00001", input_cache_write: "0.0000025",
-    } }] }));
-    const direct = (write: number) => JSON.stringify({ openai: { models: { test: { cost: {
-      input: 4, output: 20, cache_write: write,
-    } } } } });
+    writeFileSync(
+      orFile,
+      JSON.stringify({
+        data: [
+          {
+            id: "openai/test",
+            pricing: {
+              prompt: "0.000002",
+              completion: "0.00001",
+              input_cache_write: "0.0000025",
+            },
+          },
+        ],
+      }),
+    );
+    const direct = (write: number) =>
+      JSON.stringify({
+        openai: {
+          models: {
+            test: {
+              cost: {
+                input: 4,
+                output: 20,
+                cache_write: write,
+              },
+            },
+          },
+        },
+      });
     writeFileSync(mdFile, direct(5));
     const options = { dryRun: false, allowRemovals: false, fixtureDir, outputPath, now: NOW };
     const first = await runSync(options);
@@ -101,8 +124,8 @@ describe("runSync", () => {
           },
         ],
         null,
-        2
-      )}\n`
+        2,
+      )}\n`,
     );
     const r = await runSync({
       dryRun: true,
@@ -120,12 +143,9 @@ describe("runSync", () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(
       resolve(dir, "openrouter.json"),
-      JSON.stringify({ data: [{ id: "broken", pricing: { prompt: "abc", completion: "1" } }] })
+      JSON.stringify({ data: [{ id: "broken", pricing: { prompt: "abc", completion: "1" } }] }),
     );
-    writeFileSync(
-      resolve(dir, "models-dev.json"),
-      JSON.stringify({})
-    );
+    writeFileSync(resolve(dir, "models-dev.json"), JSON.stringify({}));
     const r = await runSync({
       dryRun: true,
       allowRemovals: false,
@@ -187,8 +207,8 @@ describe("main (dry-run path)", () => {
           },
         ],
         null,
-        2
-      )}\n`
+        2,
+      )}\n`,
     );
     const code = await main(["--dry-run", "--fixture", FIXTURE_DIR, "--output", out]);
     expect(code).toBe(2);
@@ -214,8 +234,8 @@ describe("main (dry-run path)", () => {
           },
         ],
         null,
-        2
-      )}\n`
+        2,
+      )}\n`,
     );
     const logs: string[] = [];
     const origLog = console.log;
@@ -280,8 +300,8 @@ describe("main (dry-run path)", () => {
           },
         ],
         null,
-        2
-      )}\n`
+        2,
+      )}\n`,
     );
     const r = await runSync({
       dryRun: true,

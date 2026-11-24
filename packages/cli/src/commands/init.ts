@@ -6,11 +6,7 @@ import {
   writeNotifyHandler,
 } from "../notifier/notify-handler.js";
 import { resolveNotifierPaths, type NotifierPaths } from "../notifier/paths.js";
-import {
-  getAllDrivers,
-  getDriver,
-  installAll,
-} from "../notifier/registry.js";
+import { getAllDrivers, getDriver, installAll } from "../notifier/registry.js";
 import { SECURE_DIR_MODE } from "../storage/secure-mkdir.js";
 
 export interface InitOptions {

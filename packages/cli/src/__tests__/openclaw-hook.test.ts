@@ -25,10 +25,7 @@ describe("OpenClaw hook installer", () => {
   });
 
   it("writes plugin files and runs openclaw install/enable commands", async () => {
-    const spawn = vi
-      .fn()
-      .mockReturnValueOnce({ status: 0 })
-      .mockReturnValueOnce({ status: 0 });
+    const spawn = vi.fn().mockReturnValueOnce({ status: 0 }).mockReturnValueOnce({ status: 0 });
 
     const result = await installOpenClawHook({
       pluginBaseDir,
@@ -98,10 +95,7 @@ describe("OpenClaw hook installer", () => {
   });
 
   it("returns warnings when install or enable exits non-zero", async () => {
-    const spawn = vi
-      .fn()
-      .mockReturnValueOnce({ status: 1 })
-      .mockReturnValueOnce({ status: 2 });
+    const spawn = vi.fn().mockReturnValueOnce({ status: 1 }).mockReturnValueOnce({ status: 2 });
 
     const result = await installOpenClawHook({
       pluginBaseDir,
@@ -144,9 +138,9 @@ describe("OpenClaw hook installer", () => {
       "utf8",
     );
 
-    expect(
-      await getOpenClawHookStatus({ pluginBaseDir, notifyPath, openclawConfigPath }),
-    ).toBe("installed");
+    expect(await getOpenClawHookStatus({ pluginBaseDir, notifyPath, openclawConfigPath })).toBe(
+      "installed",
+    );
   });
 
   it("reports not-installed status when config exists but plugin files are incomplete", async () => {
@@ -174,17 +168,17 @@ describe("OpenClaw hook installer", () => {
       "utf8",
     );
 
-    expect(
-      await getOpenClawHookStatus({ pluginBaseDir, notifyPath, openclawConfigPath }),
-    ).toBe("not-installed");
+    expect(await getOpenClawHookStatus({ pluginBaseDir, notifyPath, openclawConfigPath })).toBe(
+      "not-installed",
+    );
   });
 
   it("reports error status for an invalid config file", async () => {
     await writeFile(openclawConfigPath, "{invalid-json}\n", "utf8");
 
-    expect(
-      await getOpenClawHookStatus({ pluginBaseDir, notifyPath, openclawConfigPath }),
-    ).toBe("error");
+    expect(await getOpenClawHookStatus({ pluginBaseDir, notifyPath, openclawConfigPath })).toBe(
+      "error",
+    );
   });
 
   it("removes plugin references from config and deletes the plugin directory", async () => {

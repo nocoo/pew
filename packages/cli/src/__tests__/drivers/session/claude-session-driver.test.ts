@@ -83,8 +83,14 @@ describe("claudeSessionDriver", () => {
       await mkdir(projectsDir, { recursive: true });
       const filePath = join(projectsDir, "session.jsonl");
       const content =
-        claudeSessionLine({ sessionId: "ses-001", type: "user" }) + "\n" +
-        claudeSessionLine({ sessionId: "ses-001", type: "assistant", message: { model: "claude-sonnet-4-20250514" } }) + "\n";
+        claudeSessionLine({ sessionId: "ses-001", type: "user" }) +
+        "\n" +
+        claudeSessionLine({
+          sessionId: "ses-001",
+          type: "assistant",
+          message: { model: "claude-sonnet-4-20250514" },
+        }) +
+        "\n";
       await writeFile(filePath, content);
 
       const snapshots = await claudeSessionDriver.parse(filePath);

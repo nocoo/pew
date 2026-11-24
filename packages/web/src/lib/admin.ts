@@ -10,7 +10,12 @@
  * which only bypasses authentication but preserves admin role checks.
  */
 
-import { resolveUser, type AuthResult, E2E_TEST_USER_ID, E2E_TEST_USER_EMAIL } from "./auth-helpers";
+import {
+  resolveUser,
+  type AuthResult,
+  E2E_TEST_USER_ID,
+  E2E_TEST_USER_EMAIL,
+} from "./auth-helpers";
 import { getDbRead } from "./db";
 
 // ---------------------------------------------------------------------------
@@ -44,7 +49,7 @@ function getAdminEmails(): Set<string> {
     raw
       .split(",")
       .map((e) => e.trim().toLowerCase())
-      .filter(Boolean)
+      .filter(Boolean),
   );
 }
 
@@ -72,9 +77,7 @@ export interface AdminResult extends AuthResult {
  *
  * In E2E mode with admin bypass, returns a synthetic admin user for testing.
  */
-export async function resolveAdmin(
-  request: Request
-): Promise<AdminResult | null> {
+export async function resolveAdmin(request: Request): Promise<AdminResult | null> {
   // In E2E mode with admin bypass, return synthetic admin user
   if (isAdminBypass()) {
     return { userId: E2E_TEST_USER_ID, email: E2E_TEST_USER_EMAIL };
@@ -88,7 +91,7 @@ export async function resolveAdmin(
   let email = authResult.email;
   if (!email) {
     const db = await getDbRead();
-    email = await db.getUserEmail(authResult.userId) ?? undefined;
+    email = (await db.getUserEmail(authResult.userId)) ?? undefined;
   }
 
   if (!isAdmin(email)) return null;
@@ -100,16 +103,14 @@ export async function resolveAdmin(
  * Check if the given AuthResult represents an admin user.
  * Handles case where email may be missing from the auth result.
  */
-export async function isAdminUser(
-  authResult: AuthResult
-): Promise<boolean> {
+export async function isAdminUser(authResult: AuthResult): Promise<boolean> {
   // In E2E mode with admin bypass, all users are admins
   if (isAdminBypass()) return true;
 
   let email = authResult.email;
   if (!email) {
     const db = await getDbRead();
-    email = await db.getUserEmail(authResult.userId) ?? undefined;
+    email = (await db.getUserEmail(authResult.userId)) ?? undefined;
   }
   return isAdmin(email);
 }

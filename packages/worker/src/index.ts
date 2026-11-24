@@ -125,7 +125,13 @@ WHERE excluded.snapshot_at >= session_records.snapshot_at
 // ---------------------------------------------------------------------------
 
 type EnvelopeResult<T> =
-  | { ok: true; userId: string; records: T[]; ignored: number; acknowledgmentOrder: Array<number | AccountingAck | null> }
+  | {
+      ok: true;
+      userId: string;
+      records: T[];
+      ignored: number;
+      acknowledgmentOrder: Array<number | AccountingAck | null>;
+    }
   | { ok: false; error: string };
 
 /**
@@ -173,7 +179,13 @@ function validateRequest<T>(
     validated.push(result.record);
   }
 
-  return { ok: true, userId: obj.userId as string, records: validated, ignored, acknowledgmentOrder };
+  return {
+    ok: true,
+    userId: obj.userId as string,
+    records: validated,
+    ignored,
+    acknowledgmentOrder,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -230,7 +242,14 @@ async function handleLive(env: Env): Promise<Response> {
   const healthy = database.connected;
 
   return Response.json(
-    { status: healthy ? "ok" : "error", version: WORKER_VERSION, component: "pew-ingest", timestamp, uptime, database },
+    {
+      status: healthy ? "ok" : "error",
+      version: WORKER_VERSION,
+      component: "pew-ingest",
+      timestamp,
+      uptime,
+      database,
+    },
     { status: healthy ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
 }
@@ -247,8 +266,18 @@ async function handleTokenIngest(body: unknown, env: Env): Promise<Response> {
 
   try {
     const stmts = records.map((r) => {
-      const values = [userId, r.device_id ?? "default", r.source, r.model, r.hour_start,
-        r.input_tokens, r.cached_input_tokens, r.output_tokens, r.reasoning_output_tokens, r.total_tokens];
+      const values = [
+        userId,
+        r.device_id ?? "default",
+        r.source,
+        r.model,
+        r.hour_start,
+        r.input_tokens,
+        r.cached_input_tokens,
+        r.output_tokens,
+        r.reasoning_output_tokens,
+        r.total_tokens,
+      ];
       return r.device_id === undefined
         ? env.DB.prepare(TOKEN_UPSERT_SQL).bind(...values)
         : env.DB.prepare(DEVICE_TOKEN_UPSERT_SQL).bind(...values, userId, r.device_id);
@@ -307,15 +336,35 @@ async function handleEvidenceIngest(body: unknown, env: Env): Promise<Response> 
   const counts = { ingested: records.length, ...(ignored ? { ignored } : {}) };
   if (records.length === 0) return Response.json(counts);
   try {
-    await env.DB.batch(records.map((r) => {
-      const e = r.evidence;
-      return env.DB.prepare(EVIDENCE_UPSERT_SQL).bind(
-        userId, r.device_id, e.eventId, e.groupId, r.source, r.model, r.hour_start, r.timestamp,
-        e.callType, e.origin, e.provider, e.granularity, e.timePrecision, e.intervalStart, e.intervalEnd,
-        e.callCount, e.snapshotSeq, r.input_tokens, r.cached_input_tokens, r.output_tokens,
-        r.reasoning_output_tokens, r.total_tokens,
-      );
-    }));
+    await env.DB.batch(
+      records.map((r) => {
+        const e = r.evidence;
+        return env.DB.prepare(EVIDENCE_UPSERT_SQL).bind(
+          userId,
+          r.device_id,
+          e.eventId,
+          e.groupId,
+          r.source,
+          r.model,
+          r.hour_start,
+          r.timestamp,
+          e.callType,
+          e.origin,
+          e.provider,
+          e.granularity,
+          e.timePrecision,
+          e.intervalStart,
+          e.intervalEnd,
+          e.callCount,
+          e.snapshotSeq,
+          r.input_tokens,
+          r.cached_input_tokens,
+          r.output_tokens,
+          r.reasoning_output_tokens,
+          r.total_tokens,
+        );
+      }),
+    );
     return Response.json(counts);
   } catch {
     // Do not log bound values, source identifiers or request bodies.
@@ -358,9 +407,13 @@ export default {
     // 4. Parse JSON body
     let body: unknown;
     try {
-      body = await readBoundedJson(request, path === "/ingest/details" ? MAX_ACCOUNTING_BODY_BYTES : MAX_INGEST_BODY_BYTES);
+      body = await readBoundedJson(
+        request,
+        path === "/ingest/details" ? MAX_ACCOUNTING_BODY_BYTES : MAX_INGEST_BODY_BYTES,
+      );
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return Response.json({ error: error.message }, { status: 413 });
+      if (error instanceof BodyTooLargeError)
+        return Response.json({ error: error.message }, { status: 413 });
       return Response.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
@@ -372,14 +425,27 @@ export default {
     if (path === "/ingest/evidence") return handleEvidenceIngest(body, env);
 
     if (path === "/ingest/details") {
-      const validation = validateRequest(body, validateAccountingRecord, MAX_ACCOUNTING_BATCH_SIZE, retiredAccountingAcknowledgment);
+      const validation = validateRequest(
+        body,
+        validateAccountingRecord,
+        MAX_ACCOUNTING_BATCH_SIZE,
+        retiredAccountingAcknowledgment,
+      );
       if (!validation.ok) return Response.json({ error: validation.error }, { status: 400 });
       try {
-        const activeAcknowledgments = validation.records.length > 0
-          ? await ingestAccounting(env.DB, validation.userId, validation.records) : [];
-        const acknowledgments = validation.acknowledgmentOrder.flatMap((slot) => slot === null ? [] : typeof slot === "number" ? [activeAcknowledgments[slot]] : [slot]);
-        return Response.json({ details_version: 1, acknowledgments,
-          ...(validation.ignored ? { ingested: validation.records.length, ignored: validation.ignored } : {}),
+        const activeAcknowledgments =
+          validation.records.length > 0
+            ? await ingestAccounting(env.DB, validation.userId, validation.records)
+            : [];
+        const acknowledgments = validation.acknowledgmentOrder.flatMap((slot) =>
+          slot === null ? [] : typeof slot === "number" ? [activeAcknowledgments[slot]] : [slot],
+        );
+        return Response.json({
+          details_version: 1,
+          acknowledgments,
+          ...(validation.ignored
+            ? { ingested: validation.records.length, ignored: validation.ignored }
+            : {}),
         });
       } catch {
         console.error("Accounting detail ingest failed");

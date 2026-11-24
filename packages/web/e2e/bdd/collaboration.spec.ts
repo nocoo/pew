@@ -1,6 +1,8 @@
 import { test, expect, watchPageReadiness } from "./fixtures";
 
-test("organization creation reveals its fields; settings navigation loads membership", async ({ page }) => {
+test("organization creation reveals its fields; settings navigation loads membership", async ({
+  page,
+}) => {
   const health = watchPageReadiness(page);
   await page.goto("/admin/organizations");
   await health.ready(["/api/admin/organizations"]);

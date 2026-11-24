@@ -65,9 +65,7 @@ describe("deriveStatus", () => {
     expect(
       deriveStatus(
         baseResult({
-          cycles: [
-            { trigger: "interval" as const, tokenSync: { uploaded: 1, attempted: 1 } },
-          ],
+          cycles: [{ trigger: "interval" as const, tokenSync: { uploaded: 1, attempted: 1 } }],
         }),
       ),
     ).toBe("success");
@@ -98,7 +96,9 @@ describe("readLastSuccessAt", () => {
   });
 
   it("returns null when the file is missing (readFile throws)", async () => {
-    const fs = { readFile: vi.fn().mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" })) };
+    const fs = {
+      readFile: vi.fn().mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" })),
+    };
     expect(await readLastSuccessAt("/state", fs)).toBeNull();
   });
 });
@@ -110,12 +110,18 @@ describe("signal helpers", () => {
   });
 
   it("readSignalSize returns 0 on ENOENT", async () => {
-    const fs = { stat: vi.fn().mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" })) };
+    const fs = {
+      stat: vi.fn().mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" })),
+    };
     expect(await readSignalSize("/state", fs)).toBe(0);
   });
 
   it("readSignalSize re-throws non-ENOENT errors", async () => {
-    const fs = { stat: vi.fn().mockRejectedValue(Object.assign(new Error("permission denied"), { code: "EACCES" })) };
+    const fs = {
+      stat: vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error("permission denied"), { code: "EACCES" })),
+    };
     await expect(readSignalSize("/state", fs)).rejects.toThrow("permission denied");
   });
 

@@ -1,25 +1,14 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
 import { fmtHour } from "@/lib/date-helpers";
 import { chartAxis, agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import type { HourlyByAgentPoint } from "@/lib/usage-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
-import {
-  ChartTooltip,
-  ChartTooltipRow,
-  ChartTooltipSummary,
-} from "./chart-tooltip";
+import { ChartTooltip, ChartTooltipRow, ChartTooltipSummary } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,11 +67,7 @@ function AgentTooltip({
  * Stacked bar chart showing average hourly token usage by agent (source).
  * X-axis is hours 0-23, Y-axis is tokens, bars are stacked by agent.
  */
-export function HourlyAgentChart({
-  data,
-  className,
-  compact = false,
-}: HourlyAgentChartProps) {
+export function HourlyAgentChart({ data, className, compact = false }: HourlyAgentChartProps) {
   if (!data.length || data.every((d) => Object.keys(d.sources).length === 0)) {
     return (
       <div
@@ -119,7 +104,12 @@ export function HourlyAgentChart({
         className,
       )}
     >
-      <div className={cn("flex flex-wrap items-center justify-between gap-2", compact ? "mb-2" : "mb-4")}>
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-2",
+          compact ? "mb-2" : "mb-4",
+        )}
+      >
         <p className="text-xs md:text-sm text-basalt-muted-foreground">
           {compact ? "By Agent" : "Hourly By Agent"}
         </p>
@@ -127,10 +117,7 @@ export function HourlyAgentChart({
           <div className="flex flex-wrap items-center gap-3">
             {legendItems.map(({ key, label, color }) => (
               <div key={key} className="flex items-center gap-1.5">
-                <div
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: color }}
-                />
+                <div className="h-2 w-2 rounded-full" style={{ background: color }} />
                 <span className="text-xs text-basalt-muted-foreground">{label}</span>
               </div>
             ))}
@@ -140,10 +127,7 @@ export function HourlyAgentChart({
 
       <div style={{ height: compact ? 160 : 280 }}>
         <DashboardResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={chartAxis}
@@ -165,10 +149,7 @@ export function HourlyAgentChart({
               tickLine={false}
               width={compact ? 40 : 50}
             />
-            <Tooltip
-              content={<AgentTooltip />}
-              isAnimationActive={false}
-            />
+            <Tooltip content={<AgentTooltip />} isAnimationActive={false} />
             {sourceKeys.map((source, i) => (
               <Bar
                 {...CHART_ANIMATION}

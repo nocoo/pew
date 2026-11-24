@@ -2,20 +2,10 @@
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useMemo } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
-import {
-  toDeviceSharePoints,
-  buildDeviceLabelMap,
-} from "@/lib/device-helpers";
+import { toDeviceSharePoints, buildDeviceLabelMap } from "@/lib/device-helpers";
 import type { DeviceAggregate, DeviceTimelinePoint } from "@pew/core";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import { ChartSeriesTooltip } from "./chart-series-tooltip";
@@ -65,8 +55,16 @@ function DeviceShareTooltip({
 }) {
   if (!active || !payload?.length) return null;
 
-  return <ChartSeriesTooltip title={label ? fmtDate(label) : undefined} percentage
-    entries={payload.map((entry) => ({ ...entry, name: labelMap.get(entry.dataKey) ?? entry.dataKey }))} />;
+  return (
+    <ChartSeriesTooltip
+      title={label ? fmtDate(label) : undefined}
+      percentage
+      entries={payload.map((entry) => ({
+        ...entry,
+        name: labelMap.get(entry.dataKey) ?? entry.dataKey,
+      }))}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -77,11 +75,7 @@ function DeviceShareTooltip({
  * 100% stacked AreaChart showing each device's share of total usage over time.
  * Useful for spotting when a user shifts between devices.
  */
-export function DeviceShareChart({
-  timeline,
-  devices,
-  className,
-}: DeviceShareChartProps) {
+export function DeviceShareChart({ timeline, devices, className }: DeviceShareChartProps) {
   const chartData = useMemo(() => toDeviceSharePoints(timeline), [timeline]);
 
   const labelMap = useMemo(() => buildDeviceLabelMap(devices), [devices]);
@@ -101,7 +95,7 @@ export function DeviceShareChart({
       <div
         className={cn(
           "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
-          className
+          className,
         )}
       >
         No device data yet
@@ -113,13 +107,11 @@ export function DeviceShareChart({
     <div
       className={cn(
         "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
-        className
+        className,
       )}
     >
       <div className="mb-4 space-y-3">
-        <p className="text-xs md:text-sm text-basalt-muted-foreground">
-          Device Share
-        </p>
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">Device Share</p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {deviceKeys.slice(0, 5).map((deviceId, i) => (
             <div key={deviceId} className="flex min-w-0 items-center gap-1.5">
@@ -134,7 +126,13 @@ export function DeviceShareChart({
               </span>
             </div>
           ))}
-          <ChartLegendMore items={deviceKeys.map((key, i) => ({ key, label: labelMap.get(key) ?? key, color: CHART_COLORS[i % CHART_COLORS.length] as string }))} />
+          <ChartLegendMore
+            items={deviceKeys.map((key, i) => ({
+              key,
+              label: labelMap.get(key) ?? key,
+              color: CHART_COLORS[i % CHART_COLORS.length] as string,
+            }))}
+          />
         </div>
       </div>
 
@@ -147,14 +145,7 @@ export function DeviceShareChart({
           >
             <defs>
               {deviceKeys.map((deviceId, i) => (
-                <linearGradient
-                  key={deviceId}
-                  id={`gradDevice${i}`}
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
+                <linearGradient key={deviceId} id={`gradDevice${i}`} x1="0" y1="0" x2="0" y2="1">
                   <stop
                     offset="0%"
                     stopColor={CHART_COLORS[i % CHART_COLORS.length] as string}
@@ -189,7 +180,10 @@ export function DeviceShareChart({
               width={44}
               domain={[0, 100]}
             />
-            <Tooltip content={<DeviceShareTooltip labelMap={labelMap} />} isAnimationActive={false} />
+            <Tooltip
+              content={<DeviceShareTooltip labelMap={labelMap} />}
+              isAnimationActive={false}
+            />
             {deviceKeys.map((deviceId, i) => (
               <Area
                 {...CHART_ANIMATION}

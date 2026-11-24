@@ -44,9 +44,7 @@ async function collectFiles(
  * Discover Claude Code JSONL files.
  * Path pattern: ~/.claude/projects/\*\*\/*.jsonl
  */
-export async function discoverClaudeFiles(
-  claudeDir: string,
-): Promise<string[]> {
+export async function discoverClaudeFiles(claudeDir: string): Promise<string[]> {
   const projectsDir = join(claudeDir, "projects");
   return collectFiles(projectsDir, (name) => name.endsWith(".jsonl"));
 }
@@ -142,9 +140,7 @@ export async function discoverOpenCodeFiles(
  * Discover OpenClaw session files.
  * Path pattern: ~/.openclaw/agents/\*\/sessions/*.jsonl
  */
-export async function discoverOpenClawFiles(
-  openclawDir: string,
-): Promise<string[]> {
+export async function discoverOpenClawFiles(openclawDir: string): Promise<string[]> {
   const agentsDir = join(openclawDir, "agents");
   return collectFiles(agentsDir, (name) => name.endsWith(".jsonl"));
 }
@@ -153,9 +149,7 @@ export async function discoverOpenClawFiles(
  * Discover pi session JSONL files.
  * Path pattern: ~/.pi/agent/sessions/<encoded-cwd>/*.jsonl
  */
-export async function discoverPiFiles(
-  piSessionsDir: string,
-): Promise<string[]> {
+export async function discoverPiFiles(piSessionsDir: string): Promise<string[]> {
   return collectFiles(piSessionsDir, (name) => name.endsWith(".jsonl"));
 }
 
@@ -182,8 +176,7 @@ export async function discoverCodexFiles(
   codexSessionsDir: string,
   extraDirs?: string[],
 ): Promise<CodexDiscovery> {
-  const predicate = (name: string) =>
-    name.startsWith("rollout-") && name.endsWith(".jsonl");
+  const predicate = (name: string) => name.startsWith("rollout-") && name.endsWith(".jsonl");
 
   const results: string[] = [];
   let complete = true;
@@ -228,12 +221,8 @@ export async function discoverCodexFiles(
  * Discover GitHub Copilot CLI process log files.
  * Path pattern: ~/.copilot/logs/process-*.log
  */
-export async function discoverCopilotCliFiles(
-  logsDir: string,
-): Promise<string[]> {
-  return collectFiles(logsDir, (name) =>
-    name.startsWith("process-") && name.endsWith(".log"),
-  );
+export async function discoverCopilotCliFiles(logsDir: string): Promise<string[]> {
+  return collectFiles(logsDir, (name) => name.startsWith("process-") && name.endsWith(".log"));
 }
 
 /**
@@ -265,9 +254,7 @@ export async function discoverCopilotOtelFiles(paths: string[]): Promise<string[
  * Path: ~/.grok/logs/unified.jsonl (single append-only file).
  * Returns [path] if the file exists, else [].
  */
-export async function discoverGrokLogFile(
-  logsPath: string,
-): Promise<string[]> {
+export async function discoverGrokLogFile(logsPath: string): Promise<string[]> {
   try {
     const st = await stat(logsPath);
     if (st.isFile()) return [logsPath];
@@ -281,9 +268,7 @@ export async function discoverGrokLogFile(
  * Discover Grok CLI session summary files.
  * Path pattern: ~/.grok/sessions/<enc-cwd>/<sid>/summary.json
  */
-export async function discoverGrokSessionDirs(
-  sessionsDir: string,
-): Promise<string[]> {
+export async function discoverGrokSessionDirs(sessionsDir: string): Promise<string[]> {
   return collectFiles(sessionsDir, (name) => name === "summary.json");
 }
 

@@ -41,20 +41,31 @@ function remove(cache: Cache, key: string, bytes: number) {
 }
 
 function isFresh(snapshot: LeaderboardSnapshot, revision: string): boolean {
-  return snapshot.revision === revision
-    && Number.isFinite(snapshot.generatedAt)
-    && Number.isFinite(snapshot.expiresAt)
-    && snapshot.expiresAt > snapshot.generatedAt
-    && snapshot.expiresAt > Date.now();
+  return (
+    snapshot.revision === revision &&
+    Number.isFinite(snapshot.generatedAt) &&
+    Number.isFinite(snapshot.expiresAt) &&
+    snapshot.expiresAt > snapshot.generatedAt &&
+    snapshot.expiresAt > Date.now()
+  );
 }
 
-export async function getCachedLeaderboard(db: DbRead, filters: LeaderboardFilters): Promise<LeaderboardSnapshot> {
+export async function getCachedLeaderboard(
+  db: DbRead,
+  filters: LeaderboardFilters,
+): Promise<LeaderboardSnapshot> {
   let cache = caches.get(db);
   if (!cache) {
     cache = { entries: new Map(), inflight: new Map(), bytes: 0, hits: 0, misses: 0 };
     caches.set(db, cache);
   }
-  const key = JSON.stringify([filters.fromDate, filters.teamId, filters.orgId, filters.source, filters.model]);
+  const key = JSON.stringify([
+    filters.fromDate,
+    filters.teamId,
+    filters.orgId,
+    filters.source,
+    filters.model,
+  ]);
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const revision = await db.getLeaderboardRevision();
@@ -70,7 +81,8 @@ export async function getCachedLeaderboard(db: DbRead, filters: LeaderboardFilte
         cache.misses++;
         pending = cache.inflight.get(flightKey);
         if (!pending) {
-          if (cache.inflight.size >= MAX_INFLIGHT) throw new Error("Too many leaderboard snapshot requests");
+          if (cache.inflight.size >= MAX_INFLIGHT)
+            throw new Error("Too many leaderboard snapshot requests");
           pending = db.getLeaderboardSnapshot(filters);
           cache.inflight.set(flightKey, pending);
         }

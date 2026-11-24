@@ -13,13 +13,14 @@ Raw Logs    -->  ParsedDelta[]  --> QueueRecord[]  --> HTTP Upload  --> D1 Upser
 ```
 
 State files:
-| File | Location | Purpose |
-|------|----------|---------|
-| `config.json` | `~/.config/pew/` | Prod API key (`pk_...`) |
-| `config.dev.json` | `~/.config/pew/` | Dev API key |
-| `cursors.json` | `~/.config/pew/` | Per-file parse cursors + directory mtimes |
-| `queue.jsonl` | `~/.config/pew/` | Pending upload records (append-only JSONL) |
-| `queue.state.json` | `~/.config/pew/` | Upload byte-offset (resume point) |
+
+| File               | Location         | Purpose                                    |
+| ------------------ | ---------------- | ------------------------------------------ |
+| `config.json`      | `~/.config/pew/` | Prod API key (`pk_...`)                    |
+| `config.dev.json`  | `~/.config/pew/` | Dev API key                                |
+| `cursors.json`     | `~/.config/pew/` | Per-file parse cursors + directory mtimes  |
+| `queue.jsonl`      | `~/.config/pew/` | Pending upload records (append-only JSONL) |
+| `queue.state.json` | `~/.config/pew/` | Upload byte-offset (resume point)          |
 
 ---
 
@@ -34,6 +35,7 @@ incrementally using per-file cursors.
 - **Format**: JSONL, one JSON object per line, tokens are **absolute** per-event
 - **Incremental strategy**: Byte offset (`ByteOffsetCursor`)
 - **Raw record**:
+
   ```jsonc
   {
     "type": "assistant",
@@ -64,6 +66,7 @@ incrementally using per-file cursors.
   **cumulative** across messages
 - **Incremental strategy**: Array index + cumulative diff (`GeminiCursor`)
 - **Raw record** (per message in array):
+
   ```jsonc
   {
     "id": "msg-001",
@@ -93,6 +96,7 @@ incrementally using per-file cursors.
 - **Incremental strategy**: File stat triple-check (inode + size + mtime) +
   cumulative diff (`OpenCodeCursor`), with directory-level mtime optimization
 - **Raw record**:
+
   ```jsonc
   {
     "id": "msg_001",
@@ -127,6 +131,7 @@ incrementally using per-file cursors.
 - **Format**: JSONL, tokens are **absolute** per-event
 - **Incremental strategy**: Byte offset (`ByteOffsetCursor`)
 - **Raw record**:
+
   ```jsonc
   {
     "type": "message",              // only "message" type processed
@@ -184,7 +189,7 @@ type FileCursor = ByteOffsetCursor | GeminiCursor | OpenCodeCursor;
 interface CursorState {
   version: 1;
   files: Record<string, FileCursor>;
-  dirMtimes?: Record<string, number>;   // OpenCode directory-level optimization
+  dirMtimes?: Record<string, number>; // OpenCode directory-level optimization
   updatedAt: string | null;
 }
 ```
@@ -198,29 +203,29 @@ All four parsers normalize into a common intermediate structure.
 ```typescript
 // packages/core/src/types.ts
 interface TokenDelta {
-  inputTokens: number;           // total input tokens consumed
-  cachedInputTokens: number;     // input tokens served from cache (subset)
-  outputTokens: number;          // total output tokens generated
+  inputTokens: number; // total input tokens consumed
+  cachedInputTokens: number; // input tokens served from cache (subset)
+  outputTokens: number; // total output tokens generated
   reasoningOutputTokens: number; // reasoning/thinking tokens reported separately
 }
 
 // packages/cli/src/parsers/claude.ts (shared by all parsers)
 interface ParsedDelta {
   source: "claude-code" | "gemini-cli" | "opencode" | "openclaw";
-  model: string;           // e.g. "claude-sonnet-4-20250514", "gemini-2.5-pro"
-  timestamp: string;       // ISO 8601
+  model: string; // e.g. "claude-sonnet-4-20250514", "gemini-2.5-pro"
+  timestamp: string; // ISO 8601
   tokens: TokenDelta;
 }
 ```
 
 ### Normalization Mapping
 
-| Unified Field | Claude Code | Gemini CLI | OpenCode | OpenClaw |
-|---------------|-------------|------------|----------|----------|
-| `inputTokens` | `input_tokens` + `cache_creation` | `input` | `input` + `cache.write` | `input` |
-| `cachedInputTokens` | `cache_read` | `cached` | `cache.read` | `cacheRead` + `cacheWrite` |
-| `outputTokens` | `output_tokens` | `output` + `tool` | `output` | `output` |
-| `reasoningOutputTokens` | 0 (hardcoded) | `thoughts` | `reasoning` | 0 (hardcoded) |
+| Unified Field           | Claude Code                       | Gemini CLI        | OpenCode                | OpenClaw                   |
+| ----------------------- | --------------------------------- | ----------------- | ----------------------- | -------------------------- |
+| `inputTokens`           | `input_tokens` + `cache_creation` | `input`           | `input` + `cache.write` | `input`                    |
+| `cachedInputTokens`     | `cache_read`                      | `cached`          | `cache.read`            | `cacheRead` + `cacheWrite` |
+| `outputTokens`          | `output_tokens`                   | `output` + `tool` | `output`                | `output`                   |
+| `reasoningOutputTokens` | 0 (hardcoded)                     | `thoughts`        | `reasoning`             | 0 (hardcoded)              |
 
 All token values pass through `toNonNegInt()`: negative -> 0, float -> `Math.floor()`.
 
@@ -233,10 +238,10 @@ local queue as `QueueRecord[]`.
 
 ```typescript
 // packages/cli/src/utils/buckets.ts
-function toUtcHalfHourStart(ts: string | number): string | null
+function toUtcHalfHourStart(ts: string | number): string | null;
 // Floors to :00 or :30 -> "2026-03-07T10:00:00.000Z" or "...T10:30:00.000Z"
 
-function bucketKey(source, model, hourStart): string
+function bucketKey(source, model, hourStart): string;
 // Returns "source|model|hourStart"
 ```
 
@@ -247,12 +252,12 @@ Bucket key = `source|model|hourStart`. Tokens within the same bucket are summed.
 interface QueueRecord {
   source: Source;
   model: string;
-  hour_start: string;                // ISO 8601 half-hour boundary
+  hour_start: string; // ISO 8601 half-hour boundary
   input_tokens: number;
   cached_input_tokens: number;
   output_tokens: number;
   reasoning_output_tokens: number;
-  total_tokens: number;              // = input + cached + output + reasoning
+  total_tokens: number; // = input + cached + output + reasoning
 }
 ```
 
@@ -294,6 +299,7 @@ Body: {
 ```
 
 Next.js validates all records before forwarding:
+
 - Source must be one of the 4 valid values
 - Model must be non-empty string
 - `hour_start` must match ISO 8601 prefix pattern

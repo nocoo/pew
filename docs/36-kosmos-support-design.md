@@ -37,11 +37,11 @@ Kosmos 是基于 Electron + React 的桌面 AI 工作台，通过 GitHub Copilot
 
 平台特定路径，同时扫描两个 app 目录：
 
-| 平台 | Kosmos | PM Studio |
-|------|--------|-----------|
-| macOS | `~/Library/Application Support/kosmos-app/` | `~/Library/Application Support/pm-studio-app/` |
-| Windows | `%APPDATA%/kosmos-app/` | `%APPDATA%/pm-studio-app/` |
-| Linux | `~/.config/kosmos-app/` | `~/.config/pm-studio-app/` |
+| 平台    | Kosmos                                      | PM Studio                                      |
+| ------- | ------------------------------------------- | ---------------------------------------------- |
+| macOS   | `~/Library/Application Support/kosmos-app/` | `~/Library/Application Support/pm-studio-app/` |
+| Windows | `%APPDATA%/kosmos-app/`                     | `%APPDATA%/pm-studio-app/`                     |
+| Linux   | `~/.config/kosmos-app/`                     | `~/.config/pm-studio-app/`                     |
 
 ### 1.3 文件结构
 
@@ -108,11 +108,13 @@ Kosmos 是基于 Electron + React 的桌面 AI 工作台，通过 GitHub Copilot
 ### 挑战 1: Kosmos 不持久化 token 用量
 
 **问题**:
+
 - Kosmos 的 `agentChatStreamingService.ts` 已经从 SSE 流中提取了 `usage` 数据
 - 但 `agentChatTurnRunner.ts` 只把 usage 传给 `BuddyManager.addXP()`（经验值系统）
 - **未附加到 Message 对象上，也未写入磁盘**
 
 **解决方案**: 修改 Kosmos 代码（4 个文件，+26 行）
+
 - `Message` 接口新增可选 `usage` 和 `model` 字段
 - Turn Runner 中将 `streamingResponse.usage` 附加到 `response` Message
 - `/chat/completions` 请求添加 `stream_options: { include_usage: true }`
@@ -124,6 +126,7 @@ Kosmos 是基于 Electron + React 的桌面 AI 工作台，通过 GitHub Copilot
 ### 挑战 2: 文件全量重写（非 append-only）
 
 **问题**:
+
 - Claude Code、OpenClaw 等工具使用 JSONL（逐行追加），可用字节偏移做增量
 - Kosmos 每次新增消息后重写整个 `chatSession_*.json`
 - 字节偏移策略不适用
@@ -132,7 +135,7 @@ Kosmos 是基于 Electron + React 的桌面 AI 工作台，通过 GitHub Copilot
 
 ```typescript
 export interface KosmosCursor extends FileCursorBase {
-  processedMessageIds: string[];  // 已处理过的 assistant 消息 ID
+  processedMessageIds: string[]; // 已处理过的 assistant 消息 ID
 }
 ```
 
@@ -146,6 +149,7 @@ export interface KosmosCursor extends FileCursorBase {
 ### 挑战 3: 两个 API 端点的 usage 获取方式不同
 
 **问题**:
+
 - `/responses` 端点：`response.completed` 事件天然包含 `response.usage`
 - `/chat/completions` 端点：streaming 模式默认不返回 usage
 
@@ -169,26 +173,26 @@ export interface KosmosCursor extends FileCursorBase {
 
 ### 3.1 字段映射
 
-| Kosmos 字段 | pew 字段 | 说明 |
-|------------|---------|------|
-| `usage.prompt_tokens` | `inputTokens` | 直接映射 |
-| _(不可用)_ | `cachedInputTokens` | 硬编码 `0`（GHC API 不报告） |
-| `usage.completion_tokens` | `outputTokens` | 直接映射 |
-| _(不可用)_ | `reasoningOutputTokens` | 硬编码 `0` |
-| `model` | `model` | 直接映射（如 `"claude-opus-4.6"`） |
-| `timestamp` (epoch ms) | `timestamp` | 转为 ISO 8601 |
+| Kosmos 字段               | pew 字段                | 说明                               |
+| ------------------------- | ----------------------- | ---------------------------------- |
+| `usage.prompt_tokens`     | `inputTokens`           | 直接映射                           |
+| _(不可用)_                | `cachedInputTokens`     | 硬编码 `0`（GHC API 不报告）       |
+| `usage.completion_tokens` | `outputTokens`          | 直接映射                           |
+| _(不可用)_                | `reasoningOutputTokens` | 硬编码 `0`                         |
+| `model`                   | `model`                 | 直接映射（如 `"claude-opus-4.6"`） |
+| `timestamp` (epoch ms)    | `timestamp`             | 转为 ISO 8601                      |
 
 ### 3.2 解析逻辑
 
 ```typescript
 // parsers/kosmos.ts
 for (const msg of chatHistory) {
-  if (msg.role !== "assistant") continue;     // 只处理 assistant 消息
-  if (!msg.usage) continue;                   // 没有 usage 的旧消息跳过
-  if (!msg.id) continue;                      // 没有 ID 的消息跳过
-  allMessageIds.push(msg.id);                 // 记录所有有 usage 的消息 ID
+  if (msg.role !== "assistant") continue; // 只处理 assistant 消息
+  if (!msg.usage) continue; // 没有 usage 的旧消息跳过
+  if (!msg.id) continue; // 没有 ID 的消息跳过
+  allMessageIds.push(msg.id); // 记录所有有 usage 的消息 ID
   if (knownMessageIds?.has(msg.id)) continue; // 增量去重
-  if (!msg.timestamp) continue;               // 没有时间戳跳过
+  if (!msg.timestamp) continue; // 没有时间戳跳过
   // ... 提取 tokens、构建 ParsedDelta
 }
 ```
@@ -208,19 +212,19 @@ for (const msg of chatHistory) {
 
 从 `chat_history` 中提取：
 
-| 字段 | 来源 |
-|------|------|
-| `sessionKey` | `"kosmos:{chatSession_id}"` |
-| `source` | `"kosmos"` |
-| `kind` | `"human"` |
-| `startedAt` | 首条消息的 `timestamp` |
-| `lastMessageAt` | 末条消息的 `timestamp` |
-| `durationSeconds` | `(lastTimestamp - firstTimestamp) / 1000` |
-| `userMessages` | `role === "user"` 的消息数 |
-| `assistantMessages` | `role === "assistant"` 的消息数 |
-| `totalMessages` | 所有消息数（含 tool、system 等） |
-| `model` | 最后一个 assistant 消息的 `model` 字段 |
-| `projectRef` | `null`（Kosmos 无项目关联） |
+| 字段                | 来源                                      |
+| ------------------- | ----------------------------------------- |
+| `sessionKey`        | `"kosmos:{chatSession_id}"`               |
+| `source`            | `"kosmos"`                                |
+| `kind`              | `"human"`                                 |
+| `startedAt`         | 首条消息的 `timestamp`                    |
+| `lastMessageAt`     | 末条消息的 `timestamp`                    |
+| `durationSeconds`   | `(lastTimestamp - firstTimestamp) / 1000` |
+| `userMessages`      | `role === "user"` 的消息数                |
+| `assistantMessages` | `role === "assistant"` 的消息数           |
+| `totalMessages`     | 所有消息数（含 tool、system 等）          |
+| `model`             | 最后一个 assistant 消息的 `model` 字段    |
+| `projectRef`        | `null`（Kosmos 无项目关联）               |
 
 ### 4.2 增量策略
 

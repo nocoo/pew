@@ -37,11 +37,7 @@ describe("pruneAliasCursors", () => {
       [realPath]: true,
       [aliasPath]: true,
     };
-    const result = await pruneAliasCursors(
-      cursors,
-      new Set([realPath]),
-      knownFilePaths,
-    );
+    const result = await pruneAliasCursors(cursors, new Set([realPath]), knownFilePaths);
 
     expect(result.removedAlias).toBe(1);
     expect(result.removedMissing).toBe(0);
@@ -126,10 +122,7 @@ describe("pruneAliasCursors", () => {
       [ghostDiscovered]: { inode: 1, size: 0 },
       [realPath]: { inode: 2, size: 0 },
     };
-    const result = await pruneAliasCursors(
-      cursors,
-      new Set([ghostDiscovered, realPath]),
-    );
+    const result = await pruneAliasCursors(cursors, new Set([ghostDiscovered, realPath]));
 
     expect(result.removedAlias).toBe(0);
     expect(result.removedMissing).toBe(0);
@@ -293,11 +286,7 @@ describe("pruneAliasCursors", () => {
 
     const cursors: Record<string, DummyCursor> = {};
     const knownFilePaths: Record<string, true> = { [aliasPath]: true };
-    const result = await pruneAliasCursors(
-      cursors,
-      new Set([realPath]),
-      knownFilePaths,
-    );
+    const result = await pruneAliasCursors(cursors, new Set([realPath]), knownFilePaths);
 
     expect(result.removedAlias).toBe(1);
     expect(result.removedMissing).toBe(0);

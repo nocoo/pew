@@ -215,12 +215,15 @@ describe("collectPiSessions", () => {
 
   it("returns empty for file without session header", async () => {
     const filePath = join(sessionDir, "no-header.jsonl");
-    await writeFile(filePath, `${JSON.stringify({
-      type: "message",
-      id: "msg1",
-      timestamp: "2026-04-07T04:42:25.000Z",
-      message: { role: "user", content: [] },
-    })}\n`);
+    await writeFile(
+      filePath,
+      `${JSON.stringify({
+        type: "message",
+        id: "msg1",
+        timestamp: "2026-04-07T04:42:25.000Z",
+        message: { role: "user", content: [] },
+      })}\n`,
+    );
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(0);
@@ -323,7 +326,12 @@ describe("collectPiSessions", () => {
     const lines = [
       JSON.stringify({ type: "session", id: "no-ts", timestamp: "2026-04-07T10:00:00.000Z" }),
       JSON.stringify({ type: "message", id: "msg1", message: { role: "user", content: [] } }),
-      JSON.stringify({ type: "message", id: "msg2", timestamp: 12345, message: { role: "assistant", model: "test", content: [] } }),
+      JSON.stringify({
+        type: "message",
+        id: "msg2",
+        timestamp: 12345,
+        message: { role: "assistant", model: "test", content: [] },
+      }),
     ];
     await writeFile(filePath, `${lines.join("\n")}\n`);
 

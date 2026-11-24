@@ -24,10 +24,7 @@ export function SiteFooter() {
           GitHub
         </a>
         <span className="text-basalt-muted-foreground/40">&middot;</span>
-        <Link
-          href="/privacy"
-          className="hover:text-basalt-foreground transition-colors"
-        >
+        <Link href="/privacy" className="hover:text-basalt-foreground transition-colors">
           Privacy
         </Link>
       </p>

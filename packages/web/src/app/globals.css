@@ -151,19 +151,26 @@
 
 /* Data graphics use the same timing and sidebar playback state as Recharts. */
 @keyframes chart-fade {
-  from { opacity: 0; }
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes chart-grow-x {
-  from { transform: scaleX(0); }
+  from {
+    transform: scaleX(0);
+  }
 }
 
 @keyframes chart-grow-y {
-  from { transform: scaleY(0); }
+  from {
+    transform: scaleY(0);
+  }
 }
 
 .chart-animate {
-  animation: chart-fade var(--chart-animation-duration) var(--chart-animation-easing) var(--chart-animation-delay) both;
+  animation: chart-fade var(--chart-animation-duration) var(--chart-animation-easing)
+    var(--chart-animation-delay) both;
   animation-play-state: var(--chart-animation-play-state, running);
 }
 
@@ -184,8 +191,14 @@
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @utility animate-fade-up {

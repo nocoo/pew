@@ -60,9 +60,7 @@ export function fixStandaloneSwcHelpers(opts?: {
 
   if (!existsSync(standaloneBun)) {
     if (required) {
-      throw new Error(
-        `fix-standalone-swc-helpers: standalone missing at ${standaloneBun}`,
-      );
+      throw new Error(`fix-standalone-swc-helpers: standalone missing at ${standaloneBun}`);
     }
     return { fixed: [], skipped: true };
   }
@@ -84,15 +82,12 @@ export function fixStandaloneSwcHelpers(opts?: {
   const fixed: string[] = [];
   for (const dest of dests) {
     const version = versionFromHelpersPath(dest);
-    const src =
-      sources.find((s) => versionFromHelpersPath(s) === version) ?? sources[0];
+    const src = sources.find((s) => versionFromHelpersPath(s) === version) ?? sources[0];
     copyFullSwcHelpers(src, dest);
 
     const probe = join(dest, "esm", "_interop_require_default.js");
     if (!existsSync(probe)) {
-      throw new Error(
-        `fix-standalone-swc-helpers: missing ${probe} after copy from ${src}`,
-      );
+      throw new Error(`fix-standalone-swc-helpers: missing ${probe} after copy from ${src}`);
     }
     fixed.push(dest);
   }

@@ -5,7 +5,12 @@
  * profile-view.tsx — now it lives here as the single source of truth.
  */
 
-import { estimateUsageCost, displayCounters, modelUsage, summarizeAccounting } from "@/lib/accounting";
+import {
+  estimateUsageCost,
+  displayCounters,
+  modelUsage,
+  summarizeAccounting,
+} from "@/lib/accounting";
 import type { ModelAggregate } from "@/hooks/use-usage-data";
 import type { UsageRow, UsageSummary } from "@/hooks/use-usage-data";
 import { sumBy } from "@/lib/array-helpers";
@@ -13,10 +18,7 @@ import type { PricingMap } from "@/lib/pricing";
 import { toLocalDateStr } from "@/lib/usage-helpers";
 
 /** Sum estimated cost across an array of model aggregates. */
-export function computeTotalCost(
-  models: ModelAggregate[],
-  pricingMap: PricingMap,
-): number {
+export function computeTotalCost(models: ModelAggregate[], pricingMap: PricingMap): number {
   let total = 0;
   for (const m of models) {
     const cost = estimateUsageCost(modelUsage(m), pricingMap);
@@ -32,11 +34,11 @@ export function computeTotalCost(
 /** A single day's cost breakdown for the cost trend chart. */
 export interface DailyCostPoint {
   cacheWriteCost?: number;
-  date: string;       // "2026-03-10"
-  inputCost: number;  // USD
+  date: string; // "2026-03-10"
+  inputCost: number; // USD
   outputCost: number; // USD
   cachedCost: number; // USD
-  totalCost: number;  // USD
+  totalCost: number; // USD
 }
 
 /**
@@ -63,7 +65,8 @@ export function toDailyCostPoints(
       existing.outputCost += cost.outputCost + cost.reasoningCost;
       existing.cachedCost += cost.cachedCost;
       existing.totalCost += cost.totalCost;
-      if (cost.cacheWriteCost > 0) existing.cacheWriteCost = (existing.cacheWriteCost ?? 0) + cost.cacheWriteCost;
+      if (cost.cacheWriteCost > 0)
+        existing.cacheWriteCost = (existing.cacheWriteCost ?? 0) + cost.cacheWriteCost;
     } else {
       byDate.set(date, {
         date,
@@ -76,9 +79,7 @@ export function toDailyCostPoints(
     }
   }
 
-  return Array.from(byDate.values()).sort((a, b) =>
-    a.date.localeCompare(b.date),
-  );
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +88,7 @@ export function toDailyCostPoints(
 
 /** Breakdown of money saved by cache hits vs full input pricing. */
 export interface CacheSavings {
-  savedDollars: number;     // hypothetical full cost of cached tokens at input price
+  savedDollars: number; // hypothetical full cost of cached tokens at input price
   actualCachedCost: number; // what user paid at cached price
   netSavings: number | null; // read discount minus write premium; null when incomplete
   savingsPercent: number | null;
@@ -118,7 +119,8 @@ export function computeCacheSavings(
   }
 
   const netSavings = complete ? net : null;
-  const savingsPercent = netSavings === null ? null : savedDollars > 0 ? (netSavings / savedDollars) * 100 : 0;
+  const savingsPercent =
+    netSavings === null ? null : savedDollars > 0 ? (netSavings / savedDollars) * 100 : 0;
 
   return { savedDollars, actualCachedCost, netSavings, savingsPercent };
 }
@@ -143,10 +145,7 @@ export interface CostForecast {
  * and projects to the full month. Returns `null` if fewer than 3 days
  * of data exist (too early to extrapolate reliably).
  */
-export function forecastMonthlyCost(
-  dailyCosts: DailyCostPoint[],
-  now?: Date,
-): CostForecast | null {
+export function forecastMonthlyCost(dailyCosts: DailyCostPoint[], now?: Date): CostForecast | null {
   const ref = now ?? new Date();
   const year = ref.getFullYear();
   const month = ref.getMonth(); // 0-indexed
@@ -223,8 +222,8 @@ export function computeCostPerToken(
 export interface DailyCacheRate {
   coverage?: number;
   coveredInputTokens?: number;
-  date: string;       // "2026-03-10"
-  cacheRate: number | null;  // read tokens / input with known reads; null when unreported
+  date: string; // "2026-03-10"
+  cacheRate: number | null; // read tokens / input with known reads; null when unreported
   cachedTokens: number;
   inputTokens: number;
 }
@@ -243,14 +242,23 @@ export function toDailyCacheRates(rows: UsageRow[], tzOffset = 0): DailyCacheRat
   const byDate = new Map<string, UsageRow[]>();
   for (const r of rows) {
     const date = toLocalDateStr(r.hour_start, tzOffset);
-    const day = byDate.get(date) ?? []; day.push(r); byDate.set(date, day);
+    const day = byDate.get(date) ?? [];
+    day.push(r);
+    byDate.set(date, day);
   }
-  return [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, records]) => {
-    const summary = summarizeAccounting(records);
-    return { date, cacheRate: summary.readCoverage > 0 ? summary.cacheReadRate : null, cachedTokens: summary.cacheReadTokens,
-      inputTokens: summary.inputTokens - summary.cacheReadTokens, coverage: summary.readCoverage,
-      coveredInputTokens: summary.inputTokens * summary.readCoverage };
-  });
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, records]) => {
+      const summary = summarizeAccounting(records);
+      return {
+        date,
+        cacheRate: summary.readCoverage > 0 ? summary.cacheReadRate : null,
+        cachedTokens: summary.cacheReadTokens,
+        inputTokens: summary.inputTokens - summary.cacheReadTokens,
+        coverage: summary.readCoverage,
+        coveredInputTokens: summary.inputTokens * summary.readCoverage,
+      };
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +268,7 @@ export function toDailyCacheRates(rows: UsageRow[], tzOffset = 0): DailyCacheRat
 export interface ReasoningRatio {
   reasoningTokens: number;
   outputTokens: number;
-  reasoningPercent: number;  // reasoning / output * 100
+  reasoningPercent: number; // reasoning / output * 100
 }
 
 /**
@@ -271,12 +279,15 @@ export interface ReasoningRatio {
  */
 export function computeReasoningRatio(summary: UsageSummary, rows?: UsageRow[]): ReasoningRatio {
   const { output_tokens, reasoning_output_tokens } = summary;
-  const reasoning = rows ? rows.reduce((n, r) => n + displayCounters(r).reasoning_output_tokens, 0) : reasoning_output_tokens;
-  const output = rows ? summarizeAccounting(rows).outputTokens : output_tokens + reasoning_output_tokens;
+  const reasoning = rows
+    ? rows.reduce((n, r) => n + displayCounters(r).reasoning_output_tokens, 0)
+    : reasoning_output_tokens;
+  const output = rows
+    ? summarizeAccounting(rows).outputTokens
+    : output_tokens + reasoning_output_tokens;
   return {
     reasoningTokens: reasoning,
     outputTokens: output,
-    reasoningPercent:
-      output > 0 ? (reasoning / output) * 100 : 0,
+    reasoningPercent: output > 0 ? (reasoning / output) * 100 : 0,
   };
 }

@@ -8,34 +8,34 @@
 
 ## 总体进度
 
-| 指标 | 基线 | 当前 | 状态 |
-|---|---|---|---|
-| **G1** 死代码 | 11 files / 19 exports / 40 types | **0 / 0 / 0** | ✅ done (`bf8418fe`…`479dd6c7`) |
-| **G2** 依赖冗余 | 3 unused + 1 devDep + 1 unlisted binary | **0 / 0 / 0**（含 knip.json 白名单） | ✅ done (`ec8b2ac2`, `7fc42a43`, `5c1a1058`, `a42b7647`) |
-| **G3** 文档孤儿 | 6 / 51 | **0 / 52** | ✅ done (`1e82f5ba`) |
-| **G4** 脚本存活 | 6 dead | **0** | ✅ done (`00ac116a`) |
-| **G5** 顶层残留 | 3 autoresearch + logo.png | **0** autoresearch（logo.png 保留） | ✅ done (`d3c96414`) |
-| G6 巨型文件 | 5 (>1000 LOC) | 5 | 🛑 dropped (本轮放弃) |
-| **G7** migration 冲突 | 3 组 | **0** | ✅ done (`19261fc9`) |
-| G8 债务标记 | 0.14 / kLOC | 0.14 | 📊 trend-only |
-| G9 测试反模式 | 24 eslint-disable, 1 ts-ignore, 5 .skip | 24 / 1 / 5 | 📊 trend-only |
-| G10 RPC 类型消费率 | 30+ unused (exported) | 172 / 183 exported 未被 web 消费 | 🛑 dropped (本轮放弃) |
+| 指标                  | 基线                                    | 当前                                 | 状态                                                     |
+| --------------------- | --------------------------------------- | ------------------------------------ | -------------------------------------------------------- |
+| **G1** 死代码         | 11 files / 19 exports / 40 types        | **0 / 0 / 0**                        | ✅ done (`bf8418fe`…`479dd6c7`)                          |
+| **G2** 依赖冗余       | 3 unused + 1 devDep + 1 unlisted binary | **0 / 0 / 0**（含 knip.json 白名单） | ✅ done (`ec8b2ac2`, `7fc42a43`, `5c1a1058`, `a42b7647`) |
+| **G3** 文档孤儿       | 6 / 51                                  | **0 / 52**                           | ✅ done (`1e82f5ba`)                                     |
+| **G4** 脚本存活       | 6 dead                                  | **0**                                | ✅ done (`00ac116a`)                                     |
+| **G5** 顶层残留       | 3 autoresearch + logo.png               | **0** autoresearch（logo.png 保留）  | ✅ done (`d3c96414`)                                     |
+| G6 巨型文件           | 5 (>1000 LOC)                           | 5                                    | 🛑 dropped (本轮放弃)                                    |
+| **G7** migration 冲突 | 3 组                                    | **0**                                | ✅ done (`19261fc9`)                                     |
+| G8 债务标记           | 0.14 / kLOC                             | 0.14                                 | 📊 trend-only                                            |
+| G9 测试反模式         | 24 eslint-disable, 1 ts-ignore, 5 .skip | 24 / 1 / 5                           | 📊 trend-only                                            |
+| G10 RPC 类型消费率    | 30+ unused (exported)                   | 172 / 183 exported 未被 web 消费     | 🛑 dropped (本轮放弃)                                    |
 
 ---
 
 ## 一、仓库现状速写（快照时间：见 git blame）
 
-| 维度 | 值 |
-|---|---|
-| TS/TSX 源文件 | 669 个 / **158,991 行** |
-| `packages/web` | 423 文件 / 93k 行（占 ~58%） |
-| `packages/cli` | 177 文件 / 43k 行 |
-| `packages/worker-read` | 59 文件 / 18k 行 |
-| `packages/core` | 7 文件 / 2.3k 行 |
-| `packages/worker` | 3 文件 / 1.2k 行 |
-| `docs/*.md` | 51 个 / 22,913 行 |
-| `scripts/` | 22 个可执行脚本（另含 `__tests__/`、`migrations/`） |
-| 顶层杂项 | `autoresearch.jsonl` 117 KB、`autoresearch.ideas.md` 13 KB、`CHANGELOG.md` 135 KB、`logo.png` 3.6 MB |
+| 维度                   | 值                                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| TS/TSX 源文件          | 669 个 / **158,991 行**                                                                              |
+| `packages/web`         | 423 文件 / 93k 行（占 ~58%）                                                                         |
+| `packages/cli`         | 177 文件 / 43k 行                                                                                    |
+| `packages/worker-read` | 59 文件 / 18k 行                                                                                     |
+| `packages/core`        | 7 文件 / 2.3k 行                                                                                     |
+| `packages/worker`      | 3 文件 / 1.2k 行                                                                                     |
+| `docs/*.md`            | 51 个 / 22,913 行                                                                                    |
+| `scripts/`             | 22 个可执行脚本（另含 `__tests__/`、`migrations/`）                                                  |
+| 顶层杂项               | `autoresearch.jsonl` 117 KB、`autoresearch.ideas.md` 13 KB、`CHANGELOG.md` 135 KB、`logo.png` 3.6 MB |
 
 Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported types、3 unused deps、1 unused devDep** —— 说明客观信号已具备，但**尚未被门禁化**。
 
@@ -168,18 +168,18 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 
 ## 三、优先级建议（按 ROI 排序）
 
-| 优先级 | 指标 | 一次性动作 | 常态门禁 |
-|---|---|---|---|
-| P0 | G1 死代码 | 删 knip 报告里的 11 files + 19 exports | 把 knip 纳入 `bun run lint` |
-| P0 | G7 migration 编号冲突 | 重编号或合并 | 加一行 CI 校验 |
-| P1 | G2 依赖冗余 | 删 `fast-xml-parser`/`@auth/core`/`@types/sharp`/`next`（top-level） | knip 顺带 |
-| P1 | G4 脚本存活 | 删 5 个未引用 benchmark 脚本 + `measure-coverage.ts` | pre-commit 检查 |
-| P1 | G3 文档孤儿 | `docs/README.md` 做索引 → 6 个孤儿挂号或删除 | CI 校验索引完整 |
-| P2 | G10 RPC 类型 | 把 worker-read 内 RPC 行类型改为局部 | 长期约束 |
-| P2 | G6 巨型文件 | 拆 `db-worker.ts` / `usage-helpers.ts` | 阈值告警 |
-| P3 | G5 顶层残留 | 决定 `autoresearch.*` 去留、`logo.png` 是否搬 `assets/` | pre-commit 大文件拦截 |
-| P3 | G8 债务标记 | 保持 <0.2/kLOC | trend-only |
-| P3 | G9 测试反模式 | baseline 24 → 只降不升 | 已有 lint 兜底 |
+| 优先级 | 指标                  | 一次性动作                                                           | 常态门禁                    |
+| ------ | --------------------- | -------------------------------------------------------------------- | --------------------------- |
+| P0     | G1 死代码             | 删 knip 报告里的 11 files + 19 exports                               | 把 knip 纳入 `bun run lint` |
+| P0     | G7 migration 编号冲突 | 重编号或合并                                                         | 加一行 CI 校验              |
+| P1     | G2 依赖冗余           | 删 `fast-xml-parser`/`@auth/core`/`@types/sharp`/`next`（top-level） | knip 顺带                   |
+| P1     | G4 脚本存活           | 删 5 个未引用 benchmark 脚本 + `measure-coverage.ts`                 | pre-commit 检查             |
+| P1     | G3 文档孤儿           | `docs/README.md` 做索引 → 6 个孤儿挂号或删除                         | CI 校验索引完整             |
+| P2     | G10 RPC 类型          | 把 worker-read 内 RPC 行类型改为局部                                 | 长期约束                    |
+| P2     | G6 巨型文件           | 拆 `db-worker.ts` / `usage-helpers.ts`                               | 阈值告警                    |
+| P3     | G5 顶层残留           | 决定 `autoresearch.*` 去留、`logo.png` 是否搬 `assets/`              | pre-commit 大文件拦截       |
+| P3     | G8 债务标记           | 保持 <0.2/kLOC                                                       | trend-only                  |
+| P3     | G9 测试反模式         | baseline 24 → 只降不升                                               | 已有 lint 兜底              |
 
 ---
 
@@ -207,23 +207,23 @@ hygiene-report.md
 
 每一次原子提交清理动作，请在此追加一行：`YYYY-MM-DD · Gn · 简述 · commit hash`。
 
-| 日期 | 指标 | 动作 | Commit |
-|---|---|---|---|
-| 2026-07-08 | G3 | `docs/README.md` 补全 6 个孤儿条目 + 修正 `37` 坏链（6/51 → 0/52） | `1e82f5ba` |
-| 2026-07-08 | G4 | 删除 6 个无引用脚本（benchmark-*.sh × 5 + measure-coverage.ts）（6 → 0） | `00ac116a` |
-| 2026-07-08 | G5 | 删除 3 个顶层 autoresearch 产物（.md / .ideas.md / .jsonl），共 -454 行；logo.png 保留 | `d3c96414` |
-| 2026-07-08 | G1 | 删 3 个未用 dashboard 组件（-868 行） | `bf8418fe` |
-| 2026-07-08 | G1 | 删 3 个未用 shadcn/ui primitives + badges barrel（-197 行） | `eadf8ab9` |
-| 2026-07-08 | G1 | 删 2 个未引用脚本（bench-ut.ts / clear-d1-usage.ts，-213 行） | `8446dad9` |
-| 2026-07-08 | G1 | 删 5 个 dead re-export（bucket A: login/app-shell/scope-dropdown/showcase/period-selector） | `8e84e228` |
-| 2026-07-08 | G1 | 12 个 internal-only export 降级为文件局部（bucket B） | `72b9151c` |
-| 2026-07-08 | G1 | 8 个 internal-only export 降级（bucket C: fixtures + achievement format helpers） | `d3a725f9` |
-| 2026-07-08 | G1 | 34 个 exported type 降级 / 删除（bucket D） | `b61d02e7` |
-| 2026-07-08 | G1 | 修 cli + worker-read RPC 的 barrels，去 15 个 dead type re-export，knip = 0 unused exports/types | `479dd6c7` |
-| 2026-07-08 | G2 | 删 `packages/web` 下 `@auth/core`（next-auth 自带）+ `@types/sharp`（npm deprecated stub） | `ec8b2ac2` |
-| 2026-07-08 | G2 | 删根 `package.json` 里多余的 `dependencies` 块（`fast-xml-parser` / `next`）；`overrides` 保留作安全 pin | `7fc42a43` |
-| 2026-07-08 | G2 | 删 `packages/web/postcss.config.mjs` 里未声明的 `postcss-load-config` JSDoc 类型提示 | `5c1a1058` |
+| 日期       | 指标    | 动作                                                                                                                     | Commit     |
+| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| 2026-07-08 | G3      | `docs/README.md` 补全 6 个孤儿条目 + 修正 `37` 坏链（6/51 → 0/52）                                                       | `1e82f5ba` |
+| 2026-07-08 | G4      | 删除 6 个无引用脚本（benchmark-*.sh × 5 + measure-coverage.ts）（6 → 0）                                                 | `00ac116a` |
+| 2026-07-08 | G5      | 删除 3 个顶层 autoresearch 产物（.md / .ideas.md / .jsonl），共 -454 行；logo.png 保留                                   | `d3c96414` |
+| 2026-07-08 | G1      | 删 3 个未用 dashboard 组件（-868 行）                                                                                    | `bf8418fe` |
+| 2026-07-08 | G1      | 删 3 个未用 shadcn/ui primitives + badges barrel（-197 行）                                                              | `eadf8ab9` |
+| 2026-07-08 | G1      | 删 2 个未引用脚本（bench-ut.ts / clear-d1-usage.ts，-213 行）                                                            | `8446dad9` |
+| 2026-07-08 | G1      | 删 5 个 dead re-export（bucket A: login/app-shell/scope-dropdown/showcase/period-selector）                              | `8e84e228` |
+| 2026-07-08 | G1      | 12 个 internal-only export 降级为文件局部（bucket B）                                                                    | `72b9151c` |
+| 2026-07-08 | G1      | 8 个 internal-only export 降级（bucket C: fixtures + achievement format helpers）                                        | `d3a725f9` |
+| 2026-07-08 | G1      | 34 个 exported type 降级 / 删除（bucket D）                                                                              | `b61d02e7` |
+| 2026-07-08 | G1      | 修 cli + worker-read RPC 的 barrels，去 15 个 dead type re-export，knip = 0 unused exports/types                         | `479dd6c7` |
+| 2026-07-08 | G2      | 删 `packages/web` 下 `@auth/core`（next-auth 自带）+ `@types/sharp`（npm deprecated stub）                               | `ec8b2ac2` |
+| 2026-07-08 | G2      | 删根 `package.json` 里多余的 `dependencies` 块（`fast-xml-parser` / `next`）；`overrides` 保留作安全 pin                 | `7fc42a43` |
+| 2026-07-08 | G2      | 删 `packages/web/postcss.config.mjs` 里未声明的 `postcss-load-config` JSDoc 类型提示                                     | `5c1a1058` |
 | 2026-07-08 | G2 (补) | 新增 `knip.json`：白名单 `lsof` 系统命令 + 将 `playwright.config.ts` / `e2e/**/*.spec.ts` 声明为入口；`bunx knip` exit 0 | `a42b7647` |
-| 2026-07-08 | G3 (补) | 修 `docs/35-hermes-support.md` 自指 `./docs/35-...` 坏链 | `9f7c6441` |
-| 2026-07-08 | hygiene | 去除 `docs/README.md` 与 `packages/cli/src/drivers/types.ts` 中 EOF 多余空行，`git diff --check` 归零 | `13b061e1` |
-| 2026-07-08 | G7 | scripts/migrations 中 006/007/008/016 四组重号改名为 `Nb/Nc` 后缀；cut 后前 4 字符已全部 unique | `19261fc9` |
+| 2026-07-08 | G3 (补) | 修 `docs/35-hermes-support.md` 自指 `./docs/35-...` 坏链                                                                 | `9f7c6441` |
+| 2026-07-08 | hygiene | 去除 `docs/README.md` 与 `packages/cli/src/drivers/types.ts` 中 EOF 多余空行，`git diff --check` 归零                    | `13b061e1` |
+| 2026-07-08 | G7      | scripts/migrations 中 006/007/008/016 四组重号改名为 `Nb/Nc` 后缀；cut 后前 4 字符已全部 unique                          | `19261fc9` |

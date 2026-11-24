@@ -7,8 +7,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export const metadata = {
   title: "Privacy Policy — pew",
-  description:
-    "How pew collects and handles your AI coding tool usage data.",
+  description: "How pew collects and handles your AI coding tool usage data.",
 };
 
 export default function PrivacyPage() {
@@ -35,9 +34,7 @@ export default function PrivacyPage() {
               <ThemeToggle />
             </div>
           </div>
-          <p className="text-sm text-basalt-muted-foreground">
-            Last updated: March 12, 2026
-          </p>
+          <p className="text-sm text-basalt-muted-foreground">Last updated: March 12, 2026</p>
         </div>
 
         {/* Body */}
@@ -47,20 +44,16 @@ export default function PrivacyPage() {
             <h3 className="font-semibold mb-2 text-base">Overview</h3>
             <p className="text-basalt-muted-foreground leading-relaxed">
               pew tracks AI coding tool usage statistics. It is designed to{" "}
-              <strong className="text-basalt-foreground">never</strong> collect the
-              content of your work — no prompts, no code, no project names, no
-              file paths.
+              <strong className="text-basalt-foreground">never</strong> collect the content of your
+              work — no prompts, no code, no project names, no file paths.
             </p>
           </section>
 
           {/* What we collect */}
           <section>
-            <h3 className="font-semibold mb-2 text-base">
-              What pew collects
-            </h3>
+            <h3 className="font-semibold mb-2 text-base">What pew collects</h3>
             <p className="text-basalt-muted-foreground leading-relaxed mb-3">
-               pew collects two categories of usage metadata from your local AI
-              tool log files:
+              pew collects two categories of usage metadata from your local AI tool log files:
             </p>
 
             <h4 className="font-medium mb-1.5 text-sm text-basalt-foreground">
@@ -69,18 +62,12 @@ export default function PrivacyPage() {
             <ul className="list-disc list-inside text-basalt-muted-foreground space-y-1 ml-2 mb-3">
               <li>Which AI tool (e.g. Claude Code, Codex)</li>
               <li>Model name (e.g. claude-sonnet-4-20250514)</li>
-              <li>
-                Token counts (input, cached input, output, reasoning output)
-              </li>
-              <li>
-                Time bucket — 30-minute window, not exact request timestamps
-              </li>
+              <li>Token counts (input, cached input, output, reasoning output)</li>
+              <li>Time bucket — 30-minute window, not exact request timestamps</li>
               <li>Device ID — random UUID, not a hardware identifier</li>
             </ul>
 
-            <h4 className="font-medium mb-1.5 text-sm text-basalt-foreground">
-              Session metadata
-            </h4>
+            <h4 className="font-medium mb-1.5 text-sm text-basalt-foreground">Session metadata</h4>
             <ul className="list-disc list-inside text-basalt-muted-foreground space-y-1 ml-2 mb-3">
               <li>Opaque session identifier from the AI tool</li>
               <li>Start and end timestamps, duration</li>
@@ -88,10 +75,8 @@ export default function PrivacyPage() {
               <li>Model used</li>
               <li>
                 Project reference — a{" "}
-                <strong className="text-basalt-foreground">
-                  one-way SHA-256 hash
-                </strong>
-                , never a plaintext name or path
+                <strong className="text-basalt-foreground">one-way SHA-256 hash</strong>, never a
+                plaintext name or path
               </li>
             </ul>
 
@@ -105,18 +90,15 @@ export default function PrivacyPage() {
 
           {/* Project references */}
           <section>
-            <h3 className="font-semibold mb-2 text-base">
-              Project references (hashed)
-            </h3>
+            <h3 className="font-semibold mb-2 text-base">Project references (hashed)</h3>
             <p className="text-basalt-muted-foreground leading-relaxed mb-2">
-              Session records may include a hashed project reference for CLI
-              compatibility. pew never transmits project names
-              or file paths. The process:
+              Session records may include a hashed project reference for CLI compatibility. pew
+              never transmits project names or file paths. The process:
             </p>
             <ol className="list-decimal list-inside text-basalt-muted-foreground space-y-1 ml-2">
               <li>
-                Each parser extracts a raw project identifier (directory name,
-                working directory, or upstream ID)
+                Each parser extracts a raw project identifier (directory name, working directory, or
+                upstream ID)
               </li>
               <li>
                 The identifier is hashed:{" "}
@@ -126,38 +108,27 @@ export default function PrivacyPage() {
                 — an irreversible 16-char hex string
               </li>
               <li>
-                A defense-in-depth gateway re-hashes any value that doesn&apos;t
-                match the expected format before upload
+                A defense-in-depth gateway re-hashes any value that doesn&apos;t match the expected
+                format before upload
               </li>
             </ol>
           </section>
 
           {/* What we don't collect */}
           <section>
-            <h3 className="font-semibold mb-2 text-base">
-              What pew does NOT collect
-            </h3>
+            <h3 className="font-semibold mb-2 text-base">What pew does NOT collect</h3>
             <ul className="list-disc list-inside text-basalt-muted-foreground space-y-1 ml-2">
-              <li>
-                Conversation content — prompts, responses, tool calls, code
-              </li>
+              <li>Conversation content — prompts, responses, tool calls, code</li>
               <li>File paths — hashed before transmission</li>
               <li>Project names — only opaque hashes are transmitted</li>
-              <li>
-                Code or repository content — pew reads only AI tool
-                log/metadata files
-              </li>
-              <li>
-                Hardware identifiers — Device ID is a random UUID
-              </li>
+              <li>Code or repository content — pew reads only AI tool log/metadata files</li>
+              <li>Hardware identifiers — Device ID is a random UUID</li>
             </ul>
           </section>
 
           {/* What stays local */}
           <section>
-            <h3 className="font-semibold mb-2 text-base">
-              What stays on your machine
-            </h3>
+            <h3 className="font-semibold mb-2 text-base">What stays on your machine</h3>
             <p className="text-basalt-muted-foreground leading-relaxed mb-2">
               Several files are stored locally and never transmitted:
             </p>
@@ -172,8 +143,8 @@ export default function PrivacyPage() {
               <li>Upload queue and API key configuration</li>
             </ul>
             <p className="text-basalt-muted-foreground leading-relaxed mt-2">
-              pew <strong className="text-basalt-foreground">never</strong> modifies,
-              deletes, or moves your AI tool log files. It only reads them.
+              pew <strong className="text-basalt-foreground">never</strong> modifies, deletes, or
+              moves your AI tool log files. It only reads them.
             </p>
           </section>
 
@@ -181,8 +152,8 @@ export default function PrivacyPage() {
           <section>
             <h3 className="font-semibold mb-2 text-base">Open source</h3>
             <p className="text-basalt-muted-foreground leading-relaxed">
-              pew is open source under the MIT license. You can audit exactly
-              what data is collected by reading the{" "}
+              pew is open source under the MIT license. You can audit exactly what data is collected
+              by reading the{" "}
               <a
                 href="https://github.com/nocoo/pew"
                 target="_blank"

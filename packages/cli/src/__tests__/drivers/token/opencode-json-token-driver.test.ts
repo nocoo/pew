@@ -62,10 +62,7 @@ describe("openCodeJsonTokenDriver", () => {
       await writeFile(join(sessionDir, "msg-001.json"), openCodeMessage({}));
 
       const ctx: SyncContext = {};
-      const files = await openCodeJsonTokenDriver.discover(
-        { openCodeMessageDir: tempDir },
-        ctx,
-      );
+      const files = await openCodeJsonTokenDriver.discover({ openCodeMessageDir: tempDir }, ctx);
       expect(files.length).toBeGreaterThanOrEqual(1);
       // dirMtimes should be deposited into context
       expect(ctx.dirMtimes).toBeDefined();
@@ -164,14 +161,17 @@ describe("openCodeJsonTokenDriver", () => {
 
     it("returns empty deltas for a user message (no delta branch)", async () => {
       const filePath = join(tempDir, "msg-user.json");
-      await writeFile(filePath, JSON.stringify({
-        id: "msg_u1",
-        sessionID: "ses_001",
-        role: "user",
-        modelID: "claude-opus-4.6",
-        time: { created: 1739600000000, completed: 1739600001000 },
-        tokens: null,
-      }));
+      await writeFile(
+        filePath,
+        JSON.stringify({
+          id: "msg_u1",
+          sessionID: "ses_001",
+          role: "user",
+          modelID: "claude-opus-4.6",
+          time: { created: 1739600000000, completed: 1739600001000 },
+          tokens: null,
+        }),
+      );
 
       const ctx: SyncContext = {};
       const resume = { kind: "opencode-json" as const, lastTotals: null };

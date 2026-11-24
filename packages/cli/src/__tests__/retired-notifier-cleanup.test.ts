@@ -21,7 +21,9 @@ describe("retired notifier handoff", () => {
     notifyPath = join(stateDir, "bin", "notify.cjs");
     await mkdir(dirname(notifyPath), { recursive: true });
   });
-  afterEach(async () => { await rm(home, { recursive: true, force: true }); });
+  afterEach(async () => {
+    await rm(home, { recursive: true, force: true });
+  });
 
   it("repairs an owned old dispatcher and consumes the already admitted shared window", async () => {
     const current = buildNotifyHandler({ stateDir, pewBin: "/synthetic/pew" });
@@ -32,31 +34,67 @@ describe("retired notifier handoff", () => {
       const exit = new Error("exit");
       const script = new vm.Script(old.replace(/^#!.*\n/, ""));
       try {
-        script.runInNewContext({ __filename: notifyPath, __pewNow: () => 1000,
-          process: { argv: ["node", notifyPath, `--source=${source}`], env: {}, platform: process.platform, exit: () => { throw exit; } },
+        script.runInNewContext({
+          __filename: notifyPath,
+          __pewNow: () => 1000,
+          process: {
+            argv: ["node", notifyPath, `--source=${source}`],
+            env: {},
+            platform: process.platform,
+            exit: () => {
+              throw exit;
+            },
+          },
           require: (name: string) => {
             if (name === "node:fs") return { ...nodeFs, existsSync: () => true };
             if (name === "node:path") return nodePath;
             if (name === "node:os") return { homedir: () => home };
-            if (name === "node:child_process") return { spawn: (_cmd: string, args: string[]) => { admitted.push(args); return { unref: () => {} }; } };
+            if (name === "node:child_process")
+              return {
+                spawn: (_cmd: string, args: string[]) => {
+                  admitted.push(args);
+                  return { unref: () => {} };
+                },
+              };
             throw new Error(name);
-          } });
-      } catch (error) { if (error !== exit) throw error; }
+          },
+        });
+      } catch (error) {
+        if (error !== exit) throw error;
+      }
     }
     expect(admitted).toEqual([["notify", "--source=gemini-cli", "--not-before=2000"]]);
-    const sync = vi.fn(async (trigger) => ({ runId: "test", triggers: [trigger], cycles: [], hadFollowUp: false,
-      followUpCount: 0, waitedForLock: false, skippedSync: false, degradedToUnlocked: false }));
-    await executeNotify({ stateDir, deviceId: "test", source: "gemini-cli", notBefore: 2000,
-      nowFn: () => 2000, coordinatedSyncFn: sync });
+    const sync = vi.fn(async (trigger) => ({
+      runId: "test",
+      triggers: [trigger],
+      cycles: [],
+      hadFollowUp: false,
+      followUpCount: 0,
+      waitedForLock: false,
+      skippedSync: false,
+      degradedToUnlocked: false,
+    }));
+    await executeNotify({
+      stateDir,
+      deviceId: "test",
+      source: "gemini-cli",
+      notBefore: 2000,
+      nowFn: () => 2000,
+      coordinatedSyncFn: sync,
+    });
     expect(sync).toHaveBeenCalledOnce();
     expect(await readFile(notifyPath, "utf8")).toBe(current);
   });
 
   it("rejects malformed or foreign dispatcher metadata and tolerates a missing dispatcher", async () => {
     await expect(repairRetiredNotifyHandler(stateDir)).resolves.toBe(false);
-    for (const body of ["", 'const PEW_BIN = "pew";', 'const STATE_DIR = "elsewhere";\nconst PEW_BIN = "pew";',
+    for (const body of [
+      "",
+      'const PEW_BIN = "pew";',
+      'const STATE_DIR = "elsewhere";\nconst PEW_BIN = "pew";',
       `const STATE_DIR = ${JSON.stringify(stateDir)};\nconst PEW_BIN = "";`,
-      'const STATE_DIR = "\\uINVALID";\nconst PEW_BIN = "pew";']) {
+      'const STATE_DIR = "\\uINVALID";\nconst PEW_BIN = "pew";',
+    ]) {
       await writeFile(notifyPath, `#!/usr/bin/env node\n// PEW_NOTIFY_HANDLER\n${body}\n`);
       await expect(repairRetiredNotifyHandler(stateDir)).resolves.toBe(false);
     }
@@ -83,7 +121,9 @@ describe("retired notifier handoff", () => {
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, "// user extension\n");
     expect(await cleanupRetiredHooks(home, notifyPath, {})).toEqual([]);
-    await writeFile(path, `// PEW_OMP_HOOK \u2014 managed by pew, do not edit
+    await writeFile(
+      path,
+      `// PEW_OMP_HOOK \u2014 managed by pew, do not edit
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { spawn } from "node:child_process";
 
@@ -98,8 +138,11 @@ export default function (pi: ExtensionAPI) {
     } catch {}
   });
 }
-`);
-    expect(await cleanupRetiredHooks(home, notifyPath, {})).toEqual([expect.objectContaining({ source: "omp", changed: true })]);
+`,
+    );
+    expect(await cleanupRetiredHooks(home, notifyPath, {})).toEqual([
+      expect.objectContaining({ source: "omp", changed: true }),
+    ]);
     await expect(access(path)).rejects.toThrow();
   });
 
@@ -109,53 +152,106 @@ export default function (pi: ExtensionAPI) {
     await mkdir(root);
     const quotedPath = `"${notifyPath} with space"`;
     const command = `/usr/bin/env node ${quotedPath} --source=gemini-cli`;
-    await writeFile(path, JSON.stringify({ hooks: { SessionEnd: [{ hooks: [{ type: "command", command }] }] }, other: 1 }));
+    await writeFile(
+      path,
+      JSON.stringify({
+        hooks: { SessionEnd: [{ hooks: [{ type: "command", command }] }] },
+        other: 1,
+      }),
+    );
     await cleanupRetiredHooks(home, `${notifyPath} with space`, { GEMINI_HOME: ` ${root} ` });
     expect(JSON.parse(await readFile(path, "utf8"))).toEqual({ other: 1 });
   });
 
-  it.each(["null", '[]', '{"hooks":[]}', '{"hooks":{"SessionEnd":false}}'])("keeps unparseable hook settings (%s)", async (raw) => {
-    const path = join(home, ".gemini", "settings.json");
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, raw);
-    expect(await cleanupRetiredHooks(home, notifyPath, {})).toEqual([expect.objectContaining({ changed: false, warnings: expect.any(Array) })]);
-    expect(await readFile(path, "utf8")).toBe(raw);
-  });
+  it.each(["null", "[]", '{"hooks":[]}', '{"hooks":{"SessionEnd":false}}'])(
+    "keeps unparseable hook settings (%s)",
+    async (raw) => {
+      const path = join(home, ".gemini", "settings.json");
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, raw);
+      expect(await cleanupRetiredHooks(home, notifyPath, {})).toEqual([
+        expect.objectContaining({ changed: false, warnings: expect.any(Array) }),
+      ]);
+      expect(await readFile(path, "utf8")).toBe(raw);
+    },
+  );
 
   it("keeps modified Gemini commands that still reference the dispatcher", async () => {
     const path = join(home, ".gemini", "settings.json");
     await mkdir(dirname(path), { recursive: true });
-    const raw = JSON.stringify({ hooks: { SessionEnd: [{ hooks: [{ type: "command", command: `node ${notifyPath} --source=gemini-cli` }] }] } });
+    const raw = JSON.stringify({
+      hooks: {
+        SessionEnd: [
+          { hooks: [{ type: "command", command: `node ${notifyPath} --source=gemini-cli` }] },
+        ],
+      },
+    });
     await writeFile(path, raw);
-    expect(await cleanupRetiredHooks(home, notifyPath, {})).toEqual([expect.objectContaining({ warnings: expect.any(Array) })]);
+    expect(await cleanupRetiredHooks(home, notifyPath, {})).toEqual([
+      expect.objectContaining({ warnings: expect.any(Array) }),
+    ]);
     expect(await readFile(path, "utf8")).toBe(raw);
   });
 
   it.each([
-    ["omp", 'C:\\Users\\test\\pew\\notify.cjs'],
+    ["omp", "C:\\Users\\test\\pew\\notify.cjs"],
     ["omp", '/home/test/pew"custom/notify.cjs'],
-    ["gemini-cli", 'C:\\Users\\test\\pew\\notify.cjs'],
+    ["gemini-cli", "C:\\Users\\test\\pew\\notify.cjs"],
     ["gemini-cli", '/home/test/pew"custom/notify.cjs'],
-  ] as const)("keeps the dispatcher for modified %s hooks with an escaped path (%s)", async (source, target) => {
-    const path = source === "omp" ? join(home, ".omp", "agent", "extensions", "pew-sync.ts") : join(home, ".gemini", "settings.json");
-    await mkdir(dirname(path), { recursive: true });
-    const raw = source === "omp" ? `custom(${JSON.stringify(target)});\n` : JSON.stringify({ hooks: { SessionEnd: [{ hooks: [
-      { type: "command", command: `node "${target.replace(/"/g, '\\"')}" --source=gemini-cli` },
-    ] }] } });
-    await writeFile(path, raw);
-    const remove = vi.fn();
-    const result = await executeUninstall({ stateDir, home, env: {}, uninstallAllFn: async () => [], removeNotifyHandlerFn: remove,
-      resolveNotifierPathsFn: () => ({ ...resolveNotifierPaths(home, {}), notifyPath: target }) });
-    expect(result.hooks).toContainEqual(expect.objectContaining({ source, changed: false, warnings: expect.any(Array) }));
-    expect(remove).not.toHaveBeenCalled();
-    expect(result.notifyHandler.changed).toBe(false);
-    expect(await readFile(path, "utf8")).toBe(raw);
-  });
+  ] as const)(
+    "keeps the dispatcher for modified %s hooks with an escaped path (%s)",
+    async (source, target) => {
+      const path =
+        source === "omp"
+          ? join(home, ".omp", "agent", "extensions", "pew-sync.ts")
+          : join(home, ".gemini", "settings.json");
+      await mkdir(dirname(path), { recursive: true });
+      const raw =
+        source === "omp"
+          ? `custom(${JSON.stringify(target)});\n`
+          : JSON.stringify({
+              hooks: {
+                SessionEnd: [
+                  {
+                    hooks: [
+                      {
+                        type: "command",
+                        command: `node "${target.replace(/"/g, '\\"')}" --source=gemini-cli`,
+                      },
+                    ],
+                  },
+                ],
+              },
+            });
+      await writeFile(path, raw);
+      const remove = vi.fn();
+      const result = await executeUninstall({
+        stateDir,
+        home,
+        env: {},
+        uninstallAllFn: async () => [],
+        removeNotifyHandlerFn: remove,
+        resolveNotifierPathsFn: () => ({ ...resolveNotifierPaths(home, {}), notifyPath: target }),
+      });
+      expect(result.hooks).toContainEqual(
+        expect.objectContaining({ source, changed: false, warnings: expect.any(Array) }),
+      );
+      expect(remove).not.toHaveBeenCalled();
+      expect(result.notifyHandler.changed).toBe(false);
+      expect(await readFile(path, "utf8")).toBe(raw);
+    },
+  );
 
   it("never replaces a foreign dispatcher or runs a retired manual notification", async () => {
     await writeFile(notifyPath, "// user owned\n");
     const sync = vi.fn();
-    await executeNotify({ stateDir, deviceId: "test", source: "omp", notBefore: 2000, coordinatedSyncFn: sync });
+    await executeNotify({
+      stateDir,
+      deviceId: "test",
+      source: "omp",
+      notBefore: 2000,
+      coordinatedSyncFn: sync,
+    });
     expect(sync).not.toHaveBeenCalled();
     expect(await readFile(notifyPath, "utf8")).toBe("// user owned\n");
   });
@@ -163,12 +259,25 @@ export default function (pi: ExtensionAPI) {
   it("full uninstall removes exact old Gemini hooks but preserves other hooks and settings", async () => {
     const path = join(home, ".gemini", "settings.json");
     await mkdir(dirname(path), { recursive: true });
-    const owned = { name: "pew-tracker", type: "command", command: `/usr/bin/env node ${notifyPath} --source=gemini-cli` };
+    const owned = {
+      name: "pew-tracker",
+      type: "command",
+      command: `/usr/bin/env node ${notifyPath} --source=gemini-cli`,
+    };
     const foreign = { name: "pew-tracker", type: "command", command: "/custom/program" };
-    await writeFile(path, JSON.stringify({ tools: { enableHooks: true }, hooks: { SessionEnd: [{ matcher: "*", hooks: [owned, foreign] }], Other: ["unchanged"] } }));
+    await writeFile(
+      path,
+      JSON.stringify({
+        tools: { enableHooks: true },
+        hooks: { SessionEnd: [{ matcher: "*", hooks: [owned, foreign] }], Other: ["unchanged"] },
+      }),
+    );
     await writeFile(notifyPath, buildNotifyHandler({ stateDir, pewBin: "/synthetic/pew" }));
     await executeUninstall({ stateDir, home, uninstallAllFn: async () => [] });
-    expect(JSON.parse(await readFile(path, "utf8"))).toEqual({ tools: { enableHooks: true }, hooks: { SessionEnd: [{ matcher: "*", hooks: [foreign] }], Other: ["unchanged"] } });
+    expect(JSON.parse(await readFile(path, "utf8"))).toEqual({
+      tools: { enableHooks: true },
+      hooks: { SessionEnd: [{ matcher: "*", hooks: [foreign] }], Other: ["unchanged"] },
+    });
     await expect(access(notifyPath)).rejects.toThrow();
   });
 

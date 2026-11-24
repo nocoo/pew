@@ -33,7 +33,10 @@ export function loadScopeFromStorage(): ScopeSelection | null {
     const stored = localStorage.getItem(SCOPE_STORAGE_KEY);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as ScopeSelection;
-    if (parsed.type === "global" || ((parsed.type === "org" || parsed.type === "team") && parsed.id)) {
+    if (
+      parsed.type === "global" ||
+      ((parsed.type === "org" || parsed.type === "team") && parsed.id)
+    ) {
       return parsed;
     }
     return null;

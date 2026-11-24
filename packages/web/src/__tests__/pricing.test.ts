@@ -274,9 +274,7 @@ describe("pricing", () => {
           },
         ],
       });
-      expect(map.models["claude-sonnet-4-alias"]).toEqual(
-        map.models["anthropic/claude-sonnet-4"],
-      );
+      expect(map.models["claude-sonnet-4-alias"]).toEqual(map.models["anthropic/claude-sonnet-4"]);
     });
 
     it("empty dynamic input returns the safety-net only", () => {
@@ -294,7 +292,13 @@ describe("pricing", () => {
 
     it("pre-indexes normalized: anthropic/claude-opus-4.7 → key claude-opus-4-7", () => {
       const map = buildPricingMap({
-        dynamic: [dynEntry({ model: "anthropic/claude-opus-4.7", inputPerMillion: 15, outputPerMillion: 75 })],
+        dynamic: [
+          dynEntry({
+            model: "anthropic/claude-opus-4.7",
+            inputPerMillion: 15,
+            outputPerMillion: 75,
+          }),
+        ],
       });
       expect(map.models["claude-opus-4-7"]).toEqual({ input: 15, output: 75 });
     });
@@ -400,7 +404,13 @@ describe("pricing", () => {
 
     it("tilde: claude-sonnet-latest finds ~anthropic/claude-sonnet-latest", () => {
       const map = buildPricingMap({
-        dynamic: [dynEntry({ model: "~anthropic/claude-sonnet-latest", inputPerMillion: 3, outputPerMillion: 15 })],
+        dynamic: [
+          dynEntry({
+            model: "~anthropic/claude-sonnet-latest",
+            inputPerMillion: 3,
+            outputPerMillion: 15,
+          }),
+        ],
       });
       const p = lookupPricing(map, "claude-sonnet-latest");
       expect(p).toEqual({ input: 3, output: 15 });
@@ -423,7 +433,13 @@ describe("pricing", () => {
 
     it("dot-hyphen: claude-opus-4-7 finds anthropic/claude-opus-4.7", () => {
       const map = buildPricingMap({
-        dynamic: [dynEntry({ model: "anthropic/claude-opus-4.7", inputPerMillion: 15, outputPerMillion: 75 })],
+        dynamic: [
+          dynEntry({
+            model: "anthropic/claude-opus-4.7",
+            inputPerMillion: 15,
+            outputPerMillion: 75,
+          }),
+        ],
       });
       const p = lookupPricing(map, "claude-opus-4-7");
       expect(p).toEqual({ input: 15, output: 75 });
@@ -431,7 +447,13 @@ describe("pricing", () => {
 
     it("date suffix: claude-sonnet-4-20250514 finds anthropic/claude-sonnet-4", () => {
       const map = buildPricingMap({
-        dynamic: [dynEntry({ model: "anthropic/claude-sonnet-4", inputPerMillion: 3, outputPerMillion: 15 })],
+        dynamic: [
+          dynEntry({
+            model: "anthropic/claude-sonnet-4",
+            inputPerMillion: 3,
+            outputPerMillion: 15,
+          }),
+        ],
       });
       const p = lookupPricing(map, "claude-sonnet-4-20250514");
       expect(p).toEqual({ input: 3, output: 15 });
@@ -439,7 +461,13 @@ describe("pricing", () => {
 
     it("context suffix: claude-opus-4.6-1m finds anthropic/claude-opus-4.6", () => {
       const map = buildPricingMap({
-        dynamic: [dynEntry({ model: "anthropic/claude-opus-4.6", inputPerMillion: 15, outputPerMillion: 75 })],
+        dynamic: [
+          dynEntry({
+            model: "anthropic/claude-opus-4.6",
+            inputPerMillion: 15,
+            outputPerMillion: 75,
+          }),
+        ],
       });
       const p = lookupPricing(map, "claude-opus-4.6-1m");
       expect(p).toEqual({ input: 15, output: 75 });
@@ -477,7 +505,9 @@ describe("pricing", () => {
 
     it("Gemini: models/gemini-2.5-pro finds google/gemini-2.5-pro", () => {
       const map = buildPricingMap({
-        dynamic: [dynEntry({ model: "google/gemini-2.5-pro", inputPerMillion: 1.25, outputPerMillion: 10 })],
+        dynamic: [
+          dynEntry({ model: "google/gemini-2.5-pro", inputPerMillion: 1.25, outputPerMillion: 10 }),
+        ],
       });
       const p = lookupPricing(map, "models/gemini-2.5-pro");
       expect(p.input).toBe(1.25);

@@ -40,25 +40,25 @@ session-sync.ts (587 lines)
 
 ### Overlap Analysis
 
-| Aspect | Token Sync | Session Sync |
-|--------|-----------|--------------|
-| Discovery functions | Shares 4/5 from `sources.ts` | Same 4/5 + local `discoverOpenCodeSessionDirs()` |
-| File skip logic | Only OpenCode JSON (triple-check) | Unified `fileChanged(mtime, size)` for 4/6 sources |
-| Parsing mode | Incremental (byte offset / array index) | Full-scan on change |
-| Cursor types | 5 different types with source-specific fields | Uniform `{ mtimeMs, size }` |
-| Post-processing | Half-hour bucket aggregation | Session dedup |
-| CursorStore class | `CursorStore` (39 lines) | `SessionCursorStore` (39 lines, 95% identical) |
+| Aspect              | Token Sync                                    | Session Sync                                       |
+| ------------------- | --------------------------------------------- | -------------------------------------------------- |
+| Discovery functions | Shares 4/5 from `sources.ts`                  | Same 4/5 + local `discoverOpenCodeSessionDirs()`   |
+| File skip logic     | Only OpenCode JSON (triple-check)             | Unified `fileChanged(mtime, size)` for 4/6 sources |
+| Parsing mode        | Incremental (byte offset / array index)       | Full-scan on change                                |
+| Cursor types        | 5 different types with source-specific fields | Uniform `{ mtimeMs, size }`                        |
+| Post-processing     | Half-hour bucket aggregation                  | Session dedup                                      |
+| CursorStore class   | `CursorStore` (39 lines)                      | `SessionCursorStore` (39 lines, 95% identical)     |
 
 ### Per-Source Cursor Strategy Divergence
 
-| Source | Token Cursor | Skip Gate | Session Cursor | Skip Gate |
-|--------|-------------|-----------|----------------|-----------|
-| Claude | `ByteOffsetCursor` (inode + offset) | None -- always opens | `SessionFileCursor` (mtime + size) | `fileChanged()` |
-| OpenClaw | `ByteOffsetCursor` (inode + offset) | None -- always opens | `SessionFileCursor` (mtime + size) | `fileChanged()` |
-| Codex | `CodexCursor` (inode + offset + lastTotals + lastModel) | None -- always opens | `SessionFileCursor` (mtime + size) | `fileChanged()` |
-| Gemini | `GeminiCursor` (inode + lastIndex + lastTotals + lastModel) | None -- always opens | `SessionFileCursor` (mtime + size) | `fileChanged()` |
-| OpenCode JSON | `OpenCodeCursor` (inode + size + mtime + lastTotals + messageKey) | Triple-check (inode + size + mtime) | `SessionFileCursor` (mtime only) | Inline mtime check |
-| OpenCode SQLite | `OpenCodeSqliteCursor` (watermark + processedIds) | N/A (DB query) | `OpenCodeSqliteSessionCursor` (watermark + processedIds) | N/A (DB query) |
+| Source          | Token Cursor                                                      | Skip Gate                           | Session Cursor                                           | Skip Gate          |
+| --------------- | ----------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------- | ------------------ |
+| Claude          | `ByteOffsetCursor` (inode + offset)                               | None -- always opens                | `SessionFileCursor` (mtime + size)                       | `fileChanged()`    |
+| OpenClaw        | `ByteOffsetCursor` (inode + offset)                               | None -- always opens                | `SessionFileCursor` (mtime + size)                       | `fileChanged()`    |
+| Codex           | `CodexCursor` (inode + offset + lastTotals + lastModel)           | None -- always opens                | `SessionFileCursor` (mtime + size)                       | `fileChanged()`    |
+| Gemini          | `GeminiCursor` (inode + lastIndex + lastTotals + lastModel)       | None -- always opens                | `SessionFileCursor` (mtime + size)                       | `fileChanged()`    |
+| OpenCode JSON   | `OpenCodeCursor` (inode + size + mtime + lastTotals + messageKey) | Triple-check (inode + size + mtime) | `SessionFileCursor` (mtime only)                         | Inline mtime check |
+| OpenCode SQLite | `OpenCodeSqliteCursor` (watermark + processedIds)                 | N/A (DB query)                      | `OpenCodeSqliteSessionCursor` (watermark + processedIds) | N/A (DB query)     |
 
 **Key insight**: `FileCursorBase` currently has `inode` + `updatedAt` but is missing `mtimeMs` + `size`. Adding those two fields enables all token-sync sources to benefit from the same fast-skip optimization that only OpenCode JSON has today.
 
@@ -69,11 +69,13 @@ Three hard constraints shaped the driver interface split:
 ### Constraint 1: File-based vs DB-query sources are fundamentally different
 
 File-based sources (Claude, Gemini, Codex, OpenClaw, OpenCode JSON) follow a uniform model:
+
 ```
 discover files → for each file: stat → skip check → parse → update cursor
 ```
 
 DB-query sources (OpenCode SQLite) follow a completely different model:
+
 ```
 stat DB file → open DB handle → query with watermark → dedup against processed IDs → close
 ```
@@ -89,6 +91,7 @@ This means `FileSessionDriver.shouldSkip()` cannot assume a uniform `{ mtime, si
 ### Constraint 3: Cross-driver state (messageKeys, dirMtimes)
 
 Two pieces of state cross driver boundaries:
+
 - **messageKeys**: Token sync's OpenCode SQLite driver needs `messageKey` values from the OpenCode JSON driver's cursors to deduplicate.
 - **dirMtimes**: Token sync's OpenCode JSON driver uses a directory-level mtime cache stored on `CursorState`, not on individual file cursors.
 
@@ -272,15 +275,16 @@ type SessionDriver = FileSessionDriver | DbSessionDriver;
 
 ### Why Two Driver Kinds
 
-| | File-based (Claude, Gemini, Codex, OpenClaw, OpenCode JSON) | DB-based (OpenCode SQLite) |
-|---|---|---|
-| Discovery | `discover() → string[]` of files/dirs | N/A — single DB file |
-| Skip mechanism | `shouldSkip(cursor, fingerprint)` — inode/mtime/size | Watermark query (`WHERE time >= ?`) |
-| Parsing | Per-file: `parse(path, resume)` | Single `run()` — open DB, query, close |
-| Cursor base | `FileCursorBase` (inode + mtimeMs + size) | Own type (watermark + processedIds + inode) |
-| Generic loop? | Yes — orchestrator runs the same loop for all file drivers | No — orchestrator calls `run()` directly |
+|                | File-based (Claude, Gemini, Codex, OpenClaw, OpenCode JSON) | DB-based (OpenCode SQLite)                  |
+| -------------- | ----------------------------------------------------------- | ------------------------------------------- |
+| Discovery      | `discover() → string[]` of files/dirs                       | N/A — single DB file                        |
+| Skip mechanism | `shouldSkip(cursor, fingerprint)` — inode/mtime/size        | Watermark query (`WHERE time >= ?`)         |
+| Parsing        | Per-file: `parse(path, resume)`                             | Single `run()` — open DB, query, close      |
+| Cursor base    | `FileCursorBase` (inode + mtimeMs + size)                   | Own type (watermark + processedIds + inode) |
+| Generic loop?  | Yes — orchestrator runs the same loop for all file drivers  | No — orchestrator calls `run()` directly    |
 
 Attempting to force both into one interface would require:
+
 - `discover()` returning `["<db-path>"]` as a fake single-element array
 - `shouldSkip()` ignoring the fingerprint and internally checking the watermark
 - `parse()` opening a DB handle, which contradicts the "parse a file" semantic
@@ -290,6 +294,7 @@ This is worse than having two clean interfaces. The `kind: "file" | "db"` discri
 ### How SyncContext Replaces Hard-Coded OpenCode Knowledge
 
 **Before** (sync.ts knows OpenCode internals):
+
 ```ts
 // sync.ts line 310 — hard-coded dirMtimes persistence
 cursors.dirMtimes = discovery.dirMtimes;
@@ -305,36 +310,37 @@ for (const [, cursor] of Object.entries(cursors.files)) {
 ```
 
 **After** (drivers use context, orchestrator is source-agnostic):
+
 ```ts
 // Orchestrator (sync.ts) — no OpenCode-specific code
 const ctx: SyncContext = { dirMtimes: cursors.dirMtimes };
 
 for (const driver of fileDrivers) {
   // ... generic file loop ...
-  driver.afterAll?.(cursors.files, ctx);  // OpenCode JSON deposits messageKeys here
+  driver.afterAll?.(cursors.files, ctx); // OpenCode JSON deposits messageKeys here
 }
 for (const driver of dbDrivers) {
-  const result = await driver.run(prevCursor, ctx);  // SQLite reads messageKeys from ctx
+  const result = await driver.run(prevCursor, ctx); // SQLite reads messageKeys from ctx
   // ...
 }
 
-cursors.dirMtimes = ctx.dirMtimes;  // Persist whatever drivers deposited
+cursors.dirMtimes = ctx.dirMtimes; // Persist whatever drivers deposited
 ```
 
 The orchestrator treats `ctx.dirMtimes` and `ctx.messageKeys` as opaque state — it doesn't know what they mean, only that they need to be persisted / passed through.
 
 ### Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Phase 3/4 merge | Single refactor | ScanPlan and SourceDriver are tightly coupled; separate phases would require throwaway intermediate abstractions |
-| CursorStore | Keep two files, extract `BaseCursorStore<T>` generic | Separate files preserve independent lifecycle (token cursors and session cursors have different schemas); generic base eliminates code duplication |
-| Driver granularity | Separate token and session drivers | Different parsing modes (incremental vs full-scan), different cursor types, different output types. Forcing them into one interface would require awkward generics |
-| File vs DB drivers | Explicit `kind: "file" \| "db"` split | SQLite sources have no file discovery, no fingerprint-based skip, no per-file parse. A single interface would degenerate into "implement discover/shouldSkip/parse as no-ops and put everything in run()" |
-| OpenCode JSON session | `FileSessionDriver<{ mtimeMs: number }>` (custom cursor) | Directory scan — size unreliable across filesystems. Driver owns its skip logic; `shouldSkip` only compares mtimeMs |
-| Cross-driver state | `SyncContext` shared bag | Orchestrator stays source-agnostic. OpenCode JSON deposits `messageKeys`/`dirMtimes` into context; SQLite reads them. Adding a new source that needs cross-driver state only requires adding a field to SyncContext |
-| File skip optimization | Add `mtimeMs` + `size` to `FileCursorBase` | Aligns token sync with session sync's existing optimization; all file-based sources gain fast-skip for free |
-| Existing parsers | Unchanged | Drivers are thin wrappers; parsers retain their current signatures and tests |
+| Decision               | Choice                                                   | Rationale                                                                                                                                                                                                           |
+| ---------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 3/4 merge        | Single refactor                                          | ScanPlan and SourceDriver are tightly coupled; separate phases would require throwaway intermediate abstractions                                                                                                    |
+| CursorStore            | Keep two files, extract `BaseCursorStore<T>` generic     | Separate files preserve independent lifecycle (token cursors and session cursors have different schemas); generic base eliminates code duplication                                                                  |
+| Driver granularity     | Separate token and session drivers                       | Different parsing modes (incremental vs full-scan), different cursor types, different output types. Forcing them into one interface would require awkward generics                                                  |
+| File vs DB drivers     | Explicit `kind: "file" \| "db"` split                    | SQLite sources have no file discovery, no fingerprint-based skip, no per-file parse. A single interface would degenerate into "implement discover/shouldSkip/parse as no-ops and put everything in run()"           |
+| OpenCode JSON session  | `FileSessionDriver<{ mtimeMs: number }>` (custom cursor) | Directory scan — size unreliable across filesystems. Driver owns its skip logic; `shouldSkip` only compares mtimeMs                                                                                                 |
+| Cross-driver state     | `SyncContext` shared bag                                 | Orchestrator stays source-agnostic. OpenCode JSON deposits `messageKeys`/`dirMtimes` into context; SQLite reads them. Adding a new source that needs cross-driver state only requires adding a field to SyncContext |
+| File skip optimization | Add `mtimeMs` + `size` to `FileCursorBase`               | Aligns token sync with session sync's existing optimization; all file-based sources gain fast-skip for free                                                                                                         |
+| Existing parsers       | Unchanged                                                | Drivers are thin wrappers; parsers retain their current signatures and tests                                                                                                                                        |
 
 ## Implementation Steps
 
@@ -345,6 +351,7 @@ Each step is an atomic commit. Tests must pass after each step.
 **Goal**: Add the missing `mtimeMs` and `size` fields to all token cursors, and create a shared change-detection function.
 
 **Files changed**:
+
 - `packages/core/src/types.ts` — Add `mtimeMs: number` and `size: number` to `FileCursorBase`
 - `packages/cli/src/utils/file-changed.ts` — New file: `fileUnchanged(prev: { inode, mtimeMs, size } | undefined, curr: { inode, mtimeMs, size }): boolean`
 - `packages/cli/src/__tests__/file-changed.test.ts` — Tests for `fileUnchanged()`
@@ -359,6 +366,7 @@ Each step is an atomic commit. Tests must pass after each step.
 **Goal**: Eliminate the duplicated `load()` / `save()` logic between the two cursor stores.
 
 **Files changed**:
+
 - `packages/cli/src/storage/base-cursor-store.ts` — New file: generic `BaseCursorStore<T>` with shared `load()` and `save()` methods
 - `packages/cli/src/storage/cursor-store.ts` — Extend `BaseCursorStore<CursorState>`, remove duplicated logic
 - `packages/cli/src/storage/session-cursor-store.ts` — Extend `BaseCursorStore<SessionCursorState>`, remove duplicated logic
@@ -373,6 +381,7 @@ Each step is an atomic commit. Tests must pass after each step.
 **Goal**: Establish the driver contracts without changing any runtime behavior.
 
 **Files changed**:
+
 - `packages/cli/src/drivers/types.ts` — New file: all driver interfaces and internal types:
   - `SyncContext`, `DiscoverOpts`, `OnProgress`
   - `FileFingerprint` (re-exported from `utils/file-changed.ts`)
@@ -393,6 +402,7 @@ Each step is an atomic commit. Tests must pass after each step.
 **Goal**: Wrap each source's existing discovery + parser into the appropriate driver implementation.
 
 **File-based drivers** (one per source):
+
 - `packages/cli/src/drivers/token/claude-token-driver.ts` — `FileTokenDriver<ByteOffsetCursor>`, ByteOffset strategy. `shouldSkip` uses `fileUnchanged()` (new — was missing).
 - `packages/cli/src/drivers/token/gemini-token-driver.ts` — `FileTokenDriver<GeminiCursor>`, ArrayIndex strategy. `shouldSkip` uses `fileUnchanged()` (new).
 - `packages/cli/src/drivers/token/opencode-json-token-driver.ts` — `FileTokenDriver<OpenCodeCursor>`, TripleCheck strategy. `discover()` reads/writes `ctx.dirMtimes`. `afterAll()` deposits `messageKeys` into `ctx`.
@@ -400,6 +410,7 @@ Each step is an atomic commit. Tests must pass after each step.
 - `packages/cli/src/drivers/token/codex-token-driver.ts` — `FileTokenDriver<CodexCursor>`, ByteOffset + cumulative diff strategy. `shouldSkip` uses `fileUnchanged()` (new).
 
 **DB-based driver**:
+
 - `packages/cli/src/drivers/token/opencode-sqlite-token-driver.ts` — `DbTokenDriver<OpenCodeSqliteCursor>`. `run()` opens DB handle, queries with watermark, reads `ctx.messageKeys` for cross-source dedup, returns deltas + new cursor. Owns its full lifecycle.
 
 **Tests**: `packages/cli/src/__tests__/drivers/token/*.test.ts` — Unit tests per driver
@@ -413,6 +424,7 @@ Each step is an atomic commit. Tests must pass after each step.
 **Goal**: Same as Step 4 but for session sync.
 
 **File-based drivers**:
+
 - `packages/cli/src/drivers/session/claude-session-driver.ts` — `FileSessionDriver<SessionFileCursor>`. `shouldSkip` compares mtime + size.
 - `packages/cli/src/drivers/session/gemini-session-driver.ts` — Same pattern.
 - `packages/cli/src/drivers/session/opencode-json-session-driver.ts` — `FileSessionDriver<{ mtimeMs: number }>`. Discovers **directories** via `discoverOpenCodeSessionDirs()`. `shouldSkip` compares **mtime only** (size unreliable for dirs). `buildCursor` returns `{ mtimeMs }`.
@@ -420,6 +432,7 @@ Each step is an atomic commit. Tests must pass after each step.
 - `packages/cli/src/drivers/session/codex-session-driver.ts` — `FileSessionDriver<SessionFileCursor>`.
 
 **DB-based driver**:
+
 - `packages/cli/src/drivers/session/opencode-sqlite-session-driver.ts` — `DbSessionDriver<OpenCodeSqliteSessionCursor>`. `run()` opens DB, queries sessions + messages, returns snapshots + new cursor.
 
 **Tests**: `packages/cli/src/__tests__/drivers/session/*.test.ts`
@@ -431,6 +444,7 @@ Each step is an atomic commit. Tests must pass after each step.
 **Goal**: Single entry point that constructs the active driver set based on runtime options.
 
 **Files changed**:
+
 - `packages/cli/src/drivers/registry.ts` — New file:
   - `createTokenDrivers(opts): { fileDrivers: FileTokenDriver[], dbDrivers: DbTokenDriver[] }`
   - `createSessionDrivers(opts): { fileDrivers: FileSessionDriver[], dbDrivers: DbSessionDriver[] }`
@@ -444,7 +458,9 @@ Each step is an atomic commit. Tests must pass after each step.
 **Goal**: Replace the 5+ inline per-source blocks with generic driver dispatch.
 
 **Files changed**:
+
 - `packages/cli/src/commands/sync.ts` — Rewrite `executeSync()`:
+
   ```ts
   const { fileDrivers, dbDrivers } = createTokenDrivers(opts);
   const ctx: SyncContext = { dirMtimes: cursors.dirMtimes };
@@ -481,10 +497,12 @@ Each step is an atomic commit. Tests must pass after each step.
 - Delete inline `discoverOpenCodeSessionDirs()` and `fileChanged()` from `session-sync.ts` (replaced by drivers)
 
 **Mostly source-agnostic orchestrator**: The generic file loop and DB driver dispatch are fully source-agnostic. However, two categories of source-specific logic remain at the orchestrator level:
+
 1. **OpenCode progress messages**: The discover-phase message includes `ctx.dirMtimes` skip count for OpenCode JSON, since this detail is useful for user-facing output but doesn't belong in the driver interface.
-2. **SQLite pre-probe warnings**: Both `sync.ts` and `session-sync.ts` have explicit `openCodeDbPath`/`openMessageDb` checks to emit "bun:sqlite not available" or "Failed to open" warnings *before* the DB driver loop. This is an orchestrator-level concern because the registry simply omits the driver when the adapter is missing — no driver exists to emit the warning.
+2. **SQLite pre-probe warnings**: Both `sync.ts` and `session-sync.ts` have explicit `openCodeDbPath`/`openMessageDb` checks to emit "bun:sqlite not available" or "Failed to open" warnings _before_ the DB driver loop. This is an orchestrator-level concern because the registry simply omits the driver when the adapter is missing — no driver exists to emit the warning.
 
 **Files changed (tests)**:
+
 - `packages/cli/src/__tests__/sync.test.ts` — Update for driver-based architecture
 - `packages/cli/src/__tests__/session-sync.test.ts` — Same
 
@@ -495,11 +513,13 @@ Each step is an atomic commit. Tests must pass after each step.
 **Goal**: Remove dead code, verify everything end-to-end.
 
 **Cleanup**:
+
 - Remove `discoverOpenCodeSessionDirs()` from `session-sync.ts` (if not already in Step 7)
 - Remove `fileChanged()` helper from `session-sync.ts`
 - Audit `discovery/sources.ts` — discovery functions are still used by drivers; file stays but is now only imported by drivers, not by sync commands directly
 
 **Verification**:
+
 ```bash
 bun test                          # All tests pass
 bun run build                     # Full build succeeds
@@ -534,59 +554,59 @@ If the new source uses a DB instead of files, implement `DbTokenDriver` / `DbSes
 
 ## Risk Mitigation
 
-| Risk | Mitigation |
-|------|-----------|
-| Cross-driver state (messageKeys, dirMtimes) couples drivers | `SyncContext` is a typed bag — drivers only access fields they need. Adding a new context field is additive (no existing driver changes). Orchestrator persists context state generically. |
-| OpenCode JSON session uses mtime-only (no size) | `FileSessionDriver` is generic over cursor type. OpenCode JSON session driver uses `<{ mtimeMs: number }>` and its `shouldSkip` only compares mtime. No special-case in orchestrator. |
-| Old cursor files missing `mtimeMs`/`size` fields | `shouldSkip()` treats `undefined` prev cursor as "file changed" (no skip). `fileUnchanged()` returns `false` when prev is undefined. Gradual migration — fields populated on next successful parse. |
-| Large refactor risk | Each step is independently committable and testable. Steps 1-3 are zero-behavior-change. Steps 4-6 add new code without modifying old code. Only Step 7 rewrites existing code. |
-| DB driver cursor persistence assumes single DB source | Currently only OpenCode SQLite exists. If a second DB source appears, `CursorState` needs a `dbCursors: Record<SourceName, unknown>` field instead of `openCodeSqlite`. Deferred — YAGNI until then. |
+| Risk                                                        | Mitigation                                                                                                                                                                                           |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cross-driver state (messageKeys, dirMtimes) couples drivers | `SyncContext` is a typed bag — drivers only access fields they need. Adding a new context field is additive (no existing driver changes). Orchestrator persists context state generically.           |
+| OpenCode JSON session uses mtime-only (no size)             | `FileSessionDriver` is generic over cursor type. OpenCode JSON session driver uses `<{ mtimeMs: number }>` and its `shouldSkip` only compares mtime. No special-case in orchestrator.                |
+| Old cursor files missing `mtimeMs`/`size` fields            | `shouldSkip()` treats `undefined` prev cursor as "file changed" (no skip). `fileUnchanged()` returns `false` when prev is undefined. Gradual migration — fields populated on next successful parse.  |
+| Large refactor risk                                         | Each step is independently committable and testable. Steps 1-3 are zero-behavior-change. Steps 4-6 add new code without modifying old code. Only Step 7 rewrites existing code.                      |
+| DB driver cursor persistence assumes single DB source       | Currently only OpenCode SQLite exists. If a second DB source appears, `CursorState` needs a `dbCursors: Record<SourceName, unknown>` field instead of `openCodeSqlite`. Deferred — YAGNI until then. |
 
 ## Test Plan Summary
 
 ### Existing tests to update (Step 7)
 
-| File | Change |
-|------|--------|
-| `sync.test.ts` | Update for driver-based loop |
+| File                   | Change                                                   |
+| ---------------------- | -------------------------------------------------------- |
+| `sync.test.ts`         | Update for driver-based loop                             |
 | `session-sync.test.ts` | Update for driver-based loop, remove `fileChanged` tests |
 
 ### New tests
 
-| Category | Approx. Count | Step |
-|----------|--------------|------|
-| `fileUnchanged()` utility | 5-8 | Step 1 |
-| `BaseCursorStore<T>` | 4-6 | Step 2 |
-| File token drivers (5 drivers) | ~25 | Step 4 |
-| DB token driver (1 driver) | ~6 | Step 4 |
-| File session drivers (5 drivers) | ~20 | Step 5 |
-| DB session driver (1 driver) | ~5 | Step 5 |
-| Driver registry | 6-8 | Step 6 |
-| Integration (rewritten sync loops) | 8-10 | Step 7 |
+| Category                           | Approx. Count | Step   |
+| ---------------------------------- | ------------- | ------ |
+| `fileUnchanged()` utility          | 5-8           | Step 1 |
+| `BaseCursorStore<T>`               | 4-6           | Step 2 |
+| File token drivers (5 drivers)     | ~25           | Step 4 |
+| DB token driver (1 driver)         | ~6            | Step 4 |
+| File session drivers (5 drivers)   | ~20           | Step 5 |
+| DB session driver (1 driver)       | ~5            | Step 5 |
+| Driver registry                    | 6-8           | Step 6 |
+| Integration (rewritten sync loops) | 8-10          | Step 7 |
 
 Total: ~80-90 new tests.
 
 ## File Change Summary
 
-| File | Steps | Nature |
-|------|-------|--------|
-| `packages/core/src/types.ts` | 1 | Extend `FileCursorBase` with `mtimeMs`/`size`; make `SessionFileCursor.size` optional |
-| `packages/cli/src/utils/file-changed.ts` | 1 | New: `fileUnchanged()` |
-| `packages/cli/src/storage/base-cursor-store.ts` | 2 | New: generic base class |
-| `packages/cli/src/storage/cursor-store.ts` | 2 | Refactor: extend base |
-| `packages/cli/src/storage/session-cursor-store.ts` | 2 | Refactor: extend base |
-| `packages/cli/src/drivers/types.ts` | 3 | New: all driver interfaces, `SyncContext`, `DiscoverOpts`, `ResumeState`, `TokenParseResult` |
-| `packages/cli/src/drivers/token/*.ts` | 4 | New: 5 file + 1 db token driver |
-| `packages/cli/src/drivers/session/*.ts` | 5 | New: 5 file + 1 db session driver |
-| `packages/cli/src/drivers/registry.ts` | 6 | New: driver registry |
-| `packages/cli/src/commands/sync.ts` | 1, 7 | Update cursor writes (Step 1); rewrite to two-phase driver dispatch (Step 7) |
-| `packages/cli/src/commands/session-sync.ts` | 7 | Rewrite to two-phase driver dispatch, remove inline helpers |
-| `packages/cli/src/discovery/sources.ts` | — | Unchanged (still used by file drivers) |
-| `packages/cli/src/parsers/*.ts` | — | Unchanged (still used by drivers) |
+| File                                               | Steps | Nature                                                                                       |
+| -------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------- |
+| `packages/core/src/types.ts`                       | 1     | Extend `FileCursorBase` with `mtimeMs`/`size`; make `SessionFileCursor.size` optional        |
+| `packages/cli/src/utils/file-changed.ts`           | 1     | New: `fileUnchanged()`                                                                       |
+| `packages/cli/src/storage/base-cursor-store.ts`    | 2     | New: generic base class                                                                      |
+| `packages/cli/src/storage/cursor-store.ts`         | 2     | Refactor: extend base                                                                        |
+| `packages/cli/src/storage/session-cursor-store.ts` | 2     | Refactor: extend base                                                                        |
+| `packages/cli/src/drivers/types.ts`                | 3     | New: all driver interfaces, `SyncContext`, `DiscoverOpts`, `ResumeState`, `TokenParseResult` |
+| `packages/cli/src/drivers/token/*.ts`              | 4     | New: 5 file + 1 db token driver                                                              |
+| `packages/cli/src/drivers/session/*.ts`            | 5     | New: 5 file + 1 db session driver                                                            |
+| `packages/cli/src/drivers/registry.ts`             | 6     | New: driver registry                                                                         |
+| `packages/cli/src/commands/sync.ts`                | 1, 7  | Update cursor writes (Step 1); rewrite to two-phase driver dispatch (Step 7)                 |
+| `packages/cli/src/commands/session-sync.ts`        | 7     | Rewrite to two-phase driver dispatch, remove inline helpers                                  |
+| `packages/cli/src/discovery/sources.ts`            | —     | Unchanged (still used by file drivers)                                                       |
+| `packages/cli/src/parsers/*.ts`                    | —     | Unchanged (still used by drivers)                                                            |
 
 ## Future Phases
 
-| Phase | Focus | Depends On |
-|-------|-------|-----------|
-| **Phase 5** | Staged Queue + at-least-once semantics | Phase 3+4 |
+| Phase       | Focus                                              | Depends On        |
+| ----------- | -------------------------------------------------- | ----------------- |
+| **Phase 5** | Staged Queue + at-least-once semantics             | Phase 3+4         |
 | **Phase 6** | Tracker-driven default + `pew runs` / `pew doctor` | Phase 2 (run log) |

@@ -9,7 +9,13 @@ import { CheckRuling } from "@/components/leaderboard/check-ruling";
 import { RankBadge } from "@/components/leaderboard/rank-badge";
 import { TokenTierBadge } from "@/components/leaderboard/token-tier-badge";
 import { TeamLogoBadge } from "@/components/leaderboard/logo-icons";
-import { ROW_CLASSES, COL_RANK, COL_SESSIONS, COL_DURATION, COL_TOKENS } from "@/components/leaderboard/leaderboard-layout";
+import {
+  ROW_CLASSES,
+  COL_RANK,
+  COL_SESSIONS,
+  COL_DURATION,
+  COL_TOKENS,
+} from "@/components/leaderboard/leaderboard-layout";
 import type { LeaderboardEntry } from "@/hooks/use-leaderboard";
 
 // ---------------------------------------------------------------------------
@@ -29,8 +35,7 @@ export const LeaderboardRow = memo(function LeaderboardRow({
   /** Callback when user clicks the row */
   onSelect: (entry: LeaderboardEntry) => void;
 }) {
-  const { rank, user, teams, total_tokens, session_count, total_duration_seconds } =
-    entry;
+  const { rank, user, teams, total_tokens, session_count, total_duration_seconds } = entry;
   const displayName = user.name ?? "Anonymous";
   const initial = displayName[0]?.toUpperCase() ?? "?";
 
@@ -51,7 +56,9 @@ export const LeaderboardRow = memo(function LeaderboardRow({
         shouldAnimate && "animate-fade-up",
         rank <= 3 && "ring-1 ring-basalt-border/50",
       )}
-      style={shouldAnimate ? { animationDelay: `${Math.min(animationIndex * 40, 600)}ms` } : undefined}
+      style={
+        shouldAnimate ? { animationDelay: `${Math.min(animationIndex * 40, 600)}ms` } : undefined
+      }
     >
       <CheckRuling />
 

@@ -23,22 +23,22 @@ The field names were verified against the installed CLI's embedded Protobuf
 descriptors, not inferred from integer sizes or upstream comments. Tests use
 synthetic messages and databases only.
 
-| Message | Field | Meaning |
-| --- | --- | --- |
-| `CortexStepMetadata` | 1 | `created_at`, Protobuf UTC Timestamp |
-| `CortexStepMetadata` | 9 | `ModelUsageStats` |
-| `CortexStepMetadata` | 12 | `turn_id`, UTF-8 string |
-| `CortexStepGeneratorMetadata` | 2 | Repeated `step_indices`, packed or unpacked |
-| `CortexStepGeneratorMetadata` | 1 | `ChatModelMetadata` |
-| `ChatModelMetadata` | 4 | `ModelUsageStats` |
-| `ChatModelMetadata` | 19 | Actual `response_model` string |
-| `ModelUsageStats` | 1 | Model enum, **not system-prompt tokens** |
-| `ModelUsageStats` | 2 | Non-cache-read input tokens |
-| `ModelUsageStats` | 3 | Total output, including reasoning |
-| `ModelUsageStats` | 4 | Cache-write tokens |
-| `ModelUsageStats` | 5 | Cache-read tokens |
-| `ModelUsageStats` | 9 | Thinking output tokens |
-| `ModelUsageStats` | 10 | Visible response output tokens |
+| Message                       | Field | Meaning                                     |
+| ----------------------------- | ----- | ------------------------------------------- |
+| `CortexStepMetadata`          | 1     | `created_at`, Protobuf UTC Timestamp        |
+| `CortexStepMetadata`          | 9     | `ModelUsageStats`                           |
+| `CortexStepMetadata`          | 12    | `turn_id`, UTF-8 string                     |
+| `CortexStepGeneratorMetadata` | 2     | Repeated `step_indices`, packed or unpacked |
+| `CortexStepGeneratorMetadata` | 1     | `ChatModelMetadata`                         |
+| `ChatModelMetadata`           | 4     | `ModelUsageStats`                           |
+| `ChatModelMetadata`           | 19    | Actual `response_model` string              |
+| `ModelUsageStats`             | 1     | Model enum, **not system-prompt tokens**    |
+| `ModelUsageStats`             | 2     | Non-cache-read input tokens                 |
+| `ModelUsageStats`             | 3     | Total output, including reasoning           |
+| `ModelUsageStats`             | 4     | Cache-write tokens                          |
+| `ModelUsageStats`             | 5     | Cache-read tokens                           |
+| `ModelUsageStats`             | 9     | Thinking output tokens                      |
+| `ModelUsageStats`             | 10    | Visible response output tokens              |
 
 Generation indices and step indices are different namespaces. Attribute actual
 model names by the generation's `step_indices`; do not join on equal table
@@ -107,6 +107,7 @@ usage, details, pending-upload intent and the source status marker.
 
 Transient write instability (`UnstableAntigravityError`) is isolated per
 database while preserving the No-False-Tombstones invariant:
+
 - A busy database with a valid per-DB cache retains its cached snapshot with a
   warning so unaffected sibling databases still sync.
 - An uncached busy database is skipped with a warning only when a valid per-DB
@@ -138,14 +139,14 @@ prompts, reasoning text nor raw local paths belong in uploads or test fixtures.
 Verified on 2026-10-09. All listed projects are MIT-licensed and were updated
 within the preceding month. Star counts are observations, not correctness proof.
 
-| Project | Stars | Latest inspected commit date | Pinned revision |
-| --- | ---: | --- | --- |
-| [tokscale](https://github.com/junhoyeo/tokscale) | 5,643 | 2026-10-05 | `d4d1c751856e25913bce97bfbd7b254308863239` |
-| [openusage](https://github.com/robinebers/openusage) | 4,334 | 2026-10-06 | `cb21465e3d88d8b2075ca48d38c936b82177fb78` |
-| [token-monitor](https://github.com/Javis603/token-monitor) | 2,681 | 2026-10-08 | `c62544e7ffae8dfa863c92a4e81571ad381110f0` |
-| [TokenTracker](https://github.com/xiufengsun/TokenTracker) | 1,999 | 2026-10-08 | `4e225c312744cdbfb9266ace4002b5a54875635c` |
-| [tokentelemetry](https://github.com/VasiHemanth/tokentelemetry) | 377 | 2026-10-08 | `5eecfc4926a18f913df53ffb8ce65a355b85f20f` |
-| [splitrail](https://github.com/Piebald-AI/splitrail) | 223 | 2026-10-07 | `d9cbe5058d5f5ac89cafe1ee47544aeed62bd13f` |
+| Project                                                         | Stars | Latest inspected commit date | Pinned revision                            |
+| --------------------------------------------------------------- | ----: | ---------------------------- | ------------------------------------------ |
+| [tokscale](https://github.com/junhoyeo/tokscale)                | 5,643 | 2026-10-05                   | `d4d1c751856e25913bce97bfbd7b254308863239` |
+| [openusage](https://github.com/robinebers/openusage)            | 4,334 | 2026-10-06                   | `cb21465e3d88d8b2075ca48d38c936b82177fb78` |
+| [token-monitor](https://github.com/Javis603/token-monitor)      | 2,681 | 2026-10-08                   | `c62544e7ffae8dfa863c92a4e81571ad381110f0` |
+| [TokenTracker](https://github.com/xiufengsun/TokenTracker)      | 1,999 | 2026-10-08                   | `4e225c312744cdbfb9266ace4002b5a54875635c` |
+| [tokentelemetry](https://github.com/VasiHemanth/tokentelemetry) |   377 | 2026-10-08                   | `5eecfc4926a18f913df53ffb8ce65a355b85f20f` |
+| [splitrail](https://github.com/Piebald-AI/splitrail)            |   223 | 2026-10-07                   | `d9cbe5058d5f5ac89cafe1ee47544aeed62bd13f` |
 
 Relevant paths are `tokscale/crates/tokscale-core/src/sessions/antigravity_cli.rs`,
 `openusage/Sources/OpenUsage/Providers/Antigravity/AntigravityProtoDecoder.swift`,

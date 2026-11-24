@@ -144,9 +144,8 @@ export async function parseCopilotCliFile(opts: {
   // Do NOT flush trailing incomplete blocks — leave them for next sync.
   // If the file was fully consumed and no block is pending, endOffset
   // equals fileSize. Otherwise endOffset rewinds to the safe point.
-  const endOffset = collectingJson && jsonLines.length > 0
-    ? lastCompletedOffset
-    : startOffset + bytesConsumed;
+  const endOffset =
+    collectingJson && jsonLines.length > 0 ? lastCompletedOffset : startOffset + bytesConsumed;
 
   return { deltas, endOffset };
 }
@@ -155,24 +154,18 @@ export async function parseCopilotCliFile(opts: {
  * Extract a ParsedDelta from an `assistant_usage` telemetry event.
  * Returns null if the event has no usable token data or missing timestamp.
  */
-function extractUsageDelta(
-  event: Record<string, unknown>,
-): ParsedDelta | null {
+function extractUsageDelta(event: Record<string, unknown>): ParsedDelta | null {
   const props = event.properties as Record<string, unknown> | undefined;
   const metrics = event.metrics as Record<string, unknown> | undefined;
 
   // Require created_at for idempotent uploads — skip events without it.
   // Using current time as fallback would break reset+sync idempotency.
   const timestamp =
-    typeof event.created_at === "string" && event.created_at.length > 0
-      ? event.created_at
-      : null;
+    typeof event.created_at === "string" && event.created_at.length > 0 ? event.created_at : null;
   if (!timestamp) return null;
 
   const model =
-    typeof props?.model === "string" && props.model.length > 0
-      ? props.model
-      : "unknown";
+    typeof props?.model === "string" && props.model.length > 0 ? props.model : "unknown";
 
   const tokens = normalizeCopilotCliUsage(metrics ?? {});
   if (isAllZero(tokens)) return null;
@@ -187,9 +180,7 @@ function extractUsageDelta(
  * max(0, input_tokens - cache_read_tokens) for older telemetry that only
  * reports inclusive input_tokens.
  */
-export function normalizeCopilotCliUsage(
-  metrics: Record<string, unknown>,
-): TokenDelta {
+export function normalizeCopilotCliUsage(metrics: Record<string, unknown>): TokenDelta {
   const cached = toNonNegInt(metrics.cache_read_tokens);
   const inputUncached = metrics.input_tokens_uncached;
   // Prefer explicit uncached field when present and numeric (including 0).

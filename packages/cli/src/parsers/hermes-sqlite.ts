@@ -2,7 +2,12 @@ import { stat } from "node:fs/promises";
 import type { HermesSqliteCursor, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { isAllZero } from "../utils/token-delta.js";
-import { accountingLabel, decimalCost, inclusiveAccounting, optionalToken } from "../utils/accounting.js";
+import {
+  accountingLabel,
+  decimalCost,
+  inclusiveAccounting,
+  optionalToken,
+} from "../utils/accounting.js";
 
 interface HermesBilling {
   billing_provider?: string | null;
@@ -18,20 +23,51 @@ interface HermesBilling {
   has_reasoning?: boolean;
 }
 
-export function hermesAccounting(tokens: TokenDelta, row: HermesBilling & { model: string | null },
-  read: number | null, write: number | null, origin: string, absolute = false) {
+export function hermesAccounting(
+  tokens: TokenDelta,
+  row: HermesBilling & { model: string | null },
+  read: number | null,
+  write: number | null,
+  origin: string,
+  absolute = false,
+) {
   const status = row.cost_status;
   const knownSource = row.cost_source && row.cost_source !== "none";
-  const costs = absolute ? [
-    decimalCost(row.actual_cost_usd, `hermes:${accountingLabel(row.cost_source) ?? "unknown"}`, status === "included" ? "included" : "actual", status === "included" || status === "actual" && knownSource ? "complete" : "unknown"),
-    decimalCost(row.estimated_cost_usd, `hermes:${accountingLabel(row.cost_source) ?? "unknown"}`, "estimate", status === "estimated" && knownSource ? "complete" : "unknown"),
-  ].filter((c) => c !== null) : [];
-  return inclusiveAccounting(tokens, { input: tokens.inputTokens + tokens.cachedInputTokens,
-    read: row.has_cache_read === false ? null : read, write: row.has_cache_write === false ? null : write,
-    output: tokens.outputTokens, reasoning: row.has_reasoning === false ? null : tokens.reasoningOutputTokens }, {
-    origin, model: row.model || "unknown", provider: row.billing_provider, route: row.billing_route,
-    aggregate: true, quality: absolute ? "reported" : "derived", reportedCosts: costs,
-  });
+  const costs = absolute
+    ? [
+        decimalCost(
+          row.actual_cost_usd,
+          `hermes:${accountingLabel(row.cost_source) ?? "unknown"}`,
+          status === "included" ? "included" : "actual",
+          status === "included" || (status === "actual" && knownSource) ? "complete" : "unknown",
+        ),
+        decimalCost(
+          row.estimated_cost_usd,
+          `hermes:${accountingLabel(row.cost_source) ?? "unknown"}`,
+          "estimate",
+          status === "estimated" && knownSource ? "complete" : "unknown",
+        ),
+      ].filter((c) => c !== null)
+    : [];
+  return inclusiveAccounting(
+    tokens,
+    {
+      input: tokens.inputTokens + tokens.cachedInputTokens,
+      read: row.has_cache_read === false ? null : read,
+      write: row.has_cache_write === false ? null : write,
+      output: tokens.outputTokens,
+      reasoning: row.has_reasoning === false ? null : tokens.reasoningOutputTokens,
+    },
+    {
+      origin,
+      model: row.model || "unknown",
+      provider: row.billing_provider,
+      route: row.billing_route,
+      aggregate: true,
+      quality: absolute ? "reported" : "derived",
+      reportedCosts: costs,
+    },
+  );
 }
 
 /** Result of parsing Hermes SQLite database */
@@ -91,22 +127,49 @@ export interface HermesQueryHandle {
 }
 
 /** Full-source companions only. The sync reconciler verifies each original bucket before use. */
-export function hermesAccountingSnapshots(rows: SessionRow[], modelRows: AuxiliaryUsageRow[]): ParsedDelta[] {
+export function hermesAccountingSnapshots(
+  rows: SessionRow[],
+  modelRows: AuxiliaryUsageRow[],
+): ParsedDelta[] {
   const output: ParsedDelta[] = [];
-  const fields = ["input_tokens", "cache_read_tokens", "cache_write_tokens", "output_tokens", "reasoning_tokens"] as const;
+  const fields = [
+    "input_tokens",
+    "cache_read_tokens",
+    "cache_write_tokens",
+    "output_tokens",
+    "reasoning_tokens",
+  ] as const;
   for (const row of rows) {
-    if (!fields.every((f) => optionalToken(row[f]) !== null) || !Number.isFinite(row.started_at)) continue;
+    if (!fields.every((f) => optionalToken(row[f]) !== null) || !Number.isFinite(row.started_at))
+      continue;
     const timestamp = new Date(row.started_at * 1000).toISOString();
     const candidates = modelRows.filter((m) => m.session_id === row.id && m.task === "");
-    const matches = candidates.length > 0 && candidates.every((m) => fields.every((f) => optionalToken(m[f]) !== null)) &&
+    const matches =
+      candidates.length > 0 &&
+      candidates.every((m) => fields.every((f) => optionalToken(m[f]) !== null)) &&
       fields.every((f) => candidates.reduce((sum, m) => sum + m[f], 0) === row[f]);
     for (const m of matches ? candidates : [row]) {
-      const tokens = { inputTokens: m.input_tokens, cachedInputTokens: m.cache_read_tokens + m.cache_write_tokens,
-        outputTokens: m.output_tokens, reasoningOutputTokens: m.reasoning_tokens };
+      const tokens = {
+        inputTokens: m.input_tokens,
+        cachedInputTokens: m.cache_read_tokens + m.cache_write_tokens,
+        outputTokens: m.output_tokens,
+        reasoningOutputTokens: m.reasoning_tokens,
+      };
       if (isAllZero(tokens)) continue;
-      output.push({ source: "hermes", model: row.model || "unknown", timestamp, tokens,
-        accounting: hermesAccounting(tokens, m, m.cache_read_tokens, m.cache_write_tokens,
-          matches ? "hermes:model_ledger" : "hermes:sessions", true) });
+      output.push({
+        source: "hermes",
+        model: row.model || "unknown",
+        timestamp,
+        tokens,
+        accounting: hermesAccounting(
+          tokens,
+          m,
+          m.cache_read_tokens,
+          m.cache_write_tokens,
+          matches ? "hermes:model_ledger" : "hermes:sessions",
+          true,
+        ),
+      });
     }
   }
   return output;
@@ -198,8 +261,17 @@ export async function parseHermesDatabase(
       model: row.model || "unknown",
       timestamp: sessionTimestamp,
       tokens: delta,
-      ...(includeAccounting ? { accounting: hermesAccounting(delta, row,
-        row.cache_read_tokens - last.cacheRead, row.cache_write_tokens - last.cacheWrite, "hermes:sessions") } : {}),
+      ...(includeAccounting
+        ? {
+            accounting: hermesAccounting(
+              delta,
+              row,
+              row.cache_read_tokens - last.cacheRead,
+              row.cache_write_tokens - last.cacheWrite,
+              "hermes:sessions",
+            ),
+          }
+        : {}),
     });
 
     // Update cursor totals (only when non-zero delta)

@@ -51,10 +51,10 @@ export async function DELETE(
     }
 
     // Remove the member
-    await dbWrite.execute(
-      "DELETE FROM team_members WHERE team_id = ? AND user_id = ?",
-      [teamId, targetUserId],
-    );
+    await dbWrite.execute("DELETE FROM team_members WHERE team_id = ? AND user_id = ?", [
+      teamId,
+      targetUserId,
+    ]);
 
     // Sync season rosters if any active season allows roster changes
     try {

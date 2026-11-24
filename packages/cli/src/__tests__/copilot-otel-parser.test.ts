@@ -103,13 +103,16 @@ describe("parseCopilotOtelFile", () => {
 
   it("ignores spans from non-GitHub providers", async () => {
     const filePath = join(tempDir, "otel.jsonl");
-    await writeFile(filePath, `${otelSpan({
-      attributes: {
-        "gen_ai.provider.name": "other",
-        "gen_ai.usage.input_tokens": 100,
-        "gen_ai.usage.output_tokens": 10,
-      },
-    })}\n`);
+    await writeFile(
+      filePath,
+      `${otelSpan({
+        attributes: {
+          "gen_ai.provider.name": "other",
+          "gen_ai.usage.input_tokens": 100,
+          "gen_ai.usage.output_tokens": 10,
+        },
+      })}\n`,
+    );
 
     const result = await parseCopilotOtelFile({ filePath, startOffset: 0 });
     expect(result.deltas).toEqual([]);
@@ -173,15 +176,18 @@ describe("parseCopilotOtelFile", () => {
 
   it("accepts spans identified only by instrumentation scope", async () => {
     const filePath = join(tempDir, "otel.jsonl");
-    await writeFile(filePath, `${otelSpan({
-      traceId: "t3",
-      spanId: "s3",
-      instrumentationScope: { name: "github.copilot" },
-      attributes: {
-        "gen_ai.usage.input_tokens": 100,
-        "gen_ai.usage.output_tokens": 10,
-      },
-    })}\n`);
+    await writeFile(
+      filePath,
+      `${otelSpan({
+        traceId: "t3",
+        spanId: "s3",
+        instrumentationScope: { name: "github.copilot" },
+        attributes: {
+          "gen_ai.usage.input_tokens": 100,
+          "gen_ai.usage.output_tokens": 10,
+        },
+      })}\n`,
+    );
 
     const result = await parseCopilotOtelFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -191,7 +197,10 @@ describe("parseCopilotOtelFile", () => {
 
   it("accepts an ISO string startTime and skips spans without one", async () => {
     const filePath = join(tempDir, "otel.jsonl");
-    await writeFile(filePath, `${otelSpan({ traceId: "t4", spanId: "s4", startTime: "2026-03-07T10:15:00.000Z" })}\n`);
+    await writeFile(
+      filePath,
+      `${otelSpan({ traceId: "t4", spanId: "s4", startTime: "2026-03-07T10:15:00.000Z" })}\n`,
+    );
     const iso = await parseCopilotOtelFile({ filePath, startOffset: 0 });
     expect(iso.deltas[0].timestamp).toBe("2026-03-07T10:15:00.000Z");
 
@@ -202,12 +211,15 @@ describe("parseCopilotOtelFile", () => {
 
   it("ignores non-span records and zero-usage spans", async () => {
     const filePath = join(tempDir, "otel.jsonl");
-    await writeFile(filePath, [
-      JSON.stringify({ type: "log", traceId: "t6", spanId: "s6" }),
-      otelSpan({ traceId: "t7", spanId: "s7", attributes: { "gen_ai.provider.name": "github" } }),
-      JSON.stringify({ type: "span", traceId: "t8", spanId: "s8" }),
-      "",
-    ].join("\n"));
+    await writeFile(
+      filePath,
+      [
+        JSON.stringify({ type: "log", traceId: "t6", spanId: "s6" }),
+        otelSpan({ traceId: "t7", spanId: "s7", attributes: { "gen_ai.provider.name": "github" } }),
+        JSON.stringify({ type: "span", traceId: "t8", spanId: "s8" }),
+        "",
+      ].join("\n"),
+    );
 
     const result = await parseCopilotOtelFile({ filePath, startOffset: 0 });
     expect(result.deltas).toEqual([]);
@@ -252,13 +264,16 @@ describe("parseCopilotOtelFile", () => {
     // Exporters have been seen emitting spans with only one of the two ids,
     // and dedup must not swallow distinct usage when neither is present.
     const filePath = join(tempDir, "otel.jsonl");
-    await writeFile(filePath, [
-      otelSpan({ traceId: "only-trace", spanId: undefined }),
-      otelSpan({ traceId: undefined, spanId: "only-span" }),
-      otelSpan({ traceId: undefined, spanId: undefined }),
-      otelSpan({ traceId: undefined, spanId: undefined }),
-      "",
-    ].join("\n"));
+    await writeFile(
+      filePath,
+      [
+        otelSpan({ traceId: "only-trace", spanId: undefined }),
+        otelSpan({ traceId: undefined, spanId: "only-span" }),
+        otelSpan({ traceId: undefined, spanId: undefined }),
+        otelSpan({ traceId: undefined, spanId: undefined }),
+        "",
+      ].join("\n"),
+    );
 
     const result = await parseCopilotOtelFile({ filePath, startOffset: 0 });
     // Two identified spans (distinct ids) plus both unidentified ones.

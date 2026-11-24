@@ -11,14 +11,14 @@
 Pi (`pi-coding-agent`). It keeps pi's on-disk session format verbatim, which makes
 support a wiring exercise rather than a new parser.
 
-| | Pi | omp |
-|---|---|---|
-| Sessions root | `~/.pi/agent/sessions` | `~/.omp/agent/sessions` |
-| Layout | `<encoded-cwd>/<ISO>_<uuidv7>.jsonl` | same |
-| Session header | `{type:"session", version:3, id, timestamp, cwd}` | same |
-| Extra usage keys | `reasoning`, `cacheWrite1h` | `reasoningTokens`, `cttl`, `orchestration` |
-| Extensions | `~/.pi/agent/extensions/*.ts` | `~/.omp/agent/extensions/*.ts` |
-| Extension types pkg | `@mariozechner/pi-coding-agent` | `@oh-my-pi/pi-coding-agent` |
+|                     | Pi                                                | omp                                        |
+| ------------------- | ------------------------------------------------- | ------------------------------------------ |
+| Sessions root       | `~/.pi/agent/sessions`                            | `~/.omp/agent/sessions`                    |
+| Layout              | `<encoded-cwd>/<ISO>_<uuidv7>.jsonl`              | same                                       |
+| Session header      | `{type:"session", version:3, id, timestamp, cwd}` | same                                       |
+| Extra usage keys    | `reasoning`, `cacheWrite1h`                       | `reasoningTokens`, `cttl`, `orchestration` |
+| Extensions          | `~/.pi/agent/extensions/*.ts`                     | `~/.omp/agent/extensions/*.ts`             |
+| Extension types pkg | `@mariozechner/pi-coding-agent`                   | `@oh-my-pi/pi-coding-agent`                |
 
 ## 2. Token semantics (verified on real data)
 
@@ -35,12 +35,12 @@ tools (pi: 3276 rows, omp: 178 rows) — no captured row carried an
 
 `normalizePiUsage()` maps this to pew's `TokenDelta`:
 
-| pi/omp field | pew field |
-|---|---|
-| `input + cacheWrite + orchestration.input` | `inputTokens` |
-| `cacheRead + orchestration.cacheRead` | `cachedInputTokens` |
-| `output - reasoning + orchestration.output` | `outputTokens` |
-| `reasoningTokens` (omp) / `reasoning` (pi) | `reasoningOutputTokens` |
+| pi/omp field                                | pew field               |
+| ------------------------------------------- | ----------------------- |
+| `input + cacheWrite + orchestration.input`  | `inputTokens`           |
+| `cacheRead + orchestration.cacheRead`       | `cachedInputTokens`     |
+| `output - reasoning + orchestration.output` | `outputTokens`          |
+| `reasoningTokens` (omp) / `reasoning` (pi)  | `reasoningOutputTokens` |
 
 **Orchestration tokens are billed.** The type calls them "provider-side
 orchestration tokens, billed but not part of the conversation prompt/cache
@@ -49,13 +49,13 @@ the matching pew bucket — dropping them would undercount both tokens and the
 cost pew recomputes from them.
 
 **Reasoning tokens are a subset of `output`**, not an additional bucket —
-omp's type says *"Always a subset of `output` — non-reasoning output is
-`output - reasoningTokens`"*. They are **carved out of** the conversation
+omp's type says _"Always a subset of `output` — non-reasoning output is
+`output - reasoningTokens`"_. They are **carved out of** the conversation
 output, never added on top, so the row total is unchanged. The value is
 clamped to the conversation `output` (orchestration output is a separate
 bucket) so a malformed row cannot drive `outputTokens` negative.
 
-An absent reasoning field means *unknown*, not zero — providers that don't
+An absent reasoning field means _unknown_, not zero — providers that don't
 report it simply leave `outputTokens` whole. Anthropic is one of them, which
 is why the initial `claude-opus-5` capture showed no reasoning at all; OpenAI
 (`output_tokens_details.reasoning_tokens`) and Google (`thoughtsTokenCount`)
@@ -91,17 +91,17 @@ Same shape as `parsers/grok.ts`. Regression tests for both live in
 Reuse, not duplication — `parsers/pi.ts` and `parsers/pi-session.ts` take a
 `source` argument (default `"pi"`), and the omp drivers pass `"omp"`.
 
-| Layer | File |
-|---|---|
-| Source enum | `packages/core/src/types.ts`, `constants.ts` |
-| Path | `utils/paths.ts` → `ompSessionsDir` |
-| Discovery | `discovery/sources.ts` → `discoverOmpFiles()` |
-| Token driver | `drivers/token/omp-token-driver.ts` (byte-offset resume) |
-| Session driver | `drivers/session/omp-session-driver.ts` (mtime+size full rescan) |
-| Registry | `drivers/registry.ts` (gated on `ompSessionsDir`) |
-| Orchestrators | `commands/sync.ts`, `session-sync.ts`, `status.ts`, `notify.ts` |
-| Notifier hook | `notifier/omp-hook.ts` → `~/.omp/agent/extensions/pew-sync.ts` |
-| Web | `lib/palette.ts` (chart-14 emerald), `usage-transforms.ts`, `pricing.ts`, 6 API allowlists, `leaderboard/agents`, landing roster |
+| Layer          | File                                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Source enum    | `packages/core/src/types.ts`, `constants.ts`                                                                                     |
+| Path           | `utils/paths.ts` → `ompSessionsDir`                                                                                              |
+| Discovery      | `discovery/sources.ts` → `discoverOmpFiles()`                                                                                    |
+| Token driver   | `drivers/token/omp-token-driver.ts` (byte-offset resume)                                                                         |
+| Session driver | `drivers/session/omp-session-driver.ts` (mtime+size full rescan)                                                                 |
+| Registry       | `drivers/registry.ts` (gated on `ompSessionsDir`)                                                                                |
+| Orchestrators  | `commands/sync.ts`, `session-sync.ts`, `status.ts`, `notify.ts`                                                                  |
+| Notifier hook  | `notifier/omp-hook.ts` → `~/.omp/agent/extensions/pew-sync.ts`                                                                   |
+| Web            | `lib/palette.ts` (chart-14 emerald), `usage-transforms.ts`, `pricing.ts`, 6 API allowlists, `leaderboard/agents`, landing roster |
 
 No D1 migration: `source` is a plain `TEXT NOT NULL` column with no CHECK
 constraint. Validation is centralised in `@pew/core`'s `VALID_SOURCES`.
@@ -122,8 +122,8 @@ root session, each with its own `type: "session"` header:
   dir recursively", so subagent usage is real billed usage and must be counted.
 - **Session discovery must not treat them as human sessions.** `locateSession()`
   walks ancestors until a directory matches the root-session stem
-  (`<ISO>Z_<uuid>`), marks the snapshot `kind: "automated"`, and takes *that
-  directory's* parent so `projectRef` hashes `<encoded-cwd>`. Nesting depth is
+  (`<ISO>Z_<uuid>`), marks the snapshot `kind: "automated"`, and takes _that
+  directory's_ parent so `projectRef` hashes `<encoded-cwd>`. Nesting depth is
   unbounded — a subagent's own artifacts dir is `<stem>/<SubId>/`, which nests
   again for its advisor — so checking only the immediate parent would classify
   a subagent advisor as a root session and hash `<SubId>` as its project.
@@ -158,7 +158,9 @@ import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { spawn } from "node:child_process";
 
 export default function (pi: ExtensionAPI) {
-  pi.on("session_shutdown", async () => { /* spawn notify.cjs --source=omp */ });
+  pi.on("session_shutdown", async () => {
+    /* spawn notify.cjs --source=omp */
+  });
 }
 ```
 
@@ -169,9 +171,9 @@ OpenClaw, OpenCode, Pi).
 
 `executeSync` run against a frozen copy of a real omp session file:
 
-| | raw JSONL | pew |
-|---|---|---|
-| assistant rows | 178 | 178 deltas |
+|                 | raw JSONL  | pew        |
+| --------------- | ---------- | ---------- |
+| assistant rows  | 178        | 178 deltas |
 | `Σ totalTokens` | 30 633 341 | 30 633 341 |
 
 Byte-exact, zero rows dropped. A second `executeSync` over the same state dir

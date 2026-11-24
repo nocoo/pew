@@ -43,8 +43,7 @@ export function PunchHole({ className }: { className?: string }) {
     <div
       className={cn("h-4 w-8 shrink-0 rounded-full bg-basalt-background/80", className)}
       style={{
-        boxShadow:
-          "inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -0.5px 1px rgba(255,255,255,0.1)",
+        boxShadow: "inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -0.5px 1px rgba(255,255,255,0.1)",
       }}
       aria-hidden="true"
     />
@@ -83,20 +82,11 @@ export function PassHeader({
         <PunchHole />
 
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
-          <Image
-            src="/logo-80.png"
-            alt=""
-            width={16}
-            height={16}
-            aria-hidden="true"
-          />
+          <Image src="/logo-80.png" alt="" width={16} height={16} aria-hidden="true" />
           <span className="font-handwriting text-base font-semibold leading-none text-basalt-primary-foreground">
             pew
           </span>
-          <span
-            className="hidden text-basalt-primary-foreground/30 sm:inline"
-            aria-hidden="true"
-          >
+          <span className="hidden text-basalt-primary-foreground/30 sm:inline" aria-hidden="true">
             ·
           </span>
           <span className="hidden text-xs text-basalt-primary-foreground/55 sm:inline">
@@ -167,13 +157,7 @@ export function BadgeCard({
         <div className="flex items-center justify-between">
           <PunchHole />
           <div className="flex items-center gap-2">
-            <Image
-              src="/logo-80.png"
-              alt=""
-              width={16}
-              height={16}
-              aria-hidden="true"
-            />
+            <Image src="/logo-80.png" alt="" width={16} height={16} aria-hidden="true" />
             <span className="font-handwriting text-sm font-semibold text-basalt-primary-foreground">
               pew
             </span>
@@ -213,10 +197,7 @@ export function PassPerforation({
 }) {
   if (orientation === "horizontal") {
     return (
-      <div
-        className={cn("flex items-center gap-2 px-3", className)}
-        aria-hidden="true"
-      >
+      <div className={cn("flex items-center gap-2 px-3", className)} aria-hidden="true">
         <div className="h-2 w-2 shrink-0 rounded-full border border-basalt-border bg-basalt-background" />
         <div className="h-px flex-1 border-t border-dashed border-basalt-border" />
         <div className="h-2 w-2 shrink-0 rounded-full border border-basalt-border bg-basalt-background" />
@@ -226,10 +207,7 @@ export function PassPerforation({
 
   return (
     <div
-      className={cn(
-        "flex w-4 shrink-0 flex-col items-center self-stretch",
-        className,
-      )}
+      className={cn("flex w-4 shrink-0 flex-col items-center self-stretch", className)}
       aria-hidden="true"
     >
       <div className="h-2 w-2 shrink-0 rounded-full border border-basalt-border bg-basalt-background" />

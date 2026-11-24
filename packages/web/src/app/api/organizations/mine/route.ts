@@ -42,9 +42,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ organizations: [] });
     }
     console.error("Failed to list user organizations:", err);
-    return NextResponse.json(
-      { error: "Failed to list organizations" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list organizations" }, { status: 500 });
   }
 }

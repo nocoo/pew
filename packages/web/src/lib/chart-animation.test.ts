@@ -7,12 +7,16 @@ function frameClock() {
   const clock: TimeoutController = {
     setTimeout(callback) {
       callbacks.add(callback);
-      return () => { callbacks.delete(callback); };
+      return () => {
+        callbacks.delete(callback);
+      };
     },
   };
   return {
     clock,
-    get pending() { return callbacks.size; },
+    get pending() {
+      return callbacks.size;
+    },
     frame(now: number) {
       const frame = [...callbacks];
       callbacks.clear();

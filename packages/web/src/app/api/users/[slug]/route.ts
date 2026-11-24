@@ -75,20 +75,14 @@ async function canBypassPublic(
 // Route handler
 // ---------------------------------------------------------------------------
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ slug: string }> },
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
   // 1. Validate slug format (alphanumeric + hyphens, 1-64 chars) OR UUID
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/i;
   if (!SLUG_RE.test(slug) && !UUID_RE.test(slug)) {
-    return NextResponse.json(
-      { error: "Invalid profile identifier" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid profile identifier" }, { status: 400 });
   }
 
   const db = await getDbRead();
@@ -124,10 +118,7 @@ export async function GET(
     fromDate = new Date(fromParam);
     toDate = new Date(toParam);
     if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
-      return NextResponse.json(
-        { error: "Invalid from/to datetime format" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid from/to datetime format" }, { status: 400 });
     }
   } else {
     // Use days-based range
@@ -135,10 +126,7 @@ export async function GET(
     if (daysParam) {
       const parsed = parseInt(daysParam, 10);
       if (Number.isNaN(parsed) || parsed < 1 || parsed > MAX_DAYS) {
-        return NextResponse.json(
-          { error: `days must be 1-${MAX_DAYS}` },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: `days must be 1-${MAX_DAYS}` }, { status: 400 });
       }
       days = parsed;
     }
@@ -148,10 +136,7 @@ export async function GET(
   }
 
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
-    return NextResponse.json(
-      { error: "Invalid source parameter" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid source parameter" }, { status: 400 });
   }
 
   // 4. Execute query via RPC
@@ -172,8 +157,7 @@ export async function GET(
         input_tokens: sumCounts(acc.input_tokens, r.input_tokens),
         cached_input_tokens: sumCounts(acc.cached_input_tokens, r.cached_input_tokens),
         output_tokens: sumCounts(acc.output_tokens, r.output_tokens),
-        reasoning_output_tokens:
-          sumCounts(acc.reasoning_output_tokens, r.reasoning_output_tokens),
+        reasoning_output_tokens: sumCounts(acc.reasoning_output_tokens, r.reasoning_output_tokens),
         total_tokens: sumCounts(acc.total_tokens, r.total_tokens),
       }),
       {
@@ -202,16 +186,21 @@ export async function GET(
         first_seen: firstSeen,
       },
       // Enforce the public boundary even if the read service changes its default.
-      records: records.map((r) => r.accounting ? { ...r, accounting: r.accounting.map((a) => ({
-        ...a, groups: a.groups.map((g) => ({ ...g, reported_costs: [] })),
-      })) } : r),
+      records: records.map((r) =>
+        r.accounting
+          ? {
+              ...r,
+              accounting: r.accounting.map((a) => ({
+                ...a,
+                groups: a.groups.map((g) => ({ ...g, reported_costs: [] })),
+              })),
+            }
+          : r,
+      ),
       summary,
     });
   } catch (err) {
     console.error("Failed to query public profile:", err);
-    return NextResponse.json(
-      { error: "Failed to load profile data" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to load profile data" }, { status: 500 });
   }
 }

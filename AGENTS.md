@@ -58,12 +58,12 @@ Follows `system1-quality`; CI slot definitions and pinned `base-ci` revision liv
 
 ## Resources & Isolation
 
-| Lane | Endpoint / State | Boundary |
-| --- | --- | --- |
-| Dev | `127.0.0.1:7020`, `packages/web/.env.local`, `~/.config/pew/` | Daily local data; CLI `sync`/`init`/`reset` mutate state; preserve running server |
-| API E2E | `127.0.0.1:17020`, per-run temp D1/KV + source Workers | Clean env-free clone only; build `@pew/core` first; `_test_marker` (`env`+`run`); fails on port conflict |
-| Browser E2E | `127.0.0.1:27020`, per-run seeded D1/KV + source Workers | Isolated Playwright lane separate from API E2E; loopback bridge only, no cloud secrets |
-| Prod | `https://pew.md` (jp2 `/opt/pew`), Cloudflare Workers/D1 | Read-only checks unless deploy/publish is authorized; see [docs/52-jp2-migration.md](docs/52-jp2-migration.md) |
+| Lane        | Endpoint / State                                              | Boundary                                                                                                       |
+| ----------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Dev         | `127.0.0.1:7020`, `packages/web/.env.local`, `~/.config/pew/` | Daily local data; CLI `sync`/`init`/`reset` mutate state; preserve running server                              |
+| API E2E     | `127.0.0.1:17020`, per-run temp D1/KV + source Workers        | Clean env-free clone only; build `@pew/core` first; `_test_marker` (`env`+`run`); fails on port conflict       |
+| Browser E2E | `127.0.0.1:27020`, per-run seeded D1/KV + source Workers      | Isolated Playwright lane separate from API E2E; loopback bridge only, no cloud secrets                         |
+| Prod        | `https://pew.md` (jp2 `/opt/pew`), Cloudflare Workers/D1      | Read-only checks unless deploy/publish is authorized; see [docs/52-jp2-migration.md](docs/52-jp2-migration.md) |
 
 ## Retrospective
 

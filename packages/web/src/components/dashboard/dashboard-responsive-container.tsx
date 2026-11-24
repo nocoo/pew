@@ -6,7 +6,8 @@ import { useChartResizePaused } from "@/components/chart-animation-provider";
 import { CHART_RESIZE_DEBOUNCE_MS } from "@/lib/sidebar-animation";
 
 type DashboardResponsiveContainerProps = Pick<
-  ComponentProps<typeof RechartsResponsiveContainer>, "width" | "height" | "children" | "debounce"
+  ComponentProps<typeof RechartsResponsiveContainer>,
+  "width" | "height" | "children" | "debounce"
 >;
 
 export function DashboardResponsiveContainer({
@@ -27,8 +28,9 @@ export function DashboardResponsiveContainer({
       // Layout dimensions stay correct even while a dialog scales into view.
       const width = node.clientWidth;
       const height = node.clientHeight;
-      setSize((previous) => previous.width === width && previous.height === height
-        ? previous : { width, height });
+      setSize((previous) =>
+        previous.width === width && previous.height === height ? previous : { width, height },
+      );
     };
     measure();
     const observer = new ResizeObserver(() => {
@@ -45,7 +47,11 @@ export function DashboardResponsiveContainer({
   // Recharts' own observer cannot pause and may finish an Area animation on resize.
   // Keep its dimension provider mounted, holding the last size during sidebar motion.
   return (
-    <div ref={container} className="recharts-responsive-container overflow-hidden" style={{ width, height, minWidth: 0 }}>
+    <div
+      ref={container}
+      className="recharts-responsive-container overflow-hidden"
+      style={{ width, height, minWidth: 0 }}
+    >
       <RechartsResponsiveContainer width={size.width} height={size.height}>
         {children}
       </RechartsResponsiveContainer>

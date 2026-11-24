@@ -18,7 +18,12 @@ vi.mock("@/lib/seasons", () => ({
 }));
 
 import { POST, DELETE } from "@/app/api/seasons/[seasonId]/register/route";
-import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers, makeJsonRequest } from "./test-utils";
+import {
+  createMockDbRead,
+  createMockDbWrite,
+  loadMockedAuthHelpers,
+  makeJsonRequest,
+} from "./test-utils";
 import * as dbModule from "@/lib/db";
 
 const { resolveUser } = await loadMockedAuthHelpers();
@@ -50,10 +55,7 @@ const SEASON_UPCOMING = {
   allow_late_withdrawal: 0,
 };
 
-const MEMBERS = [
-  { user_id: "u1" },
-  { user_id: "u2" },
-];
+const MEMBERS = [{ user_id: "u1" }, { user_id: "u2" }];
 
 // ---------------------------------------------------------------------------
 // POST /api/seasons/[seasonId]/register
@@ -121,7 +123,10 @@ describe("POST /api/seasons/[seasonId]/register", () => {
 
   it("returns 400 when season is active and late registration disabled", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.getSeasonById.mockResolvedValueOnce({ ...SEASON_UPCOMING, allow_late_registration: 0 });
+    mockDbRead.getSeasonById.mockResolvedValueOnce({
+      ...SEASON_UPCOMING,
+      allow_late_registration: 0,
+    });
     deriveSeasonStatus.mockReturnValueOnce("active");
     const res = await POST(postReq({ team_id: "t1" }), PARAMS);
     expect(res.status).toBe(400);
@@ -130,7 +135,10 @@ describe("POST /api/seasons/[seasonId]/register", () => {
 
   it("allows registration when season is active and late registration enabled", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.getSeasonById.mockResolvedValueOnce({ ...SEASON_UPCOMING, allow_late_registration: 1 });
+    mockDbRead.getSeasonById.mockResolvedValueOnce({
+      ...SEASON_UPCOMING,
+      allow_late_registration: 1,
+    });
     deriveSeasonStatus.mockReturnValueOnce("active");
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbRead.getSeasonRegistration.mockResolvedValueOnce(null);
@@ -240,8 +248,12 @@ describe("POST /api/seasons/[seasonId]/register", () => {
 
     // 2 compensation calls: member deletes + team delete
     expect(mockDbWrite.execute).toHaveBeenCalledTimes(2);
-    expect(mockDbWrite.execute.mock.calls[0]![0]).toContain("DELETE FROM season_team_members WHERE id IN");
-    expect(mockDbWrite.execute.mock.calls[1]![0]).toContain("DELETE FROM season_teams WHERE id = ?");
+    expect(mockDbWrite.execute.mock.calls[0]![0]).toContain(
+      "DELETE FROM season_team_members WHERE id IN",
+    );
+    expect(mockDbWrite.execute.mock.calls[1]![0]).toContain(
+      "DELETE FROM season_teams WHERE id = ?",
+    );
   });
 
   it("swallows cleanup errors during compensation", async () => {
@@ -343,7 +355,10 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
 
   it("returns 400 when season is active and late withdrawal disabled", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.getSeasonById.mockResolvedValueOnce({ ...SEASON_UPCOMING, allow_late_withdrawal: 0 });
+    mockDbRead.getSeasonById.mockResolvedValueOnce({
+      ...SEASON_UPCOMING,
+      allow_late_withdrawal: 0,
+    });
     deriveSeasonStatus.mockReturnValueOnce("active");
     const res = await DELETE(deleteReq({ team_id: "t1" }), PARAMS);
     expect(res.status).toBe(400);
@@ -352,7 +367,10 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
 
   it("allows withdrawal when season is active and late withdrawal enabled", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.getSeasonById.mockResolvedValueOnce({ ...SEASON_UPCOMING, allow_late_withdrawal: 1 });
+    mockDbRead.getSeasonById.mockResolvedValueOnce({
+      ...SEASON_UPCOMING,
+      allow_late_withdrawal: 1,
+    });
     deriveSeasonStatus.mockReturnValueOnce("active");
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbRead.getSeasonRegistration.mockResolvedValueOnce({ id: "reg-1" });

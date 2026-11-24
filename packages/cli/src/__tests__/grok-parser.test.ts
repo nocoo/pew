@@ -42,20 +42,22 @@ import {
 
 const SID = "019f4975-8cf2-7fc2-9d8a-a4297c3a01a7";
 
-function inferenceLine(overrides: {
-  ts?: string;
-  sid?: string;
-  prompt?: number;
-  cached?: number;
-  completion?: number;
-  reasoning?: number;
-  loop?: number;
-  attempts?: number;
-  omitCached?: boolean;
-  omitPrompt?: boolean;
-  omitCompletion?: boolean;
-  omitTs?: boolean;
-} = {}): string {
+function inferenceLine(
+  overrides: {
+    ts?: string;
+    sid?: string;
+    prompt?: number;
+    cached?: number;
+    completion?: number;
+    reasoning?: number;
+    loop?: number;
+    attempts?: number;
+    omitCached?: boolean;
+    omitPrompt?: boolean;
+    omitCompletion?: boolean;
+    omitTs?: boolean;
+  } = {},
+): string {
   const ctx: Record<string, unknown> = {
     loop_index: overrides.loop ?? 1,
     attempts: overrides.attempts ?? 1,
@@ -216,10 +218,7 @@ describe("parseGrokLogFile", () => {
   });
 
   it("skips when both prompt and completion are missing", async () => {
-    await writeFile(
-      logPath,
-      `${inferenceLine({ omitPrompt: true, omitCompletion: true })}\n`,
-    );
+    await writeFile(logPath, `${inferenceLine({ omitPrompt: true, omitCompletion: true })}\n`);
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
   });
@@ -227,8 +226,7 @@ describe("parseGrokLogFile", () => {
   it("uses full prompt as input when cached field is missing", async () => {
     await writeFile(
       logPath,
-      inferenceLine({ prompt: 1000, omitCached: true, completion: 10, reasoning: 0 }) +
-        "\n",
+      `${inferenceLine({ prompt: 1000, omitCached: true, completion: 10, reasoning: 0 })}\n`,
     );
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -270,8 +268,7 @@ describe("parseGrokLogFile", () => {
     expect(r1.endOffset).toBe(Buffer.byteLength(complete, "utf8"));
 
     // Finish the partial line
-    const rest =
-      `${inferenceLine({ ts: "2026-07-10T00:02:00.000Z" }).slice(40)}\n`;
+    const rest = `${inferenceLine({ ts: "2026-07-10T00:02:00.000Z" }).slice(40)}\n`;
     await writeFile(logPath, complete + partial + rest);
 
     const r2 = await parseGrokLogFile({

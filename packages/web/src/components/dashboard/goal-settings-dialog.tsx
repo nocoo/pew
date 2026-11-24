@@ -189,11 +189,7 @@ export function GoalSettingsDialog({
             Set daily token thresholds for the goal heatmap.
           </DialogDescription>
         </DialogHeader>
-        <GoalSettingsForm
-          current={current}
-          onSave={handleSave}
-          onCancel={handleCancel}
-        />
+        <GoalSettingsForm current={current} onSave={handleSave} onCancel={handleCancel} />
       </DialogContent>
     </Dialog>
   );

@@ -3,11 +3,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 
 import { memoryKv } from "../__test-helpers__/memory-kv";
 import baseline from "../data/model-prices.json";
-import {
-  syncDynamicPricing,
-  OPENROUTER_URL,
-  MODELS_DEV_URL,
-} from "./orchestrator";
+import { syncDynamicPricing, OPENROUTER_URL, MODELS_DEV_URL } from "./orchestrator";
 import {
   KEY_DYNAMIC,
   KEY_DYNAMIC_META,
@@ -54,7 +50,7 @@ const MODELS_DEV_OK = {
 };
 
 function mockFetch(
-  responses: Record<string, { status: number; body?: unknown; throwError?: string }>
+  responses: Record<string, { status: number; body?: unknown; throwError?: string }>,
 ): typeof fetch {
   return vi.fn(async (url: string | URL | Request) => {
     const u = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
@@ -113,11 +109,11 @@ describe("syncDynamicPricing", () => {
     // Pre-seed last-fetch cache for both sources.
     kv.store.set(
       KEY_LAST_FETCH_OPENROUTER,
-      JSON.stringify({ json: OPENROUTER_OK, fetchedAt: "2026-04-29T00:00:00.000Z" })
+      JSON.stringify({ json: OPENROUTER_OK, fetchedAt: "2026-04-29T00:00:00.000Z" }),
     );
     kv.store.set(
       KEY_LAST_FETCH_MODELS_DEV,
-      JSON.stringify({ json: MODELS_DEV_OK, fetchedAt: "2026-04-29T00:00:00.000Z" })
+      JSON.stringify({ json: MODELS_DEV_OK, fetchedAt: "2026-04-29T00:00:00.000Z" }),
     );
     const fetchImpl = mockFetch({
       [OPENROUTER_URL]: { status: 500 },
@@ -202,11 +198,11 @@ describe("syncDynamicPricing", () => {
   it("forceRefetch=false → skips upstream entirely; uses cache when present", async () => {
     kv.store.set(
       KEY_LAST_FETCH_OPENROUTER,
-      JSON.stringify({ json: OPENROUTER_OK, fetchedAt: "2026-04-29T00:00:00.000Z" })
+      JSON.stringify({ json: OPENROUTER_OK, fetchedAt: "2026-04-29T00:00:00.000Z" }),
     );
     kv.store.set(
       KEY_LAST_FETCH_MODELS_DEV,
-      JSON.stringify({ json: MODELS_DEV_OK, fetchedAt: "2026-04-29T00:00:00.000Z" })
+      JSON.stringify({ json: MODELS_DEV_OK, fetchedAt: "2026-04-29T00:00:00.000Z" }),
     );
     const fetchImpl = vi.fn(async () => {
       throw new Error("upstream must not be called when forceRefetch=false");
@@ -232,7 +228,7 @@ describe("syncDynamicPricing", () => {
     // Pre-seed stale cache; verify it's overwritten on success.
     kv.store.set(
       KEY_LAST_FETCH_OPENROUTER,
-      JSON.stringify({ json: { data: [] }, fetchedAt: "2026-04-29T00:00:00.000Z" })
+      JSON.stringify({ json: { data: [] }, fetchedAt: "2026-04-29T00:00:00.000Z" }),
     );
     const fetchImpl = mockFetch({
       [OPENROUTER_URL]: { status: 200, body: OPENROUTER_OK },
@@ -248,7 +244,7 @@ describe("syncDynamicPricing", () => {
   it("forceRefetch=true → upstream failure does NOT fall back to cache; surfaces error", async () => {
     kv.store.set(
       KEY_LAST_FETCH_OPENROUTER,
-      JSON.stringify({ json: OPENROUTER_OK, fetchedAt: "2026-04-29T00:00:00.000Z" })
+      JSON.stringify({ json: OPENROUTER_OK, fetchedAt: "2026-04-29T00:00:00.000Z" }),
     );
     const fetchImpl = mockFetch({
       [OPENROUTER_URL]: { status: 500, body: { error: "boom" } },

@@ -33,10 +33,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ rows: [] });
     }
     console.error("Failed to load invite codes:", err);
-    return NextResponse.json(
-      { error: "Failed to load invite codes" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load invite codes" }, { status: 500 });
   }
 }
 
@@ -60,16 +57,10 @@ export async function POST(request: Request) {
   const count = typeof body.count === "number" ? body.count : 1;
 
   if (!Number.isInteger(count) || count < 1) {
-    return NextResponse.json(
-      { error: "count must be a positive integer" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "count must be a positive integer" }, { status: 400 });
   }
   if (count > 20) {
-    return NextResponse.json(
-      { error: "count must be at most 20" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "count must be at most 20" }, { status: 400 });
   }
 
   const dbRead = await getDbRead();
@@ -87,7 +78,7 @@ export async function POST(request: Request) {
         if (attempts > 10) {
           return NextResponse.json(
             { error: "Failed to generate unique code after retries" },
-            { status: 500 }
+            { status: 500 },
           );
         }
         // Check for collision
@@ -96,20 +87,17 @@ export async function POST(request: Request) {
         // biome-ignore lint/correctness/noConstantCondition: retry-until-unique loop bounded by the attempts guard above
       } while (true);
 
-      await dbWrite.execute(
-        `INSERT INTO invite_codes (code, created_by) VALUES (?, ?)`,
-        [code, admin.userId]
-      );
+      await dbWrite.execute(`INSERT INTO invite_codes (code, created_by) VALUES (?, ?)`, [
+        code,
+        admin.userId,
+      ]);
       codes.push(code);
     }
 
     return NextResponse.json({ codes }, { status: 201 });
   } catch (err) {
     console.error("Failed to generate invite codes:", err);
-    return NextResponse.json(
-      { error: "Failed to generate invite codes" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate invite codes" }, { status: 500 });
   }
 }
 
@@ -126,10 +114,7 @@ export async function DELETE(request: Request) {
   const url = new URL(request.url);
   const idStr = url.searchParams.get("id");
   if (!idStr) {
-    return NextResponse.json(
-      { error: "id query parameter is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "id query parameter is required" }, { status: 400 });
   }
 
   const id = Number(idStr);
@@ -145,7 +130,7 @@ export async function DELETE(request: Request) {
     // Avoids TOCTOU race between a prior SELECT check and DELETE.
     const meta = await dbWrite.execute(
       "DELETE FROM invite_codes WHERE id = ? AND (used_by IS NULL OR used_by LIKE 'pending:%')",
-      [id]
+      [id],
     );
 
     if (meta.changes > 0) {
@@ -160,15 +145,9 @@ export async function DELETE(request: Request) {
     }
 
     // Row exists but DELETE didn't match — it's a fully consumed code
-    return NextResponse.json(
-      { error: "Cannot delete a used invite code" },
-      { status: 409 }
-    );
+    return NextResponse.json({ error: "Cannot delete a used invite code" }, { status: 409 });
   } catch (err) {
     console.error("Failed to delete invite code:", err);
-    return NextResponse.json(
-      { error: "Failed to delete invite code" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to delete invite code" }, { status: 500 });
   }
 }

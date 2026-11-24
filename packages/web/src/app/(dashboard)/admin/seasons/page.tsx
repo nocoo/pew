@@ -61,13 +61,7 @@ interface SeasonRow {
 // ---------------------------------------------------------------------------
 
 function SeasonsSkeleton() {
-  return (
-    <RowListSkeleton
-      rows={4}
-      middle={["w-32", "w-16"]}
-      tail={["w-24", "w-16"]}
-    />
-  );
+  return <RowListSkeleton rows={4} middle={["w-32", "w-16"]} tail={["w-24", "w-16"]} />;
 }
 
 function StatusBadge({ status }: { status: SeasonStatus }) {
@@ -143,9 +137,7 @@ function SeasonProgress({ season }: { season: SeasonRow }) {
     <div className="mt-2 space-y-1">
       <div className="flex items-center justify-between text-[10px] text-basalt-muted-foreground tabular-nums">
         <span>{pct}% elapsed</span>
-        <span>
-          {daysLeft}d left
-        </span>
+        <span>{daysLeft}d left</span>
       </div>
       <div className="h-1 w-full rounded-full bg-basalt-border/60 overflow-hidden">
         <div
@@ -226,12 +218,8 @@ function CreateSeasonForm({
 
   return (
     <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
-      <h3 className="text-sm font-medium text-basalt-foreground mb-3">
-        Create Season
-      </h3>
-      {error && (
-        <Banner tone="danger" size="sm" className="mb-3" description={error} />
-      )}
+      <h3 className="text-sm font-medium text-basalt-foreground mb-3">Create Season</h3>
+      {error && <Banner tone="danger" size="sm" className="mb-3" description={error} />}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Name" htmlFor={nameId}>
           <Input
@@ -326,13 +314,11 @@ function EditSeasonRow({
   const isUpcoming = season.status === "upcoming";
   const [name, setName] = useState(season.name);
   // Convert UTC ISO datetime to local datetime-local value for the input
-  const [startDate, setStartDate] = useState(
-    utcToLocalDatetimeValue(season.start_date)
+  const [startDate, setStartDate] = useState(utcToLocalDatetimeValue(season.start_date));
+  const [endDate, setEndDate] = useState(utcToLocalDatetimeValue(season.end_date));
+  const [allowLateRegistration, setAllowLateRegistration] = useState(
+    season.allow_late_registration,
   );
-  const [endDate, setEndDate] = useState(
-    utcToLocalDatetimeValue(season.end_date)
-  );
-  const [allowLateRegistration, setAllowLateRegistration] = useState(season.allow_late_registration);
   const [allowRosterChanges, setAllowRosterChanges] = useState(season.allow_roster_changes);
   const [allowLateWithdrawal, setAllowLateWithdrawal] = useState(season.allow_late_withdrawal);
   const [submitting, setSubmitting] = useState(false);
@@ -387,9 +373,7 @@ function EditSeasonRow({
   return (
     <tr className="border-b border-basalt-border/50">
       <td colSpan={6} className="px-4 py-3">
-        {error && (
-          <Banner tone="danger" size="sm" className="mb-2" description={error} />
-        )}
+        {error && <Banner tone="danger" size="sm" className="mb-2" description={error} />}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Name" htmlFor={nameId}>
             <Input
@@ -490,10 +474,7 @@ export default function AdminSeasonsPage() {
     error: swrError,
     isLoading: loading,
     mutate: mutateRows,
-  } = useSWR<{ seasons: SeasonRow[] }>(
-    isAdmin ? "/api/admin/seasons" : null,
-    fetcher
-  );
+  } = useSWR<{ seasons: SeasonRow[] }>(isAdmin ? "/api/admin/seasons" : null, fetcher);
   const rows = seasonData?.seasons ?? [];
   const error = swrError
     ? swrError instanceof Error
@@ -556,9 +537,7 @@ export default function AdminSeasonsPage() {
 
       try {
         // Use leaderboard API to get teams (it includes team names)
-        const res = await fetch(
-          `/api/seasons/${seasonId}/leaderboard`,
-        );
+        const res = await fetch(`/api/seasons/${seasonId}/leaderboard`);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -597,10 +576,7 @@ export default function AdminSeasonsPage() {
     setMessage(null);
 
     try {
-      const res = await fetch(
-        `/api/admin/seasons/${season.id}/snapshot`,
-        { method: "POST" },
-      );
+      const res = await fetch(`/api/admin/seasons/${season.id}/snapshot`, { method: "POST" });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
@@ -634,10 +610,7 @@ export default function AdminSeasonsPage() {
     setMessage(null);
 
     try {
-      const res = await fetch(
-        `/api/admin/seasons/${season.id}/sync-rosters`,
-        { method: "POST" },
-      );
+      const res = await fetch(`/api/admin/seasons/${season.id}/sync-rosters`, { method: "POST" });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
@@ -721,74 +694,73 @@ export default function AdminSeasonsPage() {
       {loading && <SeasonsSkeleton />}
 
       {/* Table */}
-      {!loading && (
-        rows.length === 0 ? (
-            <Empty
-              title="No seasons yet. Create one to get started."
-              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-            />
-          ) : (
-            <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-basalt-border">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                      Slug
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
-                      Dates
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
-                      Teams
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    editingId === row.id ? (
-                      <EditSeasonRow
-                        key={row.id}
-                        season={row}
-                        onSaved={(msg) => {
-                          setEditingId(null);
-                          setMessage({ type: "success", text: msg });
-                          fetchRows();
-                        }}
-                        onCancel={() => setEditingId(null)}
-                      />
-                    ) : (
-                      <SeasonTableRow
-                        key={row.id}
-                        row={row}
-                        expandedId={expandedId}
-                        expandedTeams={expandedTeams}
-                        expandedLoading={expandedLoading}
-                        snapshotting={snapshotting}
-                        syncing={syncing}
-                        onEdit={() => {
-                          setEditingId(row.id);
-                          setShowCreate(false);
-                        }}
-                        onToggleTeams={() => fetchTeams(row.id)}
-                        onSnapshot={() => handleSnapshot(row)}
-                        onSyncRosters={() => handleSyncRosters(row)}
-                      />
-                    )
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-      )}
+      {!loading &&
+        (rows.length === 0 ? (
+          <Empty
+            title="No seasons yet. Create one to get started."
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+          />
+        ) : (
+          <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-basalt-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                    Slug
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
+                    Dates
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
+                    Teams
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) =>
+                  editingId === row.id ? (
+                    <EditSeasonRow
+                      key={row.id}
+                      season={row}
+                      onSaved={(msg) => {
+                        setEditingId(null);
+                        setMessage({ type: "success", text: msg });
+                        fetchRows();
+                      }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <SeasonTableRow
+                      key={row.id}
+                      row={row}
+                      expandedId={expandedId}
+                      expandedTeams={expandedTeams}
+                      expandedLoading={expandedLoading}
+                      snapshotting={snapshotting}
+                      syncing={syncing}
+                      onEdit={() => {
+                        setEditingId(row.id);
+                        setShowCreate(false);
+                      }}
+                      onToggleTeams={() => fetchTeams(row.id)}
+                      onSnapshot={() => handleSnapshot(row)}
+                      onSyncRosters={() => handleSyncRosters(row)}
+                    />
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+        ))}
 
       {/* Confirm dialog */}
       <ConfirmDialog {...dialogProps} />
@@ -829,14 +801,10 @@ function SeasonTableRow({
     <>
       <tr className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors">
         <td className="px-4 py-3">
-          <span className="text-sm font-medium text-basalt-foreground">
-            {row.name}
-          </span>
+          <span className="text-sm font-medium text-basalt-foreground">{row.name}</span>
         </td>
         <td className="px-4 py-3">
-          <span className="text-sm font-mono text-basalt-muted-foreground">
-            {row.slug}
-          </span>
+          <span className="text-sm font-mono text-basalt-muted-foreground">{row.slug}</span>
         </td>
         <td className="px-4 py-3">
           <div className="flex flex-col">
@@ -877,11 +845,7 @@ function SeasonTableRow({
                 onClick={onToggleTeams}
                 aria-label="View registered teams"
               >
-                {isExpanded ? (
-                  <ChevronUp strokeWidth={1.5} />
-                ) : (
-                  <Users strokeWidth={1.5} />
-                )}
+                {isExpanded ? <ChevronUp strokeWidth={1.5} /> : <Users strokeWidth={1.5} />}
               </Button>
             )}
 
@@ -895,10 +859,7 @@ function SeasonTableRow({
                 disabled={syncing === row.id}
                 aria-label="Sync rosters"
               >
-                <RefreshCw
-                  className={cn(syncing === row.id && "animate-spin")}
-                  strokeWidth={1.5}
-                />
+                <RefreshCw className={cn(syncing === row.id && "animate-spin")} strokeWidth={1.5} />
               </Button>
             )}
 
@@ -938,10 +899,7 @@ function SeasonTableRow({
                   Registered Teams ({expandedTeams.length})
                 </p>
                 {expandedTeams.map((t) => (
-                  <div
-                    key={t.team_id}
-                    className="flex items-center gap-3 text-sm"
-                  >
+                  <div key={t.team_id} className="flex items-center gap-3 text-sm">
                     <Users className="h-3.5 w-3.5 text-basalt-muted-foreground" />
                     <span className="text-basalt-foreground">{t.team_name}</span>
                   </div>

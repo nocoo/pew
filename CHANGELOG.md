@@ -5,72 +5,87 @@
 ## v3.6.0
 
 ### Added
+
 - Support Antigravity App/IDE (`~/.gemini/antigravity/conversations`) alongside Antigravity CLI (`~/.gemini/antigravity-cli/conversations`) with multi-root discovery (`PEW_ANTIGRAVITY_DIRS` override), same-DB checkpoint (`step_type = 23`) usage model attribution fallback, and per-DB `dbStat`/`walStat` collapsed caching (`ANTIGRAVITY_CACHE_VERSION = 1`) with busy-DB isolation.
 - Add `antigravity` fallback source pricing in Web (`DEFAULT_SOURCE_DEFAULTS`).
 
 ### Changed
+
 - Unify Antigravity display label from `"Antigravity CLI"` to `"Antigravity"` across Web (Landing, Dashboard, Agents, Models, Daily Usage, Devices, Leaderboard, Public Profile), CLI output, READMEs, and docs.
 - Publish `@nocoo/pew@3.4.0` to npm (includes Antigravity snapshot hashing fix and Node.js `>=26` engine floor since `3.3.0`).
 
 ### Operations
+
 - Root and Web are `3.6.0`; `@nocoo/pew` CLI and `@pew/core` are `3.4.0`. Both Cloudflare Workers remain unchanged at `3.3.4` (no Worker deployment or D1 migration).
 
 ## v3.5.7
 
 ### Changed
+
 - Bump minor/patch dependencies (`@aws-sdk/client-s3`, `@biomejs/biome`, `@cloudflare/workers-types`, `@playwright/test`, `@types/bun`, `@vitest/coverage-v8`, `lint-staged`, `next`, `oxc-parser`, `recharts`, `tailwind-merge`, `vitest`, `wrangler`).
 
 ## v3.5.6
 
 ### Fixed
+
 - Align `Sidebar` and `AppShell` with the `@nocoo/basalt` template (`SidebarProvider`, `SidebarBrand`, `SidebarToggle`, `SidebarUser`, `SidebarDrawer`, `AppHeaderMenuButton`) to eliminate logo jitter and collapsed toggle width mismatch.
 
 ## v3.5.5
 
 ### Fixed
+
 - Unify `ring-1 ring-basalt-border/80 shadow-basalt-card` across all dashboard cards, charts, tables, empty states, and skeletons inside `ContentIsland`.
 
 ## v3.5.4
 
 ### Changed
+
 - Migrate web UI to @nocoo/basalt 3.5 and bump it to 3.5.1.
 
 ## v3.5.3
 
 ### Fixed
+
 - Pin Docker build/runtime images and CI Node.js versions to the official 26.13.1 security release; require the exact Node.js version during the Docker build.
 
 ## v3.5.1
 
 ### Changed
+
 - Bump minor/patch dependencies (@aws-sdk/client-s3, @biomejs/biome, @types/node, oxc-parser, wrangler).
 
 ## v3.5.0
 
 ### Added
+
 - Revoke or restore devices, inspect recent activity, and delete device metadata without deleting historical usage.
 - Ignore new device-tagged usage, accounting, and evidence uploads for revoked devices while preserving historical totals.
 
 ### Limitations
+
 - Session uploads have no device ID and continue to be recorded at the account level after a device is revoked. Untagged token uploads also remain unaffected.
 
 ### Operations
+
 - Apply `scripts/migrations/030-device-revocations.sql`, deploy the ingest and read Workers, then deploy Web. Coordinate the automatic Web deployment to preserve this order.
 - Web is 3.5.0; core and both Workers are 3.3.4. The CLI remains unchanged.
 
 ## v3.4.3
 
 ### Changed
+
 - Join Tailscale via workload identity federation before SSH during jp2 release deploy; pin shared base-ci to the Tailscale-enabled deploy workflow.
 
 ## v3.4.2
 
 ### Changed
+
 - Bump minor/patch dependencies (@aws-sdk/client-s3, @biomejs/biome, @cloudflare/workers-types, lucide-react, wrangler, @types/bun, next) and override undici to 7.30.1 for security advisories.
 
 ## v3.4.1
 
 ### Changed
+
 - Upgrade the Web dashboard to Basalt 3.2.1, including its focus and container-boundary refinements.
 - Move Web deployment to the pinned shared Docker CD workflow: successful main CI builds GHCR images and deploys an immutable digest to jp2.
 - Complete the pew.md cutover with Full (strict), shared authenticated origin pulls and validated Caddy hot reloads; retain the stopped Railway service and its recovery records.
@@ -78,6 +93,7 @@
 - Keep CLI, core and Workers at their independent 3.3.3 versions; this Web-only release does not publish npm or redeploy Workers.
 
 ### Fixed
+
 - Build the standalone Web image without application credentials and inject the unchanged application variables only at runtime.
 - Verify image digest, source revision, runtime version and database health during deployment, with credential-free native/startup container smoke checks.
 - Reject isolated unsafe Docker smoke-test arguments and NODE_OPTIONS assignments with independent mutation controls.
@@ -85,12 +101,14 @@
 ## v3.4.0
 
 ### Changed
+
 - Upgrade Basalt to 3.2.0, lucide-react to 1.60.0, and the AWS S3 SDK to 3.1154.0.
 - Upgrade Wrangler to 4.151.3, Workers types to 5.20261019.1, and oxc-parser to 0.155.0.
 - Upgrade Vite to 8.3.4 in the Vitest toolchain, resolving the reported Vite security advisories without changing the Next.js application framework.
 - Release the Web dashboard independently. Root and Web are 3.4.0; CLI, core, and Workers remain 3.3.3. No npm CLI package is published with this release.
 
 ### Fixed
+
 - Preserve dashboard layout state and client navigation when following internal links.
 - Keep the mobile navigation drawer padding-free between the small and desktop breakpoints after the Basalt upgrade.
 - Wait for tooltip exit completion before subsequent browser-test interactions, retaining content and privacy assertions.
@@ -98,37 +116,45 @@
 ## v3.3.3
 
 ### Changed
+
 - Bump minor/patch dependencies (AWS SDK, Cloudflare workers-types, wrangler, lucide-react, next, react, Playwright, vitest, oxc-parser)
 
 ## v3.3.2
 
 ### Changed
+
 - Bump minor/patch dependencies and resolve OSV advisories for next, sharp, and source-map-js
 
 ## v3.3.1
 
 ### Changed
+
 - Sync Next.js lockfile for 16.3.8
 - Upgrade Next.js from 16.3.6 to 16.3.8
 
 ### Fixed
+
 - Tolerate missing E2E build output
 
 ## v3.3.0
 
 ### Added
+
 - Collect antigravity cli usage
 
 ### Changed
+
 - Wait for hydrated usage information
 - Retire six usage collectors
 - Ignore newly reported upstream cves
 
 ### Fixed
+
 - Repair retired hook lifecycle safely
 - Preserve usage across reset and custom paths
 
 ### Removed
+
 - Remove legacy test db configs and dead code
 
 ## v3.2.0
@@ -159,6 +185,7 @@
 ## v3.1.1
 
 ### Fixed
+
 - Use indexed public-user/time searches for leaderboard session aggregates instead of scanning all session history on every snapshot fill.
 - Preserve exact results for time, source, team and organization filters, with native SQLite query-plan regression coverage.
 - Wait for the existing resize debounce before checking chart animation completion in browser acceptance tests.
@@ -166,11 +193,13 @@
 ## v3.1.0
 
 ### Added
+
 - Cache complete leaderboard rankings and session statistics in revision-scoped KV snapshots and bounded server memory, shared across page sizes and offsets.
 - Invalidate rankings atomically on privacy, account and membership changes while preserving live scoped authorization.
 - Restart pagination when its snapshot changes; expose process-local cache counters through the admin cache API.
 
 ### Fixed
+
 - Use indexed first-seen lookups and time/source range indexes instead of scanning unrelated usage history.
 - Bound leaderboard RPC duration, in-flight fills and cache admission; preserve absolute expiry and exact token accounting.
 - Keep model-filter limits aligned with ingest and reject corrupt cache fields without disclosing stale identities.
@@ -178,11 +207,13 @@
 - Restore isolated API/browser release gates and await ready calendar geometry in browser tests.
 
 ### Removed
+
 - Replace the three page-level leaderboard RPCs with revision and complete-snapshot reads; do not retain obsolete query paths in the final release.
 
 ## v3.0.6
 
 ### Fixed
+
 - Reject deleted-account sessions and missing Worker secrets; retire short team invitation codes.
 - Remove notifier package auto-installation and hash raw project identifiers at parser boundaries.
 - Apply current privacy settings before leaderboard pagination and remove deleted contributions from frozen season snapshots.
@@ -192,10 +223,12 @@
 - Keep large leaderboard and season identifier lists within D1 query parameter limits.
 
 ### Removed
+
 - Replace the internal arbitrary SQL read endpoint with typed RPC methods.
 - Remove global leaderboard result caching so privacy changes and pagination use the same database observation.
 
 ### Operations
+
 - Update Web and both Workers together. No schema migration is required.
 - Rotate remaining legacy team invitation codes with the reviewed rotation tool.
 - Historical unsafe counts remain untouched; reads outside the supported exact integer range fail closed.
@@ -203,6 +236,7 @@
 ## v3.0.5
 
 ### Changed
+
 - Upgrade Next.js to 16.3.6, AWS S3 SDK to 3.1139.0, and lucide-react to 1.48.0
 - Upgrade Wrangler to 4.138.0 and Workers types to 5.20260924.1 in both Workers
 - Upgrade oxc-parser to 0.151.0 and Node.js types to 26.6.2 across workspaces
@@ -211,25 +245,30 @@
 ## v3.0.4
 
 ### Fixed
+
 - Run pre-commit quality checks against the staged Git snapshot, including data and script changes
 - Remove stale result caches and isolate generated types, workspace links and runner caches
 
 ### Changed
+
 - Add regression coverage for workspace dependency isolation and document the pre-commit gate
 
 ## v3.0.3
 
 ### Fixed
+
 - Reduce aggregate scans and cache leaderboard statistics for ten minutes
 - Allow browser assertions and repository audits to complete under shared CPU load
 
 ## v3.0.2
 
 ### Added
+
 - Show a one-time CLI 3.0 upgrade notice per account
 - Add Hexly project link and header tooltips
 
 ### Changed
+
 - Upgrade basalt to 2.1.8
 - Update wrangler
 - Update workers-types
@@ -243,11 +282,13 @@
 - Bump lucide-react to 1.46.0
 
 ### Fixed
+
 - Require Pew CLI 3.0.0 for uploads
 
 ## v3.0.1
 
 ### Fixed
+
 - Collapse profile usage notes below charts
 
 ## v3.0.0
@@ -283,6 +324,7 @@
 ## v2.29.5
 
 ### Changed
+
 - Retire badges feature
 - Bump biome to 2.5.13
 - Upgrade lucide-react to 1.45.0
@@ -291,24 +333,29 @@
 - Bump cloudflare workers types
 
 ### Fixed
+
 - Correct Basalt switches and copy controls
 
 ## v2.29.4
 
 ### Changed
+
 - Rename leaderboard agents tab to harness
 
 ## v2.29.3
 
 ### Changed
+
 - Cover incomplete Grok session summaries
 - Allow repository audits time on shared CI runners
 
 ### Fixed
+
 - Prevent sidebar wordmark clipping
 - Align sidebar branding and preserve logo colors
 
 ### Removed
+
 - Retire projects and remove feature tables
 - Remove achievements and simplify dashboard hero
 - Remove showcases
@@ -316,10 +363,12 @@
 ## v2.29.2
 
 ### Added
+
 - Add readonly Pew accounting gates to ponytail review
 - Ingest additive evidence snapshots alongside legacy buckets
 
 ### Changed
+
 - Upgrade React to 19.3.0
 - Align read-path comments with combined totals
 - Document source timezone and retained-log limits
@@ -333,6 +382,7 @@
 - Standardize bilingual project README
 
 ### Fixed
+
 - Delete supplementary evidence with its account
 - Bound every review matching candidate inspection
 - Redact upstream failures for supplementary usage uploads
@@ -346,16 +396,19 @@
 ## v2.29.1
 
 ### Fixed
+
 - Use sidebar item for nav hover
 
 ## v2.29.0
 
 ### Added
+
 - Load og card from hexly share api
 - Wire basalt providers and tokens
 - Adopt pew logo across app surfaces
 
 ### Changed
+
 - Bump @nocoo/basalt to 2.1.2
 - Use banner for remaining errors
 - Use empty for leftover placeholders
@@ -427,6 +480,7 @@
 - Bump @types/node to 26.4.1
 
 ### Fixed
+
 - Keep achievement ring svg size
 - Cancel tag editor without persisting
 - Show logo upload on keyboard focus
@@ -463,35 +517,42 @@
 - Emit missing basalt tailwind utilities
 
 ### Removed
+
 - Drop unused class-variance-authority
 - Drop confirm-dialog compat shim
 
 ## v2.28.1
 
 ### Fixed
+
 - Resume JSONL token sync after a continuity skip by stamping anchors at the parked offset so later appends are ingested instead of warning forever
 
 ## v2.28.0
 
 ### Added
+
 - Rebase JSONL token sync after a same-inode log trim using continuity anchors (append / rebase / skip) so Grok rolling logs and other offset JSONL sources do not stall or SUM-inflate
 - Landing page boarding-pass layout and related chrome
 
 ### Fixed
+
 - JSONL resume: stamp anchors on legacy cursors, reset empty-epoch driver state, skip unproven resumes, fingerprint the unread snapshot before commit, pin parsers to the snapshot bound, and only parse complete newline-terminated records
 - Fail closed when a JSONL complete-line bound cannot be read, so a transient IO error cannot fast-skip forever
 - Codex notifier forwarding cycle (Issue #318)
 - Copy full `@swc/helpers` into Next standalone output; pin Docker builder to Node 22 and Bun 1.4.0
 
 ### Removed
+
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
 ### Changed
+
 - Dependency and toolchain upgrades (Next 16.3.4, wrangler 4.127.1, Biome 2.5.11, Vitest 4.1.11)
 
 ## v2.27.0
 
 ### Added
+
 - Add omp to palette, labels, pricing, API allowlists
 - Add omp notifier extension hook
 - Wire omp through sync, session-sync, status, notify
@@ -500,6 +561,7 @@
 - Ingest Copilot OpenTelemetry exports
 
 ### Changed
+
 - Correct omp orchestration and nesting depth
 - Pin append timing in parser snapshot tests
 - Correct omp reasoning, cursor and transcript semantics
@@ -530,6 +592,7 @@
 - Rewrite v2.26.1 changelog to reflect actual user-facing scope
 
 ### Fixed
+
 - Inherit codex scope from a parent not re-read this sync
 - Block tombstones when codex discovery was partial
 - Scope accounting tombstones to a clean codex rescan
@@ -550,6 +613,7 @@
 ## v2.26.1
 
 ### Fixed
+
 - **Codex notifier forwarding cycle (Issue #318)** — resolved. `notify.cjs`
   is rewritten around two per-bucket exclusive-create gates
   (`sync-<bucket>.lock` shared across sources; `forward-codex-<bucket>.lock`
@@ -575,24 +639,28 @@
   swallowing them.
 
 ### Added
+
 - `.github/workflows/admission-primitive.yml` — cross-platform CI matrix
   (ubuntu / macos / windows) that runs only the 32-worker cross-process
   `wx` primitive test to verify `fs.writeFileSync({ flag: "wx" })` has
   the expected exclusive-create semantics on all three OSes.
 
 ### Documentation
+
 - New doc 45 (`docs/45-codex-notifier-cycle-containment.md`) with the
   full derivation and test matrix.
 
 ## v2.26.0
 
 ### Added
+
 - Add dynamic-delete + ts-expect-error custom gates (oxc-parser based;
   scans the index snapshot in pre-commit; rejects `@ts-nocheck` outright
   and requires ≥10-char reason on every `@ts-expect-error`; per-line
   ALLOWED_SITES whitelist for dynamic-delete instead of per-file)
 
 ### Changed
+
 - Switch from ESLint / typescript-eslint to Biome 2.5.3 (doc 44). Full
   suppression set translated to `// biome-ignore` with reasons; five
   workspaces gain `typecheck` scripts so `bun run --filter '*'` no
@@ -607,6 +675,7 @@
 - Rename residual ESLint labels to Biome in pre-commit output.
 
 ### Fixed
+
 - pre-commit lint-staged glob + extension matchers now include
   `mts` / `cts` / `mjs` / `cjs` / `jsx`; JSX-only or `.mjs`-only staged
   diffs no longer bypass Biome.
@@ -618,10 +687,10 @@
 - pragma detector handles the oxc-parser quirk of representing
   `/// @ts-nocheck` as a Line comment whose value starts with `/`.
 
-
 ## v2.25.0
 
 ### Added
+
 - Add zcode to dashboard palette + labels + pricing fallback + API allowlists
 - Wire zcode through sync + session-sync + notify
 - Add zcode token + session drivers and register them
@@ -630,6 +699,7 @@
 - Add 'zcode' source foundation (types + exhaustive switches + opener injection stubs + warnings channel)
 
 ### Changed
+
 - CLI-entry regression, session adapter round-trip, Web L2 zcode E2E
 - Mark zcode support implemented; update CLAUDE.md / README / landing / PRIVACY / docs-index
 - Route DB dispatch through source-aware branches + wire warnings channel
@@ -645,17 +715,20 @@
 - Enumerate all 12 sources incl. Grok in landing + README (alphabetical)
 
 ### Fixed
+
 - Zcode manual-sync token forwarding, same-ms cursor merge, projectRef trim, opencode formatter tag
 
 ## v2.24.1
 
 ### Fixed
+
 - CLI `pew sync` crashed on end-user npm installs with `ERR_MODULE_NOT_FOUND: Cannot find package '@pew/core'`. `sync.ts` had a runtime value import of `ACCOUNTING_SCHEMA_VERSION` from `@pew/core`, which is a types-only devDependency and therefore absent from `node_modules` in published installs. Inline the constant locally.
 - Enable `verbatimModuleSyntax` in `packages/cli/tsconfig.json` so future runtime value imports from devDependencies fail typecheck instead of only exploding at end-user runtime.
 
 ## v2.24.0
 
 ### Added
+
 - Add grok to dashboard + propagate reasoning end-to-end
 - Wire grok end-to-end through sync + status + notify
 - Add grok token+session drivers and register them
@@ -664,6 +737,7 @@
 - Add "grok" source foundation (types + exhaustive switches + DiscoverOpts)
 
 ### Changed
+
 - Fix Codex disjoint claim and golden total_tokens
 - Mark grok support as implemented; update CLAUDE/README/PRIVACY
 - 3rd stacked chart (device-breakdown) + strip remaining count headings
@@ -725,6 +799,7 @@
 - Reorganize CLAUDE.md — group retrospective, correct outdated bits
 
 ### Fixed
+
 - Global accountingSchemaVersion + scope needsReplay to owned files
 - Auto-replay Codex cursors without accountingVersion
 - Copilot-cli stores disjoint input (prefer input_tokens_uncached)
@@ -734,6 +809,7 @@
 - Strip wrapping quotes in .env parser
 
 ### Removed
+
 - Remove brittle counts + fix stale refs
 - EstimateCost must drop nonCached subtraction (input goes to 0)
 - Drop postcss-load-config JSDoc type hint from postcss.config.mjs
@@ -749,9 +825,11 @@
 ## v2.23.8
 
 ### Added
+
 - Require login for /leaderboard, keep /u/<slug> public
 
 ### Changed
+
 - Add root .npmrc for supply chain security baseline
 - Bump sharp ^0.35.2 → ^0.35.3
 - Bump next 16.2.9 → 16.2.10
@@ -847,6 +925,7 @@
 - Bump @cloudflare/workers-types to 4.20260608.1
 
 ### Fixed
+
 - Check needsReplay before shouldSkip in the driver loop
 - Route legacy Claude cursor through orchestrator's full-rescan path
 - Force full rescan for legacy Claude cursors missing seenIds
@@ -863,16 +942,19 @@
 ## v2.23.7
 
 ### Fixed
+
 - Correct cache hit rate formula to cached / (cached + input) (#143)
 
 ## v2.23.6
 
 ### Changed
+
 - Revert "fix(sync): prune stale cursors.files and knownFilePaths each sync"
 - Write cursor state as compact JSON
 - Roll @cloudflare/workers-types to 4.20260607.1
 
 ### Fixed
+
 - Keep parse-failed paths out of knownFilePaths
 - Evict known-only stale entries from knownFilePaths
 - Make protectedPrefixes match cursor paths that use the Windows separator
@@ -885,6 +967,7 @@
 ## v2.23.5
 
 ### Changed
+
 - Bump web lucide-react to 1.17.0
 - Bump web radix-ui to 1.5.0
 - Bump lint-staged to 17.0.7
@@ -895,6 +978,7 @@
 ## v2.23.4
 
 ### Changed
+
 - Bump wrangler to 4.98.0
 - Bump @cloudflare/workers-types to 4.20260605.1
 - Bump web tailwind-merge to 3.6.0
@@ -916,14 +1000,17 @@
 - Upgrade next to 16.2.7
 
 ### Fixed
+
 - Bump brace-expansion and ws (GHSA-jxxr-4gwj-5jf2, GHSA-58qx-3vcg-4xpx)
 
 ### Removed
+
 - Remove unused vite osv-scanner ignores
 
 ## v2.23.3
 
 ### Changed
+
 - Record run 188 for pi-session coverage commit
 - Strip trailing blank lines at EOF in 4 files
 - Exclude **/*-types.ts from coverage (pure type files)
@@ -970,7 +1057,7 @@
 - Extract pure helpers to vscode-copilot-helpers.ts (406→305 LOC)
 - Extract pure helpers to coordinator-helpers.ts (457→395 LOC)
 - Cover provider/model tie-break sort branches
-- Exclude __test-helpers__ from coverage (parallel to __tests__)
+- Exclude **test-helpers** from coverage (parallel to **tests**)
 - Cover id-required validation branch in getInviteCodeById
 - Cover non-Error rejection in storage GET
 - Cover date-filtered branch in listUnassignedRefs
@@ -1000,15 +1087,18 @@
 - Update test references from bun test to vitest
 
 ### Fixed
+
 - Exit non-zero when coverage summary row can't be parsed
 
 ### Removed
+
 - Cover delete-entire-plugins-block branch (only pew installed)
 - Cover includeOther=false drop + cached price fallback
 
 ## v2.23.2
 
 ### Changed
+
 - Add multicaCodexDirs to E2E status fixtures
 - Reuse toErrorMessage in Admin Organizations mutation catches
 - Reuse toErrorMessage in Admin Seasons mutation catches
@@ -1028,6 +1118,7 @@
 - Add L3 dashboard data rendering tests
 
 ### Fixed
+
 - Invalidate seasons:list KV cache after team register/withdraw
 - Invalidate seasons:list KV cache after admin update
 - Invalidate seasons:list KV cache after admin create
@@ -1040,12 +1131,14 @@
 - Replace Radix multi-Tooltip with single floating tooltip in heatmap
 
 ### Removed
+
 - Replace native alert in My Showcases delete with MessageBanner
 - Migrate page-level fetches to swr and remove set-state-in-effect disables
 
 ## v2.23.1
 
 ### Changed
+
 - Apply sumBy to session-helpers and cost-helpers
 - Introduce sumBy helper and apply to admin storage summary
 - Roll out loadMockedAuthHelpers across remaining 27 test files
@@ -1065,14 +1158,17 @@
 - Consolidate display formatters into lib/format
 
 ### Fixed
+
 - Add precise mode to formatDuration for admin storage
 
 ### Removed
+
 - Remove unused chart-config constants
 
 ## v2.23.0
 
 ### Added
+
 - Unify model matching — shared normalization for tooltip + cost
 - Add provider icons and origin pills to model hover tooltip
 - Level 4 suffix-stripped model matching
@@ -1081,12 +1177,14 @@
 - Add model info hover card across dashboard lists (commit D)
 
 ### Changed
+
 - Move Model Prices out of admin (commit C)
 - Clarify which admin pricing surface migration 021 removes
 - Collapse pricing core to dynamic-only (N1 step 2)
 - Mention sourceModels overlay in pricing.ts header matching-strategy
 
 ### Fixed
+
 - Add invalidatePricingEntries() for force-sync cache busting
 - Add 5-minute TTL to pricing entries cache
 - Decouple deviceLoading from sessions page skeleton
@@ -1100,6 +1198,7 @@
 - Unify achievements cost calc through estimateCost (no double-count, cached fallback)
 
 ### Removed
+
 - Drop model_pricing table and update docs (N1 step 4)
 - Remove admin pricing layer (N1 step 3)
 - Remove old Token Pricing UI/API/nav (N1 step 1)
@@ -1107,6 +1206,7 @@
 ## v2.22.0
 
 ### Added
+
 - Add Z.ai → zhipu icon alias for provider icon resolution
 - Expand OpenRouter PROVIDER_DISPLAY to match manifest
 - Add minimax, moonshot, zai to models-dev provider whitelist
@@ -1123,6 +1223,7 @@
 - C1 — pure parse/merge sync core
 
 ### Changed
+
 - Extract memoryKv test helper to shared utility
 - Cover parser + kv-store + admin-loader failure branches
 - C4 polish — pin aliases passthrough + null-sort direction-invariant
@@ -1150,6 +1251,7 @@
 - Unify HTML title to "pew - AI Token 用量面板"
 
 ### Fixed
+
 - Model-prices UX polish — button layout, dropdowns, sidebar order
 - Eliminate timing oracle in secureCompare length check
 - Add per-million unit sanity guard for models.dev prices
@@ -1164,6 +1266,7 @@
 - C1 — clone entries in merge to keep purity, prevent alias dup
 
 ### Removed
+
 - Remove unused formatNullable helper
 - Remove unused writeDynamic export from kv-store
 - C4 cleanup — isAdminUser(authResult), useAdmin loading, drop stale conventions
@@ -1171,6 +1274,7 @@
 ## v2.21.0
 
 ### Added
+
 - Add Z.ai → zhipu icon alias for provider icon resolution
 - Expand OpenRouter PROVIDER_DISPLAY to match manifest
 - Add minimax, moonshot, zai to models-dev provider whitelist
@@ -1187,6 +1291,7 @@
 - C1 — pure parse/merge sync core
 
 ### Changed
+
 - Extract memoryKv test helper to shared utility
 - Cover parser + kv-store + admin-loader failure branches
 - C4 polish — pin aliases passthrough + null-sort direction-invariant
@@ -1214,6 +1319,7 @@
 - Unify HTML title to "pew - AI Token 用量面板"
 
 ### Fixed
+
 - Model-prices UX polish — button layout, dropdowns, sidebar order
 - Eliminate timing oracle in secureCompare length check
 - Add per-million unit sanity guard for models.dev prices
@@ -1228,6 +1334,7 @@
 - C1 — clone entries in merge to keep purity, prevent alias dup
 
 ### Removed
+
 - Remove unused formatNullable helper
 - Remove unused writeDynamic export from kv-store
 - C4 cleanup — isAdminUser(authResult), useAdmin loading, drop stale conventions
@@ -1235,6 +1342,7 @@
 ## v2.20.10
 
 ### Changed
+
 - Enable no-constant-binary-expression for tests
 - Enable no-require-imports for tests
 - Upgrade next to 16.2.4
@@ -1261,24 +1369,29 @@
 - Bump eslint-plugin-react-hooks to 7.1.1
 
 ### Fixed
+
 - Suppress react-hooks/set-state-in-effect for fetch effects
 - Upgrade fast-xml-parser to fix CVE GHSA-gh4j-gqv2-49f6
 
 ### Removed
+
 - Enable no-unused-vars + scope no-dynamic-delete to inline disables
 
 ## v2.20.9
 
 ### Fixed
+
 - Stop double-counting cacheRead in total tokens
 - Replace non-null assertion in bench-ut.ts with safe fallback
 
 ## v2.20.8
 
 ### Added
+
 - Add security response headers
 
 ### Changed
+
 - Cover batch params fallback and singleton env undefined branches
 - Cover E2E admin bypass branches in resolveAdmin/isAdmin/isAdminUser
 - Add getClientIp + inMemoryRateLimiter branch coverage
@@ -1286,10 +1399,10 @@
 - Raise stmts/funcs/lines thresholds to 95 (lock in current 98%+ floor)
 - Migrate test.cache.dir to top-level cacheDir (silence deprecation)
 - Finalize UT session ideas backlog
-- Exclude **/__tests__/** so test helpers don't dilute coverage stats
+- Exclude **/**tests**/** so test helpers don't dilute coverage stats
 - Record UT speed/stability session findings
 - Coverage.include=.ts only: median 4.14→4.02s (-2.9%), stddev 0.10→0.04 (-58%)
-- Restrict include to packages/*/src/**/*.test.{ts,tsx} + scripts: 4.30→4.14s (-3.7%)
+- Restrict include to packages/_/src/**/_.test.{ts,tsx} + scripts: 4.30→4.14s (-3.7%)
 - Add UT autoresearch benchmark script
 - Enhance L3 tests with meaningful assertions
 - Add L3 tests for remaining dynamic pages
@@ -1332,6 +1445,7 @@
 - Add typecheck script + lint-staged
 
 ### Fixed
+
 - Simplify tests for CI stability
 - Optimize Playwright config to fit CI timeout
 - Increase timeouts and add retries for CI stability
@@ -1349,16 +1463,19 @@
 - Align bg-card usage to B05 luminance spec
 
 ### Removed
+
 - Drop json coverage reporter (no consumers): 4.02→3.92s (-2.5%)
 
 ## v2.20.7
 
 ### Added
+
 - Add L2 E2E tests for 98.5% route coverage (64/65)
 - Upgrade /api/live endpoints to surety standard (#106)
 - Admins see all orgs and teams in scope dropdown
 
 ### Changed
+
 - Mark L2 E2E coverage autoresearch as complete (98.5%)
 - Add L2 E2E tests for 23 additional routes
 - Initialize L2 coverage autoresearch
@@ -1386,6 +1503,7 @@
 - Add Bearer auth rejection test for account deletion
 
 ### Fixed
+
 - Resolve TypeScript errors in CI
 - Correct commit hash in autoresearch.jsonl run 17
 - Tighten status code assertions in L2 E2E tests
@@ -1419,14 +1537,17 @@
 - Reject API key auth on account deletion endpoint
 
 ### Removed
+
 - Remove stale Next.js CVE ignore (GHSA-5f7q-jpqc-wp7h)
 
 ## v2.20.6
 
 ### Added
+
 - Add legend isolate and cmd-click exclude filter
 
 ### Changed
+
 - Rename Team.logo_url to Team.logoUrl (camelCase)
 - Move scope types and storage utils to lib/leaderboard-scope.ts
 - Move logo components to dedicated logo-icons.tsx
@@ -1434,6 +1555,7 @@
 - Record PR operation in AGENTS.md
 
 ### Fixed
+
 - Remove conflicting aria-activedescendant from scope dropdown
 - Properly lazy-mount UserProfileDialog in season leaderboard
 - Add listbox semantics and roving focus to scope dropdown
@@ -1448,12 +1570,14 @@
 - Estimate tokens for v3 format when API-reported counts are absent
 
 ### Removed
+
 - Remove AGENTS.md (not part of project)
 - Remove unused exports from popover component
 
 ## v2.20.5
 
 ### Changed
+
 - Break circular dependency between usage hooks
 - Move PAGE_SIZE to shared leaderboard-constants module
 - Extract LeaderboardPageTitle component
@@ -1469,6 +1593,7 @@
 - Wrap LeaderboardRow with React.memo
 
 ### Fixed
+
 - Clear stale data on fetch error in useFetchData
 - Keep stale data during URL-change refetch in useFetchData
 - Add TooltipProvider to season leaderboard page
@@ -1485,19 +1610,23 @@
 ## v2.20.4
 
 ### Added
+
 - Add Achievement cache type to Admin Storage page
 - Add KV cache for achievement earners queries
 
 ### Changed
+
 - Increase achievement cache TTL to 15 minutes
 
 ## v2.20.3
 
 ### Added
+
 - Add logout command
 - Add season-helpers module for time boundary consistency
 
 ### Changed
+
 - Extract shared status config
 - Rename to .ts and fix hydration flash
 - Eliminate redundant fetches and eager mounts
@@ -1505,6 +1634,7 @@
 - Update subcommand count for logout command
 
 ### Fixed
+
 - Improve pew login UX for SSH/headless sessions
 - Inline tzOffset in compare route GROUP BY clause
 - Inline tzOffset in GROUP BY clause
@@ -1524,14 +1654,17 @@
 - Resolve stale closure in useSeasons and useSeasonLeaderboard
 
 ### Removed
+
 - Remove unused season-helper exports
 
 ## v2.20.2
 
 ### Added
+
 - Add summary cards and fix table header in Storage page
 
 ### Changed
+
 - Ignore .claude directory
 - Redesign Storage page with two-column layout
 - Split Compare Users into selection + result pages
@@ -1539,6 +1672,7 @@
 - Add railway up bypass warning to retrospective
 
 ### Fixed
+
 - Improve Compare Users validation and accessibility
 - Add Medal and GitCompareArrows icons to sidebar icon map
 - Storage page color hierarchy and scroll behavior
@@ -1549,6 +1683,7 @@
 ## v2.20.1
 
 ### Added
+
 - Display badges on user profiles
 - Integrate badges into leaderboard
 - Add admin badges management page
@@ -1559,6 +1694,7 @@
 - Add badges and badge_assignments tables
 
 ### Changed
+
 - Update badge-icon tests for shape→icon rename
 - Refine badge icon design and limit text to 3 chars
 - Rename shape to icon, upgrade to CSS-based design
@@ -1572,6 +1708,7 @@
 - Add badge system design (doc 39)
 
 ### Fixed
+
 - Restore full session listing in sessions page
 - Restore full invite code listing in admin page
 - Sync cleared status type across db abstraction layer
@@ -1581,6 +1718,7 @@
 ## v2.20.0
 
 ### Added
+
 - Add KV cache management UI to admin storage page
 - Add cache.* RPC domain for admin management
 - Cache leaderboard.getGlobal for public requests
@@ -1591,6 +1729,7 @@
 - Add user profile dialog on username click
 
 ### Changed
+
 - Complete KV cache implementation retrospective
 - Mark KV cache steps 10-11 complete
 - Add Cloudflare KV cache design (doc 38)
@@ -1598,18 +1737,22 @@
 ## v2.19.1
 
 ### Added
+
 - Add user profile dialog on username click
 
 ### Changed
+
 - Add Cloudflare KV cache design (doc 38)
 
 ## v2.19.0
 
 ### Added
+
 - Daily Usage left stacked area charts, right donut charts
 - Add 4 timeline charts to Hourly Usage left column
 
 ### Changed
+
 - Redesign Daily Usage page with 2-column layout
 - Re-enable animation for first 3 timeline charts
 - Fix Hourly Usage page animation jank
@@ -1618,19 +1761,23 @@
 ## v2.18.8
 
 ### Added
+
 - Add copilot-cli session driver for session counting
 
 ## v2.18.7
 
 ### Fixed
+
 - Make hermes and copilot-cli token uploads idempotent
 
 ## v2.18.6
 
 ### Added
+
 - Reorder period selector, default to This Week
 
 ### Changed
+
 - Restore period selector order and default to All Time
 - Fix StatCard side layout text overlap
 - Unify footer text size across hero cards
@@ -1640,6 +1787,7 @@
 - Unify hero cards spacing and typography
 
 ### Fixed
+
 - Show forecast cards for all periods
 - TopAchievement max 2 rows (6 items on lg, 4 on sm)
 - TopAchievement responsive grid with 4 rows max
@@ -1649,11 +1797,13 @@
 - Update DashboardSkeleton to match current page structure
 
 ### Removed
+
 - Remove interactive confirmation prompt
 
 ## v2.18.5
 
 ### Changed
+
 - Trigger workflow to test 6DQ secrets configuration
 - Add full 6DQ quality gate coverage
 - Add members route error handling coverage
@@ -1669,6 +1819,7 @@
 - Add route edge-case coverage
 
 ### Fixed
+
 - Fix Hermes profile discovery and Multica Codex status classification (#53)
 - Hide scope dropdown on small screens in leaderboard pages
 - Make leaderboard nav tabs horizontally scrollable on mobile
@@ -1676,12 +1827,14 @@
 - Correct gitleaks-action SHA
 
 ### Removed
+
 - Remove L3 Playwright job (tests need fixing)
 - Drop unrelated hook-generated tests
 
 ## v2.18.4
 
 ### Changed
+
 - Trigger workflow to test 6DQ secrets configuration
 - Add full 6DQ quality gate coverage
 - Add members route error handling coverage
@@ -1697,6 +1850,7 @@
 - Add route edge-case coverage
 
 ### Fixed
+
 - Fix Hermes profile discovery and Multica Codex status classification (#53)
 - Hide scope dropdown on small screens in leaderboard pages
 - Make leaderboard nav tabs horizontally scrollable on mobile
@@ -1704,18 +1858,22 @@
 - Correct gitleaks-action SHA
 
 ### Removed
+
 - Remove L3 Playwright job (tests need fixing)
 - Drop unrelated hook-generated tests
 
 ## v2.18.3
 
 ### Added
+
 - Add centralized chart config constants
 
 ### Changed
+
 - Add retrospective for CLI build before npm publish
 
 ### Fixed
+
 - Align showcase-card border radius with design system
 - Unify header margin to mb-4 in hourly-chart
 - Unify legend text size to text-xs across charts
@@ -1726,6 +1884,7 @@
 ## v2.18.1
 
 ### Added
+
 - Support Multica Codex extra session dirs in discovery
 - Add view mode selector to 30-min usage chart
 - Add hourly pattern charts to Hourly Usage page
@@ -1733,10 +1892,12 @@
 - Add hourly aggregation helpers for device, model, and agent breakdowns
 
 ### Changed
+
 - Extract fmtHour to shared date-helpers
 - Add tests for hourly aggregation helpers
 
 ### Fixed
+
 - Upgrade Next.js to 16.2.3 for security fix
 - Limit Hourly By Device chart to 50% width
 - Add spacing between dropdown menu options
@@ -1745,6 +1906,7 @@
 ## v2.18.0
 
 ### Added
+
 - Add Models leaderboard page
 - Add Agents leaderboard page
 - Add Agents and Models tabs to leaderboard nav
@@ -1760,6 +1922,7 @@
 - Add agent × model drill-down charts to By Devices page
 
 ### Changed
+
 - Add technical spec for leaderboard Agents & Models tabs
 - Extract shared leaderboard components (ScopeDropdown, LeaderboardRow, PeriodTabs)
 - Add leaderboard API tests for source/model params and cache policy
@@ -1767,12 +1930,14 @@
 - Add retro for worker-read RPC deploy requirement
 
 ### Fixed
+
 - Update Models leaderboard dropdown to reflect actual usage
 - Make agent/model selection derive from URL, not local state
 
 ## v2.17.0
 
 ### Added
+
 - Add Models leaderboard page
 - Add Agents leaderboard page
 - Add Agents and Models tabs to leaderboard nav
@@ -1788,6 +1953,7 @@
 - Add agent × model drill-down charts to By Devices page
 
 ### Changed
+
 - Add technical spec for leaderboard Agents & Models tabs
 - Extract shared leaderboard components (ScopeDropdown, LeaderboardRow, PeriodTabs)
 - Add leaderboard API tests for source/model params and cache policy
@@ -1795,39 +1961,48 @@
 - Add retro for worker-read RPC deploy requirement
 
 ### Fixed
+
 - Update Models leaderboard dropdown to reflect actual usage
 - Make agent/model selection derive from URL, not local state
 
 ## v2.16.4
 
 ### Added
+
 - Use in-page dialog for leaderboard user profiles
 
 ### Changed
+
 - Unify profile content into shared ProfileContent component
 
 ### Fixed
+
 - Widen profile dialog to match leaderboard and pass active tab
 
 ## v2.16.3
 
 ### Added
+
 - Use in-page dialog for leaderboard user profiles
 
 ### Changed
+
 - Unify profile content into shared ProfileContent component
 
 ### Fixed
+
 - Widen profile dialog to match leaderboard and pass active tab
 
 ## v2.16.2
 
 ### Added
+
 - Add Goal Tracker heatmap card
 - Add longestStreak and activeDays to achievements summary
 - Upgrade projects RPC with full session stats
 
 ### Changed
+
 - Update supported tools list to 11 sources (add PM Studio)
 - Split Activity and Achievements into two cards
 - Undo 3-row Overview split, keep card style changes
@@ -1841,16 +2016,19 @@
 - Sync ProjectAliasStatsRow with worker-read
 
 ### Fixed
+
 - Remove default accent bar, fix divider position
 
 ## v2.16.1
 
 ### Added
+
 - Add Goal Tracker heatmap card
 - Add longestStreak and activeDays to achievements summary
 - Upgrade projects RPC with full session stats
 
 ### Changed
+
 - Update supported tools list to 11 sources (add PM Studio)
 - Split Activity and Achievements into two cards
 - Undo 3-row Overview split, keep card style changes
@@ -1864,11 +2042,13 @@
 - Sync ProjectAliasStatsRow with worker-read
 
 ### Fixed
+
 - Remove default accent bar, fix divider position
 
 ## v2.16.0
 
 ### Added
+
 - Split kosmos into kosmos + pmstudio as separate sources (#48)
 - Split kosmos into kosmos + pmstudio as separate sources
 - Support v3 JSON session format (#42)
@@ -1876,6 +2056,7 @@
 - Add admin usage compare API endpoint
 
 ### Fixed
+
 - Only mark request as processed after successful delta
 - Pass hermesProfileDbPaths through notify command
 - Prevent token inflation on v3 incremental sync
@@ -1886,6 +2067,7 @@
 ## v2.15.0
 
 ### Added
+
 - Split kosmos into kosmos + pmstudio as separate sources (#48)
 - Split kosmos into kosmos + pmstudio as separate sources
 - Support v3 JSON session format (#42)
@@ -1893,6 +2075,7 @@
 - Add admin usage compare API endpoint
 
 ### Fixed
+
 - Only mark request as processed after successful delta
 - Pass hermesProfileDbPaths through notify command
 - Prevent token inflation on v3 incremental sync
@@ -1905,6 +2088,7 @@
 ## v2.14.0
 
 ### Added
+
 - Implement server-side pagination for leaderboard
 - Migrate /api/seasons/[seasonId]/leaderboard to RPC
 - Migrate /api/achievements/[id]/members to RPC
@@ -1928,6 +2112,7 @@
 - Add Kosmos / PM Studio as 10th source for token + session tracking
 
 ### Changed
+
 - Consolidate leaderboard pagination state into hook
 - Main into feature/phase2-rpc-handlers
 - Use batch size 20 to match frontend page size
@@ -2005,6 +2190,7 @@
 - Rewrite kosmos design doc and update docs index
 
 ### Fixed
+
 - Showcase upvote query uses user_id not visitor_id
 - Wait for session before initializing leaderboard scope
 - Leaderboard stale response and premature fetch issues
@@ -2029,6 +2215,7 @@
 - Add Globe2 and Building2 to sidebar icon map
 
 ### Removed
+
 - Migrate account/delete to getUserById RPC
 - Cover DELETE /api/devices and null branches in GET/PUT
 - Cover admin org route branches (GET/PATCH/DELETE error handling)
@@ -2037,6 +2224,7 @@
 ## v2.13.0
 
 ### Added
+
 - Implement server-side pagination for leaderboard
 - Migrate /api/seasons/[seasonId]/leaderboard to RPC
 - Migrate /api/achievements/[id]/members to RPC
@@ -2060,6 +2248,7 @@
 - Add Kosmos / PM Studio as 10th source for token + session tracking
 
 ### Changed
+
 - Consolidate leaderboard pagination state into hook
 - Main into feature/phase2-rpc-handlers
 - Use batch size 20 to match frontend page size
@@ -2137,6 +2326,7 @@
 - Rewrite kosmos design doc and update docs index
 
 ### Fixed
+
 - Showcase upvote query uses user_id not visitor_id
 - Wait for session before initializing leaderboard scope
 - Leaderboard stale response and premature fetch issues
@@ -2161,6 +2351,7 @@
 - Add Globe2 and Building2 to sidebar icon map
 
 ### Removed
+
 - Migrate account/delete to getUserById RPC
 - Cover DELETE /api/devices and null branches in GET/PUT
 - Cover admin org route branches (GET/PATCH/DELETE error handling)
@@ -2169,6 +2360,7 @@
 ## v2.12.0
 
 ### Added
+
 - Add member management UI to admin organizations page
 - Upgrade leaderboard scope dropdown
 - Add organization leaderboard API
@@ -2182,6 +2374,7 @@
 - Add organizations migration
 
 ### Changed
+
 - Ignore worker migrations symlinks
 - Add missing unit tests for organization admin APIs and fix coverage
 - Resolve merge conflict in docs/README.md
@@ -2211,6 +2404,7 @@
 - Add GitHub Actions workflow for L1+G1+Build+G2a
 
 ### Fixed
+
 - Align E2E tests with actual UI text
 - Anonymous scoped leaderboard requests must not be publicly cached
 - Resolve lint errors in sync.ts and pi-hook.ts
@@ -2218,6 +2412,7 @@
 ## v2.11.0
 
 ### Added
+
 - Add member management UI to admin organizations page
 - Upgrade leaderboard scope dropdown
 - Add organization leaderboard API
@@ -2231,6 +2426,7 @@
 - Add organizations migration
 
 ### Changed
+
 - Ignore worker migrations symlinks
 - Add missing unit tests for organization admin APIs and fix coverage
 - Resolve merge conflict in docs/README.md
@@ -2260,6 +2456,7 @@
 - Add GitHub Actions workflow for L1+G1+Build+G2a
 
 ### Fixed
+
 - Align E2E tests with actual UI text
 - Anonymous scoped leaderboard requests must not be publicly cached
 - Resolve lint errors in sync.ts and pi-hook.ts
@@ -2269,14 +2466,17 @@
 🎉 **Community Release** — Pi coding agent support contributed by [@stliu](https://github.com/stliu). Thank you!
 
 ### Added
+
 - **Pi coding agent** — Added as 9th supported source for token tracking (#24, @stliu)
 - Pi session driver and notification hook
 
 ### Changed
+
 - Add source scanning principles and fix DB driver isolation
 - Sort sources alphabetically across all packages
 
 ### Fixed
+
 - Sort sources alphabetically (9 total) and add chart-9 color for consistent UI
 
 ## v2.9.0
@@ -2290,6 +2490,7 @@
 - [@cangelzz](https://github.com/cangelzz) — OpenClaw plugin install fix for WSL/headless environments (#32)
 
 ### Added
+
 - **Auto season registration** — Team owners can enable automatic registration for all new seasons (#31)
 - **Same-period month comparison** — Dashboard stats now show "vs same period" alongside "vs last month" (#23)
 - **GitHub Copilot CLI** — Added as 7th supported source for token tracking (#22)
@@ -2299,11 +2500,13 @@
 - Hide season list when auto-register enabled
 
 ### Changed
+
 - Simplify team list cards, move editing to detail page
 - Use hover overlay for logo editing
 - Improve E2E test reliability
 
 ### Fixed
+
 - **OpenClaw WSL/headless fix** — Plugin install now works on WSL with `--dangerously-force-unsafe-install` (#32)
 - **Login URL fallback** — Print auth URL when browser fails to open (WSL/headless support) (#32)
 - **Leaderboard session stats** — Fix silent failure when querying 100+ users by batching requests
@@ -2317,6 +2520,7 @@
 ## v2.8.0
 
 ### Added
+
 - Implement hermes notifier driver
 - Implement hermes token driver
 - Implement hermes SQLite parser with session-level diff
@@ -2325,6 +2529,7 @@
 - Sort public showcases by upvote count descending
 
 ### Changed
+
 - Boost branch coverage to 90% threshold
 - Clarify Hermes requires manual plugin installation
 - Document manual plugin installation and post-implementation fixes
@@ -2332,6 +2537,7 @@
 - Mark hermes support implementation complete
 
 ### Fixed
+
 - Add Hermes SQLite pre-check warnings (parity with OpenCode)
 - Add Hermes to sync summary output
 - Remove model IS NOT NULL filter (prevents data loss)
@@ -2349,6 +2555,7 @@
 ## v2.7.0
 
 ### Added
+
 - Implement hermes notifier driver
 - Implement hermes token driver
 - Implement hermes SQLite parser with session-level diff
@@ -2357,6 +2564,7 @@
 - Sort public showcases by upvote count descending
 
 ### Changed
+
 - Boost branch coverage to 90% threshold
 - Clarify Hermes requires manual plugin installation
 - Document manual plugin installation and post-implementation fixes
@@ -2364,6 +2572,7 @@
 - Mark hermes support implementation complete
 
 ### Fixed
+
 - Add Hermes SQLite pre-check warnings (parity with OpenCode)
 - Add Hermes to sync summary output
 - Remove model IS NOT NULL filter (prevents data loss)
@@ -2381,6 +2590,7 @@
 ## v2.6.0
 
 ### Added
+
 - Increase rate limit from 5 to 20/hour
 - Store and display GitHub stats in database
 - Fetch and display GitHub stats in preview
@@ -2404,6 +2614,7 @@
 - Add showcases and upvotes tables (016-showcases.sql)
 
 ### Changed
+
 - Update preview test for new GitHub stats fields
 - Update fetchGitHubMetadata test for new stats fields
 - Update tests for /settings/general route change
@@ -2420,17 +2631,20 @@
 - Add showcase system design (34-showcase-system.md)
 
 ### Fixed
+
 - Update showcase test mocks for admin and github stats
 - Sync UpvoteButton state when parent refetches data
 - Invalidate preview when URL changes after successful fetch
 - Fix useShowcases dependency issue
 
 ### Removed
+
 - Remove upvote_count, add admin moderation, fix refresh conflict
 
 ## v2.5.0
 
 ### Added
+
 - Increase rate limit from 5 to 20/hour
 - Store and display GitHub stats in database
 - Fetch and display GitHub stats in preview
@@ -2454,6 +2668,7 @@
 - Add showcases and upvotes tables (016-showcases.sql)
 
 ### Changed
+
 - Update preview test for new GitHub stats fields
 - Update fetchGitHubMetadata test for new stats fields
 - Update tests for /settings/general route change
@@ -2470,17 +2685,20 @@
 - Add showcase system design (34-showcase-system.md)
 
 ### Fixed
+
 - Update showcase test mocks for admin and github stats
 - Sync UpvoteButton state when parent refetches data
 - Invalidate preview when URL changes after successful fetch
 - Fix useShowcases dependency issue
 
 ### Removed
+
 - Remove upvote_count, add admin moderation, fix refresh conflict
 
 ## v2.4.0
 
 ### Added
+
 - Store and display GitHub stats in database
 - Fetch and display GitHub stats in preview
 - Add pagination to My Showcases page
@@ -2503,6 +2721,7 @@
 - Add showcases and upvotes tables (016-showcases.sql)
 
 ### Changed
+
 - Update preview test for new GitHub stats fields
 - Update fetchGitHubMetadata test for new stats fields
 - Update tests for /settings/general route change
@@ -2519,16 +2738,19 @@
 - Add showcase system design (34-showcase-system.md)
 
 ### Fixed
+
 - Sync UpvoteButton state when parent refetches data
 - Invalidate preview when URL changes after successful fetch
 - Fix useShowcases dependency issue
 
 ### Removed
+
 - Remove upvote_count, add admin moderation, fix refresh conflict
 
 ## v2.3.0
 
 ### Added
+
 - Store and display GitHub stats in database
 - Fetch and display GitHub stats in preview
 - Add pagination to My Showcases page
@@ -2551,6 +2773,7 @@
 - Add showcases and upvotes tables (016-showcases.sql)
 
 ### Changed
+
 - Update fetchGitHubMetadata test for new stats fields
 - Update tests for /settings/general route change
 - Use resolveAdmin/isAdminUser for consistent auth
@@ -2566,22 +2789,27 @@
 - Add showcase system design (34-showcase-system.md)
 
 ### Fixed
+
 - Sync UpvoteButton state when parent refetches data
 - Invalidate preview when URL changes after successful fetch
 - Fix useShowcases dependency issue
 
 ### Removed
+
 - Remove upvote_count, add admin moderation, fix refresh conflict
 
 ## v2.2.10
 
 ### Added
+
 - Add one-time code authentication for headless CLI login
 
 ### Changed
+
 - Improve CLI Login Code modal design
 
 ### Fixed
+
 - Handle JSON null body in code verification
 - Remove code invalidation to prevent concurrent generation race
 - Atomic conditional api_key generation to prevent race
@@ -2593,12 +2821,15 @@
 ## v2.2.9
 
 ### Added
+
 - Add one-time code authentication for headless CLI login
 
 ### Changed
+
 - Improve CLI Login Code modal design
 
 ### Fixed
+
 - Handle JSON null body in code verification
 - Remove code invalidation to prevent concurrent generation race
 - Atomic conditional api_key generation to prevent race
@@ -2610,124 +2841,149 @@
 ## v2.2.8
 
 ### Added
+
 - Add danger zone with account deletion
 - Improve leaderboard token column and seasons timeline
 
 ### Fixed
+
 - Remove bare fallback to enforce fail-closed on missing is_public
 - Enforce is_public opt-out across all public leaderboard APIs
 - Use fixed 280px token column width for alignment
 - Add gap between season timeline cards
 
 ### Removed
+
 - Remove admin mode from public leaderboard API
 
 ## v2.2.7
 
 ### Added
+
 - Add danger zone with account deletion
 - Improve leaderboard token column and seasons timeline
 
 ### Fixed
+
 - Remove bare fallback to enforce fail-closed on missing is_public
 - Enforce is_public opt-out across all public leaderboard APIs
 - Use fixed 280px token column width for alignment
 - Add gap between season timeline cards
 
 ### Removed
+
 - Remove admin mode from public leaderboard API
 
 ## v2.2.6
 
 ### Fixed
+
 - Use cli-base openBrowser instead of inline implementation
 
 ## v2.2.5
 
 ### Fixed
+
 - Use cli-base openBrowser instead of inline implementation
 
 ## v2.2.4
 
 ### Changed
+
 - Update @nocoo/cli-base to 0.2.2
 
 ## v2.2.3
 
 ### Changed
+
 - Update @nocoo/cli-base to 0.2.2
 
 ## v2.2.2
 
 ### Added
+
 - Add hourly usage chart split by weekday/weekend
 
 ## v2.2.1
 
 ### Added
+
 - Add hourly usage chart split by weekday/weekend
 
 ## v2.2.0
 
 ### Added
+
 - Add salary trend chart to Salary Estimator
 - Add Salary Estimator card to dashboard Insights
 - Migrate to cli-base 0.2.0 with mandatory CSRF
 
 ### Changed
+
 - Sync all package versions to 2.0.5
 - Use readVersion for dynamic version assertion
 
 ### Fixed
+
 - Correct salary trend upper/lower bound calculation
 - Salary estimator use primary theme color, prevent layout shift
 - Read version from package.json via cli-base readVersion
 
 ### Removed
+
 - Remove CLI version targets from release script
 
 ## v2.1.0
 
 ### Added
+
 - Add salary trend chart to Salary Estimator
 - Add Salary Estimator card to dashboard Insights
 - Migrate to cli-base 0.2.0 with mandatory CSRF
 
 ### Changed
+
 - Sync all package versions to 2.0.5
 - Use readVersion for dynamic version assertion
 
 ### Fixed
+
 - Correct salary trend upper/lower bound calculation
 - Salary estimator use primary theme color, prevent layout shift
 - Read version from package.json via cli-base readVersion
 
 ### Removed
+
 - Remove CLI version targets from release script
 
 ## v2.0.2
 
 ### Changed
+
 - Add unit tests for admin, auth, and teams endpoints
 - Add from/to date filter test to reach 90% branch coverage
 - Migrate to @nocoo/cli-base for shared dependencies
 
 ### Fixed
+
 - Add .next-e2e-ui to eslint ignores
 
 ## v2.0.1
 
 ### Changed
+
 - Add unit tests for admin, auth, and teams endpoints
 - Add from/to date filter test to reach 90% branch coverage
 - Migrate to @nocoo/cli-base for shared dependencies
 
 ### Fixed
+
 - Add .next-e2e-ui to eslint ignores
 
 ## v2.0.0
 
 ### Added
+
 - Add achievements section to public profile page
 - Integrate UserProfileDialog for member clicks
 - Add expandable card with member leaderboard
@@ -2745,6 +3001,7 @@
 - Add HeatmapHero as dashboard primary visual
 
 ### Changed
+
 - Widen layout from max-w-4xl to max-w-6xl
 - Mark Achievement System Overhaul Phase 1-4 as completed
 - Unify day-based achievements to UTC, document members 404
@@ -2761,6 +3018,7 @@
 - Add osv-scanner config to ignore false positive
 
 ### Fixed
+
 - Exclude test files from stale version check
 - Resolve syntax and type errors
 - Address spending source + earnedAt precision issues
@@ -2773,25 +3031,30 @@
 - Align dark mode input background with B-5 spec
 
 ### Removed
+
 - Remove unused AchievementShelf component
 - Remove monthly budget feature
 
 ## v1.15.1
 
 ### Added
+
 - Add same-period month comparison to dashboard stat cards (#23)
 
 ### Fixed
+
 - Use cost field for cost growth comparison condition
 
 ## v1.15.0
 
 ### Added
+
 - Improve profile page layout and leaderboard UX
 - Add invite code toggle, improve profile pages and leaderboard
 - Default is_public to ON and hide 0-token users from leaderboard
 
 ### Changed
+
 - Update leaderboard slogan
 - Align Dockerfile port to 7020
 - Migrate dev port 7030 → 7020
@@ -2799,16 +3062,19 @@
 ## v1.14.11
 
 ### Fixed
+
 - Remove card layer anti-patterns and add aria-sort to sortable headers
 
 ## v1.14.10
 
 ### Fixed
+
 - Remove card layer anti-patterns and add aria-sort to sortable headers
 
 ## v1.14.9
 
 ### Fixed
+
 - Override brace-expansion to fix GHSA-f886-m6hf-6m8v
 - Align web package version with monorepo root (1.14.7)
 - Harden callbackUrl validation and fix logo upscale blur
@@ -2819,6 +3085,7 @@
 ## v1.14.8
 
 ### Fixed
+
 - Override brace-expansion to fix GHSA-f886-m6hf-6m8v
 - Align web package version with monorepo root (1.14.7)
 - Harden callbackUrl validation and fix logo upscale blur
@@ -2829,6 +3096,7 @@
 ## v1.14.7
 
 ### Added
+
 - Add automated release script replacing bump-version.ts
 - Show earliest data date in admin profile dialog
 - Enlarge profile dialog and stabilize tab transitions
@@ -2836,6 +3104,7 @@
 - Add user profile popup dialog with charts
 
 ### Changed
+
 - Add dev server run command to superset config
 - Sanitize real paths and domains in test fixtures
 - Add doc 32 proxy token gap investigation
@@ -2849,12 +3118,14 @@
 - Add bump-version script for batch version updates
 
 ### Fixed
+
 - Resolve picomatch and yaml vulnerabilities via overrides
 - Allow profile dialog for users without slug
 
 ## v1.14.6
 
 ### Added
+
 - Add automated release script replacing bump-version.ts
 - Show earliest data date in admin profile dialog
 - Enlarge profile dialog and stabilize tab transitions
@@ -2862,6 +3133,7 @@
 - Add user profile popup dialog with charts
 
 ### Changed
+
 - Add dev server run command to superset config
 - Sanitize real paths and domains in test fixtures
 - Add doc 32 proxy token gap investigation
@@ -2875,6 +3147,7 @@
 - Add bump-version script for batch version updates
 
 ### Fixed
+
 - Resolve picomatch and yaml vulnerabilities via overrides
 - Allow profile dialog for users without slug
 

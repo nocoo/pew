@@ -10,9 +10,6 @@ const CURSORS_FILE = "cursors.json";
  */
 export class CursorStore extends BaseCursorStore<CursorState> {
   constructor(storeDir: string) {
-    super(
-      join(storeDir, CURSORS_FILE),
-      () => ({ version: 1, files: {}, updatedAt: null }),
-    );
+    super(join(storeDir, CURSORS_FILE), () => ({ version: 1, files: {}, updatedAt: null }));
   }
 }

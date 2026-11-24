@@ -94,10 +94,12 @@ describe("GET /api/sessions", () => {
     it("keeps an explicit timestamp as the exclusive end bound in UTC", async () => {
       mockDbRead.getSessionRecords.mockResolvedValueOnce([]);
 
-      const res = await GET(makeGetRequest("/api/sessions", {
-        from: "2026-09-13T09:00:00+08:00",
-        to: "2026-09-13T18:30:00+08:00",
-      }));
+      const res = await GET(
+        makeGetRequest("/api/sessions", {
+          from: "2026-09-13T09:00:00+08:00",
+          to: "2026-09-13T18:30:00+08:00",
+        }),
+      );
 
       expect(res.status).toBe(200);
       const [, fromDate, toDate] = mockDbRead.getSessionRecords.mock.calls[0]!;

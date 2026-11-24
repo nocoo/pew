@@ -131,20 +131,21 @@ async function main(): Promise<void> {
   if (!userId) {
     throw new Error("--apply requires --user-id");
   }
-  const wrangler = argValue("--wrangler") ??
+  const wrangler =
+    argValue("--wrangler") ??
     join(import.meta.dir, "../packages/worker/node_modules/.bin/wrangler");
-  const cwd = argValue("--worker-dir") ??
-    join(import.meta.dir, "../packages/worker");
+  const cwd = argValue("--worker-dir") ?? join(import.meta.dir, "../packages/worker");
   const chunkSize = 20;
   for (let i = 0; i < records.length; i += chunkSize) {
     const batch = records.slice(i, i + chunkSize);
     const sql = batch.map((r) => insertSql(userId, r)).join("\n");
     const sqlPath = `/tmp/pew-grok-backfill-${i}.sql`;
     await Bun.write(sqlPath, sql);
-    const proc = Bun.spawn(
-      [wrangler, "d1", "execute", "pew-db", "--remote", "--file", sqlPath],
-      { cwd, stdout: "inherit", stderr: "inherit" },
-    );
+    const proc = Bun.spawn([wrangler, "d1", "execute", "pew-db", "--remote", "--file", sqlPath], {
+      cwd,
+      stdout: "inherit",
+      stderr: "inherit",
+    });
     const code = await proc.exited;
     if (code !== 0) {
       throw new Error(`wrangler d1 execute failed at offset ${i} exit ${code}`);

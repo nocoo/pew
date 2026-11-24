@@ -64,7 +64,7 @@ export async function readDynamic(kv: KVNamespace): Promise<DynamicPricingEntry[
 
 export async function writeDynamicOrThrow(
   kv: KVNamespace,
-  entries: DynamicPricingEntry[]
+  entries: DynamicPricingEntry[],
 ): Promise<void> {
   await kv.put(KEY_DYNAMIC, JSON.stringify(entries));
 }
@@ -77,16 +77,13 @@ export async function writeMeta(kv: KVNamespace, meta: DynamicPricingMeta): Prom
   await writeJson(kv, KEY_DYNAMIC_META, meta);
 }
 
-export async function writeMetaOrThrow(
-  kv: KVNamespace,
-  meta: DynamicPricingMeta
-): Promise<void> {
+export async function writeMetaOrThrow(kv: KVNamespace, meta: DynamicPricingMeta): Promise<void> {
   await kv.put(KEY_DYNAMIC_META, JSON.stringify(meta));
 }
 
 export async function readLastFetch(
   kv: KVNamespace,
-  source: LastFetchSource
+  source: LastFetchSource,
 ): Promise<CachedFetch | null> {
   return readJson<CachedFetch>(kv, lastFetchKey(source));
 }
@@ -94,7 +91,7 @@ export async function readLastFetch(
 export async function writeLastFetch(
   kv: KVNamespace,
   source: LastFetchSource,
-  payload: CachedFetch
+  payload: CachedFetch,
 ): Promise<void> {
   const key = lastFetchKey(source);
   let serialized: string;
@@ -106,7 +103,7 @@ export async function writeLastFetch(
   }
   if (serialized.length > MAX_LAST_FETCH_BYTES) {
     console.warn(
-      `dynamic pricing last-fetch skipped source=${source} bytes=${serialized.length} (over 24 MB)`
+      `dynamic pricing last-fetch skipped source=${source} bytes=${serialized.length} (over 24 MB)`,
     );
     return;
   }

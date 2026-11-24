@@ -15,10 +15,7 @@ export default defineConfig({
     globals: true,
     pool: "threads",
     isolate: true,
-    include: [
-      "packages/*/src/**/*.test.{ts,tsx}",
-      "scripts/**/*.test.{ts,tsx}",
-    ],
+    include: ["packages/*/src/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}"],
     exclude: [
       "**/node_modules/**",
       "**/dist/**",

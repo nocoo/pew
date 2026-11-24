@@ -32,10 +32,7 @@ import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
 import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
-import {
-  useSeasonRegistration,
-  type AvailableSeason,
-} from "@/hooks/use-season-registration";
+import { useSeasonRegistration, type AvailableSeason } from "@/hooks/use-season-registration";
 import { formatSeasonDate } from "@/lib/seasons";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
 // ---------------------------------------------------------------------------
@@ -86,9 +83,7 @@ function SeasonRow({
     <div className="flex items-center justify-between gap-3 rounded-lg bg-basalt-accent/50 px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-basalt-foreground truncate">
-            {season.name}
-          </p>
+          <p className="text-sm font-medium text-basalt-foreground truncate">{season.name}</p>
           <StatusBadge status={season.status} />
           {season.is_registered && <Badge tone="info">Registered</Badge>}
         </div>
@@ -104,7 +99,8 @@ function SeasonRow({
         <div className="shrink-0">
           {season.is_registered ? (
             // Can withdraw from upcoming seasons, or active seasons with late withdrawal enabled
-            season.status === "upcoming" || (season.status === "active" && season.allow_late_withdrawal) ? (
+            season.status === "upcoming" ||
+            (season.status === "active" && season.allow_late_withdrawal) ? (
               <Button
                 type="button"
                 variant="secondary"
@@ -117,7 +113,8 @@ function SeasonRow({
                 Withdraw
               </Button>
             ) : null
-          ) : season.status === "upcoming" || (season.status === "active" && season.allow_late_registration) ? (
+          ) : season.status === "upcoming" ||
+            (season.status === "active" && season.allow_late_registration) ? (
             <Button
               type="button"
               size="sm"
@@ -195,12 +192,15 @@ function AutoRegisterToggle({
             Auto-register for new seasons
           </Label>
           {saving && (
-            <Loader2 className="h-3 w-3 animate-spin text-basalt-muted-foreground" strokeWidth={1.5} />
+            <Loader2
+              className="h-3 w-3 animate-spin text-basalt-muted-foreground"
+              strokeWidth={1.5}
+            />
           )}
         </div>
         <p className="mt-0.5 text-xs text-basalt-muted-foreground">
-          When enabled, your team will be automatically registered for new upcoming
-          seasons. You can withdraw before a season starts; later withdrawal follows its rules.
+          When enabled, your team will be automatically registered for new upcoming seasons. You can
+          withdraw before a season starts; later withdrawal follows its rules.
         </p>
       </div>
     </div>
@@ -218,8 +218,7 @@ function SeasonRegistration({
   teamId: string;
   autoRegisterEnabled: boolean;
 }) {
-  const { seasons, loading, error, register, withdraw } =
-    useSeasonRegistration({ teamId });
+  const { seasons, loading, error, register, withdraw } = useSeasonRegistration({ teamId });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
@@ -296,8 +295,12 @@ export default function TeamDetailPage() {
   const router = useRouter();
   const teamId = params.teamId;
 
-  const { data: team, error: swrError, isLoading: loading, mutate: mutateTeam } =
-    useSWR<TeamDetail>(teamId ? `/api/teams/${teamId}` : null, fetcher);
+  const {
+    data: team,
+    error: swrError,
+    isLoading: loading,
+    mutate: mutateTeam,
+  } = useSWR<TeamDetail>(teamId ? `/api/teams/${teamId}` : null, fetcher);
   const error = swrError
     ? swrError instanceof Error
       ? swrError.message
@@ -562,11 +565,7 @@ export default function TeamDetailPage() {
   if (error || !team) {
     return (
       <div className="max-w-3xl space-y-8">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => router.push("/teams")}
-        >
+        <Button type="button" variant="ghost" onClick={() => router.push("/teams")}>
           <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
           Back to Teams
         </Button>
@@ -585,11 +584,7 @@ export default function TeamDetailPage() {
   return (
     <div className="max-w-3xl space-y-8">
       {/* Back link */}
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={() => router.push("/teams")}
-      >
+      <Button type="button" variant="ghost" onClick={() => router.push("/teams")}>
         <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
         Back to Teams
       </Button>
@@ -672,7 +667,10 @@ export default function TeamDetailPage() {
                     disabled={savingName}
                   />
                   {savingName && (
-                    <Loader2 className="h-4 w-4 animate-spin text-basalt-muted-foreground" strokeWidth={1.5} />
+                    <Loader2
+                      className="h-4 w-4 animate-spin text-basalt-muted-foreground"
+                      strokeWidth={1.5}
+                    />
                   )}
                 </span>
               ) : (
@@ -739,9 +737,7 @@ export default function TeamDetailPage() {
                 </p>
               </Button>
               {member.role === "owner" ? (
-                <span className="text-xs font-medium text-basalt-primary shrink-0">
-                  Owner
-                </span>
+                <span className="text-xs font-medium text-basalt-primary shrink-0">Owner</span>
               ) : isOwner ? (
                 <Button
                   type="button"
@@ -782,10 +778,7 @@ export default function TeamDetailPage() {
               initialValue={team.auto_register_season}
               onToggle={setAutoRegisterEnabled}
             />
-            <SeasonRegistration
-              teamId={team.id}
-              autoRegisterEnabled={autoRegisterEnabled}
-            />
+            <SeasonRegistration teamId={team.id} autoRegisterEnabled={autoRegisterEnabled} />
           </div>
         </section>
       )}

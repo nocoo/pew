@@ -1,8 +1,14 @@
 import type { QueueRecord, Source } from "./types.js";
 
 /** Original Pew counters, retained verbatim as the reconciliation basis. */
-export type LegacyTokenCounts = Pick<QueueRecord, "input_tokens" | "cached_input_tokens" |
-  "output_tokens" | "reasoning_output_tokens" | "total_tokens">;
+export type LegacyTokenCounts = Pick<
+  QueueRecord,
+  | "input_tokens"
+  | "cached_input_tokens"
+  | "output_tokens"
+  | "reasoning_output_tokens"
+  | "total_tokens"
+>;
 
 /** Recorded input/output totals. Cache and reasoning fields are subsets, never extra usage. */
 export interface AccountingCounts {
@@ -41,7 +47,10 @@ export interface AccountingGroup {
   quality: "reported" | "derived" | "legacy" | "invalid";
   reported_costs: ReportedCost[];
   /** Safe numeric diagnostics, never source bodies. Raw totals cannot imply cache writes. */
-  diagnostics: Array<{ code: "total_mismatch" | "invalid_counts" | "aggregate_context"; raw_total_tokens: number | null }>;
+  diagnostics: Array<{
+    code: "total_mismatch" | "invalid_counts" | "aggregate_context";
+    raw_total_tokens: number | null;
+  }>;
 }
 
 /** Absolute companion snapshot. This record must NEVER enter the legacy usage SUM path. */
@@ -71,7 +80,12 @@ export interface AccountingAnnotation {
   groups: AccountingGroup[];
 }
 
-export type AccountingAckStatus = "applied" | "duplicate" | "superseded" | "base_mismatch" | "conflict";
+export type AccountingAckStatus =
+  | "applied"
+  | "duplicate"
+  | "superseded"
+  | "base_mismatch"
+  | "conflict";
 export interface AccountingAck {
   key: string;
   source_revision: number;

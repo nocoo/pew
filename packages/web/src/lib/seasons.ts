@@ -22,11 +22,7 @@ import { isSeasonEnded } from "@/lib/season-helpers";
  * Uses epoch ms comparison to avoid ISO format mismatches
  * (toISOString() includes .000Z but stored dates may omit ms).
  */
-export function deriveSeasonStatus(
-  startDate: string,
-  endDate: string,
-  now?: Date
-): SeasonStatus {
+export function deriveSeasonStatus(startDate: string, endDate: string, now?: Date): SeasonStatus {
   const nowMs = (now ?? new Date()).getTime();
   if (nowMs < new Date(startDate).getTime()) return "upcoming";
   if (isSeasonEnded(endDate, now)) return "ended";

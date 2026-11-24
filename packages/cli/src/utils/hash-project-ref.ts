@@ -22,8 +22,5 @@ const PROJECT_REF_HASH_LENGTH = 16;
  */
 export function hashProjectRef(raw: string | null): string | null {
   if (!raw) return null;
-  return createHash("sha256")
-    .update(raw)
-    .digest("hex")
-    .slice(0, PROJECT_REF_HASH_LENGTH);
+  return createHash("sha256").update(raw).digest("hex").slice(0, PROJECT_REF_HASH_LENGTH);
 }

@@ -50,10 +50,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   } catch (err) {
     console.error("Failed to list cache keys:", err);
-    return NextResponse.json(
-      { error: "Failed to list cache keys" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list cache keys" }, { status: 500 });
   }
 }
 
@@ -87,9 +84,6 @@ export async function DELETE(request: Request): Promise<Response> {
     return NextResponse.json(result satisfies CacheClearResponse);
   } catch (err) {
     console.error("Failed to clear cache:", err);
-    return NextResponse.json(
-      { error: "Failed to clear cache" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to clear cache" }, { status: 500 });
   }
 }

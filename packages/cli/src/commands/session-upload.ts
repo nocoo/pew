@@ -9,10 +9,7 @@ import { SessionQueue } from "../storage/session-queue.js";
 import { withStateLock } from "../storage/state-lock.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import { createUploadEngine } from "./upload-engine.js";
-import type {
-  UploadResult,
-  UploadProgressEvent,
-} from "./upload-engine.js";
+import type { UploadResult, UploadProgressEvent } from "./upload-engine.js";
 import type { SessionQueueRecord } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -57,9 +54,7 @@ export type SessionUploadResult = UploadResult;
  * files produces the same final result after server-side monotonic
  * upsert (WHERE excluded.snapshot_at >= session_records.snapshot_at).
  */
-export function deduplicateSessionRecords(
-  records: SessionQueueRecord[],
-): SessionQueueRecord[] {
+export function deduplicateSessionRecords(records: SessionQueueRecord[]): SessionQueueRecord[] {
   if (records.length === 0) return [];
 
   const map = new Map<string, SessionQueueRecord>();
@@ -76,13 +71,13 @@ export function deduplicateSessionRecords(
 // Implementation
 // ---------------------------------------------------------------------------
 
-export async function executeSessionUpload(opts: SessionUploadOptions): Promise<SessionUploadResult> {
+export async function executeSessionUpload(
+  opts: SessionUploadOptions,
+): Promise<SessionUploadResult> {
   return withStateLock(opts.stateDir, () => sessionUploadLocked(opts));
 }
 
-async function sessionUploadLocked(
-  opts: SessionUploadOptions,
-): Promise<SessionUploadResult> {
+async function sessionUploadLocked(opts: SessionUploadOptions): Promise<SessionUploadResult> {
   const queue = new SessionQueue(opts.stateDir, opts.onCorruptLine);
 
   const engine = createUploadEngine<SessionQueueRecord>({

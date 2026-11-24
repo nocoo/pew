@@ -40,7 +40,9 @@ function bytes(field: number, value: Uint8Array | string): Buffer {
 }
 
 function usage(fields: Record<number, number | bigint>): Buffer {
-  return Buffer.concat(Object.entries(fields).map(([field, value]) => scalar(Number(field), value)));
+  return Buffer.concat(
+    Object.entries(fields).map(([field, value]) => scalar(Number(field), value)),
+  );
 }
 
 function metadata(
@@ -60,7 +62,9 @@ function generation(indices: number[], model = "gemini-3.1-pro", packed = true):
   const chat = Buffer.concat([bytes(19, model), bytes(4, usage({ 2: 999_999, 3: 999_999 }))]);
   return Buffer.concat([
     bytes(1, chat),
-    ...(packed ? [bytes(2, Buffer.concat(indices.map(varint)))] : indices.map((idx) => scalar(2, idx))),
+    ...(packed
+      ? [bytes(2, Buffer.concat(indices.map(varint)))]
+      : indices.map((idx) => scalar(2, idx))),
   ]);
 }
 
@@ -76,11 +80,17 @@ async function fixture(wal = false, dbName = "conversation.db") {
     CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB);
     CREATE TABLE trajectory_metadata_blob (data BLOB);
   `);
-  db.prepare("INSERT INTO trajectory_metadata_blob VALUES (?)").run(bytes(7, "file:///synthetic/project"));
+  db.prepare("INSERT INTO trajectory_metadata_blob VALUES (?)").run(
+    bytes(7, "file:///synthetic/project"),
+  );
   const step = (idx: number, data: Uint8Array, type = 15, status = 3) =>
-    db.prepare("INSERT INTO steps VALUES (?,?,?,?,?)").run(idx, type, status, data, Buffer.from("private-payload"));
+    db
+      .prepare("INSERT INTO steps VALUES (?,?,?,?,?)")
+      .run(idx, type, status, data, Buffer.from("private-payload"));
   const gen = (idx: number, indices: number[], model?: string, packed?: boolean) =>
-    db.prepare("INSERT INTO gen_metadata VALUES (?,?)").run(idx, generation(indices, model, packed));
+    db
+      .prepare("INSERT INTO gen_metadata VALUES (?,?)")
+      .run(idx, generation(indices, model, packed));
   return { root, path, db, step, gen };
 }
 
@@ -104,18 +114,41 @@ describe("Antigravity private SQLite snapshot", () => {
     expect(result.stepCount).toBe(2);
     expect(result.deltas).toHaveLength(2);
     expect(result.deltas[0]).toMatchObject({
-      source: "antigravity", model: "gemini-3.1-pro", timestamp: "2023-11-14T22:13:23.123Z",
-      tokens: { inputTokens: 100, cachedInputTokens: 20, outputTokens: 23, reasoningOutputTokens: 7 },
-      accounting: { counts: { input_total_tokens: 120, cache_read_input_tokens: 20, output_total_tokens: 30, reasoning_output_tokens: 7 } },
+      source: "antigravity",
+      model: "gemini-3.1-pro",
+      timestamp: "2023-11-14T22:13:23.123Z",
+      tokens: {
+        inputTokens: 100,
+        cachedInputTokens: 20,
+        outputTokens: 23,
+        reasoningOutputTokens: 7,
+      },
+      accounting: {
+        counts: {
+          input_total_tokens: 120,
+          cache_read_input_tokens: 20,
+          output_total_tokens: 30,
+          reasoning_output_tokens: 7,
+        },
+      },
     });
     expect(result.deltas[1].accounting?.counts?.cache_read_input_tokens).toBe(0);
     expect(result.deltas[1].accounting?.counts?.reasoning_output_tokens).toBe(0);
-    expect(result.snapshots).toEqual([expect.objectContaining({
-      sessionKey: "antigravity:conversation", source: "antigravity", kind: "human",
-      startedAt: "2023-11-14T22:13:20.123Z", lastMessageAt: "2023-11-14T22:13:25.123Z", durationSeconds: 5,
-      userMessages: 1, assistantMessages: 3, totalMessages: 4,
-      projectRef: hashProjectRef("file:///synthetic/project"), model: "gemini-3.1-pro",
-    })]);
+    expect(result.snapshots).toEqual([
+      expect.objectContaining({
+        sessionKey: "antigravity:conversation",
+        source: "antigravity",
+        kind: "human",
+        startedAt: "2023-11-14T22:13:20.123Z",
+        lastMessageAt: "2023-11-14T22:13:25.123Z",
+        durationSeconds: 5,
+        userMessages: 1,
+        assistantMessages: 3,
+        totalMessages: 4,
+        projectRef: hashProjectRef("file:///synthetic/project"),
+        model: "gemini-3.1-pro",
+      }),
+    ]);
     expect(JSON.stringify(result)).not.toContain("private-payload");
     expect(JSON.stringify(result)).not.toContain("file:///synthetic");
     expect((await readAntigravitySource([f.root])).deltas).toEqual(result.deltas);
@@ -131,8 +164,14 @@ describe("Antigravity private SQLite snapshot", () => {
     expect(result.deltas[0].tokens.inputTokens).toBe(10);
     expect(await Promise.all(paths.map((path) => readFile(path)))).toEqual(before);
     const mainHash = createHash("sha256").update(before[0]).digest("hex");
-    f.db.prepare("UPDATE steps SET metadata = ? WHERE idx = 1").run(metadata(1_700_000_000, { 2: 30, 3: 5 }));
-    expect(createHash("sha256").update(await readFile(f.path)).digest("hex")).toBe(mainHash);
+    f.db
+      .prepare("UPDATE steps SET metadata = ? WHERE idx = 1")
+      .run(metadata(1_700_000_000, { 2: 30, 3: 5 }));
+    expect(
+      createHash("sha256")
+        .update(await readFile(f.path))
+        .digest("hex"),
+    ).toBe(mainHash);
     expect((await readAntigravitySource([f.root])).deltas[0].tokens.inputTokens).toBe(30);
   });
 
@@ -141,27 +180,33 @@ describe("Antigravity private SQLite snapshot", () => {
     f.step(1, metadata(1_700_000_000, { 2: 10, 3: 5 }));
     f.gen(0, [1]);
     let privatePath = "";
-    await expect(readAntigravitySource([f.root], {
-      opener: (path) => {
-        privatePath = path;
-        expect(path).not.toBe(f.path);
-        expect(basename(path)).toBe("conversation.db");
-        f.db.prepare("UPDATE steps SET metadata = ? WHERE idx = 1").run(metadata(1_700_000_000, { 2: 20, 3: 5 }));
-        return new DatabaseSync(path, { readOnly: true });
-      },
-    })).rejects.toBeInstanceOf(UnstableAntigravityError);
+    await expect(
+      readAntigravitySource([f.root], {
+        opener: (path) => {
+          privatePath = path;
+          expect(path).not.toBe(f.path);
+          expect(basename(path)).toBe("conversation.db");
+          f.db
+            .prepare("UPDATE steps SET metadata = ? WHERE idx = 1")
+            .run(metadata(1_700_000_000, { 2: 20, 3: 5 }));
+          return new DatabaseSync(path, { readOnly: true });
+        },
+      }),
+    ).rejects.toBeInstanceOf(UnstableAntigravityError);
     await expect(readFile(privatePath)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("uses private 0600 copies, never copies shm, and removes copies after open failures", async () => {
     const f = await fixture(true);
     let copy = "";
-    await expect(readAntigravitySource([f.root], {
-      opener: (path) => {
-        copy = path;
-        throw new Error("injected open failure");
-      },
-    })).rejects.toThrow("injected open failure");
+    await expect(
+      readAntigravitySource([f.root], {
+        opener: (path) => {
+          copy = path;
+          throw new Error("injected open failure");
+        },
+      }),
+    ).rejects.toThrow("injected open failure");
     await expect(readFile(copy)).rejects.toMatchObject({ code: "ENOENT" });
     await chmod(f.path, 0o644);
     await readAntigravitySource([f.root], {
@@ -187,14 +232,21 @@ describe("Antigravity private SQLite snapshot", () => {
 
   it("distinguishes missing roots from an existing empty root", async () => {
     const f = await fixture();
-    await expect(readAntigravitySource([join(f.root, "missing")])).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readAntigravitySource([join(f.root, "missing")])).rejects.toMatchObject({
+      code: "ENOENT",
+    });
     await expect(readAntigravitySource([])).rejects.toMatchObject({ code: "ENOENT" });
     f.db.close();
     writers.splice(writers.indexOf(f.db), 1);
     await rm(f.path);
     await writeFile(join(f.root, "unrelated.txt"), "ignored");
     expect(await readAntigravitySource([f.root])).toEqual({
-      deltas: [], snapshots: [], dbCount: 0, stepCount: 0, dbs: {}, warnings: [],
+      deltas: [],
+      snapshots: [],
+      dbCount: 0,
+      stepCount: 0,
+      dbs: {},
+      warnings: [],
     });
     expect(await readdir(f.root)).toEqual(["unrelated.txt"]);
   });
@@ -207,7 +259,12 @@ describe("Antigravity private SQLite snapshot", () => {
     app.step(1, metadata(1_700_000_010, { 2: 20, 3: 5 }));
     app.gen(1, [1], "gemini-4-neon");
 
-    const combined = await readAntigravitySource([join(cli.root, "missing"), cli.root, app.root, cli.root]);
+    const combined = await readAntigravitySource([
+      join(cli.root, "missing"),
+      cli.root,
+      app.root,
+      cli.root,
+    ]);
     expect(combined.dbCount).toBe(2);
     expect(combined.deltas.map((d) => d.model)).toEqual(["gemini-4-neon", "gemini-3.8-flash"]);
 
@@ -276,9 +333,21 @@ describe("Antigravity private SQLite snapshot", () => {
   it("caches per-DB snapshots across bands and produces bit-identical usage & accounting", async () => {
     const f = await fixture(true);
     // Two steps in same (model, half-hour) across two context bands (<200k and >200k)
-    f.step(1, metadata(1_700_000_000, { 1: 1533, 2: 10_000, 3: 100, 5: 50_000, 9: 40, 10: 60 }), 15);
-    f.step(2, metadata(1_700_000_120, { 1: 1533, 2: 20_000, 3: 200, 5: 220_000, 9: 80, 10: 120 }), 15);
-    f.step(3, metadata(1_700_000_240, { 1: 1533, 2: 30_000, 3: 300, 5: 40_000, 9: 50, 10: 250 }), 15);
+    f.step(
+      1,
+      metadata(1_700_000_000, { 1: 1533, 2: 10_000, 3: 100, 5: 50_000, 9: 40, 10: 60 }),
+      15,
+    );
+    f.step(
+      2,
+      metadata(1_700_000_120, { 1: 1533, 2: 20_000, 3: 200, 5: 220_000, 9: 80, 10: 120 }),
+      15,
+    );
+    f.step(
+      3,
+      metadata(1_700_000_240, { 1: 1533, 2: 30_000, 3: 300, 5: 40_000, 9: 50, 10: 250 }),
+      15,
+    );
     f.gen(1, [1, 2, 3], "gemini-4-neon");
 
     const cold = await readAntigravitySource([f.root]);
@@ -296,10 +365,20 @@ describe("Antigravity private SQLite snapshot", () => {
     expect(warmRecords).toEqual(coldRecords);
 
     const coldAccounting = planAccountingUpdates({
-      previous: [], before: [], after: coldRecords, deltas: cold.deltas, replay: true, deviceId: "dev-1",
+      previous: [],
+      before: [],
+      after: coldRecords,
+      deltas: cold.deltas,
+      replay: true,
+      deviceId: "dev-1",
     });
     const warmAccounting = planAccountingUpdates({
-      previous: [], before: [], after: warmRecords, deltas: warm.deltas, replay: true, deviceId: "dev-1",
+      previous: [],
+      before: [],
+      after: warmRecords,
+      deltas: warm.deltas,
+      replay: true,
+      deviceId: "dev-1",
     });
     expect(warmAccounting).toEqual(coldAccounting);
     expect(warmAccounting[0]?.groups).toHaveLength(2);
@@ -325,7 +404,10 @@ describe("Antigravity private SQLite snapshot", () => {
       { ...valid, stepCount: -1 },
       { ...valid, deltas: ["bad"] },
       { ...valid, deltas: [{ ...valid.deltas[0], tokens: "bad" }] },
-      { ...valid, deltas: [{ ...valid.deltas[0], tokens: { ...valid.deltas[0]!.tokens, inputTokens: -1 } }] },
+      {
+        ...valid,
+        deltas: [{ ...valid.deltas[0], tokens: { ...valid.deltas[0]!.tokens, inputTokens: -1 } }],
+      },
       { ...valid, snapshot: "bad" },
       { ...valid, snapshot: { invalid: true } },
       { ...valid, snapshot: { ...valid.snapshot!, model: 123 } },
@@ -371,48 +453,64 @@ describe("Antigravity private SQLite snapshot", () => {
       cache: cold.dbs,
       opener: (path) => {
         if (basename(path) === "b-busy.db") {
-          f2.db.prepare("UPDATE steps SET metadata = ? WHERE idx = 2").run(metadata(1_700_000_031, { 2: 50, 3: 5 }));
+          f2.db
+            .prepare("UPDATE steps SET metadata = ? WHERE idx = 2")
+            .run(metadata(1_700_000_031, { 2: 50, 3: 5 }));
         }
         return new DatabaseSync(path, { readOnly: true });
       },
     });
     expect(retained.dbCount).toBe(2);
     expect(retained.stepCount).toBe(3); // 2 from updated a-stable + 1 retained from b-busy cache
-    expect(retained.warnings).toEqual(["Retained cached snapshot for 1 busy Antigravity database(s)"]);
+    expect(retained.warnings).toEqual([
+      "Retained cached snapshot for 1 busy Antigravity database(s)",
+    ]);
 
     // 2. Uncached busy DB skipped when allowSkipUncachedUnstable is true & another DB succeeds
     const uncachedSkip = await readAntigravitySource([f1.root, f2.root], {
       allowSkipUncachedUnstable: true,
       opener: (path) => {
         if (basename(path) === "b-busy.db") {
-          f2.db.prepare("UPDATE steps SET metadata = ? WHERE idx = 2").run(metadata(1_700_000_032, { 2: 60, 3: 5 }));
+          f2.db
+            .prepare("UPDATE steps SET metadata = ? WHERE idx = 2")
+            .run(metadata(1_700_000_032, { 2: 60, 3: 5 }));
         }
         return new DatabaseSync(path, { readOnly: true });
       },
     });
     expect(uncachedSkip.dbCount).toBe(1);
     expect(uncachedSkip.stepCount).toBe(2);
-    expect(uncachedSkip.warnings).toEqual(["Skipped 1 busy Antigravity database(s); will retry next sync"]);
+    expect(uncachedSkip.warnings).toEqual([
+      "Skipped 1 busy Antigravity database(s); will retry next sync",
+    ]);
 
     // 3. Uncached busy DB throws when allowSkipUncachedUnstable is true but 0 DBs succeed
-    await expect(readAntigravitySource([f2.root], {
-      allowSkipUncachedUnstable: true,
-      opener: (path) => {
-        f2.db.prepare("UPDATE steps SET metadata = ? WHERE idx = 2").run(metadata(1_700_000_033, { 2: 70, 3: 5 }));
-        return new DatabaseSync(path, { readOnly: true });
-      },
-    })).rejects.toBeInstanceOf(UnstableAntigravityError);
+    await expect(
+      readAntigravitySource([f2.root], {
+        allowSkipUncachedUnstable: true,
+        opener: (path) => {
+          f2.db
+            .prepare("UPDATE steps SET metadata = ? WHERE idx = 2")
+            .run(metadata(1_700_000_033, { 2: 70, 3: 5 }));
+          return new DatabaseSync(path, { readOnly: true });
+        },
+      }),
+    ).rejects.toBeInstanceOf(UnstableAntigravityError);
 
     // 4. Uncached busy DB throws when allowSkipUncachedUnstable is false
-    await expect(readAntigravitySource([f1.root, f2.root], {
-      allowSkipUncachedUnstable: false,
-      opener: (path) => {
-        if (basename(path) === "b-busy.db") {
-          f2.db.prepare("UPDATE steps SET metadata = ? WHERE idx = 2").run(metadata(1_700_000_034, { 2: 80, 3: 5 }));
-        }
-        return new DatabaseSync(path, { readOnly: true });
-      },
-    })).rejects.toBeInstanceOf(UnstableAntigravityError);
+    await expect(
+      readAntigravitySource([f1.root, f2.root], {
+        allowSkipUncachedUnstable: false,
+        opener: (path) => {
+          if (basename(path) === "b-busy.db") {
+            f2.db
+              .prepare("UPDATE steps SET metadata = ? WHERE idx = 2")
+              .run(metadata(1_700_000_034, { 2: 80, 3: 5 }));
+          }
+          return new DatabaseSync(path, { readOnly: true });
+        },
+      }),
+    ).rejects.toBeInstanceOf(UnstableAntigravityError);
 
     // 5. DB disappearing between readdir and statIdentity triggers UnstableAntigravityError path
     const fTemp = await fixture(false, "c-vanish.db");
@@ -437,15 +535,19 @@ describe("Antigravity private SQLite snapshot", () => {
       },
     });
     expect(vanished.dbCount).toBe(1);
-    expect(vanished.warnings).toEqual(["Skipped 1 busy Antigravity database(s); will retry next sync"]);
+    expect(vanished.warnings).toEqual([
+      "Skipped 1 busy Antigravity database(s); will retry next sync",
+    ]);
 
     // 6. Corrupt data fails closed even when cache and allowSkipUncachedUnstable are enabled
     const fBad = await fixture(false, "z-corrupt.db");
     fBad.step(1, Buffer.from([128]));
-    await expect(readAntigravitySource([f1.root, fBad.root], {
-      cache: cold.dbs,
-      allowSkipUncachedUnstable: true,
-    })).rejects.toThrow();
+    await expect(
+      readAntigravitySource([f1.root, fBad.root], {
+        cache: cold.dbs,
+        allowSkipUncachedUnstable: true,
+      }),
+    ).rejects.toThrow();
   });
 
   it("rejects unsupported SQLite schemas and missing model attribution", async () => {
@@ -465,9 +567,15 @@ describe("Antigravity private SQLite snapshot", () => {
   });
 
   it.each([
-    scalar(1, 1), bytes(1, scalar(19, 1)), bytes(1, bytes(19, "")), bytes(1, bytes(19, "x".repeat(201))),
-    bytes(1, bytes(19, "bad\nmodel")), bytes(1, bytes(19, Buffer.from([255]))), bytes(1, bytes(19, "https://private/path")),
-    bytes(1, bytes(19, "sk-private")), bytes(1, bytes(19, "unknown")),
+    scalar(1, 1),
+    bytes(1, scalar(19, 1)),
+    bytes(1, bytes(19, "")),
+    bytes(1, bytes(19, "x".repeat(201))),
+    bytes(1, bytes(19, "bad\nmodel")),
+    bytes(1, bytes(19, Buffer.from([255]))),
+    bytes(1, bytes(19, "https://private/path")),
+    bytes(1, bytes(19, "sk-private")),
+    bytes(1, bytes(19, "unknown")),
     Buffer.concat([bytes(1, bytes(19, "model")), scalar(2, 2_147_483_648)]),
     Buffer.concat([bytes(1, bytes(19, "model")), bytes(2, Buffer.from([128]))]),
     Buffer.concat([bytes(1, bytes(19, "model")), varint(2 * 8 + 5), Buffer.alloc(4)]),
@@ -496,7 +604,9 @@ describe("Antigravity private SQLite snapshot", () => {
 
   it("hashes nested workspace folder_uri and allows empty sessions", async () => {
     const f = await fixture();
-    f.db.prepare("UPDATE trajectory_metadata_blob SET data = ?").run(bytes(1, bytes(1, "file:///another/project")));
+    f.db
+      .prepare("UPDATE trajectory_metadata_blob SET data = ?")
+      .run(bytes(1, bytes(1, "file:///another/project")));
     f.step(1, metadata(), 14);
     const result = await readAntigravitySource([f.root]);
     expect(result.deltas).toEqual([]);
@@ -505,12 +615,15 @@ describe("Antigravity private SQLite snapshot", () => {
     expect((await readAntigravitySource([f.root])).snapshots).toEqual([]);
   });
 
-  it.each([bytes(7, ""), bytes(1, Buffer.alloc(0)), Buffer.alloc(0)])("accepts absent workspace references %#", async (blob) => {
-    const f = await fixture();
-    f.db.prepare("UPDATE trajectory_metadata_blob SET data = ?").run(blob);
-    f.step(1, metadata(), 14);
-    expect((await readAntigravitySource([f.root])).snapshots[0].projectRef).toBeNull();
-  });
+  it.each([bytes(7, ""), bytes(1, Buffer.alloc(0)), Buffer.alloc(0)])(
+    "accepts absent workspace references %#",
+    async (blob) => {
+      const f = await fixture();
+      f.db.prepare("UPDATE trajectory_metadata_blob SET data = ?").run(blob);
+      f.step(1, metadata(), 14);
+      expect((await readAntigravitySource([f.root])).snapshots[0].projectRef).toBeNull();
+    },
+  );
 
   it("rejects malformed workspace references", async () => {
     const f = await fixture();
@@ -522,7 +635,11 @@ describe("Antigravity private SQLite snapshot", () => {
     const f = await fixture();
     f.step(1, metadata(), 14);
     f.db.prepare("INSERT INTO steps VALUES (?,?,?,?,?)").run(2, 15, 1, null, null);
-    expect((await readAntigravitySource([f.root])).snapshots[0]).toMatchObject({ userMessages: 1, assistantMessages: 1, totalMessages: 2 });
+    expect((await readAntigravitySource([f.root])).snapshots[0]).toMatchObject({
+      userMessages: 1,
+      assistantMessages: 1,
+      totalMessages: 2,
+    });
   });
 
   it("rejects sessions with durations beyond the ingest limit before returning token candidates", async () => {
@@ -539,42 +656,82 @@ describe("Antigravity private SQLite snapshot", () => {
     const snapshot = (await readAntigravitySource([f.root])).snapshots[0];
     expect(validateAntigravitySession(snapshot)).toBe(snapshot);
     for (const patch of [
-      { sessionKey: "x".repeat(1025) }, { sessionKey: "" }, { model: "x".repeat(1025) },
-      { startedAt: "10000-01-01T00:00:00.000Z" }, { snapshotAt: "invalid" },
-      { durationSeconds: 315_576_001 }, { durationSeconds: -1 }, { durationSeconds: 0.5 },
-      { userMessages: 100_000_001 }, { assistantMessages: -1 }, { totalMessages: 0 },
+      { sessionKey: "x".repeat(1025) },
+      { sessionKey: "" },
+      { model: "x".repeat(1025) },
+      { startedAt: "10000-01-01T00:00:00.000Z" },
+      { snapshotAt: "invalid" },
+      { durationSeconds: 315_576_001 },
+      { durationSeconds: -1 },
+      { durationSeconds: 0.5 },
+      { userMessages: 100_000_001 },
+      { assistantMessages: -1 },
+      { totalMessages: 0 },
       { lastMessageAt: "2020-01-01T00:00:00.000Z" },
-    ]) expect(() => validateAntigravitySession({ ...snapshot, ...patch })).toThrow(/session snapshot/i);
+    ])
+      expect(() => validateAntigravitySession({ ...snapshot, ...patch })).toThrow(
+        /session snapshot/i,
+      );
   });
 });
 
 describe("Antigravity Protobuf metadata validation", () => {
   it("recognizes omitted proto3 cache and thinking scalars as known zero", () => {
-    expect(decodeAntigravityMetadata(metadata(0, { 2: 10, 3: 5 }, 999_999)).timestamp).toBe("1970-01-01T00:00:00.000Z");
-    expect(decodeAntigravityMetadata(metadata(1, { 2: 10, 3: 5 })).usage).toMatchObject({ input: 10, output: 5, read: 0, write: 0, reasoning: 0 });
-    expect(decodeAntigravityMetadata(metadata(1, { 2: 10, 3: 5, 5: 0, 9: 0 })).usage).toMatchObject({ read: 0, reasoning: 0 });
+    expect(decodeAntigravityMetadata(metadata(0, { 2: 10, 3: 5 }, 999_999)).timestamp).toBe(
+      "1970-01-01T00:00:00.000Z",
+    );
+    expect(decodeAntigravityMetadata(metadata(1, { 2: 10, 3: 5 })).usage).toMatchObject({
+      input: 10,
+      output: 5,
+      read: 0,
+      write: 0,
+      reasoning: 0,
+    });
+    expect(decodeAntigravityMetadata(metadata(1, { 2: 10, 3: 5, 5: 0, 9: 0 })).usage).toMatchObject(
+      { read: 0, reasoning: 0 },
+    );
   });
 
   it("validates turn_id field 12 wire type and UTF-8", () => {
-    expect(decodeAntigravityMetadata(metadata(1, { 2: 10, 3: 5 }, 0, "  turn-123  ")).turnId).toBe("turn-123");
+    expect(decodeAntigravityMetadata(metadata(1, { 2: 10, 3: 5 }, 0, "  turn-123  ")).turnId).toBe(
+      "turn-123",
+    );
     expect(decodeAntigravityMetadata(metadata(1, { 2: 10, 3: 5 }, 0, "   ")).turnId).toBeNull();
-    expect(() => decodeAntigravityMetadata(Buffer.concat([metadata(), scalar(12, 1)]))).toThrow(/turn id/i);
-    expect(() => decodeAntigravityMetadata(Buffer.concat([metadata(), bytes(12, Buffer.from([255]))]))).toThrow();
+    expect(() => decodeAntigravityMetadata(Buffer.concat([metadata(), scalar(12, 1)]))).toThrow(
+      /turn id/i,
+    );
+    expect(() =>
+      decodeAntigravityMetadata(Buffer.concat([metadata(), bytes(12, Buffer.from([255]))])),
+    ).toThrow();
   });
 
   it.each([
-    { 2: 1_000_000_001 }, { 2: 1_000_000_000, 5: 1 }, { 2: 1, 3: 1_000_000_000 },
-    { 2: 10, 3: 5, 9: 6 }, { 2: 10, 3: 5, 9: 2, 10: 4 }, { 2: 10, 3: 5, 4: 1 },
+    { 2: 1_000_000_001 },
+    { 2: 1_000_000_000, 5: 1 },
+    { 2: 1, 3: 1_000_000_000 },
+    { 2: 10, 3: 5, 9: 6 },
+    { 2: 10, 3: 5, 9: 2, 10: 4 },
+    { 2: 10, 3: 5, 4: 1 },
     { 2: 0xffff_ffff_ffff_ffffn },
   ])("rejects unsafe or contradictory counters %#", (fields) => {
     expect(() => decodeAntigravityMetadata(metadata(1, fields))).toThrow();
   });
 
-  it.each([
-    [0], [128], [8, 128], [10, 5, 1], [13, 1], [9, 1], [11], [8, ...Array(10).fill(255)],
-    [8, ...Array(9).fill(128), 2], [varint(536_870_912 * 8), 0].flatMap((v) => typeof v === "number" ? [v] : [...v]),
-    [13, 1, 2, 3, 4, 99],
-  ].map((raw) => ({ raw })))("rejects malformed wire bytes $raw", ({ raw }) => {
+  it.each(
+    [
+      [0],
+      [128],
+      [8, 128],
+      [10, 5, 1],
+      [13, 1],
+      [9, 1],
+      [11],
+      [8, ...Array(10).fill(255)],
+      [8, ...Array(9).fill(128), 2],
+      [varint(536_870_912 * 8), 0].flatMap((v) => (typeof v === "number" ? [v] : [...v])),
+      [13, 1, 2, 3, 4, 99],
+    ].map((raw) => ({ raw })),
+  )("rejects malformed wire bytes $raw", ({ raw }) => {
     expect(() => decodeAntigravityMetadata(Buffer.from(raw))).toThrow();
   });
 
@@ -585,23 +742,43 @@ describe("Antigravity Protobuf metadata validation", () => {
     expect(() => decodeAntigravityMetadata(Buffer.concat([metadata(), scalar(9, 1)]))).toThrow();
     expect(() => decodeAntigravityMetadata(bytes(9, bytes(2, "wrong")))).toThrow();
     expect(() => decodeAntigravityMetadata(bytes(1, bytes(1, "wrong")))).toThrow();
-    expect(() => decodeAntigravityMetadata(Buffer.concat([varint(1 * 8 + 1), Buffer.alloc(8)]))).toThrow();
-    expect(() => decodeAntigravityMetadata(bytes(1, Buffer.concat([varint(1 * 8 + 5), Buffer.alloc(4)])))).toThrow();
-    expect(() => decodeAntigravityMetadata(bytes(1, scalar(1, BigInt.asUintN(64, -62_135_596_801n))))).toThrow();
+    expect(() =>
+      decodeAntigravityMetadata(Buffer.concat([varint(1 * 8 + 1), Buffer.alloc(8)])),
+    ).toThrow();
+    expect(() =>
+      decodeAntigravityMetadata(bytes(1, Buffer.concat([varint(1 * 8 + 5), Buffer.alloc(4)]))),
+    ).toThrow();
+    expect(() =>
+      decodeAntigravityMetadata(bytes(1, scalar(1, BigInt.asUintN(64, -62_135_596_801n)))),
+    ).toThrow();
     expect(() => decodeAntigravityMetadata(null as unknown as Uint8Array)).toThrow();
   });
 
   it("supports protobuf epoch defaults and signed timestamps", () => {
-    expect(decodeAntigravityMetadata(bytes(1, Buffer.alloc(0))).timestamp).toBe("1970-01-01T00:00:00.000Z");
-    expect(decodeAntigravityMetadata(bytes(1, scalar(1, BigInt.asUintN(64, -1n)))).timestamp).toBe("1969-12-31T23:59:59.000Z");
-    expect(decodeAntigravityMetadata(bytes(9, Buffer.alloc(0))).usage).toMatchObject({ input: 0, output: 0 });
+    expect(decodeAntigravityMetadata(bytes(1, Buffer.alloc(0))).timestamp).toBe(
+      "1970-01-01T00:00:00.000Z",
+    );
+    expect(decodeAntigravityMetadata(bytes(1, scalar(1, BigInt.asUintN(64, -1n)))).timestamp).toBe(
+      "1969-12-31T23:59:59.000Z",
+    );
+    expect(decodeAntigravityMetadata(bytes(9, Buffer.alloc(0))).usage).toMatchObject({
+      input: 0,
+      output: 0,
+    });
   });
 
   it("skips unknown opaque, fixed32 and fixed64 fields without decoding their contents", () => {
-    const decoded = decodeAntigravityMetadata(Buffer.concat([
-      metadata(1, { 2: 10, 3: 5 }), bytes(50, Buffer.from([255, 255])),
-      varint(51 * 8 + 1), Buffer.alloc(8), varint(52 * 8 + 5), Buffer.alloc(4), scalar(53, 1),
-    ]));
+    const decoded = decodeAntigravityMetadata(
+      Buffer.concat([
+        metadata(1, { 2: 10, 3: 5 }),
+        bytes(50, Buffer.from([255, 255])),
+        varint(51 * 8 + 1),
+        Buffer.alloc(8),
+        varint(52 * 8 + 5),
+        Buffer.alloc(4),
+        scalar(53, 1),
+      ]),
+    );
     expect(decoded.usage?.input).toBe(10);
   });
 });

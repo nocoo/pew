@@ -1,8 +1,4 @@
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@nocoo/basalt/components/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt/components/tooltip";
 
 // ---------------------------------------------------------------------------
 // Token Tier Badge — "Asset Notation" style
@@ -35,7 +31,7 @@ const HUE_STEP = 15; // 360 / 24
 
 function tierColor(digits: number): { bg: string; fg: string } {
   const idx = (digits - 4) % HUE_COUNT;
-  const hue = ((idx < 0 ? idx + HUE_COUNT : idx) * HUE_STEP);
+  const hue = (idx < 0 ? idx + HUE_COUNT : idx) * HUE_STEP;
   return {
     bg: `hsla(${hue}, 70%, 50%, 0.15)`,
     fg: `hsl(${hue}, 70%, 50%)`,

@@ -50,10 +50,9 @@ function makeUploadRequest(
 ): Request {
   const formData = options?.body ?? new FormData();
   if (!options?.body) {
-    const blob = new Blob(
-      [new Uint8Array(options?.size ?? 100)],
-      { type: options?.type ?? "image/png" },
-    );
+    const blob = new Blob([new Uint8Array(options?.size ?? 100)], {
+      type: options?.type ?? "image/png",
+    });
     const file = new File([blob], "logo.png", { type: options?.type ?? "image/png" });
     formData.append("file", file);
   }
@@ -130,10 +129,7 @@ describe("POST /api/teams/[teamId]/logo", () => {
     resolveUser.mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
 
-    const res = await POST(
-      makeUploadRequest("t1", { type: "image/gif" }),
-      makeParams(),
-    );
+    const res = await POST(makeUploadRequest("t1", { type: "image/gif" }), makeParams());
 
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("PNG and JPEG");
@@ -143,10 +139,7 @@ describe("POST /api/teams/[teamId]/logo", () => {
     resolveUser.mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
 
-    const res = await POST(
-      makeUploadRequest("t1", { size: 2 * 1024 * 1024 + 1 }),
-      makeParams(),
-    );
+    const res = await POST(makeUploadRequest("t1", { size: 2 * 1024 * 1024 + 1 }), makeParams());
 
     expect(res.status).toBe(413);
     expect((await res.json()).error).toContain("too large");
@@ -172,7 +165,9 @@ describe("POST /api/teams/[teamId]/logo", () => {
     vi.mocked(sharp).mockReturnValue({
       resize: vi.fn().mockReturnThis(),
       jpeg: vi.fn().mockReturnThis(),
-      toBuffer: vi.fn().mockRejectedValue(new Error("Input buffer contains unsupported image format")),
+      toBuffer: vi
+        .fn()
+        .mockRejectedValue(new Error("Input buffer contains unsupported image format")),
     } as never);
 
     const res = await POST(makeUploadRequest("t1"), makeParams());
@@ -187,10 +182,7 @@ describe("POST /api/teams/[teamId]/logo", () => {
 
     const formData = new FormData();
     // No file appended
-    const res = await POST(
-      makeUploadRequest("t1", { body: formData }),
-      makeParams(),
-    );
+    const res = await POST(makeUploadRequest("t1", { body: formData }), makeParams());
 
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("Missing file");
@@ -212,10 +204,10 @@ describe("POST /api/teams/[teamId]/logo", () => {
     expect(putTeamLogo).toHaveBeenCalledOnce();
     expect(putTeamLogo).toHaveBeenCalledWith("t1", expect.any(Buffer));
     // Should persist to DB
-    expect(mockDbWrite.execute).toHaveBeenCalledWith(
-      "UPDATE teams SET logo_url = ? WHERE id = ?",
-      [newUrl, "t1"],
-    );
+    expect(mockDbWrite.execute).toHaveBeenCalledWith("UPDATE teams SET logo_url = ? WHERE id = ?", [
+      newUrl,
+      "t1",
+    ]);
     // Should delete old logo
     expect(deleteTeamLogoByUrl).toHaveBeenCalledWith(oldUrl);
   });
@@ -280,10 +272,7 @@ describe("POST /api/teams/[teamId]/logo", () => {
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbRead.getTeamLogoUrl.mockResolvedValueOnce(null);
 
-    const res = await POST(
-      makeUploadRequest("t1", { type: "image/jpeg" }),
-      makeParams(),
-    );
+    const res = await POST(makeUploadRequest("t1", { type: "image/jpeg" }), makeParams());
 
     expect(res.status).toBe(200);
   });

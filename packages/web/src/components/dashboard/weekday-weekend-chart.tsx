@@ -42,9 +42,7 @@ function ComparisonRow({
       <p className="text-xs font-medium text-basalt-muted-foreground">{label}</p>
       <div className="space-y-1.5">
         <div className="flex items-center gap-3">
-          <span className="w-16 shrink-0 text-xs text-basalt-muted-foreground">
-            Weekday
-          </span>
+          <span className="w-16 shrink-0 text-xs text-basalt-muted-foreground">Weekday</span>
           <div className="flex-1 h-5 rounded bg-basalt-muted/50 overflow-hidden">
             <div
               key={weekdayPct}
@@ -57,9 +55,7 @@ function ComparisonRow({
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="w-16 shrink-0 text-xs text-basalt-muted-foreground">
-            Weekend
-          </span>
+          <span className="w-16 shrink-0 text-xs text-basalt-muted-foreground">Weekend</span>
           <div className="flex-1 h-5 rounded bg-basalt-muted/50 overflow-hidden">
             <div
               key={weekendPct}
@@ -88,12 +84,8 @@ function ComparisonRow({
  * Side-by-side horizontal bar comparison of weekday vs weekend averages.
  * Two rows: Avg Tokens and Avg Cost, each with a proportional bar.
  */
-export function WeekdayWeekendChart({
-  stats,
-  className,
-}: WeekdayWeekendChartProps) {
-  const isEmpty =
-    stats.weekday.totalDays === 0 && stats.weekend.totalDays === 0;
+export function WeekdayWeekendChart({ stats, className }: WeekdayWeekendChartProps) {
+  const isEmpty = stats.weekday.totalDays === 0 && stats.weekend.totalDays === 0;
 
   if (isEmpty) {
     return (
@@ -128,18 +120,11 @@ export function WeekdayWeekendChart({
       {/* Header: icon + title */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <div className="flex items-center gap-2">
-          <CalendarRange
-            className="h-4 w-4 text-basalt-muted-foreground"
-            strokeWidth={1.5}
-          />
-          <p className="text-xs md:text-sm text-basalt-muted-foreground">
-            Weekday vs Weekend
-          </p>
+          <CalendarRange className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">Weekday vs Weekend</p>
         </div>
         {ratioLabel && (
-          <span className="text-xs text-basalt-muted-foreground/60">
-            {ratioLabel}
-          </span>
+          <span className="text-xs text-basalt-muted-foreground/60">{ratioLabel}</span>
         )}
       </div>
 

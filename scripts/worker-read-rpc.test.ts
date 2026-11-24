@@ -25,11 +25,24 @@ describe("read RPC SQL semantics", () => {
           }),
         }),
       } as unknown as D1Database;
-      const res = await handleAdminRpc({ method: "admin.getUsageComparison", userIds: ["u1", "u2"], fromDate: "2026-01-01T15:59:00.000Z", toDate: "2026-01-02T00:00:00.000Z", tzOffset: -480, source: "s", model: "m" }, db);
-      expect(await res.json()).toEqual({ result: [
-        { date: "2026-01-01", user_id: "u1", total_tokens: 10, source: "s", model: "m" },
-        { date: "2026-01-02", user_id: "u1", total_tokens: 50, source: "s", model: "m" },
-      ] });
+      const res = await handleAdminRpc(
+        {
+          method: "admin.getUsageComparison",
+          userIds: ["u1", "u2"],
+          fromDate: "2026-01-01T15:59:00.000Z",
+          toDate: "2026-01-02T00:00:00.000Z",
+          tzOffset: -480,
+          source: "s",
+          model: "m",
+        },
+        db,
+      );
+      expect(await res.json()).toEqual({
+        result: [
+          { date: "2026-01-01", user_id: "u1", total_tokens: 10, source: "s", model: "m" },
+          { date: "2026-01-02", user_id: "u1", total_tokens: 50, source: "s", model: "m" },
+        ],
+      });
     } finally {
       sqlite.close();
     }
@@ -59,7 +72,10 @@ describe("read RPC SQL semantics", () => {
       } as unknown as D1Database;
       const cases: [SeasonsRpcRequest, unknown][] = [
         [{ method: "seasons.listRosterSyncSeasons", teamId: "registered" }, ["active"]],
-        [{ method: "seasons.listAutoRegisterTeams", seasonId: "active" }, [{ id: "opted-in", created_by: "u2" }]],
+        [
+          { method: "seasons.listAutoRegisterTeams", seasonId: "active" },
+          [{ id: "opted-in", created_by: "u2" }],
+        ],
         [{ method: "seasons.getRegisteredTeamIds", seasonId: "active" }, ["registered"]],
         [{ method: "seasons.getRosterUserIds", seasonId: "active", teamId: "registered" }, ["u1"]],
       ];

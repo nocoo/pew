@@ -10,26 +10,26 @@
 
 ### Old System (Four-Layer Test Architecture)
 
-| Layer | Name | Trigger |
-|-------|------|---------|
-| L1 | Unit Tests (≥90%) | pre-commit |
-| L2 | Lint (tsc + ESLint) | pre-commit |
-| L3 | API E2E (real HTTP) | pre-push |
-| L4 | BDD E2E (Playwright) | manual/CI |
+| Layer | Name                 | Trigger    |
+| ----- | -------------------- | ---------- |
+| L1    | Unit Tests (≥90%)    | pre-commit |
+| L2    | Lint (tsc + ESLint)  | pre-commit |
+| L3    | API E2E (real HTTP)  | pre-push   |
+| L4    | BDD E2E (Playwright) | manual/CI  |
 
 ### New System (Quality System)
 
-| Layer | Name | What it validates | Trigger |
-|-------|------|-------------------|---------|
-| **L1** | Unit/Component | Logic units, pure functions, hooks, ViewModels | pre-commit (<30s) |
-| **L2** | Integration/API | Real HTTP calls, DB interactions, cross-module | pre-push (<3min) |
-| **L3** | System/E2E | End-to-end user flows via Playwright | CI / manual |
-| **G1** | Static Analysis | tsc strict + ESLint strict, 0 errors + 0 warnings | pre-commit |
-| **G2** | Security/Perf | osv-scanner (dependency CVEs) + gitleaks (secret leak) | pre-push |
+| Layer  | Name            | What it validates                                      | Trigger           |
+| ------ | --------------- | ------------------------------------------------------ | ----------------- |
+| **L1** | Unit/Component  | Logic units, pure functions, hooks, ViewModels         | pre-commit (<30s) |
+| **L2** | Integration/API | Real HTTP calls, DB interactions, cross-module         | pre-push (<3min)  |
+| **L3** | System/E2E      | End-to-end user flows via Playwright                   | CI / manual       |
+| **G1** | Static Analysis | tsc strict + ESLint strict, 0 errors + 0 warnings      | pre-commit        |
+| **G2** | Security/Perf   | osv-scanner (dependency CVEs) + gitleaks (secret leak) | pre-push          |
 
 ### Key Changes
 
-1. **Lint demoted**: L2 Lint → G1 gate (it validates *conventions*, not *behavior*)
+1. **Lint demoted**: L2 Lint → G1 gate (it validates _conventions_, not _behavior_)
 2. **L3/L4 merged**: Old API E2E + BDD E2E → new L2 Integration + L3 System
 3. **G2 added**: Security scanning — was completely absent
 
@@ -39,17 +39,17 @@
 
 Audit date: 2026-03-22. Test count: 2,170 (127 files). Coverage: 93.81%.
 
-| Requirement | Current State | Gap | Action |
-|------------|--------------|-----|--------|
-| L1 Unit ≥90%, pre-commit | ✅ 2,170 tests, 90% threshold enforced in `vitest.config.ts` | None | — |
-| L2 Integration/API, pre-push | ✅ `scripts/run-e2e.ts` launches real Next.js server on :17020 | None | — |
-| L3 System/E2E (Playwright) | ❌ Runner `scripts/run-e2e-ui.ts` exists, 0 actual specs, Playwright not installed | Full layer missing | Commits 4–5 |
-| G1 `--max-warnings=0` | ⚠️ ESLint strict preset but no `--max-warnings=0` flag | Warnings silently pass | Commit 2 |
-| G1 `.skip`/`.only` ban | ❌ Test files can commit `.skip`/`.only` without error | Accidental debug leaks | Commit 2 |
-| G2 osv-scanner | ❌ Not configured | No CVE scanning | Commit 3 |
-| G2 gitleaks | ❌ Not configured | No secret scanning | Commit 3 |
-| Hook comments | References "four-layer test architecture" | Stale naming | Commit 6 |
-| CLAUDE.md | References "Four-layer architecture" | Stale naming | Commit 7 |
+| Requirement                  | Current State                                                                      | Gap                    | Action      |
+| ---------------------------- | ---------------------------------------------------------------------------------- | ---------------------- | ----------- |
+| L1 Unit ≥90%, pre-commit     | ✅ 2,170 tests, 90% threshold enforced in `vitest.config.ts`                       | None                   | —           |
+| L2 Integration/API, pre-push | ✅ `scripts/run-e2e.ts` launches real Next.js server on :17020                     | None                   | —           |
+| L3 System/E2E (Playwright)   | ❌ Runner `scripts/run-e2e-ui.ts` exists, 0 actual specs, Playwright not installed | Full layer missing     | Commits 4–5 |
+| G1 `--max-warnings=0`        | ⚠️ ESLint strict preset but no `--max-warnings=0` flag                             | Warnings silently pass | Commit 2    |
+| G1 `.skip`/`.only` ban       | ❌ Test files can commit `.skip`/`.only` without error                             | Accidental debug leaks | Commit 2    |
+| G2 osv-scanner               | ❌ Not configured                                                                  | No CVE scanning        | Commit 3    |
+| G2 gitleaks                  | ❌ Not configured                                                                  | No secret scanning     | Commit 3    |
+| Hook comments                | References "four-layer test architecture"                                          | Stale naming           | Commit 6    |
+| CLAUDE.md                    | References "Four-layer architecture"                                               | Stale naming           | Commit 7    |
 
 ---
 
@@ -94,6 +94,7 @@ must match the worktree copies and pass a check-only
 Create this document. Update `docs/README.md` index.
 
 **Files**:
+
 - `docs/30-quality-system-upgrade.md` (new)
 - `docs/README.md` (add row)
 
@@ -102,12 +103,14 @@ Create this document. Update `docs/README.md` index.
 ### Commit 2: `chore: upgrade G1 eslint to --max-warnings=0 and ban .skip/.only` ✅
 
 **`package.json`** — lint script change:
+
 ```diff
 - "lint": "... && eslint .",
 + "lint": "... && eslint . --max-warnings=0",
 ```
 
 **`eslint.config.ts`** — add to test files block:
+
 ```ts
 "no-restricted-syntax": [
   "error",
@@ -125,6 +128,7 @@ Create this document. Update `docs/README.md` index.
 **Verify**: `bun run lint` → 0 errors, 0 warnings.
 
 **Files**:
+
 - `package.json`
 - `eslint.config.ts`
 
@@ -133,6 +137,7 @@ Create this document. Update `docs/README.md` index.
 ### Commit 3: `chore: add G2 security gate (osv-scanner + gitleaks)` ✅
 
 **Prerequisites** (one-time manual install):
+
 ```bash
 brew install osv-scanner gitleaks
 ```
@@ -143,11 +148,13 @@ brew install osv-scanner gitleaks
 > Ref: https://google.github.io/osv-scanner/supported-languages-and-lockfiles/
 
 **`package.json`** — add script:
+
 ```json
 "test:security": "bun run scripts/run-security.ts"
 ```
 
 **`scripts/run-security.ts`** (new) — single source of truth for G2 logic:
+
 ```ts
 #!/usr/bin/env bun
 /**
@@ -212,6 +219,7 @@ process.exit(failed ? 1 : 0);
 > `@{u}` (falls back to `origin/main`) and scans the commit range with `gitleaks git`.
 
 **`.husky/pre-push`** — append G2 block after L2:
+
 ```bash
 # G2: Security — osv-scanner (dependency CVEs) + gitleaks (secret leak in commits)
 bun run test:security 2>&1
@@ -227,6 +235,7 @@ Pre-push hook delegates to the same `scripts/run-security.ts` — no duplicated 
 **Verify**: `bun run test:security` → clean.
 
 **Files**:
+
 - `package.json`
 - `scripts/run-security.ts` (new)
 - `.husky/pre-push`
@@ -248,6 +257,7 @@ Fix: import `loadEnvLocal` from `./e2e-utils` (it's already in the shared module
 into the server spawn env, matching the API runner pattern.
 
 **`scripts/run-e2e-ui.ts`** — change server spawn:
+
 ```diff
 + import { ensurePortFree, cleanupBuildDir, loadEnvLocal } from "./e2e-utils";
 - import { ensurePortFree, cleanupBuildDir } from "./e2e-utils";
@@ -276,6 +286,7 @@ lifecycle (start on :27020, cleanup on exit), so the config **omits** `webServer
 server management.
 
 **`packages/web/e2e/playwright.config.ts`** (new):
+
 ```ts
 import { defineConfig } from "@playwright/test";
 
@@ -294,6 +305,7 @@ export default defineConfig({
 ```
 
 **`packages/web/e2e/smoke.spec.ts`** (new):
+
 ```ts
 import { test, expect } from "@playwright/test";
 
@@ -306,6 +318,7 @@ test("app loads and shows page title", async ({ page }) => {
 **Verify**: `bun run test:e2e:ui` → runner starts server (with D1 credentials), 1 spec passes, cleanup.
 
 **Files**:
+
 - `package.json` (dep added)
 - `bun.lock`
 - `scripts/run-e2e-ui.ts` (add loadEnvLocal)
@@ -323,19 +336,23 @@ so auth is bypassed — the proxy passes all requests through and API routes ret
 deterministic `e2e-test-user-id`.
 
 **`packages/web/e2e/auth.spec.ts`** — auth bypass validation:
+
 - With skip-auth, visiting `/dashboard` does NOT redirect to `/login` (proxy passes through)
 - With skip-auth, API calls return data for the test user (200, not 401)
 
 **`packages/web/e2e/dashboard.spec.ts`**:
+
 - Dashboard loads at `/dashboard`
 - Token usage chart container is visible
 - At least one data card is rendered
 
 **`packages/web/e2e/navigation.spec.ts`**:
+
 - Sidebar links are present (Dashboard, Leaderboard, Settings)
 - Clicking a sidebar link navigates to the correct page
 
 **Files**:
+
 - `packages/web/e2e/auth.spec.ts` (new)
 - `packages/web/e2e/dashboard.spec.ts` (new)
 - `packages/web/e2e/navigation.spec.ts` (new)
@@ -345,6 +362,7 @@ deterministic `e2e-test-user-id`.
 ### Commit 6: `chore: update husky hooks to new quality system naming` ✅
 
 **`.husky/pre-commit`** — comment updates:
+
 ```diff
 - # pre-commit: L1 Unit Tests + Coverage + L2 Lint (four-layer test architecture)
 + # pre-commit: L1 Unit/Component + G1 Static Analysis (quality system)
@@ -360,6 +378,7 @@ deterministic `e2e-test-user-id`.
 ```
 
 **`.husky/pre-push`** — comment updates:
+
 ```diff
 - # pre-push: L3 API E2E Tests (four-layer test architecture)
 - # L1+L2 already enforced by pre-commit.
@@ -371,6 +390,7 @@ deterministic `e2e-test-user-id`.
 ```
 
 **Files**:
+
 - `.husky/pre-commit`
 - `.husky/pre-push`
 
@@ -390,6 +410,7 @@ In `CLAUDE.md` → Key Conventions → Testing:
 ```
 
 **Files**:
+
 - `CLAUDE.md`
 
 ---
@@ -397,6 +418,7 @@ In `CLAUDE.md` → Key Conventions → Testing:
 ### Commit 8: `docs: finalize doc 30 with verification record` ✅
 
 Append a "Verification Record" section to this document with actual results:
+
 - L1: test count, coverage %
 - L2: API E2E pass/fail
 - L3: Playwright spec count and pass/fail
@@ -404,6 +426,7 @@ Append a "Verification Record" section to this document with actual results:
 - G2: osv-scanner clean, gitleaks clean
 
 **Files**:
+
 - `docs/30-quality-system-upgrade.md`
 
 ---
@@ -438,6 +461,7 @@ sh .husky/pre-push               # L2+G2 pass
 Verified: 2026-03-22
 
 ### L1 Unit/Component ✅
+
 ```
 Test Files  127 passed (127)
 Tests       2170 passed (2170)
@@ -446,6 +470,7 @@ Threshold   90% (all four metrics pass)
 ```
 
 ### G1 Static Analysis ✅
+
 ```
 tsc --noEmit  ×5 packages: 0 errors
 eslint --max-warnings=0: 0 errors, 0 warnings
@@ -453,6 +478,7 @@ eslint --max-warnings=0: 0 errors, 0 warnings
 ```
 
 ### L2 Integration/API ✅
+
 ```
 19 tests passed, 53 expect() calls, 13.39s
 Entry:  bun run test:e2e → scripts/run-e2e.ts → :17020
@@ -460,6 +486,7 @@ Note:   reads prod D1 via .env.local (all tests are read-only safe)
 ```
 
 ### G2 Security ✅
+
 ```
 osv-scanner v2.3.4: PASS — 0 vulnerabilities (661 packages scanned)
   Fixed via: next 16.1.6→16.2.1, undici 7.18.2→7.24.5,
@@ -469,6 +496,7 @@ gitleaks v8.30.1: PASS — 12 commits scanned, no leaks found
 ```
 
 ### L3 System/E2E ✅
+
 ```
 10 tests passed, 4 workers, 7.1s
 Entry:  bun run test:e2e:ui → scripts/run-e2e-ui.ts → Playwright on :27020
@@ -477,6 +505,7 @@ Note:   all specs are read-only (no writes to prod D1)
 ```
 
 ### Hooks
+
 ```
 pre-commit: L1 Unit + G1 Static Analysis (renamed from four-layer)
 pre-push:   L2 Integration/API + G2 Security (renamed, G2 added)

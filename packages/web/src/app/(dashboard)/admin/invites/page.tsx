@@ -39,13 +39,7 @@ type StatusFilter = "all" | "available";
 const EMPTY_ROWS: InviteCodeRow[] = [];
 
 function InvitesSkeleton() {
-  return (
-    <RowListSkeleton
-      rows={5}
-      middle={["w-24", "w-16"]}
-      tail={["w-32"]}
-    />
-  );
+  return <RowListSkeleton rows={5} middle={["w-24", "w-16"]} tail={["w-32"]} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,10 +69,7 @@ export default function AdminInvitesPage() {
     error: rowsError,
     isLoading: rowsLoading,
     mutate: mutateRows,
-  } = useSWR<{ rows: InviteCodeRow[] }>(
-    isAdmin ? "/api/admin/invites" : null,
-    fetcher,
-  );
+  } = useSWR<{ rows: InviteCodeRow[] }>(isAdmin ? "/api/admin/invites" : null, fetcher);
   const rows = rowsData?.rows ?? EMPTY_ROWS;
   const loading = isAdmin ? rowsLoading : false;
   const error = rowsError
@@ -121,13 +112,10 @@ export default function AdminInvitesPage() {
   const { confirm, dialogProps } = useConfirm();
 
   // Derived: available codes + filtered rows
-  const availableCodes = useMemo(
-    () => rows.filter((r) => !r.used_by),
-    [rows]
-  );
+  const availableCodes = useMemo(() => rows.filter((r) => !r.used_by), [rows]);
   const filteredRows = useMemo(
     () => (statusFilter === "available" ? availableCodes : rows),
-    [statusFilter, availableCodes, rows]
+    [statusFilter, availableCodes, rows],
   );
 
   // ---------------------------------------------------------------------------
@@ -168,9 +156,7 @@ export default function AdminInvitesPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(
-          (data as { error?: string }).error ?? `HTTP ${res.status}`
-        );
+        throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`);
       }
 
       setRequireInvite(newValue);
@@ -208,9 +194,7 @@ export default function AdminInvitesPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(
-          (data as { error?: string }).error ?? `HTTP ${res.status}`
-        );
+        throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`);
       }
 
       const json = (await res.json()) as { codes: string[] };
@@ -253,9 +237,7 @@ export default function AdminInvitesPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(
-          (data as { error?: string }).error ?? `HTTP ${res.status}`
-        );
+        throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`);
       }
       setMessage({
         type: "success",
@@ -292,8 +274,7 @@ export default function AdminInvitesPage() {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  const isDeletable = (row: InviteCodeRow) =>
-    !row.used_by || row.used_by.startsWith("pending:");
+  const isDeletable = (row: InviteCodeRow) => !row.used_by || row.used_by.startsWith("pending:");
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
@@ -334,9 +315,7 @@ export default function AdminInvitesPage() {
             className="mt-0.5"
           />
           <div className="flex-1 min-w-0">
-            <Label htmlFor={requireInviteId}>
-              Require invite code for registration
-            </Label>
+            <Label htmlFor={requireInviteId}>Require invite code for registration</Label>
             <p className="mt-0.5 text-xs text-basalt-muted-foreground">
               {requireInvite
                 ? "New users must enter a valid invite code to register."
@@ -355,9 +334,7 @@ export default function AdminInvitesPage() {
       {/* Generate form */}
       {showGenerate && (
         <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
-          <h3 className="text-sm font-medium text-basalt-foreground mb-3">
-            Generate Invite Codes
-          </h3>
+          <h3 className="text-sm font-medium text-basalt-foreground mb-3">Generate Invite Codes</h3>
           <div className="flex items-end gap-3">
             <Field label="Count (1-20)" htmlFor={genCountId}>
               <Input
@@ -367,14 +344,17 @@ export default function AdminInvitesPage() {
                 max={20}
                 value={genCount}
                 onChange={(e) =>
-                  setGenCount(
-                    Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1))
-                  )
+                  setGenCount(Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)))
                 }
                 className="w-24 tabular-nums"
               />
             </Field>
-            <Button type="button" onClick={handleGenerate} disabled={generating} loading={generating}>
+            <Button
+              type="button"
+              onClick={handleGenerate}
+              disabled={generating}
+              loading={generating}
+            >
               {generating ? "Generating..." : "Generate"}
             </Button>
             <Button
@@ -403,9 +383,7 @@ export default function AdminInvitesPage() {
                 variant={statusFilter === opt ? "secondary" : "ghost"}
                 onClick={() => setStatusFilter(opt)}
               >
-                {opt === "all"
-                  ? `All (${rows.length})`
-                  : `Available (${availableCodes.length})`}
+                {opt === "all" ? `All (${rows.length})` : `Available (${availableCodes.length})`}
               </Button>
             ))}
           </div>
@@ -421,105 +399,97 @@ export default function AdminInvitesPage() {
       {loading && <InvitesSkeleton />}
 
       {/* Table */}
-      {!loading && (
-        filteredRows.length === 0 ? (
-            <Empty
-              title={
-                statusFilter === "available"
-                  ? "No available invite codes."
-                  : "No invite codes yet."
-              }
-              {...(statusFilter === "available"
-                ? {}
-                : { description: "Generate some to get started." })}
-              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
-            />
-          ) : (
-            <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-basalt-border">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                      Code
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
-                      Used By
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
-                      Created By
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">
-                      Created At
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-20">
-                      Actions
-                    </th>
+      {!loading &&
+        (filteredRows.length === 0 ? (
+          <Empty
+            title={
+              statusFilter === "available" ? "No available invite codes." : "No invite codes yet."
+            }
+            {...(statusFilter === "available"
+              ? {}
+              : { description: "Generate some to get started." })}
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
+          />
+        ) : (
+          <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-basalt-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                    Code
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
+                    Used By
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
+                    Created By
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">
+                    Created At
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-20">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <ClipboardText text={row.code} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge usedBy={row.used_by} />
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <span className="text-sm text-basalt-muted-foreground">
+                        {row.used_by_email ??
+                          (row.used_by?.startsWith("pending:")
+                            ? row.used_by
+                            : (row.used_by ?? "\u2014"))}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <span className="text-sm text-basalt-muted-foreground">
+                        {row.created_by_email ?? row.created_by}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      <span className="text-xs text-basalt-muted-foreground">
+                        {formatDate(row.created_at)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end">
+                        {isDeletable(row) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={rowIconDangerClassName}
+                            onClick={() =>
+                              handleDelete(row.id, row.used_by?.startsWith("pending:") ?? false)
+                            }
+                            aria-label={
+                              row.used_by?.startsWith("pending:") ? "Reclaim burned code" : "Delete"
+                            }
+                          >
+                            <Trash2 strokeWidth={1.5} />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <ClipboardText text={row.code} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge usedBy={row.used_by} />
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <span className="text-sm text-basalt-muted-foreground">
-                          {row.used_by_email ??
-                            (row.used_by?.startsWith("pending:")
-                              ? row.used_by
-                              : row.used_by ?? "\u2014")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <span className="text-sm text-basalt-muted-foreground">
-                          {row.created_by_email ?? row.created_by}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <span className="text-xs text-basalt-muted-foreground">
-                          {formatDate(row.created_at)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end">
-                          {isDeletable(row) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={rowIconDangerClassName}
-                              onClick={() =>
-                                handleDelete(
-                                  row.id,
-                                  row.used_by?.startsWith("pending:") ?? false
-                                )
-                              }
-                              aria-label={
-                                row.used_by?.startsWith("pending:")
-                                  ? "Reclaim burned code"
-                                  : "Delete"
-                              }
-                            >
-                              <Trash2 strokeWidth={1.5} />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-      )}
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
 
       {/* Confirm dialog */}
       <ConfirmDialog {...dialogProps} />

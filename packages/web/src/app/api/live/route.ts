@@ -36,7 +36,14 @@ export async function GET() {
   const healthy = database.connected;
 
   return Response.json(
-    { status: healthy ? "ok" : "error", version: APP_VERSION, component: "dashboard", timestamp, uptime, database },
+    {
+      status: healthy ? "ok" : "error",
+      version: APP_VERSION,
+      component: "dashboard",
+      timestamp,
+      uptime,
+      database,
+    },
     { status: healthy ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
 }

@@ -40,8 +40,7 @@ export function resolveNotifierPaths(
     normalizeEnvPath(env.OPENCODE_CONFIG_DIR) ??
     join(normalizeEnvPath(env.XDG_CONFIG_HOME) ?? join(home, ".config"), "opencode");
 
-  const openclawHome =
-    normalizeEnvPath(env.OPENCLAW_STATE_DIR) ?? join(home, ".openclaw");
+  const openclawHome = normalizeEnvPath(env.OPENCLAW_STATE_DIR) ?? join(home, ".openclaw");
 
   const codexHome = normalizeEnvPath(env.CODEX_HOME) ?? join(home, ".codex");
 
@@ -60,8 +59,7 @@ export function resolveNotifierPaths(
     opencodePluginDir: join(opencodeConfigDir, "plugin"),
     openclawHome,
     openclawConfigPath:
-      normalizeEnvPath(env.OPENCLAW_CONFIG_PATH) ??
-      join(openclawHome, "openclaw.json"),
+      normalizeEnvPath(env.OPENCLAW_CONFIG_PATH) ?? join(openclawHome, "openclaw.json"),
     openclawPluginDir: join(stateDir, "openclaw-plugin"),
     codexHome,
     codexConfigPath: join(codexHome, "config.toml"),

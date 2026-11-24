@@ -40,9 +40,7 @@ describe("buildNotifyHandler", () => {
       pewBin: "/tmp/bin/pew",
     });
 
-    expect(
-      () => new vm.Script(source.replace(/^#!.*\n/, "")),
-    ).not.toThrow();
+    expect(() => new vm.Script(source.replace(/^#!.*\n/, ""))).not.toThrow();
   });
 
   it("includes Codex original notify chaining", () => {
@@ -149,15 +147,8 @@ describe("writeNotifyHandler", () => {
       "// old",
       "utf8",
     );
-    expect(fs.writeFile).toHaveBeenNthCalledWith(
-      2,
-      "/tmp/pew/bin/notify.cjs",
-      "// new",
-      "utf8",
-    );
-    expect(result.backupPath).toBe(
-      "/tmp/pew/bin/notify.cjs.bak.2026-03-09T10-00-00-000Z",
-    );
+    expect(fs.writeFile).toHaveBeenNthCalledWith(2, "/tmp/pew/bin/notify.cjs", "// new", "utf8");
+    expect(result.backupPath).toBe("/tmp/pew/bin/notify.cjs.bak.2026-03-09T10-00-00-000Z");
   });
 
   it("re-throws non-ENOENT errors from readFile", async () => {

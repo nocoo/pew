@@ -80,12 +80,10 @@ export function createWorkerDbRead(): DbRead {
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(
-        (body as { error?: string }).error ?? `Worker returned ${res.status}`,
-      );
+      throw new Error((body as { error?: string }).error ?? `Worker returned ${res.status}`);
     }
 
-    const body = await res.json() as { result: T };
+    const body = (await res.json()) as { result: T };
     return body.result;
   }
 
@@ -123,7 +121,13 @@ export function createWorkerDbRead(): DbRead {
       toDate: string,
       options?: { tzOffset?: number; source?: string; model?: string },
     ): Promise<AdminUsageComparisonRow[]> {
-      return rpc<AdminUsageComparisonRow[]>({ method: "admin.getUsageComparison", userIds, fromDate, toDate, ...options });
+      return rpc<AdminUsageComparisonRow[]>({
+        method: "admin.getUsageComparison",
+        userIds,
+        fromDate,
+        toDate,
+        ...options,
+      });
     },
 
     // -------------------------------------------------------------------------
@@ -157,10 +161,7 @@ export function createWorkerDbRead(): DbRead {
       });
     },
 
-    async checkSlugExists(
-      slug: string,
-      excludeUserId?: string,
-    ): Promise<boolean> {
+    async checkSlugExists(slug: string, excludeUserId?: string): Promise<boolean> {
       const result = await rpc<{ exists: boolean }>({
         method: "users.checkSlugExists",
         slug,
@@ -189,10 +190,7 @@ export function createWorkerDbRead(): DbRead {
       return result?.email ?? null;
     },
 
-    async searchUsers(
-      query: string,
-      limit?: number,
-    ): Promise<UserSearchResult[]> {
+    async searchUsers(query: string, limit?: number): Promise<UserSearchResult[]> {
       return rpc<UserSearchResult[]>({
         method: "users.search",
         query,
@@ -438,19 +436,14 @@ export function createWorkerDbRead(): DbRead {
       return result.exists;
     },
 
-    async findTeamByInviteCode(
-      inviteCode: string,
-    ): Promise<TeamByInviteCode | null> {
+    async findTeamByInviteCode(inviteCode: string): Promise<TeamByInviteCode | null> {
       return rpc<TeamByInviteCode | null>({
         method: "teams.findByInviteCode",
         inviteCode,
       });
     },
 
-    async checkTeamMembershipExists(
-      teamId: string,
-      userId: string,
-    ): Promise<boolean> {
+    async checkTeamMembershipExists(teamId: string, userId: string): Promise<boolean> {
       const result = await rpc<{ exists: boolean }>({
         method: "teams.membershipExists",
         teamId,
@@ -487,10 +480,7 @@ export function createWorkerDbRead(): DbRead {
       return result.count;
     },
 
-    async getTeamMembership(
-      teamId: string,
-      userId: string,
-    ): Promise<string | null> {
+    async getTeamMembership(teamId: string, userId: string): Promise<string | null> {
       const result = await rpc<{ role: string } | null>({
         method: "teams.getMembership",
         teamId,
@@ -555,9 +545,7 @@ export function createWorkerDbRead(): DbRead {
       });
     },
 
-    async rebuildDynamicPricing(
-      options?: { forceRefetch?: boolean },
-    ): Promise<SyncOutcomeDto> {
+    async rebuildDynamicPricing(options?: { forceRefetch?: boolean }): Promise<SyncOutcomeDto> {
       return rpc<SyncOutcomeDto>({
         method: "pricing.rebuildDynamicPricing",
         ...(options?.forceRefetch !== undefined && {
@@ -720,7 +708,10 @@ export function createWorkerDbRead(): DbRead {
     },
 
     async getLeaderboardSnapshot(options: LeaderboardFilters): Promise<LeaderboardSnapshot> {
-      return rpc<LeaderboardSnapshot>({ method: "leaderboard.getSnapshot", ...options }, AbortSignal.timeout(15_000));
+      return rpc<LeaderboardSnapshot>(
+        { method: "leaderboard.getSnapshot", ...options },
+        AbortSignal.timeout(15_000),
+      );
     },
 
     // -------------------------------------------------------------------------
@@ -744,9 +735,7 @@ export function createWorkerDbRead(): DbRead {
       });
     },
 
-    async clearCache(
-      prefix?: string,
-    ): Promise<{ deleted: number; truncated: boolean }> {
+    async clearCache(prefix?: string): Promise<{ deleted: number; truncated: boolean }> {
       return rpc<{ deleted: number; truncated: boolean }>({
         method: "cache.clear",
         ...(prefix !== undefined && { prefix }),

@@ -205,9 +205,7 @@ describe("Users RPC handlers", () => {
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body).toEqual({ result: mockUser });
-      expect(db.prepare).toHaveBeenCalledWith(
-        "SELECT id, email FROM users WHERE api_key = ?",
-      );
+      expect(db.prepare).toHaveBeenCalledWith("SELECT id, email FROM users WHERE api_key = ?");
     });
 
     it("should return null when API key not found", async () => {
@@ -342,9 +340,7 @@ describe("Users RPC handlers", () => {
       const response = await handleUsersRpc(request, db);
 
       expect(response.status).toBe(200);
-      expect(db.prepare).toHaveBeenCalledWith(
-        "SELECT id FROM users WHERE slug = ? AND id != ?",
-      );
+      expect(db.prepare).toHaveBeenCalledWith("SELECT id FROM users WHERE slug = ? AND id != ?");
     });
 
     it("should return 400 when slug is missing", async () => {
@@ -812,12 +808,10 @@ describe("Users RPC handlers", () => {
       expect(await res.json()).toEqual({ result: row });
       expect(firstFn).toHaveBeenCalledTimes(2);
       // Both queries used
-      const calls = (db.prepare as ReturnType<typeof vi.fn>).mock.calls.map(
-        (c: unknown[]) => c[0],
-      );
-      expect(calls.some((s: unknown) => typeof s === "string" && s.includes("WHERE slug = ?"))).toBe(
-        true,
-      );
+      const calls = (db.prepare as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0]);
+      expect(
+        calls.some((s: unknown) => typeof s === "string" && s.includes("WHERE slug = ?")),
+      ).toBe(true);
       expect(calls.some((s: unknown) => typeof s === "string" && s.includes("WHERE id = ?"))).toBe(
         true,
       );

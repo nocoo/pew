@@ -48,15 +48,11 @@ const VALID_SESSION = {
 const VALID_VERSION = "3.0.0";
 
 function stubWorkerOk(ingested = 1) {
-  mockFetch.mockResolvedValueOnce(
-    new Response(JSON.stringify({ ingested }), { status: 200 }),
-  );
+  mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ ingested }), { status: 200 }));
 }
 
 function stubWorkerError(status = 500, error = "D1 batch failed") {
-  mockFetch.mockResolvedValueOnce(
-    new Response(JSON.stringify({ error }), { status }),
-  );
+  mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ error }), { status }));
 }
 
 describe("POST /api/ingest/sessions", () => {
@@ -303,10 +299,7 @@ describe("POST /api/ingest/sessions", () => {
     });
 
     it("should derive /sessions URL from WORKER_INGEST_URL ending with /ingest", async () => {
-      vi.stubEnv(
-        "WORKER_INGEST_URL",
-        "https://worker.example.com/ingest",
-      );
+      vi.stubEnv("WORKER_INGEST_URL", "https://worker.example.com/ingest");
       stubWorkerOk();
 
       const res = await POST(makeRequest([VALID_SESSION], undefined, VALID_VERSION));

@@ -4,7 +4,10 @@ export class BodyTooLargeError extends Error {
   }
 }
 
-export async function readBoundedBody(request: Pick<Request, "headers" | "body">, maxBytes: number): Promise<Uint8Array<ArrayBuffer>> {
+export async function readBoundedBody(
+  request: Pick<Request, "headers" | "body">,
+  maxBytes: number,
+): Promise<Uint8Array<ArrayBuffer>> {
   if (Number(request.headers.get("content-length")) > maxBytes) {
     await request.body?.cancel().catch(() => undefined);
     throw new BodyTooLargeError();
@@ -23,7 +26,9 @@ export async function readBoundedBody(request: Pick<Request, "headers" | "body">
       }
       const nextSize = size + value.byteLength;
       if (nextSize > buffer.byteLength) {
-        const grown = new Uint8Array(Math.min(maxBytes, Math.max(nextSize, buffer.byteLength * 2, 4096)));
+        const grown = new Uint8Array(
+          Math.min(maxBytes, Math.max(nextSize, buffer.byteLength * 2, 4096)),
+        );
         grown.set(buffer.subarray(0, size));
         buffer = grown;
       }
@@ -35,6 +40,9 @@ export async function readBoundedBody(request: Pick<Request, "headers" | "body">
   }
 }
 
-export async function readBoundedJson(request: Pick<Request, "headers" | "body">, maxBytes: number): Promise<unknown> {
+export async function readBoundedJson(
+  request: Pick<Request, "headers" | "body">,
+  maxBytes: number,
+): Promise<unknown> {
   return JSON.parse(new TextDecoder().decode(await readBoundedBody(request, maxBytes)));
 }

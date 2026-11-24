@@ -6,21 +6,21 @@
 
 ### usage_records
 
-| Index | Columns |
-|-------|---------|
+| Index                       | Columns                                           |
+| --------------------------- | ------------------------------------------------- |
 | UNIQUE (implicit autoindex) | `(user_id, device_id, source, model, hour_start)` |
-| `idx_usage_user_time` | `(user_id, hour_start)` |
-| `idx_usage_source` | `(source)` |
-| `idx_usage_device` | `(user_id, device_id)` |
+| `idx_usage_user_time`       | `(user_id, hour_start)`                           |
+| `idx_usage_source`          | `(source)`                                        |
+| `idx_usage_device`          | `(user_id, device_id)`                            |
 
 ### session_records
 
-| Index | Columns |
-|-------|---------|
+| Index                       | Columns                  |
+| --------------------------- | ------------------------ |
 | UNIQUE (implicit autoindex) | `(user_id, session_key)` |
-| `idx_session_user_time` | `(user_id, started_at)` |
-| `idx_session_source` | `(source)` |
-| `idx_session_kind` | `(kind)` |
+| `idx_session_user_time`     | `(user_id, started_at)`  |
+| `idx_session_source`        | `(source)`               |
+| `idx_session_kind`          | `(kind)`                 |
 
 ---
 
@@ -37,13 +37,13 @@ GROUP BY hour_start, source, model
 ORDER BY hour_start ASC, source, model
 ```
 
-| Metric | Value |
-|--------|-------|
-| Total duration | 7912ms |
-| Executions | 743 |
-| Avg duration | 10.6ms |
-| Avg rows read | 4108 |
-| Query efficiency | 31.7% |
+| Metric           | Value  |
+| ---------------- | ------ |
+| Total duration   | 7912ms |
+| Executions       | 743    |
+| Avg duration     | 10.6ms |
+| Avg rows read    | 4108   |
+| Query efficiency | 31.7%  |
 
 **Analysis**: `idx_usage_user_time (user_id, hour_start)` should cover the WHERE clause. The 31.7% efficiency suggests it IS using the index for filtering but still scanning ~4100 rows per call. This is the expected row count for a user with many records in the time window — the index narrows to `user_id + hour_start range` but every matching row must be read for the SUM aggregation. With ~4k rows per query and 743 executions, this is the single biggest consumer of read units.
 
@@ -57,12 +57,12 @@ ON CONFLICT (user_id, session_key) DO UPDATE SET ...
 WHERE excluded.snapshot_at >= session_records.snapshot_at
 ```
 
-| Metric | Value |
-|--------|-------|
+| Metric         | Value  |
+| -------------- | ------ |
 | Total duration | 6359ms |
-| Executions | 69,175 |
-| Avg duration | 0.09ms |
-| Avg rows read | 2 |
+| Executions     | 69,175 |
+| Avg duration   | 0.09ms |
+| Avg rows read  | 2      |
 
 **Analysis**: Extremely efficient per call (0.09ms, 2 rows read). High total duration is purely from volume (69k executions). The UNIQUE index on `(user_id, session_key)` handles the conflict detection perfectly.
 
@@ -79,13 +79,13 @@ GROUP BY date(hour_start), source, model
 ORDER BY hour_start ASC, source, model
 ```
 
-| Metric | Value |
-|--------|-------|
-| Total duration | 5253ms |
-| Executions | 1035 |
-| Avg duration | 5.1ms |
-| Avg rows read | 4004 |
-| Query efficiency | 2.6% |
+| Metric           | Value  |
+| ---------------- | ------ |
+| Total duration   | 5253ms |
+| Executions       | 1035   |
+| Avg duration     | 5.1ms  |
+| Avg rows read    | 4004   |
+| Query efficiency | 2.6%   |
 
 **Analysis**: Same pattern as Q1 but with `date(hour_start)` function in GROUP BY. The 2.6% efficiency (vs Q1's 31.7%) is because the function call prevents SQLite from using the index for grouping — it must evaluate `date()` on every row. Similar row count (~4k) confirms same scan pattern.
 
@@ -98,12 +98,12 @@ INSERT INTO usage_records (...) VALUES (...)
 ON CONFLICT (user_id, device_id, source, model, hour_start) DO UPDATE SET ...
 ```
 
-| Metric | Value |
-|--------|-------|
+| Metric         | Value  |
+| -------------- | ------ |
 | Total duration | 2622ms |
-| Executions | 26,494 |
-| Avg duration | 0.1ms |
-| Avg rows read | 3 |
+| Executions     | 26,494 |
+| Avg duration   | 0.1ms  |
+| Avg rows read  | 3      |
 
 **Analysis**: Efficient per call. Same pattern as Q2.
 
@@ -120,13 +120,13 @@ WHERE sr.user_id = ? AND sr.started_at >= ? AND sr.started_at < ?
 ORDER BY sr.started_at DESC
 ```
 
-| Metric | Value |
-|--------|-------|
-| Total duration | 1800ms |
-| Executions | 67 |
-| Avg duration | **26.9ms** |
-| Avg rows read | 3219 |
-| Query efficiency | 99.97% |
+| Metric           | Value      |
+| ---------------- | ---------- |
+| Total duration   | 1800ms     |
+| Executions       | 67         |
+| Avg duration     | **26.9ms** |
+| Avg rows read    | 3219       |
+| Query efficiency | 99.97%     |
 
 **Analysis**: Highest per-call latency at 26.9ms. The 99.97% efficiency is misleading — D1 reports this when JOINs produce many intermediate rows. The `idx_session_user_time (user_id, started_at)` covers the WHERE + ORDER BY, but the double LEFT JOIN against `project_aliases` and `projects` multiplies the scan cost. Each of the ~100 session rows requires a lookup in `project_aliases (user_id, source, project_ref)` — this is covered by the UNIQUE index, so lookups are O(1). The bottleneck is the sheer number of session_records rows being read (3219 avg vs ~100 expected results), suggesting the index is not being used efficiently or there's an issue with the range scan.
 
@@ -175,25 +175,25 @@ GROUP BY sr.source, sr.project_ref
 
 ### Priority 1: No schema changes needed (application-level)
 
-| Change | Impact | Effort | Status |
-|--------|--------|--------|--------|
-| ~~Split sessions list (Q5) into paginated query + separate summary query~~ ~~Protective LIMIT 5000~~ | Reverted — LIMIT 5000 silently truncated data, breaking client-side stats. No optimization applied; full scan retained. | — | ❌ Reverted |
-| Cache leaderboard results (60s TTL) | 246 executions -> ~10 | Low | ✅ Done (`c1cb97a`) |
+| Change                                                                                               | Impact                                                                                                                  | Effort | Status              |
+| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------ | ------------------- |
+| ~~Split sessions list (Q5) into paginated query + separate summary query~~ ~~Protective LIMIT 5000~~ | Reverted — LIMIT 5000 silently truncated data, breaking client-side stats. No optimization applied; full scan retained. | —      | ❌ Reverted         |
+| Cache leaderboard results (60s TTL)                                                                  | 246 executions -> ~10                                                                                                   | Low    | ✅ Done (`c1cb97a`) |
 
 ### Priority 2: New indexes
 
-| Index | Table | Columns | Benefits | Status |
-|-------|-------|---------|----------|--------|
+| Index                             | Table             | Columns                          | Benefits                       | Status                  |
+| --------------------------------- | ----------------- | -------------------------------- | ------------------------------ | ----------------------- |
 | `idx_session_user_source_project` | `session_records` | `(user_id, source, project_ref)` | Q7 orphan detection + GROUP BY | ✅ Done (migration 010) |
 
 ### Redundant index cleanup
 
-| Index | Reason | Status |
-|-------|--------|--------|
+| Index                        | Reason                                                                  | Status                     |
+| ---------------------------- | ----------------------------------------------------------------------- | -------------------------- |
 | `idx_project_aliases_lookup` | Exact duplicate of UNIQUE autoindex on `(user_id, source, project_ref)` | ✅ Dropped (migration 010) |
-| `idx_usage_source` | Single-col `(source)` — all queries filter `user_id` first | ✅ Dropped (migration 010) |
-| `idx_session_source` | Single-col `(source)` — same reasoning | ✅ Dropped (migration 010) |
-| `idx_session_kind` | Single-col `(kind)` — same reasoning | ✅ Dropped (migration 010) |
+| `idx_usage_source`           | Single-col `(source)` — all queries filter `user_id` first              | ✅ Dropped (migration 010) |
+| `idx_session_source`         | Single-col `(source)` — same reasoning                                  | ✅ Dropped (migration 010) |
+| `idx_session_kind`           | Single-col `(kind)` — same reasoning                                    | ✅ Dropped (migration 010) |
 
 ### Priority 3: Materialized summaries (future)
 
@@ -205,12 +205,12 @@ If `usage_records` grows beyond 50k rows, consider a `user_daily_totals` table u
 
 > **Audit complete**: All four candidates were verified via full repo-wide SQL grep. None are referenced by any query path. Dropped in migration 010.
 
-| Index | Observation | Resolution |
-|-------|-------------|------------|
-| `idx_project_aliases_lookup (user_id, source, project_ref)` | Duplicates UNIQUE constraint autoindex on identical columns | **Dropped** |
-| `idx_usage_source (source)` | Not in any top query; `source` is always filtered after `user_id` | **Dropped** |
-| `idx_session_source (source)` | Same pattern as above | **Dropped** |
-| `idx_session_kind (kind)` | Same pattern as above | **Dropped** |
+| Index                                                       | Observation                                                       | Resolution  |
+| ----------------------------------------------------------- | ----------------------------------------------------------------- | ----------- |
+| `idx_project_aliases_lookup (user_id, source, project_ref)` | Duplicates UNIQUE constraint autoindex on identical columns       | **Dropped** |
+| `idx_usage_source (source)`                                 | Not in any top query; `source` is always filtered after `user_id` | **Dropped** |
+| `idx_session_source (source)`                               | Same pattern as above                                             | **Dropped** |
+| `idx_session_kind (kind)`                                   | Same pattern as above                                             | **Dropped** |
 
 ---
 

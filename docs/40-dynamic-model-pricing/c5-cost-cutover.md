@@ -43,6 +43,7 @@ Two server entry points compute cost from a `PricingMap`: `/api/pricing` (return
 ### `lib/pricing.ts` — diff
 
 Remove:
+
 ```typescript
 export const DEFAULT_MODEL_PRICES: Record<string, ModelPricing> = { ... 14 entries ... };
 ```
@@ -59,22 +60,24 @@ export interface DynamicPricingEntry {
   outputPerMillion: number;
   cachedPerMillion: number | null;
   contextWindow: number | null;
-  origin: 'baseline' | 'openrouter' | 'models.dev' | 'admin';
+  origin: "baseline" | "openrouter" | "models.dev" | "admin";
   updatedAt: string;
   aliases?: string[];
 }
 ```
 
 `db-worker.ts` (server-only) drops its inline DTO from C4 and switches to a **type-only** import:
+
 ```typescript
 import type { DynamicPricingEntry } from "./pricing";
 ```
 
 `lib/db.ts` `DbRead` interface gains the two C4 methods so callers can type their `db` parameter against the interface (not the concrete worker impl):
+
 ```typescript
 interface DbRead {
   // ... existing methods
-  getDynamicPricing(): Promise<{ entries: DynamicPricingEntry[]; servedFrom: 'kv' | 'baseline' }>;
+  getDynamicPricing(): Promise<{ entries: DynamicPricingEntry[]; servedFrom: "kv" | "baseline" }>;
   getDynamicPricingMeta(): Promise<DynamicPricingMeta>;
 }
 ```
@@ -98,10 +101,11 @@ export function buildPricingMap(input: BuildPricingMapInput): PricingMap;
 ```
 
 New body:
+
 ```typescript
 export function buildPricingMap({ dynamic, dbRows }: BuildPricingMapInput): PricingMap {
   const map: PricingMap = {
-    models: {},                                 // was {...DEFAULT_MODEL_PRICES}
+    models: {}, // was {...DEFAULT_MODEL_PRICES}
     prefixes: [...DEFAULT_PREFIX_PRICES],
     sourceDefaults: { ...DEFAULT_SOURCE_DEFAULTS },
     fallback: DEFAULT_FALLBACK,
@@ -148,11 +152,7 @@ export function buildPricingMap({ dynamic, dbRows }: BuildPricingMapInput): Pric
 
 ```typescript
 import type { DbRead } from "./db";
-import {
-  buildPricingMap,
-  getDefaultPricingMap,
-  type PricingMap,
-} from "./pricing";
+import { buildPricingMap, getDefaultPricingMap, type PricingMap } from "./pricing";
 
 // Narrowed to the two methods we need so test mocks don't have to satisfy the
 // full DbRead surface.
@@ -176,8 +176,7 @@ export async function loadPricingMap(db: PricingMapDb): Promise<PricingMap> {
     db.listModelPricing(),
   ]);
 
-  const dynamic =
-    dynamicSettled.status === "fulfilled" ? dynamicSettled.value.entries : [];
+  const dynamic = dynamicSettled.status === "fulfilled" ? dynamicSettled.value.entries : [];
   const dbRows = dbSettled.status === "fulfilled" ? dbSettled.value : [];
 
   if (dynamicSettled.status === "rejected") {
@@ -233,6 +232,7 @@ The route now picks up dynamic entries for non-legacy models (e.g. `deepseek-v3.
 - `DEFAULT_MODEL_PRICES` — deleted. Any importer outside `lib/pricing.ts` is a breakage that must be fixed in this same commit. (Per N6 in the design doc and codex's lifecycle note in C2.)
 
 Confirmed importers as of C0 baseline (must be audited in implementation):
+
 - `lib/pricing.ts` (self) — internal use only.
 - C2's `model-prices.test.ts` — already decoupled via `LEGACY_DEFAULT_MODEL_PRICES` frozen copy. ✅
 
@@ -305,12 +305,16 @@ The cross-package import for `baselineEntries` (`@pew-worker-read/...`) is the s
 ### `load-pricing-map.test.ts` (new — partial-degradation matrix)
 
 ```typescript
-test("both succeed → buildPricingMap with both inputs")
-test("getDynamicPricing rejects, listModelPricing resolves → dynamic=[], dbRows applied (NOT full fallback)")
-test("listModelPricing rejects, getDynamicPricing resolves → dynamic applied, dbRows=[] (NOT full fallback)")
-test("both reject → getDefaultPricingMap() (safety net only)")
-test("both reject → both errors logged with source tag")
-test("never throws — even when db.* throws synchronously")
+test("both succeed → buildPricingMap with both inputs");
+test(
+  "getDynamicPricing rejects, listModelPricing resolves → dynamic=[], dbRows applied (NOT full fallback)",
+);
+test(
+  "listModelPricing rejects, getDynamicPricing resolves → dynamic applied, dbRows=[] (NOT full fallback)",
+);
+test("both reject → getDefaultPricingMap() (safety net only)");
+test("both reject → both errors logged with source tag");
+test("never throws — even when db.* throws synchronously");
 ```
 
 Mocks the `PricingMapDb` shape (the narrowed `Pick<DbRead, ...>` from the helper); no real RPC. The matrix exists so that future regressions in either degradation branch fail loudly.
@@ -353,7 +357,7 @@ Stay green. `lookupPricing` returns identical numbers for every legacy model (pr
 - `bun run dev`:
   - `/dashboard` renders cost numbers identical to pre-C5 within ±0 cents for the 14 legacy models (manual spot check + the cutover test guarantees this).
   - `/api/usage/by-device` returns identical `estimated_cost` per device for legacy models; non-legacy models now use dynamic prices instead of `DEFAULT_FALLBACK`.
-  - For models *not* in the 14 legacy set (e.g. `deepseek-v3.1`), cost now uses the dynamic price instead of falling through to `DEFAULT_FALLBACK`.
+  - For models _not_ in the 14 legacy set (e.g. `deepseek-v3.1`), cost now uses the dynamic price instead of falling through to `DEFAULT_FALLBACK`.
   - With worker-read deliberately broken (kill `getDynamicPricing`), routes still serve admin DB rows + safety net (no 5xx); with D1 deliberately broken, routes still serve dynamic + safety net.
 - Existing E2E tests stay green.
 - `git grep DEFAULT_MODEL_PRICES packages/web/` returns nothing after this commit. The only frozen copy lives inline in `pricing-cutover.test.ts` (and the regression-floor copy in `worker-read/src/data/model-prices.test.ts` from C2).

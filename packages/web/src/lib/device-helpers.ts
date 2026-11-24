@@ -11,11 +11,14 @@ import { displayCounters } from "./accounting";
 
 /** Project API bases once for device charts; keep billing detail bases intact. */
 export function toDeviceDisplayData(data: ByDeviceResponse): ByDeviceResponse {
-  return { ...data,
-    devices: data.devices.map((d) => {
-      const { accounting: _accounting, ...row } = d;
-      return { ...row, ...displayCounters(d) };
-    }).sort((a, b) => b.total_tokens - a.total_tokens),
+  return {
+    ...data,
+    devices: data.devices
+      .map((d) => {
+        const { accounting: _accounting, ...row } = d;
+        return { ...row, ...displayCounters(d) };
+      })
+      .sort((a, b) => b.total_tokens - a.total_tokens),
     timeline: data.timeline.map((d) => {
       const { accounting: _accounting, ...row } = d;
       return { ...row, ...displayCounters(d) };
@@ -44,10 +47,7 @@ export function shortDeviceId(id: string): string {
  * Get the display label for a device.
  * Priority: alias > "Legacy Device" (for default) > short UUID.
  */
-export function deviceLabel(device: {
-  alias: string | null;
-  device_id: string;
-}): string {
+export function deviceLabel(device: { alias: string | null; device_id: string }): string {
   if (device.alias) return device.alias;
   if (device.device_id === "default") return "Legacy Device";
   return shortDeviceId(device.device_id);
@@ -64,9 +64,13 @@ export function parseRecentActivityTimestamp(value: string): number {
   return new Date(value).getTime();
 }
 
-export function sortRecentActivityRecords<T extends { hour_start: string }>(records: readonly T[]): T[] {
-  return [...records].sort((a, b) =>
-    parseRecentActivityTimestamp(b.hour_start) - parseRecentActivityTimestamp(a.hour_start));
+export function sortRecentActivityRecords<T extends { hour_start: string }>(
+  records: readonly T[],
+): T[] {
+  return [...records].sort(
+    (a, b) =>
+      parseRecentActivityTimestamp(b.hour_start) - parseRecentActivityTimestamp(a.hour_start),
+  );
 }
 
 export function formatRecentActivityRelativeTime(value: string, now = Date.now()): string {
@@ -85,7 +89,7 @@ export function formatRecentActivityRelativeTime(value: string, now = Date.now()
 
 /** Build a Map<device_id, display_label> for chart legend/tooltip lookup. */
 export function buildDeviceLabelMap(
-  devices: Array<{ device_id: string; alias: string | null }>
+  devices: Array<{ device_id: string; alias: string | null }>,
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const d of devices) {
@@ -102,10 +106,7 @@ export function buildDeviceLabelMap(
  * Largest-remainder method (Hamilton's method) for rounding percentages.
  * Guarantees the rounded values sum to exactly `target` (default 100).
  */
-function roundPercentages(
-  values: number[],
-  target = 100
-): number[] {
+function roundPercentages(values: number[], target = 100): number[] {
   if (values.length === 0) return [];
 
   const floored = values.map(Math.floor);
@@ -137,9 +138,7 @@ export interface DeviceTrendPoint {
  * Missing devices on a given date are zero-filled so all dates
  * have the same set of keys (required for Recharts multi-series).
  */
-export function toDeviceTrendPoints(
-  timeline: DeviceTimelinePoint[]
-): DeviceTrendPoint[] {
+export function toDeviceTrendPoints(timeline: DeviceTimelinePoint[]): DeviceTrendPoint[] {
   if (timeline.length === 0) return [];
 
   // Collect all unique device IDs and accumulate by (date, device)
@@ -181,9 +180,7 @@ export interface DeviceSharePoint {
  * Each date's device values sum to 100 (percentage). Missing devices
  * on a given date are zero-filled so all dates have the same key set.
  */
-export function toDeviceSharePoints(
-  timeline: DeviceTimelinePoint[]
-): DeviceSharePoint[] {
+export function toDeviceSharePoints(timeline: DeviceTimelinePoint[]): DeviceSharePoint[] {
   if (timeline.length === 0) return [];
 
   // Collect all unique device IDs and group by date
@@ -256,9 +253,7 @@ export interface DeviceModelBreakdownRow {
  * Aggregate cost-detail rows by source (agent) for a single device.
  * Returns sorted descending by total_tokens.
  */
-export function toDeviceAgentBreakdown(
-  details: DeviceCostDetail[],
-): DeviceAgentBreakdownRow[] {
+export function toDeviceAgentBreakdown(details: DeviceCostDetail[]): DeviceAgentBreakdownRow[] {
   const map = new Map<
     string,
     {
@@ -299,9 +294,7 @@ export function toDeviceAgentBreakdown(
  * Aggregate cost-detail rows by model for a single device.
  * Returns top 10 sorted descending by total_tokens.
  */
-export function toDeviceModelBreakdown(
-  details: DeviceCostDetail[],
-): DeviceModelBreakdownRow[] {
+export function toDeviceModelBreakdown(details: DeviceCostDetail[]): DeviceModelBreakdownRow[] {
   const map = new Map<
     string,
     {

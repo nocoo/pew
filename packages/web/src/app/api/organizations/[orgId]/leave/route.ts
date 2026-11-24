@@ -9,10 +9,7 @@ import { resolveUser } from "@/lib/auth-helpers";
 import { unauthorizedResponse } from "@/lib/api-responses";
 import { getDbRead, getDbWrite } from "@/lib/db";
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const authResult = await resolveUser(request);
   if (!authResult) {
     return unauthorizedResponse();
@@ -34,31 +31,22 @@ export async function DELETE(
     const isMember = await dbRead.checkOrgMembership(orgId, authResult.userId);
 
     if (!isMember) {
-      return NextResponse.json(
-        { error: "Not a member of this organization" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Not a member of this organization" }, { status: 404 });
     }
 
     // Remove member
-    await dbWrite.execute(
-      "DELETE FROM organization_members WHERE org_id = ? AND user_id = ?",
-      [orgId, authResult.userId]
-    );
+    await dbWrite.execute("DELETE FROM organization_members WHERE org_id = ? AND user_id = ?", [
+      orgId,
+      authResult.userId,
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Organization tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Organization tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to leave organization:", err);
-    return NextResponse.json(
-      { error: "Failed to leave organization" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to leave organization" }, { status: 500 });
   }
 }

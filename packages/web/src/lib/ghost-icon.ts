@@ -1,6 +1,5 @@
 /** Pair with Basalt `Button variant="ghost" size="icon"`. */
-export const ghostIconClassName =
-  "text-basalt-muted-foreground hover:text-basalt-foreground";
+export const ghostIconClassName = "text-basalt-muted-foreground hover:text-basalt-foreground";
 
 /** Header / public chrome cluster (privacy, github, theme). */
 export const chromeIconClassName = `${ghostIconClassName} h-8 w-8 [&_svg]:size-[18px]`;

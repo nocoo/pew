@@ -24,7 +24,7 @@ describe("isSSHSession", () => {
         SSH_CLIENT: "192.168.1.1 12345 22",
         SSH_TTY: "/dev/pts/0",
         SSH_CONNECTION: "192.168.1.1 12345 10.0.0.1 22",
-      })
+      }),
     ).toBe(true);
   });
 

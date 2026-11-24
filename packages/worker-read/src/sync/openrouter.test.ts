@@ -62,7 +62,9 @@ describe("parseOpenRouter", () => {
       NOW,
     );
     expect(warnings.some((w) => w.includes("non-object"))).toBe(true);
-    expect(warnings.some((w) => w.includes("no-pricing/model") && w.includes("missing pricing"))).toBe(true);
+    expect(
+      warnings.some((w) => w.includes("no-pricing/model") && w.includes("missing pricing")),
+    ).toBe(true);
     // Leading-slash id has empty provider slug → capitalize() short-circuits on empty string.
     const leading = entries.find((e) => e.model === "/leading-slash");
     expect(leading).toBeDefined();
@@ -96,9 +98,21 @@ describe("parseOpenRouter", () => {
     const { entries } = parseOpenRouter(
       {
         data: [
-          { id: "~anthropic/claude-sonnet-latest", name: "Anthropic: Claude Sonnet Latest", pricing: { prompt: "0.000003", completion: "0.000015" } },
-          { id: "~openai/gpt-latest", name: "OpenAI: GPT Latest", pricing: { prompt: "0.000005", completion: "0.000015" } },
-          { id: "~google/gemini-pro-latest", name: "Google: Gemini Pro Latest", pricing: { prompt: "0.00000125", completion: "0.000005" } },
+          {
+            id: "~anthropic/claude-sonnet-latest",
+            name: "Anthropic: Claude Sonnet Latest",
+            pricing: { prompt: "0.000003", completion: "0.000015" },
+          },
+          {
+            id: "~openai/gpt-latest",
+            name: "OpenAI: GPT Latest",
+            pricing: { prompt: "0.000005", completion: "0.000015" },
+          },
+          {
+            id: "~google/gemini-pro-latest",
+            name: "Google: Gemini Pro Latest",
+            pricing: { prompt: "0.00000125", completion: "0.000005" },
+          },
         ],
       },
       NOW,

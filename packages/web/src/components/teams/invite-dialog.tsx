@@ -23,12 +23,7 @@ export interface InviteDialogProps {
   inviteCode: string;
 }
 
-export function InviteDialog({
-  open,
-  onOpenChange,
-  teamName,
-  inviteCode,
-}: InviteDialogProps) {
+export function InviteDialog({ open, onOpenChange, teamName, inviteCode }: InviteDialogProps) {
   const restoreFocus = useRestoreDialogFocus(open);
   const inviteMessage = `Join my team "${teamName}" on pew!
 

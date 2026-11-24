@@ -14,19 +14,47 @@ export interface OpenCodeFileResult {
   lastCacheWrite?: number | null;
 }
 
-export function openCodeAccounting(tokens: TokenDelta, msg: Record<string, unknown>, model: string,
-  previous: TokenDelta | null = null, previousWrite?: number | null) {
+export function openCodeAccounting(
+  tokens: TokenDelta,
+  msg: Record<string, unknown>,
+  model: string,
+  previous: TokenDelta | null = null,
+  previousWrite?: number | null,
+) {
   const raw = msg.tokens as Record<string, unknown>;
   const cache = raw.cache as Record<string, unknown> | undefined;
   const difference = (value: unknown, prior: number | null | undefined) =>
-    optionalToken(value) === null || (previous && optionalToken(prior) === null) ? null : Number(value) - Number(prior ?? 0);
-  const cost = !previous ? decimalCost(msg.cost, "opencode-sdk", "estimate", Number(msg.cost) > 0 ? "complete" : "unknown") : null;
-  return inclusiveAccounting(tokens, { input: tokens.inputTokens + tokens.cachedInputTokens,
-    uncachedInput: raw.input, visibleOutput: raw.output,
-    read: difference(cache?.read, previous?.cachedInputTokens), write: difference(cache?.write, previousWrite),
-    output: tokens.outputTokens + tokens.reasoningOutputTokens, reasoning: difference(raw.reasoning, previous?.reasoningOutputTokens) },
-  { origin: "opencode:message", model, provider: typeof msg.providerID === "string" ? msg.providerID : null,
-    aggregate: !!previous, quality: previous ? "derived" : "reported", reportedCosts: cost ? [cost] : [] });
+    optionalToken(value) === null || (previous && optionalToken(prior) === null)
+      ? null
+      : Number(value) - Number(prior ?? 0);
+  const cost = !previous
+    ? decimalCost(
+        msg.cost,
+        "opencode-sdk",
+        "estimate",
+        Number(msg.cost) > 0 ? "complete" : "unknown",
+      )
+    : null;
+  return inclusiveAccounting(
+    tokens,
+    {
+      input: tokens.inputTokens + tokens.cachedInputTokens,
+      uncachedInput: raw.input,
+      visibleOutput: raw.output,
+      read: difference(cache?.read, previous?.cachedInputTokens),
+      write: difference(cache?.write, previousWrite),
+      output: tokens.outputTokens + tokens.reasoningOutputTokens,
+      reasoning: difference(raw.reasoning, previous?.reasoningOutputTokens),
+    },
+    {
+      origin: "opencode:message",
+      model,
+      provider: typeof msg.providerID === "string" ? msg.providerID : null,
+      aggregate: !!previous,
+      quality: previous ? "derived" : "reported",
+      reportedCosts: cost ? [cost] : [],
+    },
+  );
 }
 
 /**
@@ -96,13 +124,10 @@ export async function parseOpenCodeFile(opts: {
   // Derive message key
   const sessionId = typeof msg.sessionID === "string" ? msg.sessionID : null;
   const msgId = typeof msg.id === "string" ? msg.id : null;
-  const messageKey =
-    sessionId && msgId ? `${sessionId}|${msgId}` : null;
+  const messageKey = sessionId && msgId ? `${sessionId}|${msgId}` : null;
 
   // Normalize tokens
-  const currentTotals = normalizeOpenCodeTokens(
-    msg.tokens as Record<string, unknown> | null,
-  );
+  const currentTotals = normalizeOpenCodeTokens(msg.tokens as Record<string, unknown> | null);
   if (!currentTotals) {
     return { delta: null, messageKey, lastTotals };
   }
@@ -115,8 +140,7 @@ export async function parseOpenCodeFile(opts: {
 
   // Extract timestamp from time.completed or time.created
   const time = msg.time as Record<string, unknown> | undefined;
-  const timestampMs =
-    coerceEpochMs(time?.completed) || coerceEpochMs(time?.created);
+  const timestampMs = coerceEpochMs(time?.completed) || coerceEpochMs(time?.created);
   if (!timestampMs) {
     return { delta: null, messageKey, lastTotals };
   }
@@ -135,10 +159,20 @@ export async function parseOpenCodeFile(opts: {
       model,
       timestamp: new Date(timestampMs).toISOString(),
       tokens: tokenDelta,
-      ...(opts.includeAccounting ? { accounting: openCodeAccounting(tokenDelta, msg, model, lastTotals, opts.lastCacheWrite) } : {}),
+      ...(opts.includeAccounting
+        ? {
+            accounting: openCodeAccounting(tokenDelta, msg, model, lastTotals, opts.lastCacheWrite),
+          }
+        : {}),
     },
     messageKey,
     lastTotals: currentTotals,
-    ...(opts.includeAccounting ? { lastCacheWrite: optionalToken((msg.tokens as { cache?: { write?: unknown } }).cache?.write) } : {}),
+    ...(opts.includeAccounting
+      ? {
+          lastCacheWrite: optionalToken(
+            (msg.tokens as { cache?: { write?: unknown } }).cache?.write,
+          ),
+        }
+      : {}),
   };
 }

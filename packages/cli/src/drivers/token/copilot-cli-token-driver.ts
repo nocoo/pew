@@ -11,10 +11,7 @@
  */
 
 import type { ByteOffsetCursor } from "@pew/core";
-import {
-  discoverCopilotCliFiles,
-  discoverCopilotOtelFiles,
-} from "../../discovery/sources.js";
+import { discoverCopilotCliFiles, discoverCopilotOtelFiles } from "../../discovery/sources.js";
 import { parseCopilotCliFile } from "../../parsers/copilot-cli.js";
 import { parseCopilotOtelFile } from "../../parsers/copilot-otel.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
@@ -55,13 +52,19 @@ export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     return fileUnchanged(cursor, fingerprint);
   },
 
-  resumeState(cursor: ByteOffsetCursor | undefined, fingerprint: FileFingerprint): ByteOffsetResumeState {
-    const startOffset =
-      cursor && cursor.inode === fingerprint.inode ? (cursor.offset ?? 0) : 0;
+  resumeState(
+    cursor: ByteOffsetCursor | undefined,
+    fingerprint: FileFingerprint,
+  ): ByteOffsetResumeState {
+    const startOffset = cursor && cursor.inode === fingerprint.inode ? (cursor.offset ?? 0) : 0;
     return { kind: "byte-offset", startOffset };
   },
 
-  async parse(filePath: string, resume: ResumeState, ctx: SyncContext): Promise<CopilotCliParseResult> {
+  async parse(
+    filePath: string,
+    resume: ResumeState,
+    ctx: SyncContext,
+  ): Promise<CopilotCliParseResult> {
     const r = resume as ByteOffsetResumeState;
     const result = ctx.copilotOtelPaths?.has(filePath)
       ? await parseCopilotOtelFile({

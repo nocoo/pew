@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers, makeJsonRequest } from "./test-utils";
+import {
+  createMockDbRead,
+  createMockDbWrite,
+  loadMockedAuthHelpers,
+  makeJsonRequest,
+} from "./test-utils";
 import * as dbModule from "@/lib/db";
 
 // ---------------------------------------------------------------------------
@@ -28,9 +33,7 @@ describe("GET /api/settings", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead,
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
     const mod = await import("@/app/api/settings/route");
     GET = mod.GET;
   });
@@ -170,12 +173,8 @@ describe("PATCH /api/settings", () => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead,
-    );
-    vi.mocked(dbModule.getDbWrite).mockResolvedValue(
-      mockDbWrite as unknown as dbModule.DbWrite,
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as unknown as dbModule.DbWrite);
     const mod = await import("@/app/api/settings/route");
     PATCH = mod.PATCH;
   });
@@ -215,7 +214,9 @@ describe("PATCH /api/settings", () => {
   it("should reject nickname that is too long", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
-    const res = await PATCH(makeJsonRequest("PATCH", "/api/settings", { nickname: "a".repeat(33) }));
+    const res = await PATCH(
+      makeJsonRequest("PATCH", "/api/settings", { nickname: "a".repeat(33) }),
+    );
 
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("1-32 characters");
@@ -232,7 +233,11 @@ describe("PATCH /api/settings", () => {
   it("should allow null nickname (clear)", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    mockDbRead.getUserSettings.mockResolvedValueOnce({ nickname: null, slug: "alice", is_public: 0 });
+    mockDbRead.getUserSettings.mockResolvedValueOnce({
+      nickname: null,
+      slug: "alice",
+      is_public: 0,
+    });
 
     const res = await PATCH(makeJsonRequest("PATCH", "/api/settings", { nickname: null }));
 
@@ -303,7 +308,11 @@ describe("PATCH /api/settings", () => {
   it("should allow null slug (clear)", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    mockDbRead.getUserSettings.mockResolvedValueOnce({ nickname: "Alice", slug: null, is_public: 0 });
+    mockDbRead.getUserSettings.mockResolvedValueOnce({
+      nickname: "Alice",
+      slug: null,
+      is_public: 0,
+    });
 
     const res = await PATCH(makeJsonRequest("PATCH", "/api/settings", { slug: null }));
 
@@ -323,10 +332,16 @@ describe("PATCH /api/settings", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     // slug uniqueness check
     mockDbRead.checkSlugExists.mockResolvedValueOnce(false); // slug not taken
-    mockDbRead.getUserSettings.mockResolvedValueOnce({ nickname: "Bob", slug: "bob", is_public: 0 }); // read-back
+    mockDbRead.getUserSettings.mockResolvedValueOnce({
+      nickname: "Bob",
+      slug: "bob",
+      is_public: 0,
+    }); // read-back
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
-    const res = await PATCH(makeJsonRequest("PATCH", "/api/settings", { nickname: "Bob", slug: "bob" }));
+    const res = await PATCH(
+      makeJsonRequest("PATCH", "/api/settings", { nickname: "Bob", slug: "bob" }),
+    );
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -390,7 +405,11 @@ describe("PATCH /api/settings", () => {
   it("should allow updating is_public together with slug and nickname", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.checkSlugExists.mockResolvedValueOnce(false); // slug not taken
-    mockDbRead.getUserSettings.mockResolvedValueOnce({ nickname: "Bob", slug: "bob", is_public: 1 }); // read-back
+    mockDbRead.getUserSettings.mockResolvedValueOnce({
+      nickname: "Bob",
+      slug: "bob",
+      is_public: 1,
+    }); // read-back
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await PATCH(

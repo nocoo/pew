@@ -6,23 +6,23 @@
 
 ## Status
 
-| # | Commit | Description | Status |
-|---|--------|-------------|--------|
-| 1 | `docs: add worker read migration plan` | This document | ✅ done |
-| 2 | `565db83` | Phase 1: define `DbRead` / `DbWrite` interfaces + `RestDbRead` adapter | ✅ done |
-| 3 | `5c59bd0` | Phase 1: migrate read-only files to `getDbRead()` | ✅ done |
-| 4 | `4a2583c` | Phase 1: migrate mixed read+write files to `getDbRead()` + `getDbWrite()` | ✅ done |
-| 5 | `d64c962` | Phase 2: implement pew read Worker | ✅ done |
-| 6 | `d64c962` | Phase 2: Worker tests (≥ 95% coverage) | ✅ done |
-| 7 | `8007abc` | Phase 3: add `WorkerDbRead` adapter + dev switching | ✅ done |
-| 8 | `5ee10d1` | Fix: remove unused dbModule import in live.test.ts | ✅ done |
-| 9 | `d114bb9` | Fix: resolve worker-read typecheck errors + add to root lint | ✅ done |
-| 10 | `fd1176b` | Fix: sanitize 'ok' from read worker /live error messages | ✅ done |
-| 11 | `764796e` | Refactor: change worker routes to /api/live and /api/query | ✅ done |
-| 12 | | Phase 3: E2E validation against dev Worker | ✅ done |
-| 13 | | Phase 4: delete `RestDbRead` + REST-only env vars | ✅ done |
-| 14 | | Phase 5: typed RPC for complex queries | ✅ done |
-| 15 | | docs: retrospective | ✅ done |
+| #   | Commit                                 | Description                                                               | Status  |
+| --- | -------------------------------------- | ------------------------------------------------------------------------- | ------- |
+| 1   | `docs: add worker read migration plan` | This document                                                             | ✅ done |
+| 2   | `565db83`                              | Phase 1: define `DbRead` / `DbWrite` interfaces + `RestDbRead` adapter    | ✅ done |
+| 3   | `5c59bd0`                              | Phase 1: migrate read-only files to `getDbRead()`                         | ✅ done |
+| 4   | `4a2583c`                              | Phase 1: migrate mixed read+write files to `getDbRead()` + `getDbWrite()` | ✅ done |
+| 5   | `d64c962`                              | Phase 2: implement pew read Worker                                        | ✅ done |
+| 6   | `d64c962`                              | Phase 2: Worker tests (≥ 95% coverage)                                    | ✅ done |
+| 7   | `8007abc`                              | Phase 3: add `WorkerDbRead` adapter + dev switching                       | ✅ done |
+| 8   | `5ee10d1`                              | Fix: remove unused dbModule import in live.test.ts                        | ✅ done |
+| 9   | `d114bb9`                              | Fix: resolve worker-read typecheck errors + add to root lint              | ✅ done |
+| 10  | `fd1176b`                              | Fix: sanitize 'ok' from read worker /live error messages                  | ✅ done |
+| 11  | `764796e`                              | Refactor: change worker routes to /api/live and /api/query                | ✅ done |
+| 12  |                                        | Phase 3: E2E validation against dev Worker                                | ✅ done |
+| 13  |                                        | Phase 4: delete `RestDbRead` + REST-only env vars                         | ✅ done |
+| 14  |                                        | Phase 5: typed RPC for complex queries                                    | ✅ done |
+| 15  |                                        | docs: retrospective                                                       | ✅ done |
 
 ### Phase 5 — Typed RPC for Complex Queries (Completed)
 
@@ -39,26 +39,26 @@
 
 #### Migrated to RPC (high-complexity queries)
 
-| File | Type | Commit | Reason |
-|------|------|--------|--------|
-| `/api/leaderboard` | RPC | `66eee88` | Multi-table aggregation with ranking |
-| `/api/achievements` | RPC | (pre-existing) | Complex badge computation logic |
-| `/api/achievements/[id]/members` | RPC | `b5844f4` | Filtered member listing |
-| `/api/seasons/[seasonId]/leaderboard` | RPC | `750df4f` | Season-scoped ranking with team joins |
-| `/api/projects` GET | RPC | `e366fd4` | Multi-query aggregation (projects + aliases + tags + unassigned) |
+| File                                  | Type | Commit         | Reason                                                           |
+| ------------------------------------- | ---- | -------------- | ---------------------------------------------------------------- |
+| `/api/leaderboard`                    | RPC  | `66eee88`      | Multi-table aggregation with ranking                             |
+| `/api/achievements`                   | RPC  | (pre-existing) | Complex badge computation logic                                  |
+| `/api/achievements/[id]/members`      | RPC  | `b5844f4`      | Filtered member listing                                          |
+| `/api/seasons/[seasonId]/leaderboard` | RPC  | `750df4f`      | Season-scoped ranking with team joins                            |
+| `/api/projects` GET                   | RPC  | `e366fd4`      | Multi-query aggregation (projects + aliases + tags + unassigned) |
 
 #### Remaining Raw SQL (intentionally kept)
 
 Simple CRUD queries that don't benefit from RPC abstraction:
 
-| Category | Files | Call Sites |
-|----------|-------|------------|
-| Projects CRUD | `projects/route.ts` (POST only), `projects/[id]/route.ts` | 7 |
-| Organizations admin | `admin/organizations/*/route.ts` | 16 |
-| Showcases | `admin/showcases/route.ts`, `showcases/[id]/refresh/route.ts` | 4 |
-| Auth/Settings libs | `invite.ts`, `rate-limit.ts`, `auto-register.ts` | 6 |
-| Season roster | `season-roster.ts` | 7 |
-| **Total** | 12 files | **40 call sites** |
+| Category            | Files                                                         | Call Sites        |
+| ------------------- | ------------------------------------------------------------- | ----------------- |
+| Projects CRUD       | `projects/route.ts` (POST only), `projects/[id]/route.ts`     | 7                 |
+| Organizations admin | `admin/organizations/*/route.ts`                              | 16                |
+| Showcases           | `admin/showcases/route.ts`, `showcases/[id]/refresh/route.ts` | 4                 |
+| Auth/Settings libs  | `invite.ts`, `rate-limit.ts`, `auto-register.ts`              | 6                 |
+| Season roster       | `season-roster.ts`                                            | 7                 |
+| **Total**           | 12 files                                                      | **40 call sites** |
 
 These queries are simple SELECTs or single-row lookups — migrating them to RPC
 would add complexity without meaningful type-safety benefit
@@ -76,39 +76,39 @@ Next.js (Railway) ──POST /query──→ api.cloudflare.com ──→ D1
 
 ### Pain Points
 
-| Issue | Impact |
-|-------|--------|
-| Every read = full HTTPS round-trip to `api.cloudflare.com` | ~50-150ms latency per query |
-| REST API rate limits | Risk of 429 under load |
-| `fetch failed` errors on network blips | Dashboard shows "Failed to load" |
-| No batch read support | `D1Client.batch()` is a serial loop |
-| 3 env vars just for reads (`CF_ACCOUNT_ID`, `CF_D1_DATABASE_ID`, `CF_D1_API_TOKEN`) | Config sprawl |
-| Write path already uses Worker binding | Architectural inconsistency |
+| Issue                                                                               | Impact                              |
+| ----------------------------------------------------------------------------------- | ----------------------------------- |
+| Every read = full HTTPS round-trip to `api.cloudflare.com`                          | ~50-150ms latency per query         |
+| REST API rate limits                                                                | Risk of 429 under load              |
+| `fetch failed` errors on network blips                                              | Dashboard shows "Failed to load"    |
+| No batch read support                                                               | `D1Client.batch()` is a serial loop |
+| 3 env vars just for reads (`CF_ACCOUNT_ID`, `CF_D1_DATABASE_ID`, `CF_D1_API_TOKEN`) | Config sprawl                       |
+| Write path already uses Worker binding                                              | Architectural inconsistency         |
 
 ### Current D1 Surface (Audited)
 
 **37 production files** call `getD1Client()` directly (**58 call sites**,
 excluding tests and `d1.ts` itself):
 
-| Category | Files | Read-Only | Read+Write |
-|----------|-------|-----------|------------|
-| API routes — dashboard/usage | 4 | 4 | 0 |
-| API routes — public (leaderboard, profile, pricing, seasons) | 7 | 5 | 2 |
-| API routes — auth/settings | 5 | 1 | 4 |
-| API routes — teams | 5 | 0 | 5 |
-| API routes — admin | 7 | 3 | 4 |
-| API routes — other (devices, budgets, projects) | 5 | 1 | 4 |
-| Lib modules that call `getD1Client()` (auth, auth-helpers, invite, admin) | 4 | 2 | 2 |
-| SSR page (`/u/[slug]`) | 1 | 1 | 0 |
-| **Total** | **37** (excl. d1.ts, tests) | **17** | **20** |
+| Category                                                                  | Files                       | Read-Only | Read+Write |
+| ------------------------------------------------------------------------- | --------------------------- | --------- | ---------- |
+| API routes — dashboard/usage                                              | 4                           | 4         | 0          |
+| API routes — public (leaderboard, profile, pricing, seasons)              | 7                           | 5         | 2          |
+| API routes — auth/settings                                                | 5                           | 1         | 4          |
+| API routes — teams                                                        | 5                           | 0         | 5          |
+| API routes — admin                                                        | 7                           | 3         | 4          |
+| API routes — other (devices, budgets, projects)                           | 5                           | 1         | 4          |
+| Lib modules that call `getD1Client()` (auth, auth-helpers, invite, admin) | 4                           | 2         | 2          |
+| SSR page (`/u/[slug]`)                                                    | 1                           | 1         | 0          |
+| **Total**                                                                 | **37** (excl. d1.ts, tests) | **17**    | **20**     |
 
 **Additionally, 2 lib modules receive `D1Client` as a parameter** (they never
 call `getD1Client()` themselves and are NOT counted in the 37 above):
 
-| File | Passed by | Read/Write |
-|------|-----------|------------|
-| `auth-adapter.ts` | `auth.ts` passes `getD1Client()` result | Mixed (createUser, linkAccount = write; getUser, getUserByEmail = read) |
-| `season-roster.ts` | `admin/seasons/[id]/sync-rosters/route.ts` passes `getD1Client()` result | Mixed (query = read; execute = write) |
+| File               | Passed by                                                                | Read/Write                                                              |
+| ------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `auth-adapter.ts`  | `auth.ts` passes `getD1Client()` result                                  | Mixed (createUser, linkAccount = write; getUser, getUserByEmail = read) |
+| `season-roster.ts` | `admin/seasons/[id]/sync-rosters/route.ts` passes `getD1Client()` result | Mixed (query = read; execute = write)                                   |
 
 These require a **signature change** (`D1Client` → `DbRead`/`DbWrite`) and
 are migrated together with their callers — see "Special cases" in §1.4.
@@ -135,10 +135,10 @@ Next.js (Railway) ──POST /api/query──→ pew Worker (Cloudflare)
 
 ### Why a Separate Worker?
 
-| Option | Pros | Cons |
-|--------|------|------|
-| Add read routes to `pew-ingest` | One Worker to manage | Mixes read/write concerns; harder to scale/rate-limit independently |
-| New `pew` Worker for reads | Clean separation; independent deploy/scaling; name reflects scope | Two Workers to manage |
+| Option                          | Pros                                                              | Cons                                                                |
+| ------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Add read routes to `pew-ingest` | One Worker to manage                                              | Mixes read/write concerns; harder to scale/rate-limit independently |
+| New `pew` Worker for reads      | Clean separation; independent deploy/scaling; name reflects scope | Two Workers to manage                                               |
 
 **Decision**: separate `pew` Worker. `pew-ingest` stays write-only.
 The read Worker name is simply `pew` — it's the "main" gateway.
@@ -189,11 +189,11 @@ adapter swap trivial.
 
 ### Free Tier Budget
 
-| Resource | Free Limit | pew Read Estimate | OK? |
-|----------|-----------|-------------------|-----|
-| Worker requests | 100K/day | ~hundreds/day (dashboard + leaderboard) | ✅ |
-| Worker CPU | 10ms/invocation | Simple query passthrough ~1-2ms | ✅ |
-| D1 rows read | 5M/day | ~tens of thousands | ✅ |
+| Resource        | Free Limit      | pew Read Estimate                       | OK? |
+| --------------- | --------------- | --------------------------------------- | --- |
+| Worker requests | 100K/day        | ~hundreds/day (dashboard + leaderboard) | ✅  |
+| Worker CPU      | 10ms/invocation | Simple query passthrough ~1-2ms         | ✅  |
+| D1 rows read    | 5M/day          | ~tens of thousands                      | ✅  |
 
 Combined with `pew-ingest` writes (~tens/day), total Worker usage
 stays well within free tier.
@@ -227,15 +227,9 @@ export interface DbQueryResult<T = Record<string, unknown>> {
 // ---------------------------------------------------------------------------
 
 export interface DbRead {
-  query<T = Record<string, unknown>>(
-    sql: string,
-    params?: unknown[],
-  ): Promise<DbQueryResult<T>>;
+  query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<DbQueryResult<T>>;
 
-  firstOrNull<T = Record<string, unknown>>(
-    sql: string,
-    params?: unknown[],
-  ): Promise<T | null>;
+  firstOrNull<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -243,14 +237,9 @@ export interface DbRead {
 // ---------------------------------------------------------------------------
 
 export interface DbWrite {
-  execute(
-    sql: string,
-    params?: unknown[],
-  ): Promise<{ changes: number; duration: number }>;
+  execute(sql: string, params?: unknown[]): Promise<{ changes: number; duration: number }>;
 
-  batch(
-    statements: Array<{ sql: string; params?: unknown[] }>,
-  ): Promise<DbQueryResult[]>;
+  batch(statements: Array<{ sql: string; params?: unknown[] }>): Promise<DbQueryResult[]>;
 }
 ```
 
@@ -273,20 +262,16 @@ import type { DbRead, DbWrite } from "./db";
 export function createRestDbRead(): DbRead {
   const client = getD1Client();
   return {
-    query: <T>(sql: string, params?: unknown[]) =>
-      client.query<T>(sql, params ?? []),
-    firstOrNull: <T>(sql: string, params?: unknown[]) =>
-      client.firstOrNull<T>(sql, params ?? []),
+    query: <T>(sql: string, params?: unknown[]) => client.query<T>(sql, params ?? []),
+    firstOrNull: <T>(sql: string, params?: unknown[]) => client.firstOrNull<T>(sql, params ?? []),
   };
 }
 
 export function createRestDbWrite(): DbWrite {
   const client = getD1Client();
   return {
-    execute: (sql: string, params?: unknown[]) =>
-      client.execute(sql, params ?? []),
-    batch: (stmts: Array<{ sql: string; params?: unknown[] }>) =>
-      client.batch(stmts),
+    execute: (sql: string, params?: unknown[]) => client.execute(sql, params ?? []),
+    batch: (stmts: Array<{ sql: string; params?: unknown[] }>) => client.batch(stmts),
   };
 }
 ```
@@ -367,20 +352,20 @@ export async function getDbWrite(): Promise<DbWrite> {
 
 **Migration inventory** (37 files, 58 call sites):
 
-| Pattern | Category | Files |
-|---------|----------|-------|
-| A (read-only) | Dashboard/usage routes | `usage/route.ts`, `usage/by-device/route.ts`, `sessions/route.ts`, `projects/timeline/route.ts` |
-| A (read-only) | Public routes | `leaderboard/route.ts`, `users/[slug]/route.ts`, `pricing/route.ts`, `seasons/route.ts`, `seasons/[id]/leaderboard/route.ts` |
-| A (read-only) | Admin read-only | `admin/check/route.ts`, `admin/storage/route.ts`, `admin/seasons/[id]/sync-rosters/route.ts` |
-| A (read-only) | Auth verify | `auth/verify-invite/route.ts` |
-| A (read-only) | Health | `live/route.ts` |
-| A (read-only) | Lib read-only | `auth-helpers.ts`, `admin.ts` |
-| A (read-only) | SSR | `u/[slug]/page.tsx` |
-| B (mixed) | Auth/settings | `auth.ts`, `invite.ts`, `settings/route.ts`, `auth/cli/route.ts` |
-| B (mixed) | Teams | all 5 team route files |
-| B (mixed) | Admin write | `admin/invites/route.ts`, `admin/pricing/route.ts`, `admin/seasons/route.ts`, `admin/seasons/[id]/route.ts`, `admin/seasons/[id]/snapshot/route.ts`, `admin/settings/route.ts` |
-| B (mixed) | Projects | `projects/route.ts`, `projects/[id]/route.ts` |
-| B (mixed) | Other | `devices/route.ts`, `budgets/route.ts`, `seasons/[id]/register/route.ts` |
+| Pattern       | Category               | Files                                                                                                                                                                          |
+| ------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A (read-only) | Dashboard/usage routes | `usage/route.ts`, `usage/by-device/route.ts`, `sessions/route.ts`, `projects/timeline/route.ts`                                                                                |
+| A (read-only) | Public routes          | `leaderboard/route.ts`, `users/[slug]/route.ts`, `pricing/route.ts`, `seasons/route.ts`, `seasons/[id]/leaderboard/route.ts`                                                   |
+| A (read-only) | Admin read-only        | `admin/check/route.ts`, `admin/storage/route.ts`, `admin/seasons/[id]/sync-rosters/route.ts`                                                                                   |
+| A (read-only) | Auth verify            | `auth/verify-invite/route.ts`                                                                                                                                                  |
+| A (read-only) | Health                 | `live/route.ts`                                                                                                                                                                |
+| A (read-only) | Lib read-only          | `auth-helpers.ts`, `admin.ts`                                                                                                                                                  |
+| A (read-only) | SSR                    | `u/[slug]/page.tsx`                                                                                                                                                            |
+| B (mixed)     | Auth/settings          | `auth.ts`, `invite.ts`, `settings/route.ts`, `auth/cli/route.ts`                                                                                                               |
+| B (mixed)     | Teams                  | all 5 team route files                                                                                                                                                         |
+| B (mixed)     | Admin write            | `admin/invites/route.ts`, `admin/pricing/route.ts`, `admin/seasons/route.ts`, `admin/seasons/[id]/route.ts`, `admin/seasons/[id]/snapshot/route.ts`, `admin/settings/route.ts` |
+| B (mixed)     | Projects               | `projects/route.ts`, `projects/[id]/route.ts`                                                                                                                                  |
+| B (mixed)     | Other                  | `devices/route.ts`, `budgets/route.ts`, `seasons/[id]/register/route.ts`                                                                                                       |
 
 **Special cases — parameter-receiver files** (not in the 37 count):
 
@@ -388,9 +373,9 @@ These files accept a `D1Client` parameter instead of calling `getD1Client()`.
 Migrate by changing the function signature from `client: D1Client` to
 `dbRead: DbRead, dbWrite: DbWrite`, then update callers to pass the singletons:
 
-| File | Caller (passes `getD1Client()`) | Migration |
-|------|--------------------------------|-----------|
-| `auth-adapter.ts` | `auth.ts` | `D1AuthAdapter(client)` → `D1AuthAdapter(dbRead, dbWrite)` |
+| File               | Caller (passes `getD1Client()`)            | Migration                                                                    |
+| ------------------ | ------------------------------------------ | ---------------------------------------------------------------------------- |
+| `auth-adapter.ts`  | `auth.ts`                                  | `D1AuthAdapter(client)` → `D1AuthAdapter(dbRead, dbWrite)`                   |
 | `season-roster.ts` | `admin/seasons/[id]/sync-rosters/route.ts` | `syncSeasonRosters(client, ...)` → `syncSeasonRosters(dbRead, dbWrite, ...)` |
 
 Handle each in the same commit as its caller's migration.
@@ -404,6 +389,7 @@ Handle each in the same commit as its caller's migration.
 #### 1.6 Deliverable
 
 At the end of Phase 1:
+
 - `getD1Client()` is only called inside `db-rest.ts` — nowhere else.
 - Every route file uses `getDbRead()` for SELECT, `getDbWrite()` for INSERT/UPDATE/DELETE.
 - The type system enforces the split — you can't accidentally call `.execute()` on a `DbRead`.
@@ -445,10 +431,10 @@ database_id = "<D1_DATABASE_ID>"
 
 Routes:
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| `GET` | `/api/live` | None | Health check + DB connectivity |
-| `POST` | `/api/query` | `Bearer WORKER_READ_SECRET` | Execute read query |
+| Method | Path         | Auth                        | Purpose                        |
+| ------ | ------------ | --------------------------- | ------------------------------ |
+| `GET`  | `/api/live`  | None                        | Health check + DB connectivity |
+| `POST` | `/api/query` | `Bearer WORKER_READ_SECRET` | Execute read query             |
 
 `POST /api/query` handler:
 
@@ -472,9 +458,7 @@ async function handleQuery(body: unknown, env: Env): Promise<Response> {
 
   try {
     const stmt = env.DB.prepare(sql);
-    const bound = Array.isArray(params) && params.length > 0
-      ? stmt.bind(...params)
-      : stmt;
+    const bound = Array.isArray(params) && params.length > 0 ? stmt.bind(...params) : stmt;
     const result = await bound.all();
 
     return Response.json({
@@ -489,6 +473,7 @@ async function handleQuery(body: unknown, env: Env): Promise<Response> {
 ```
 
 **Key safety guards:**
+
 - Regex rejects write SQL (`INSERT`, `UPDATE`, `DELETE`, `DROP`, etc.)
 - Shared secret auth prevents external access
 - Read-only by design (no `execute` / `batch` endpoints)
@@ -497,28 +482,28 @@ async function handleQuery(body: unknown, env: Env): Promise<Response> {
 
 Test matrix:
 
-| Test | Description |
-|------|-------------|
-| `GET /api/live` | Returns 200 + version + DB status |
-| `GET /api/live` | Returns 503 when DB is down |
-| `GET /api/live` | Sanitizes "ok" from error messages |
+| Test              | Description                         |
+| ----------------- | ----------------------------------- |
+| `GET /api/live`   | Returns 200 + version + DB status   |
+| `GET /api/live`   | Returns 503 when DB is down         |
+| `GET /api/live`   | Sanitizes "ok" from error messages  |
 | `POST /api/query` | Valid SELECT returns results + meta |
 | `POST /api/query` | Parameterized query binds correctly |
-| `POST /api/query` | Empty params array works |
-| `POST /api/query` | Missing sql → 400 |
-| `POST /api/query` | Empty sql → 400 |
-| `POST /api/query` | Non-string sql → 400 |
-| `POST /api/query` | INSERT rejected → 403 |
-| `POST /api/query` | UPDATE rejected → 403 |
-| `POST /api/query` | DELETE rejected → 403 |
-| `POST /api/query` | DROP rejected → 403 |
-| `POST /api/query` | D1 error → 500 |
-| Auth | Missing Authorization → 401 |
-| Auth | Wrong token → 401 |
-| Auth | Valid token → passes |
-| Auth | `/api/live` skips auth |
-| Router | Unknown path → 404 |
-| Router | GET on `/api/query` → 405 |
+| `POST /api/query` | Empty params array works            |
+| `POST /api/query` | Missing sql → 400                   |
+| `POST /api/query` | Empty sql → 400                     |
+| `POST /api/query` | Non-string sql → 400                |
+| `POST /api/query` | INSERT rejected → 403               |
+| `POST /api/query` | UPDATE rejected → 403               |
+| `POST /api/query` | DELETE rejected → 403               |
+| `POST /api/query` | DROP rejected → 403                 |
+| `POST /api/query` | D1 error → 500                      |
+| Auth              | Missing Authorization → 401         |
+| Auth              | Wrong token → 401                   |
+| Auth              | Valid token → passes                |
+| Auth              | `/api/live` skips auth              |
+| Router            | Unknown path → 404                  |
+| Router            | GET on `/api/query` → 405           |
 
 #### 2.4 Deploy
 
@@ -529,6 +514,7 @@ wrangler deploy
 ```
 
 Verify:
+
 ```bash
 curl https://pew.<account>.workers.dev/api/live
 # → {"status":"ok","version":"1.0.0","db":{"connected":true,...}}
@@ -568,9 +554,7 @@ export function createWorkerDbRead(): DbRead {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `Worker returned ${res.status}`
-        );
+        throw new Error((body as { error?: string }).error ?? `Worker returned ${res.status}`);
       }
 
       return res.json() as Promise<DbQueryResult<T>>;
@@ -631,32 +615,32 @@ bun run --filter '@pew/web' dev
 # 4. Verify every page
 ```
 
-| Page | Check | Has writes? |
-|------|-------|-------------|
-| Dashboard `/` | Usage chart loads | No |
-| By-device `/by-device` | Device breakdown loads | Yes (rename/delete) |
-| Sessions `/sessions` | Session list loads | No |
-| Leaderboard `/leaderboard` | Public rankings load | No |
-| Season detail `/leaderboard/seasons/*` | Teams + countdown load | No |
-| Season register `/leaderboard/seasons/*/register` | Register flow works | Yes (create team) |
-| User profile `/u/*` | SSR profile renders | No |
-| Admin `/admin/*` | All admin pages load + CRUD works | Yes |
-| Settings `/settings` | User settings load + save works | Yes |
-| Teams `/teams/*` | Team pages load + manage works | Yes |
-| Projects `/projects/*` | Project CRUD works | Yes |
-| Login `/login` | Auth flow works | Yes (user creation) |
-| CLI sync | `pew sync --dev` completes | Yes (via pew-ingest) |
+| Page                                              | Check                             | Has writes?          |
+| ------------------------------------------------- | --------------------------------- | -------------------- |
+| Dashboard `/`                                     | Usage chart loads                 | No                   |
+| By-device `/by-device`                            | Device breakdown loads            | Yes (rename/delete)  |
+| Sessions `/sessions`                              | Session list loads                | No                   |
+| Leaderboard `/leaderboard`                        | Public rankings load              | No                   |
+| Season detail `/leaderboard/seasons/*`            | Teams + countdown load            | No                   |
+| Season register `/leaderboard/seasons/*/register` | Register flow works               | Yes (create team)    |
+| User profile `/u/*`                               | SSR profile renders               | No                   |
+| Admin `/admin/*`                                  | All admin pages load + CRUD works | Yes                  |
+| Settings `/settings`                              | User settings load + save works   | Yes                  |
+| Teams `/teams/*`                                  | Team pages load + manage works    | Yes                  |
+| Projects `/projects/*`                            | Project CRUD works                | Yes                  |
+| Login `/login`                                    | Auth flow works                   | Yes (user creation)  |
+| CLI sync                                          | `pew sync --dev` completes        | Yes (via pew-ingest) |
 
 #### 3.4 Performance Comparison
 
 Expected improvement (per query):
 
-| Metric | REST API | Worker | Improvement |
-|--------|----------|--------|-------------|
-| Latency (Railway → Cloudflare) | ~50-150ms | ~15-30ms | 3-5x |
-| Auth overhead | Full token validation | Simple secret check | Minimal |
-| Network hops | 2 (Railway → CF API → D1) | 1 (Railway → Worker/D1) | 1 fewer |
-| Failure mode | `fetch failed` on blips | More resilient (same CF network) | Stability ↑ |
+| Metric                         | REST API                  | Worker                           | Improvement |
+| ------------------------------ | ------------------------- | -------------------------------- | ----------- |
+| Latency (Railway → Cloudflare) | ~50-150ms                 | ~15-30ms                         | 3-5x        |
+| Auth overhead                  | Full token validation     | Simple secret check              | Minimal     |
+| Network hops                   | 2 (Railway → CF API → D1) | 1 (Railway → Worker/D1)          | 1 fewer     |
+| Failure mode                   | `fetch failed` on blips   | More resilient (same CF network) | Stability ↑ |
 
 ---
 
@@ -667,11 +651,12 @@ Expected improvement (per query):
 
 #### 4.1 Delete
 
-| File | Reason |
-|------|--------|
+| File                                                              | Reason                     |
+| ----------------------------------------------------------------- | -------------------------- |
 | `packages/web/src/lib/db-rest.ts` → **`createRestDbRead()` only** | Replaced by `WorkerDbRead` |
 
 **Keep** (still needed for writes):
+
 - `packages/web/src/lib/d1.ts` — `D1Client` class, used by `RestDbWrite`
 - `packages/web/src/lib/db-rest.ts` → `createRestDbWrite()` — wraps `D1Client` for writes
 
@@ -682,20 +667,20 @@ Expected improvement (per query):
 
 **Cannot remove yet** — all 3 CF env vars are still needed by `RestDbWrite`:
 
-| Var | Still needed? | Reason |
-|-----|---------------|--------|
-| `CF_ACCOUNT_ID` | ✅ Yes | `D1Client` constructor (used by writes) |
-| `CF_D1_API_TOKEN` | ✅ Yes | `D1Client` constructor (used by writes) |
-| `CF_D1_DATABASE_ID` | ✅ Yes | `D1Client` constructor (used by writes) |
+| Var                 | Still needed? | Reason                                  |
+| ------------------- | ------------- | --------------------------------------- |
+| `CF_ACCOUNT_ID`     | ✅ Yes        | `D1Client` constructor (used by writes) |
+| `CF_D1_API_TOKEN`   | ✅ Yes        | `D1Client` constructor (used by writes) |
+| `CF_D1_DATABASE_ID` | ✅ Yes        | `D1Client` constructor (used by writes) |
 
 These env vars can only be removed when writes are also migrated to a Worker
 (future scope, not part of this doc).
 
 **Add** (new):
 
-| Var | Purpose |
-|-----|---------|
-| `WORKER_READ_URL` | pew read Worker URL |
+| Var                  | Purpose                       |
+| -------------------- | ----------------------------- |
+| `WORKER_READ_URL`    | pew read Worker URL           |
 | `WORKER_READ_SECRET` | Shared secret for read Worker |
 
 #### 4.3 Update Docs
@@ -768,13 +753,13 @@ absent = REST fallback.
 
 ## Risks
 
-| Risk | Mitigation |
-|------|------------|
-| Worker free tier limits | Read volume is low (~hundreds/day); monitor via CF dashboard |
+| Risk                           | Mitigation                                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------------------- |
+| Worker free tier limits        | Read volume is low (~hundreds/day); monitor via CF dashboard                             |
 | SQL injection via `/api/query` | Worker is behind shared secret; only Next.js can call it; SQL is constructed server-side |
-| Worker downtime | `/api/live` health check; fallback to REST by removing env var |
-| Complex queries timing out | D1 Worker CPU limit is 10ms; current queries are simple aggregations well within limit |
-| Write leak through read Worker | Regex guard rejects `INSERT`/`UPDATE`/`DELETE`/`DROP`/`ALTER`/`CREATE`/`PRAGMA` |
+| Worker downtime                | `/api/live` health check; fallback to REST by removing env var                           |
+| Complex queries timing out     | D1 Worker CPU limit is 10ms; current queries are simple aggregations well within limit   |
+| Write leak through read Worker | Regex guard rejects `INSERT`/`UPDATE`/`DELETE`/`DROP`/`ALTER`/`CREATE`/`PRAGMA`          |
 
 ## Future Work (Out of Scope)
 

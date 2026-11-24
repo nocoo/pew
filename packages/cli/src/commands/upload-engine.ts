@@ -173,16 +173,32 @@ export function createUploadEngine<T>(config: UploadEngineConfig<T>) {
     const records = preprocess(rawRecords);
 
     // 3. Split into batches
-    const batchSize = Math.max(1, Math.min(requestedBatchSize, config.maxBatchSize ?? DEFAULT_BATCH_SIZE));
+    const batchSize = Math.max(
+      1,
+      Math.min(requestedBatchSize, config.maxBatchSize ?? DEFAULT_BATCH_SIZE),
+    );
     const batches: T[][] = [];
-    let pending: T[] = []; let bytes = 2;
+    let pending: T[] = [];
+    let bytes = 2;
     for (const record of records) {
       const size = config.maxBatchBytes ? Buffer.byteLength(JSON.stringify(record)) + 1 : 0;
-      if (config.maxBatchBytes && size + 2 > config.maxBatchBytes) return { success: false, uploaded: 0, batches: 0, error: "Record exceeds the upload byte limit; retained locally" };
-      if (pending.length >= batchSize || (pending.length > 0 && config.maxBatchBytes && bytes + size > config.maxBatchBytes)) {
-        batches.push(pending); pending = []; bytes = 2;
+      if (config.maxBatchBytes && size + 2 > config.maxBatchBytes)
+        return {
+          success: false,
+          uploaded: 0,
+          batches: 0,
+          error: "Record exceeds the upload byte limit; retained locally",
+        };
+      if (
+        pending.length >= batchSize ||
+        (pending.length > 0 && config.maxBatchBytes && bytes + size > config.maxBatchBytes)
+      ) {
+        batches.push(pending);
+        pending = [];
+        bytes = 2;
       }
-      pending.push(record); bytes += size;
+      pending.push(record);
+      bytes += size;
     }
     if (pending.length > 0) batches.push(pending);
 
@@ -320,8 +336,7 @@ async function sendBatchWithRetry<T>(opts: {
       // 4xx — client error, don't retry
       if (resp.status >= 400 && resp.status < 500) {
         const body = await resp.json().catch(() => ({}));
-        const msg =
-          (body as Record<string, string>).error ?? `HTTP ${resp.status}`;
+        const msg = (body as Record<string, string>).error ?? `HTTP ${resp.status}`;
         return { ok: false, error: `${resp.status}: ${msg}` };
       }
 

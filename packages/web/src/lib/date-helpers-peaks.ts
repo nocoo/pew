@@ -32,11 +32,7 @@ export type PeakSlot = {
  * @param topN     — how many peak slots to return (default 3)
  * @param tzOffset — minutes offset from UTC (positive = west, e.g. 480 for PST)
  */
-export function detectPeakHours(
-  rows: UsageRow[],
-  topN = 3,
-  tzOffset = 0,
-): PeakSlot[] {
+export function detectPeakHours(rows: UsageRow[], topN = 3, tzOffset = 0): PeakSlot[] {
   if (rows.length === 0) return [];
 
   // Group by (localDayOfWeek, localHalfHourSlot)

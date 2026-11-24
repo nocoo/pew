@@ -6,25 +6,25 @@
 
 ## Status
 
-| # | Commit | Description | Status |
-|---|--------|-------------|--------|
-| 1 | `docs: add season system plan` | This document | done |
-| 2 | `feat: add seasons and season_teams migration` | `006b-seasons.sql` | done |
-| 3 | `feat: add season types to @pew/core` | Season-related type definitions | done |
-| 4 | `feat: add admin seasons CRUD API` | `GET/POST/PATCH /api/admin/seasons` | done |
-| 5 | `test: add L1 tests for admin seasons API` | Admin seasons CRUD unit tests | done |
-| 6 | `feat: add season registration API` | `POST/DELETE /api/seasons/[seasonId]/register` | done |
-| 7 | `test: add L1 tests for season registration` | Registration + auth unit tests | done |
-| 8 | `feat: add season leaderboard API` | `GET /api/seasons/[seasonId]/leaderboard` | done |
-| 9 | `test: add L1 tests for season leaderboard` | Leaderboard aggregation + ranking tests | done |
-| 10 | `feat: add season snapshot API` | `POST /api/admin/seasons/[seasonId]/snapshot` | done |
-| 11 | `test: add L1 tests for season snapshot` | Snapshot creation + idempotency tests | done |
-| 12 | `feat: add season list API` | `GET /api/seasons` | done |
-| 13 | `test: add L1 tests for season list API` | Public season listing tests | done |
-| 14 | `feat: add season leaderboard page` | `/leaderboard/seasons` + `/leaderboard/seasons/[seasonId]` | done |
-| 15 | `feat: add season navigation to leaderboard` | Season tab in leaderboard controls | done |
-| 16 | `feat: add admin season management page` | `/admin/seasons` CRUD UI | done |
-| 17 | `feat: add season registration UI for team owners` | Team detail page register button | done |
+| #   | Commit                                             | Description                                                | Status |
+| --- | -------------------------------------------------- | ---------------------------------------------------------- | ------ |
+| 1   | `docs: add season system plan`                     | This document                                              | done   |
+| 2   | `feat: add seasons and season_teams migration`     | `006b-seasons.sql`                                         | done   |
+| 3   | `feat: add season types to @pew/core`              | Season-related type definitions                            | done   |
+| 4   | `feat: add admin seasons CRUD API`                 | `GET/POST/PATCH /api/admin/seasons`                        | done   |
+| 5   | `test: add L1 tests for admin seasons API`         | Admin seasons CRUD unit tests                              | done   |
+| 6   | `feat: add season registration API`                | `POST/DELETE /api/seasons/[seasonId]/register`             | done   |
+| 7   | `test: add L1 tests for season registration`       | Registration + auth unit tests                             | done   |
+| 8   | `feat: add season leaderboard API`                 | `GET /api/seasons/[seasonId]/leaderboard`                  | done   |
+| 9   | `test: add L1 tests for season leaderboard`        | Leaderboard aggregation + ranking tests                    | done   |
+| 10  | `feat: add season snapshot API`                    | `POST /api/admin/seasons/[seasonId]/snapshot`              | done   |
+| 11  | `test: add L1 tests for season snapshot`           | Snapshot creation + idempotency tests                      | done   |
+| 12  | `feat: add season list API`                        | `GET /api/seasons`                                         | done   |
+| 13  | `test: add L1 tests for season list API`           | Public season listing tests                                | done   |
+| 14  | `feat: add season leaderboard page`                | `/leaderboard/seasons` + `/leaderboard/seasons/[seasonId]` | done   |
+| 15  | `feat: add season navigation to leaderboard`       | Season tab in leaderboard controls                         | done   |
+| 16  | `feat: add admin season management page`           | `/admin/seasons` CRUD UI                                   | done   |
+| 17  | `feat: add season registration UI for team owners` | Team detail page register button                           | done   |
 
 ---
 
@@ -38,18 +38,18 @@
 
 ## Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| 参赛单位 | 仅战队 | 赛季强调团队协作；个人排名已有现有 leaderboard |
-| 队长 = 报名人 | team_members.role = 'owner' | 不引入新角色，复用现有 owner 机制 |
-| 排名指标 | total_tokens | 与现有 leaderboard 一致，简单直观 |
-| 时间存储 | UTC，精确到天 | `start_date` / `end_date` 存 `YYYY-MM-DD` 格式 |
-| 时间展示 | 管理员界面时区 | 前端根据管理员/用户本地时区转化展示 |
-| 中途加入数据 | 从赛季开始日算起 | 公平竞争：所有队伍统一计算赛季日期范围内的 usage |
-| Snapshot 粒度 | 队伍总分 + 队员明细 | 赛季结束后可查看每位队员贡献 |
-| Snapshot 触发 | 管理员手动触发 | 避免自动化复杂度，admin API 调用即可 |
-| 赛季状态机 | upcoming → active → ended | 由 start_date/end_date 与当前日期比较推导，无需手动切换 |
-| 赛季命名 | 管理员自定义 (如 S1, S2) | `slug` 字段用于 URL，`name` 用于展示 |
+| Decision      | Choice                      | Rationale                                               |
+| ------------- | --------------------------- | ------------------------------------------------------- |
+| 参赛单位      | 仅战队                      | 赛季强调团队协作；个人排名已有现有 leaderboard          |
+| 队长 = 报名人 | team_members.role = 'owner' | 不引入新角色，复用现有 owner 机制                       |
+| 排名指标      | total_tokens                | 与现有 leaderboard 一致，简单直观                       |
+| 时间存储      | UTC，精确到天               | `start_date` / `end_date` 存 `YYYY-MM-DD` 格式          |
+| 时间展示      | 管理员界面时区              | 前端根据管理员/用户本地时区转化展示                     |
+| 中途加入数据  | 从赛季开始日算起            | 公平竞争：所有队伍统一计算赛季日期范围内的 usage        |
+| Snapshot 粒度 | 队伍总分 + 队员明细         | 赛季结束后可查看每位队员贡献                            |
+| Snapshot 触发 | 管理员手动触发              | 避免自动化复杂度，admin API 调用即可                    |
+| 赛季状态机    | upcoming → active → ended   | 由 start_date/end_date 与当前日期比较推导，无需手动切换 |
+| 赛季命名      | 管理员自定义 (如 S1, S2)    | `slug` 字段用于 URL，`name` 用于展示                    |
 
 ---
 
@@ -181,6 +181,7 @@ today > end_date  → "ended"
 列出所有赛季（管理员专用）。
 
 **Response:**
+
 ```json
 {
   "seasons": [
@@ -205,6 +206,7 @@ today > end_date  → "ended"
 创建新赛季。
 
 **Request body:**
+
 ```json
 {
   "name": "Season 1",
@@ -215,6 +217,7 @@ today > end_date  → "ended"
 ```
 
 **Validation:**
+
 - `name`: 1-64 字符
 - `slug`: 1-32 字符，仅 `[a-z0-9-]`，唯一
 - `start_date`: `YYYY-MM-DD` 格式
@@ -227,6 +230,7 @@ today > end_date  → "ended"
 `active` / `ended` 赛季只能修改 `name`。
 
 **Request body:** (all optional)
+
 ```json
 {
   "name": "Season 1 (Updated)",
@@ -242,6 +246,7 @@ today > end_date  → "ended"
 战队报名参赛。调用者必须是 team owner。
 
 **Request body:**
+
 ```json
 {
   "team_id": "team-uuid"
@@ -249,12 +254,14 @@ today > end_date  → "ended"
 ```
 
 **Validation:**
+
 - 赛季存在且状态为 `upcoming`（`active` 或 `ended` 不可报名）
 - 调用者是该 team 的 owner
 - 该 team 未重复报名同一赛季
 - team_id 有效
 
 **Response (201):**
+
 ```json
 {
   "id": "registration-uuid",
@@ -269,6 +276,7 @@ today > end_date  → "ended"
 退出赛季。只有 `upcoming` 状态的赛季可退出；`active` 后不可退出。
 
 **Request body:**
+
 ```json
 {
   "team_id": "team-uuid"
@@ -282,13 +290,16 @@ today > end_date  → "ended"
 赛季排行榜。公开接口，无需登录。
 
 **Query params:**
+
 - `expand=members` — 同时返回每支队伍的队员贡献明细
 
 **逻辑:**
+
 - 如果赛季已结束且存在 snapshot：直接从 `season_snapshots` + `season_member_snapshots` 读取
 - 否则（进行中或无 snapshot）：实时聚合 `usage_records`
 
 **实时聚合 SQL:**
+
 ```sql
 SELECT
   st.team_id,
@@ -312,6 +323,7 @@ ORDER BY total_tokens DESC
 **注意**: `end_date` 是 inclusive（包含当天），所以 SQL 中用 `< end_date + 1 day`。
 
 **队员明细 SQL** (当 `expand=members`)：
+
 ```sql
 SELECT
   stm.user_id,
@@ -334,6 +346,7 @@ ORDER BY total_tokens DESC
 ```
 
 **Response:**
+
 ```json
 {
   "season": {
@@ -392,6 +405,7 @@ ORDER BY total_tokens DESC
 管理员手动触发 snapshot 生成。只有 `ended` 状态的赛季可创建 snapshot。
 
 **Behavior:**
+
 1. 校验赛季状态为 `ended`
 2. 聚合所有参赛战队的 token 数据（同 leaderboard 实时聚合逻辑）
 3. 计算排名
@@ -403,6 +417,7 @@ ORDER BY total_tokens DESC
 9. D1 REST batches now use a single native transaction. Snapshot readiness and stale-row cleanup remain separate operations; write-then-switch keeps partial results hidden.
 
 **Response (201):**
+
 ```json
 {
   "season_id": "uuid",
@@ -419,9 +434,11 @@ ORDER BY total_tokens DESC
 列出所有赛季（公开接口）。不返回 admin-only 的字段。
 
 **Query params:**
+
 - `status` — 可选过滤: `upcoming`, `active`, `ended`
 
 **Response:**
+
 ```json
 {
   "seasons": [
@@ -485,6 +502,7 @@ ORDER BY total_tokens DESC
 ```
 
 状态标记：
+
 - Active — 进行中 (green badge)
 - Upcoming — 即将开始 (amber badge)
 - Ended — 已结束 (gray badge)
@@ -539,6 +557,7 @@ ORDER BY total_tokens DESC
 This document.
 
 **Files changed:**
+
 - `docs/18-season-system.md` (new)
 
 ---
@@ -548,10 +567,12 @@ This document.
 Create migration scripts for season-related tables.
 
 **Files changed:**
+
 - `scripts/migrations/006b-seasons.sql` (new)
 - `scripts/migrations/007b-season-team-members.sql` (new)
 
 **Tables created:**
+
 - `seasons` — season definitions (006)
 - `season_teams` — team registrations per season (006)
 - `season_snapshots` — frozen team-level results (006)
@@ -565,6 +586,7 @@ Create migration scripts for season-related tables.
 Add Season-related TypeScript types for shared use across packages.
 
 **Files changed:**
+
 - `packages/core/src/types.ts`
 
 **New types:**
@@ -627,21 +649,25 @@ export interface SeasonMemberContribution {
 ### Commit 4: `feat: add admin seasons CRUD API`
 
 **Files changed:**
+
 - `packages/web/src/app/api/admin/seasons/route.ts` (new)
 - `packages/web/src/app/api/admin/seasons/[seasonId]/route.ts` (new)
 
 **`GET /api/admin/seasons`**
+
 - Requires admin auth (`resolveAdmin`)
 - Lists all seasons with computed `status` and `team_count`
 - Sorted by `start_date DESC`
 
 **`POST /api/admin/seasons`**
+
 - Requires admin auth
 - Validates name, slug, start_date, end_date
 - Generates UUID for `id`
 - Sets `created_by` to admin user ID
 
 **`PATCH /api/admin/seasons/[seasonId]`**
+
 - Requires admin auth
 - Validates season exists
 - `upcoming`: can modify name, slug, start_date, end_date
@@ -654,6 +680,7 @@ export interface SeasonMemberContribution {
 ### Commit 5: `test: add L1 tests for admin seasons API`
 
 **Files changed:**
+
 - `packages/web/src/__tests__/admin-seasons.test.ts` (new)
 
 **Test cases:**
@@ -684,14 +711,17 @@ describe("PATCH /api/admin/seasons/[seasonId]")
 ### Commit 6: `feat: add season registration API`
 
 **Files changed:**
+
 - `packages/web/src/app/api/seasons/[seasonId]/register/route.ts` (new)
 
 **`POST /api/seasons/[seasonId]/register`**
+
 - Requires auth (`resolveUser`)
 - Validates: season exists, status is upcoming, user is team owner, not already registered
 - Inserts into `season_teams` and copies team members into `season_team_members` (frozen roster)
 
 **`DELETE /api/seasons/[seasonId]/register`**
+
 - Requires auth
 - Validates: season is upcoming, user is team owner, registration exists
 - Deletes from `season_teams` and `season_team_members`
@@ -701,6 +731,7 @@ describe("PATCH /api/admin/seasons/[seasonId]")
 ### Commit 7: `test: add L1 tests for season registration`
 
 **Files changed:**
+
 - `packages/web/src/__tests__/season-registration.test.ts` (new)
 
 **Test cases:**
@@ -727,9 +758,11 @@ describe("DELETE /api/seasons/[seasonId]/register")
 ### Commit 8: `feat: add season leaderboard API`
 
 **Files changed:**
+
 - `packages/web/src/app/api/seasons/[seasonId]/leaderboard/route.ts` (new)
 
 **`GET /api/seasons/[seasonId]/leaderboard`**
+
 - Public endpoint (no auth required)
 - Query param: `expand=members` for per-member breakdown
 - If snapshot exists: read from `season_snapshots` + `season_member_snapshots`
@@ -748,6 +781,7 @@ Snapshot detection: 读取 season 行的 `snapshot_ready` 列（`0` 或 `1`）�
 ### Commit 9: `test: add L1 tests for season leaderboard`
 
 **Files changed:**
+
 - `packages/web/src/__tests__/season-leaderboard.test.ts` (new)
 
 **Test cases:**
@@ -771,9 +805,11 @@ describe("GET /api/seasons/[seasonId]/leaderboard")
 ### Commit 10: `feat: add season snapshot API`
 
 **Files changed:**
+
 - `packages/web/src/app/api/admin/seasons/[seasonId]/snapshot/route.ts` (new)
 
 **`POST /api/admin/seasons/[seasonId]/snapshot`**
+
 - Requires admin auth
 - Validates season status is `ended`
 - Aggregates usage data for all registered teams + members
@@ -787,6 +823,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard")
 ### Commit 11: `test: add L1 tests for season snapshot`
 
 **Files changed:**
+
 - `packages/web/src/__tests__/season-snapshot.test.ts` (new)
 
 **Test cases:**
@@ -806,9 +843,11 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot")
 ### Commit 12: `feat: add season list API`
 
 **Files changed:**
+
 - `packages/web/src/app/api/seasons/route.ts` (new)
 
 **`GET /api/seasons`**
+
 - Public endpoint
 - Optional `status` filter
 - Returns seasons with `team_count` and `has_snapshot` (reads `snapshot_ready` column directly)
@@ -819,6 +858,7 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot")
 ### Commit 13: `test: add L1 tests for season list API`
 
 **Files changed:**
+
 - `packages/web/src/__tests__/season-list.test.ts` (new)
 
 **Test cases:**
@@ -837,27 +877,32 @@ describe("GET /api/seasons")
 ### Commit 14: `feat: add season leaderboard page`
 
 **Files changed:**
+
 - `packages/web/src/app/leaderboard/seasons/page.tsx` (new)
 - `packages/web/src/app/leaderboard/seasons/[slug]/page.tsx` (new)
 - `packages/web/src/hooks/use-seasons.ts` (new)
 - `packages/web/src/hooks/use-season-leaderboard.ts` (new)
 
 **Season list page** (`/leaderboard/seasons`):
+
 - Fetches `GET /api/seasons`
 - Renders season cards with status badges
 - Click navigates to season detail
 
 **Season leaderboard page** (`/leaderboard/seasons/[slug]`):
+
 - Fetches `GET /api/seasons/[seasonId]/leaderboard?expand=members`
 - Note: Needs to resolve slug to id first via `GET /api/seasons` or a dedicated lookup
 - Renders team rankings with expandable member details
 - Shows "Live" badge for active seasons, "Final Results" for snapshot data
 
 **Hooks:**
+
 - `useSeasons()` — fetch and cache season list
 - `useSeasonLeaderboard(seasonId)` — fetch season leaderboard with expand=members
 
 **Proxy update:**
+
 - Add `/leaderboard/seasons` to `isPublicRoute()` matcher
 
 ---
@@ -865,9 +910,11 @@ describe("GET /api/seasons")
 ### Commit 15: `feat: add season navigation to leaderboard`
 
 **Files changed:**
+
 - `packages/web/src/app/leaderboard/page.tsx`
 
 **Changes:**
+
 - Add "Seasons" link/button next to existing controls
 - Uses `lucide-react` Trophy or Flag icon
 - Links to `/leaderboard/seasons`
@@ -877,10 +924,12 @@ describe("GET /api/seasons")
 ### Commit 16: `feat: add admin season management page`
 
 **Files changed:**
+
 - `packages/web/src/app/(dashboard)/admin/seasons/page.tsx` (new)
 - `packages/web/src/lib/navigation.ts` (update admin nav group)
 
 **Features:**
+
 - Season list with status, dates, team count
 - "Create Season" form (name, slug, start_date, end_date)
 - Edit season (inline or modal)
@@ -892,10 +941,12 @@ describe("GET /api/seasons")
 ### Commit 17: `feat: add season registration UI for team owners`
 
 **Files changed:**
+
 - `packages/web/src/app/(dashboard)/teams/[teamId]/page.tsx` (update or new)
 - `packages/web/src/hooks/use-season-registration.ts` (new)
 
 **Features:**
+
 - For team owner: show available seasons (upcoming for registration, active for visibility)
 - "Register" button per season
 - "Registered" badge for already-registered seasons
@@ -907,13 +958,13 @@ describe("GET /api/seasons")
 
 ### L1 Unit Tests (mocked D1, no network)
 
-| File | Coverage |
-|------|----------|
-| `admin-seasons.test.ts` | CRUD validation, auth gates, status computation |
-| `season-registration.test.ts` | Registration/withdrawal, role checks, state guards |
-| `season-leaderboard.test.ts` | Aggregation logic, date range, snapshot fallback, expand |
-| `season-snapshot.test.ts` | Snapshot creation, idempotency, rank computation |
-| `season-list.test.ts` | Public listing, status filter, sort order |
+| File                          | Coverage                                                 |
+| ----------------------------- | -------------------------------------------------------- |
+| `admin-seasons.test.ts`       | CRUD validation, auth gates, status computation          |
+| `season-registration.test.ts` | Registration/withdrawal, role checks, state guards       |
+| `season-leaderboard.test.ts`  | Aggregation logic, date range, snapshot fallback, expand |
+| `season-snapshot.test.ts`     | Snapshot creation, idempotency, rank computation         |
+| `season-list.test.ts`         | Public listing, status filter, sort order                |
 
 ### Manual Verification
 
@@ -936,6 +987,7 @@ After deployment:
 
 1. Deploy code (commits 2-17) — all `no such table` fallbacks ensure the app works before migration
 2. Run migrations (all required):
+
    ```bash
    wrangler d1 execute pew-prod --file scripts/migrations/006b-seasons.sql
    wrangler d1 execute pew-prod --file scripts/migrations/007b-season-team-members.sql

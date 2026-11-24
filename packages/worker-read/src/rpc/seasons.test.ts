@@ -91,11 +91,9 @@ describe("seasons RPC handlers", () => {
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: mockSeasons, _cached: false });
       expect(kv.get).toHaveBeenCalledWith("seasons:list", "json");
-      expect(kv.put).toHaveBeenCalledWith(
-        "seasons:list",
-        JSON.stringify(mockSeasons),
-        { expirationTtl: 600 }
-      );
+      expect(kv.put).toHaveBeenCalledWith("seasons:list", JSON.stringify(mockSeasons), {
+        expirationTtl: 600,
+      });
     });
 
     it("should return cached seasons list on cache hit", async () => {
@@ -414,7 +412,10 @@ describe("seasons RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: [{ ...cachedSnapshots[0], total_tokens: 0 }], _cached: false });
+      expect(body).toEqual({
+        result: [{ ...cachedSnapshots[0], total_tokens: 0 }],
+        _cached: false,
+      });
       expect(kv.get).not.toHaveBeenCalled();
       expect(db.all).toHaveBeenCalled();
     });
@@ -745,11 +746,7 @@ describe("seasons RPC handlers", () => {
       const res = await handleSeasonsRpc(req, db, kv);
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ result: rows });
-      expect(db.bind).toHaveBeenCalledWith(
-        "2026-01-01T00:00:00Z",
-        "2026-04-01T00:00:00Z",
-        "s1",
-      );
+      expect(db.bind).toHaveBeenCalledWith("2026-01-01T00:00:00Z", "2026-04-01T00:00:00Z", "s1");
     });
 
     it("should return empty array when no rows", async () => {

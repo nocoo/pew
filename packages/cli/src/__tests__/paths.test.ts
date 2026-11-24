@@ -70,9 +70,7 @@ describe("resolveDefaultPaths", () => {
     const paths = resolveDefaultPaths("/fakehome");
     expect(paths.stateDir).toBe(join("/fakehome", ".config", "pew"));
     expect(paths.binDir).toBe(join("/fakehome", ".config", "pew", "bin"));
-    expect(paths.notifyPath).toBe(
-      join("/fakehome", ".config", "pew", "bin", "notify.cjs"),
-    );
+    expect(paths.notifyPath).toBe(join("/fakehome", ".config", "pew", "bin", "notify.cjs"));
     expect(paths.claudeDir).toBe(join("/fakehome", ".claude"));
 
     expect(paths.antigravityDirs).toEqual([
@@ -89,7 +87,6 @@ describe("resolveDefaultPaths", () => {
     expect(paths.grokHome).toBe(join("/fakehome", ".grok"));
     expect(paths.grokLogsPath).toBe(join("/fakehome", ".grok", "logs", "unified.jsonl"));
     expect(paths.grokSessionsDir).toBe(join("/fakehome", ".grok", "sessions"));
-
   });
 
   it("should use actual homedir when no argument passed", () => {
@@ -170,11 +167,7 @@ describe("resolveDefaultPaths", () => {
     ];
     const paths = resolveDefaultPaths("/fakehome");
     expect(Object.keys(paths)).toHaveLength(keys.length);
-    expect(Object.keys(paths)).toEqual(
-      expect.arrayContaining([
-        ...keys,
-      ]),
-    );
+    expect(Object.keys(paths)).toEqual(expect.arrayContaining([...keys]));
   });
 
   it("should return empty hermesProfileDbPaths when no profiles exist", () => {
@@ -283,9 +276,6 @@ describe("resolveDefaultPaths", () => {
       "/custom/antigravity/a",
     ].join(delimiter);
     const paths = resolveDefaultPaths("/fakehome");
-    expect(paths.antigravityDirs).toEqual([
-      "/custom/antigravity/a",
-      "/custom/antigravity/b",
-    ]);
+    expect(paths.antigravityDirs).toEqual(["/custom/antigravity/a", "/custom/antigravity/b"]);
   });
 });

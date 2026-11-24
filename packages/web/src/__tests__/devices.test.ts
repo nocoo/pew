@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, PUT, PATCH, DELETE } from "@/app/api/devices/route";
-import {
-  createMockDbRead,
-  createMockDbWrite,
-  loadMockedAuthHelpers,
-} from "./test-utils";
+import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers } from "./test-utils";
 import * as dbModule from "@/lib/db";
 
 // Mock db
@@ -58,9 +54,7 @@ describe("GET /api/devices", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
   });
 
   it("should reject unauthenticated requests", async () => {
@@ -133,7 +127,15 @@ describe("GET /api/devices", () => {
     ]);
     const res = await GET(makeGetRequest());
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { devices: Array<{ first_seen: unknown; last_seen: unknown; total_tokens: number; sources: string[]; model_count: number }> };
+    const body = (await res.json()) as {
+      devices: Array<{
+        first_seen: unknown;
+        last_seen: unknown;
+        total_tokens: number;
+        sources: string[];
+        model_count: number;
+      }>;
+    };
     expect(body.devices[0]).toMatchObject({
       first_seen: null,
       last_seen: null,
@@ -189,12 +191,8 @@ describe("PUT /api/devices", () => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead
-    );
-    vi.mocked(dbModule.getDbWrite).mockResolvedValue(
-      mockDbWrite as unknown as dbModule.DbWrite
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as unknown as dbModule.DbWrite);
   });
 
   it("should reject unauthenticated requests", async () => {
@@ -218,9 +216,7 @@ describe("PUT /api/devices", () => {
     // Upsert
     mockDbWrite.execute.mockResolvedValueOnce({ meta: {} });
 
-    const res = await PUT(
-      makePutRequest({ device_id: "aaaa-1111", alias: "MacBook Pro" })
-    );
+    const res = await PUT(makePutRequest({ device_id: "aaaa-1111", alias: "MacBook Pro" }));
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -237,9 +233,7 @@ describe("PUT /api/devices", () => {
     mockDbRead.checkDuplicateDeviceAlias.mockResolvedValueOnce(false);
     mockDbWrite.execute.mockResolvedValueOnce({ meta: {} });
 
-    const res = await PUT(
-      makePutRequest({ device_id: "aaaa-1111", alias: "New Name" })
-    );
+    const res = await PUT(makePutRequest({ device_id: "aaaa-1111", alias: "New Name" }));
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -266,9 +260,7 @@ describe("PUT /api/devices", () => {
     });
 
     const longAlias = "A".repeat(51);
-    const res = await PUT(
-      makePutRequest({ device_id: "aaaa-1111", alias: longAlias })
-    );
+    const res = await PUT(makePutRequest({ device_id: "aaaa-1111", alias: longAlias }));
 
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -286,9 +278,7 @@ describe("PUT /api/devices", () => {
     // Duplicate check — another device has this alias
     mockDbRead.checkDuplicateDeviceAlias.mockResolvedValueOnce(true);
 
-    const res = await PUT(
-      makePutRequest({ device_id: "bbbb-2222", alias: "macbook" })
-    );
+    const res = await PUT(makePutRequest({ device_id: "bbbb-2222", alias: "macbook" }));
 
     expect(res.status).toBe(409);
     const body = await res.json();
@@ -308,9 +298,7 @@ describe("PUT /api/devices", () => {
     // Upsert
     mockDbWrite.execute.mockResolvedValueOnce({ meta: {} });
 
-    const res = await PUT(
-      makePutRequest({ device_id: "aaaa-1111", alias: "MacBook" })
-    );
+    const res = await PUT(makePutRequest({ device_id: "aaaa-1111", alias: "MacBook" }));
 
     expect(res.status).toBe(200);
   });
@@ -324,9 +312,7 @@ describe("PUT /api/devices", () => {
     // Device NOT found in usage_records
     mockDbRead.checkDeviceExists.mockResolvedValueOnce(false);
 
-    const res = await PUT(
-      makePutRequest({ device_id: "phantom-9999", alias: "Ghost" })
-    );
+    const res = await PUT(makePutRequest({ device_id: "phantom-9999", alias: "Ghost" }));
 
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -343,9 +329,7 @@ describe("PUT /api/devices", () => {
     mockDbRead.checkDuplicateDeviceAlias.mockResolvedValueOnce(false);
     mockDbWrite.execute.mockResolvedValueOnce({ meta: {} });
 
-    const res = await PUT(
-      makePutRequest({ device_id: "default", alias: "Old Machine" })
-    );
+    const res = await PUT(makePutRequest({ device_id: "default", alias: "Old Machine" }));
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -371,9 +355,7 @@ describe("PUT /api/devices", () => {
 
     mockDbRead.checkDeviceExists.mockRejectedValueOnce(new Error("D1 down"));
 
-    const res = await PUT(
-      makePutRequest({ device_id: "aaaa-1111", alias: "Name" })
-    );
+    const res = await PUT(makePutRequest({ device_id: "aaaa-1111", alias: "Name" }));
 
     expect(res.status).toBe(500);
   });
@@ -419,7 +401,10 @@ describe("PATCH /api/devices", () => {
     const res = await PATCH(makePatchRequest({ device_id: deviceId, revoked: true }));
 
     expect(res.status).toBe(200);
-    expect(mockDbWrite.execute).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO device_revocations"), ["u1", deviceId]);
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO device_revocations"),
+      ["u1", deviceId],
+    );
   });
 
   it("rejects identifiers longer than the token ingest limit", async () => {
@@ -464,12 +449,8 @@ describe("DELETE /api/devices", () => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead
-    );
-    vi.mocked(dbModule.getDbWrite).mockResolvedValue(
-      mockDbWrite as unknown as dbModule.DbWrite
-    );
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as unknown as dbModule.DbRead);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as unknown as dbModule.DbWrite);
   });
 
   it("should reject unauthenticated requests", async () => {

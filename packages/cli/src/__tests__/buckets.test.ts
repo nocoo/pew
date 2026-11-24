@@ -1,53 +1,34 @@
 import { describe, it, expect } from "vitest";
-import {
-  toUtcHalfHourStart,
-  bucketKey,
-  addTokens,
-  emptyTokenDelta,
-} from "../utils/buckets.js";
+import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../utils/buckets.js";
 import type { TokenDelta } from "@pew/core";
 
 describe("toUtcHalfHourStart", () => {
   it("should floor to :00 for minutes 0-29", () => {
-    expect(toUtcHalfHourStart("2026-03-07T10:15:30.000Z")).toBe(
-      "2026-03-07T10:00:00.000Z",
-    );
+    expect(toUtcHalfHourStart("2026-03-07T10:15:30.000Z")).toBe("2026-03-07T10:00:00.000Z");
   });
 
   it("should floor to :30 for minutes 30-59", () => {
-    expect(toUtcHalfHourStart("2026-03-07T10:45:00.000Z")).toBe(
-      "2026-03-07T10:30:00.000Z",
-    );
+    expect(toUtcHalfHourStart("2026-03-07T10:45:00.000Z")).toBe("2026-03-07T10:30:00.000Z");
   });
 
   it("should handle exact boundaries (:00)", () => {
-    expect(toUtcHalfHourStart("2026-03-07T10:00:00.000Z")).toBe(
-      "2026-03-07T10:00:00.000Z",
-    );
+    expect(toUtcHalfHourStart("2026-03-07T10:00:00.000Z")).toBe("2026-03-07T10:00:00.000Z");
   });
 
   it("should handle exact boundaries (:30)", () => {
-    expect(toUtcHalfHourStart("2026-03-07T10:30:00.000Z")).toBe(
-      "2026-03-07T10:30:00.000Z",
-    );
+    expect(toUtcHalfHourStart("2026-03-07T10:30:00.000Z")).toBe("2026-03-07T10:30:00.000Z");
   });
 
   it("should handle minute 29 (edge of first half)", () => {
-    expect(toUtcHalfHourStart("2026-03-07T10:29:59.999Z")).toBe(
-      "2026-03-07T10:00:00.000Z",
-    );
+    expect(toUtcHalfHourStart("2026-03-07T10:29:59.999Z")).toBe("2026-03-07T10:00:00.000Z");
   });
 
   it("should handle midnight", () => {
-    expect(toUtcHalfHourStart("2026-03-07T00:00:00.000Z")).toBe(
-      "2026-03-07T00:00:00.000Z",
-    );
+    expect(toUtcHalfHourStart("2026-03-07T00:00:00.000Z")).toBe("2026-03-07T00:00:00.000Z");
   });
 
   it("should handle end of day", () => {
-    expect(toUtcHalfHourStart("2026-03-07T23:59:59.999Z")).toBe(
-      "2026-03-07T23:30:00.000Z",
-    );
+    expect(toUtcHalfHourStart("2026-03-07T23:59:59.999Z")).toBe("2026-03-07T23:30:00.000Z");
   });
 
   it("should return null for invalid timestamp", () => {

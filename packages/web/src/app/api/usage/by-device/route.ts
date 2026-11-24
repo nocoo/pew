@@ -79,22 +79,15 @@ export async function GET(request: Request) {
   });
 
   // Validate granularity
-  const granularity: "half-hour" | "day" =
-    granularityParam === "half-hour" ? "half-hour" : "day";
+  const granularity: "half-hour" | "day" = granularityParam === "half-hour" ? "half-hour" : "day";
 
   const dateRange = parseDateRange(fromParam, toParam);
   if (!dateRange) {
-    return NextResponse.json(
-      { error: "Invalid date format" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
   }
 
   if (tzOffset === "invalid") {
-    return NextResponse.json(
-      { error: "Invalid tzOffset value" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid tzOffset value" }, { status: 400 });
   }
   const { fromDate, toDate } = dateRange;
 
@@ -123,8 +116,10 @@ export async function GET(request: Request) {
     for (const row of costRows) {
       const cost = estimateUsageCost(row, pricingMap);
       const previous = costByDevice.get(row.device_id);
-      costByDevice.set(row.device_id, { total: (previous?.total ?? 0) + cost.totalCost,
-        complete: (previous?.complete ?? true) && cost.complete });
+      costByDevice.set(row.device_id, {
+        total: (previous?.total ?? 0) + cost.totalCost,
+        complete: (previous?.complete ?? true) && cost.complete,
+      });
     }
 
     // 6. Assemble response
@@ -163,8 +158,12 @@ export async function GET(request: Request) {
         device_id: row.device_id,
         source: row.source,
         model: row.model,
-        total_tokens:
-          sumCounts(row.input_tokens, row.output_tokens, row.cached_input_tokens, reasoning),
+        total_tokens: sumCounts(
+          row.input_tokens,
+          row.output_tokens,
+          row.cached_input_tokens,
+          reasoning,
+        ),
         input_tokens: row.input_tokens,
         output_tokens: row.output_tokens,
         cached_input_tokens: row.cached_input_tokens,
@@ -176,9 +175,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ devices, timeline, deviceDetails });
   } catch (err) {
     console.error("Failed to query by-device usage:", err);
-    return NextResponse.json(
-      { error: "Failed to query by-device usage data" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to query by-device usage data" }, { status: 500 });
   }
 }

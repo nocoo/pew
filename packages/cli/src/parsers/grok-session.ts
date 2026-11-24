@@ -26,9 +26,7 @@ async function readJson(path: string): Promise<Record<string, unknown> | null> {
  * Note: totalMessages uses summary.num_chat_messages (not num_messages) —
  * num_messages counts system events in updates.jsonl.
  */
-export async function parseGrokSession(
-  sessionDir: string,
-): Promise<SessionSnapshot | null> {
+export async function parseGrokSession(sessionDir: string): Promise<SessionSnapshot | null> {
   const [summary, signals] = await Promise.all([
     readJson(join(sessionDir, "summary.json")),
     readJson(join(sessionDir, "signals.json")),
@@ -43,8 +41,7 @@ export async function parseGrokSession(
   const sessionId = typeof info?.id === "string" ? info.id : null;
   if (!sessionId) return null;
 
-  const startedAt =
-    typeof summary.created_at === "string" ? summary.created_at : null;
+  const startedAt = typeof summary.created_at === "string" ? summary.created_at : null;
   if (!startedAt) return null;
 
   const lastMessageAt =
@@ -54,9 +51,7 @@ export async function parseGrokSession(
         ? summary.updated_at
         : startedAt;
 
-  const durationSeconds = toNonNeg(
-    signals?.sessionDurationSeconds ?? 0,
-  );
+  const durationSeconds = toNonNeg(signals?.sessionDurationSeconds ?? 0);
   const userMessages = toNonNeg(signals?.userMessageCount ?? 0);
   const assistantMessages = toNonNeg(signals?.assistantMessageCount ?? 0);
   // Prefer chat messages; fall back to 0 if field missing
@@ -70,9 +65,7 @@ export async function parseGrokSession(
         : null;
 
   const model =
-    typeof summary.current_model_id === "string"
-      ? summary.current_model_id.trim()
-      : null;
+    typeof summary.current_model_id === "string" ? summary.current_model_id.trim() : null;
 
   return {
     sessionKey: sessionId,

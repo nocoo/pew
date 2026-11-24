@@ -44,18 +44,12 @@ export async function GET(request: Request) {
 
   // Validate source filter
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
-    return NextResponse.json(
-      { error: "Invalid source parameter" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid source parameter" }, { status: 400 });
   }
 
   // Validate kind filter
   if (kindFilter && !VALID_KINDS.has(kindFilter)) {
-    return NextResponse.json(
-      { error: "Invalid kind parameter" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid kind parameter" }, { status: 400 });
   }
 
   // Validate and compute date range
@@ -64,10 +58,7 @@ export async function GET(request: Request) {
 
   if (fromParam) {
     if (!DATE_RE.test(fromParam)) {
-      return NextResponse.json(
-        { error: "Invalid from date format" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid from date format" }, { status: 400 });
     }
     fromDate = new Date(fromParam).toISOString();
   } else {
@@ -78,10 +69,7 @@ export async function GET(request: Request) {
 
   if (toParam) {
     if (!DATE_RE.test(toParam)) {
-      return NextResponse.json(
-        { error: "Invalid to date format" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid to date format" }, { status: 400 });
     }
     // Bare date "YYYY-MM-DD" → inclusive: bump +1 UTC day for `< toDate`
     const toD = new Date(toParam);
@@ -110,8 +98,7 @@ export async function GET(request: Request) {
         total_sessions: sumCounts(acc.total_sessions, 1),
         total_duration_seconds: sumCounts(acc.total_duration_seconds, r.duration_seconds),
         total_user_messages: sumCounts(acc.total_user_messages, r.user_messages),
-        total_assistant_messages:
-          sumCounts(acc.total_assistant_messages, r.assistant_messages),
+        total_assistant_messages: sumCounts(acc.total_assistant_messages, r.assistant_messages),
         total_messages: sumCounts(acc.total_messages, r.total_messages),
       }),
       {
@@ -126,9 +113,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ records, summary });
   } catch (err) {
     console.error("Failed to query sessions:", err);
-    return NextResponse.json(
-      { error: "Failed to query session data" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to query session data" }, { status: 500 });
   }
 }

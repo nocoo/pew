@@ -132,11 +132,9 @@ describe("kv-store", () => {
 
   it("writeLastFetch passes 7-day TTL to kv.put", async () => {
     await writeLastFetch(kv, "openrouter", { json: { a: 1 }, fetchedAt: "T" });
-    expect(kv.put).toHaveBeenCalledWith(
-      KEY_LAST_FETCH_OPENROUTER,
-      expect.any(String),
-      { expirationTtl: 7 * 24 * 60 * 60 },
-    );
+    expect(kv.put).toHaveBeenCalledWith(KEY_LAST_FETCH_OPENROUTER, expect.any(String), {
+      expirationTtl: 7 * 24 * 60 * 60,
+    });
   });
 
   it("writeLastFetch swallows kv.put errors and logs", async () => {

@@ -30,10 +30,7 @@ export interface CacheInvalidateRequest {
   key: string;
 }
 
-export type CacheRpcRequest =
-  | CacheListRequest
-  | CacheClearRequest
-  | CacheInvalidateRequest;
+export type CacheRpcRequest = CacheListRequest | CacheClearRequest | CacheInvalidateRequest;
 
 // ---------------------------------------------------------------------------
 // Router
@@ -70,7 +67,7 @@ export async function handleCacheRpc(
     default:
       return Response.json(
         { error: `Unknown cache method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

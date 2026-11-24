@@ -27,13 +27,7 @@ export function shouldUseSecureCookies(): boolean {
 }
 
 /** Persist user ID into the JWT token. */
-export function jwtCallback({
-  token,
-  user,
-}: {
-  token: JWT;
-  user?: User;
-}): JWT {
+export function jwtCallback({ token, user }: { token: JWT; user?: User }): JWT {
   if (user?.id) {
     token.userId = user.id;
   }
@@ -41,13 +35,7 @@ export function jwtCallback({
 }
 
 /** Expose user ID in the session object. */
-export function sessionCallback({
-  session,
-  token,
-}: {
-  session: Session;
-  token: JWT;
-}): Session {
+export function sessionCallback({ session, token }: { session: Session; token: JWT }): Session {
   if (token.userId && session.user) {
     session.user.id = token.userId as string;
   }
@@ -86,9 +74,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async (req) => {
     // Cookie configuration for reverse proxy environments
     cookies: {
       pkceCodeVerifier: {
-        name: useSecureCookies
-          ? "__Secure-authjs.pkce.code_verifier"
-          : "authjs.pkce.code_verifier",
+        name: useSecureCookies ? "__Secure-authjs.pkce.code_verifier" : "authjs.pkce.code_verifier",
         options: {
           httpOnly: true,
           sameSite: "lax",
@@ -106,9 +92,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async (req) => {
         },
       },
       callbackUrl: {
-        name: useSecureCookies
-          ? "__Secure-authjs.callback-url"
-          : "authjs.callback-url",
+        name: useSecureCookies ? "__Secure-authjs.callback-url" : "authjs.callback-url",
         options: {
           httpOnly: true,
           sameSite: "lax",
@@ -117,9 +101,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async (req) => {
         },
       },
       sessionToken: {
-        name: useSecureCookies
-          ? "__Secure-authjs.session-token"
-          : "authjs.session-token",
+        name: useSecureCookies ? "__Secure-authjs.session-token" : "authjs.session-token",
         options: {
           httpOnly: true,
           sameSite: "lax",
@@ -128,9 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async (req) => {
         },
       },
       csrfToken: {
-        name: useSecureCookies
-          ? "__Host-authjs.csrf-token"
-          : "authjs.csrf-token",
+        name: useSecureCookies ? "__Host-authjs.csrf-token" : "authjs.csrf-token",
         options: {
           httpOnly: true,
           sameSite: "lax",
@@ -152,7 +132,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async (req) => {
                 providerAccountId: account.providerAccountId,
                 email: profile?.email ?? null,
               }
-            : null
+            : null,
         );
       },
       jwt: jwtCallback,
@@ -168,7 +148,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async (req) => {
             try {
               await dbWrite.execute(
                 "UPDATE invite_codes SET used_by = ? WHERE code = ? AND used_by LIKE 'pending:%'",
-                [user.id, code]
+                [user.id, code],
               );
             } catch {
               // Best-effort backfill — code is already consumed, admin sees

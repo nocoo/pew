@@ -7,14 +7,16 @@ import type { CodexCursor } from "@pew/core";
 import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
 /** Helper: create a Codex JSONL token_count event line */
-function codexTokenLine(opts: {
-  input?: number;
-  output?: number;
-  lastInput?: number;
-  lastOutput?: number;
-  model?: string;
-  timestamp?: string;
-} = {}): string {
+function codexTokenLine(
+  opts: {
+    input?: number;
+    output?: number;
+    lastInput?: number;
+    lastOutput?: number;
+    model?: string;
+    timestamp?: string;
+  } = {},
+): string {
   const {
     input = 1000,
     output = 200,
@@ -58,10 +60,7 @@ function codexSessionMeta(model = "o3-mini"): string {
   });
 }
 
-function codexGoalSessionMeta(opts: {
-  id: string;
-  parentThreadId?: string;
-}): string {
+function codexGoalSessionMeta(opts: { id: string; parentThreadId?: string }): string {
   return JSON.stringify({
     type: "session_meta",
     timestamp: "2026-03-07T10:00:00.000Z",
@@ -110,10 +109,7 @@ describe("codexTokenDriver", () => {
         `${codexSessionMeta()}\n${codexTokenLine()}\n`,
       );
 
-      const files = await codexTokenDriver.discover(
-        { codexSessionsDir: tempDir },
-        ctx,
-      );
+      const files = await codexTokenDriver.discover({ codexSessionsDir: tempDir }, ctx);
       expect(files).toHaveLength(1);
       expect(files[0]).toContain("rollout-abc123.jsonl");
     });
@@ -280,8 +276,7 @@ describe("codexTokenDriver", () => {
   describe("parse + buildCursor", () => {
     it("parses Codex JSONL and builds cursor with endOffset + lastTotals", async () => {
       const filePath = join(tempDir, "rollout-abc.jsonl");
-      const content =
-        `${codexSessionMeta("o3-mini")}\n${codexTokenLine({ input: 1000, output: 200 })}\n`;
+      const content = `${codexSessionMeta("o3-mini")}\n${codexTokenLine({ input: 1000, output: 200 })}\n`;
       await writeFile(filePath, content);
 
       const resume = {
@@ -314,10 +309,7 @@ describe("codexTokenDriver", () => {
       const dayDir = join(tempDir, "2026", "03", "07");
       await mkdir(dayDir, { recursive: true });
       const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
-      const rootPath = join(
-        dayDir,
-        `rollout-2026-03-07T10-00-00-${goalId}.jsonl`,
-      );
+      const rootPath = join(dayDir, `rollout-2026-03-07T10-00-00-${goalId}.jsonl`);
       const continuationPath = join(
         dayDir,
         "rollout-2026-03-07T11-00-00-019fbeda-8b7d-7b13-9eb3-87cecc4607e9.jsonl",
@@ -326,8 +318,20 @@ describe("codexTokenDriver", () => {
         rootPath,
         `${[
           codexGoalSessionMeta({ id: goalId }),
-          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T10:01:00.000Z" }),
-          codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T10:02:00.000Z" }),
+          codexTokenLine({
+            input: 100,
+            output: 10,
+            lastInput: 100,
+            lastOutput: 10,
+            timestamp: "2026-03-07T10:01:00.000Z",
+          }),
+          codexTokenLine({
+            input: 200,
+            output: 20,
+            lastInput: 100,
+            lastOutput: 10,
+            timestamp: "2026-03-07T10:02:00.000Z",
+          }),
         ].join("\n")}\n`,
       );
       // Goal continuation rollouts replay the same process-wide cumulative
@@ -336,17 +340,32 @@ describe("codexTokenDriver", () => {
         continuationPath,
         `${[
           codexGoalSessionMeta({ id: goalId }),
-          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T11:01:00.000Z" }),
-          codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T11:02:00.000Z" }),
-          codexTokenLine({ input: 300, output: 30, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T11:03:00.000Z" }),
+          codexTokenLine({
+            input: 100,
+            output: 10,
+            lastInput: 100,
+            lastOutput: 10,
+            timestamp: "2026-03-07T11:01:00.000Z",
+          }),
+          codexTokenLine({
+            input: 200,
+            output: 20,
+            lastInput: 100,
+            lastOutput: 10,
+            timestamp: "2026-03-07T11:02:00.000Z",
+          }),
+          codexTokenLine({
+            input: 300,
+            output: 30,
+            lastInput: 100,
+            lastOutput: 10,
+            timestamp: "2026-03-07T11:03:00.000Z",
+          }),
         ].join("\n")}\n`,
       );
 
       const goalCtx: SyncContext = {};
-      const files = await codexTokenDriver.discover(
-        { codexSessionsDir: tempDir },
-        goalCtx,
-      );
+      const files = await codexTokenDriver.discover({ codexSessionsDir: tempDir }, goalCtx);
       codexTokenDriver.preload?.({}, goalCtx);
       const deltas = [];
       for (const filePath of files) {
@@ -450,14 +469,8 @@ describe("codexTokenDriver", () => {
       const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
       const parentThreadId = "019fbeda-8b7d-7b13-9eb3-87cecc4607e9";
       const childThreadId = "019fbf71-32f5-70d3-9113-2f8b4430656e";
-      const parentPath = join(
-        dayDir,
-        `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`,
-      );
-      const childPath = join(
-        dayDir,
-        `rollout-2026-03-07T10-30-00-${childThreadId}.jsonl`,
-      );
+      const parentPath = join(dayDir, `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`);
+      const childPath = join(dayDir, `rollout-2026-03-07T10-30-00-${childThreadId}.jsonl`);
       await writeFile(
         parentPath,
         `${[
@@ -477,10 +490,7 @@ describe("codexTokenDriver", () => {
       );
 
       const goalCtx: SyncContext = {};
-      const files = await codexTokenDriver.discover(
-        { codexSessionsDir: tempDir },
-        goalCtx,
-      );
+      const files = await codexTokenDriver.discover({ codexSessionsDir: tempDir }, goalCtx);
       const deltas = [];
       for (const filePath of files) {
         const st = await import("node:fs/promises").then((m) => m.stat(filePath));
@@ -512,14 +522,8 @@ describe("codexTokenDriver", () => {
       const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
       const parentThreadId = "019fbeda-8b7d-7b13-9eb3-87cecc4607e9";
       const childThreadId = "019fbf71-32f5-70d3-9113-2f8b4430656e";
-      const parentPath = join(
-        dayDir,
-        `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`,
-      );
-      const childPath = join(
-        dayDir,
-        `rollout-2026-03-07T10-30-00-${childThreadId}.jsonl`,
-      );
+      const parentPath = join(dayDir, `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`);
+      const childPath = join(dayDir, `rollout-2026-03-07T10-30-00-${childThreadId}.jsonl`);
       await writeFile(
         parentPath,
         `${[

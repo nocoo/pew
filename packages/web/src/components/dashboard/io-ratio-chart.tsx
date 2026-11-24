@@ -1,12 +1,7 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  PieChart,
-  Pie,
-  Tooltip,
-  Cell,
-} from "recharts";
+import { PieChart, Pie, Tooltip, Cell } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart } from "@/lib/palette";
@@ -63,11 +58,7 @@ function IoRatioTooltip({
  * Donut chart showing input vs output token split with an inner label
  * displaying the I/O ratio (e.g. "3.2:1").
  */
-export function IoRatioChart({
-  inputTokens,
-  outputTokens,
-  className,
-}: IoRatioChartProps) {
+export function IoRatioChart({ inputTokens, outputTokens, className }: IoRatioChartProps) {
   const total = inputTokens + outputTokens;
 
   if (total === 0) {
@@ -108,9 +99,7 @@ export function IoRatioChart({
         className,
       )}
     >
-      <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">
-        Input / Output
-      </p>
+      <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">Input / Output</p>
 
       <div className="flex flex-col items-center">
         <div className="relative h-[180px] w-[180px]">
@@ -136,9 +125,7 @@ export function IoRatioChart({
           </DashboardResponsiveContainer>
           {/* Center label showing I/O ratio */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-lg font-semibold text-basalt-foreground">
-              {ratioLabel}
-            </span>
+            <span className="text-lg font-semibold text-basalt-foreground">{ratioLabel}</span>
             <span className="text-[10px] text-basalt-muted-foreground">I/O ratio</span>
           </div>
         </div>
@@ -147,13 +134,8 @@ export function IoRatioChart({
         <div className="mt-3 grid w-full grid-cols-2 gap-x-4 gap-y-2">
           {chartData.map((item) => (
             <div key={item.name} className="flex items-center gap-2">
-              <div
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: item.fill }}
-              />
-              <span className="text-xs text-basalt-muted-foreground">
-                {item.name}
-              </span>
+              <div className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.fill }} />
+              <span className="text-xs text-basalt-muted-foreground">{item.name}</span>
               <span className="ml-auto text-xs font-medium text-basalt-foreground">
                 {formatTokens(item.value)}
               </span>

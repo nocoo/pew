@@ -53,10 +53,7 @@ function responseItemLine(role: string, ts: string): string {
 }
 
 /** Create a token_count event_msg line */
-function tokenCountLine(
-  ts: string,
-  totals: Record<string, number>,
-): string {
+function tokenCountLine(ts: string, totals: Record<string, number>): string {
   return JSON.stringify({
     timestamp: ts,
     type: "event_msg",
@@ -152,9 +149,7 @@ describe("collectCodexSessions", () => {
     const s = result[0];
     expect(s.source).toBe("codex");
     expect(s.kind).toBe("human");
-    expect(s.sessionKey).toBe(
-      "codex:019cb243-2c35-7f03-a94a-46b99385c1d6",
-    );
+    expect(s.sessionKey).toBe("codex:019cb243-2c35-7f03-a94a-46b99385c1d6");
     expect(s.userMessages).toBe(2);
     expect(s.assistantMessages).toBe(2);
     expect(s.totalMessages).toBe(9); // all valid lines
@@ -168,9 +163,7 @@ describe("collectCodexSessions", () => {
 
   it("should use session_meta.payload.id as session key", async () => {
     const f = join(tmpDir, "rollout-id.jsonl");
-    const lines = [
-      sessionMetaLine({ id: "my-unique-session-uuid" }),
-    ];
+    const lines = [sessionMetaLine({ id: "my-unique-session-uuid" })];
     await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
@@ -180,9 +173,7 @@ describe("collectCodexSessions", () => {
 
   it("should fallback to sha256 of path when no session_meta ID", async () => {
     const f = join(tmpDir, "rollout-no-id.jsonl");
-    const lines = [
-      eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
-    ];
+    const lines = [eventMsgLine("user_message", "2026-03-07T10:00:00.000Z")];
     await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
@@ -229,9 +220,7 @@ describe("collectCodexSessions", () => {
 
   it("should hash projectRef from session_meta.payload.cwd", async () => {
     const f = join(tmpDir, "rollout-cwd.jsonl");
-    const lines = [
-      sessionMetaLine({ cwd: "/home/user/my-project" }),
-    ];
+    const lines = [sessionMetaLine({ cwd: "/home/user/my-project" })];
     await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
@@ -242,9 +231,7 @@ describe("collectCodexSessions", () => {
   it("should set projectRef to null when no session_meta cwd", async () => {
     const f = join(tmpDir, "rollout-no-cwd.jsonl");
     // event_msg with no session_meta → no cwd
-    const lines = [
-      eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
-    ];
+    const lines = [eventMsgLine("user_message", "2026-03-07T10:00:00.000Z")];
     await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
@@ -459,9 +446,7 @@ describe("collectCodexSessions", () => {
   it("should set model to null when no model info present", async () => {
     const f = join(tmpDir, "rollout-no-model.jsonl");
     // Event with timestamp but no model info
-    const lines = [
-      eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
-    ];
+    const lines = [eventMsgLine("user_message", "2026-03-07T10:00:00.000Z")];
     await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);

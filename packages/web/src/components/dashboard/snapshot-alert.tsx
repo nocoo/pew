@@ -41,8 +41,8 @@ function SnapshotAlertInner() {
             <DialogTitle className="text-lg">Seasons Pending Snapshot</DialogTitle>
           </div>
           <DialogDescription>
-            The following ended seasons haven&apos;t been snapshotted yet. Leaderboard
-            results are still based on live data.
+            The following ended seasons haven&apos;t been snapshotted yet. Leaderboard results are
+            still based on live data.
           </DialogDescription>
         </DialogHeader>
 
@@ -75,8 +75,7 @@ function SeasonRow({ season }: { season: SeasonListItem }) {
     <li className="flex items-center gap-2 text-sm text-basalt-foreground">
       <span className="size-1.5 shrink-0 rounded-full bg-basalt-warning" />
       <span>
-        {season.name}{" "}
-        <span className="text-basalt-muted-foreground">(ended {formatted})</span>
+        {season.name} <span className="text-basalt-muted-foreground">(ended {formatted})</span>
       </span>
     </li>
   );

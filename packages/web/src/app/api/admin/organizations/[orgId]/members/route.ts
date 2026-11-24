@@ -13,10 +13,7 @@ import { getDbRead, getDbWrite } from "@/lib/db";
 // GET — list members
 // ---------------------------------------------------------------------------
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const admin = await resolveAdmin(request);
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -54,16 +51,10 @@ export async function GET(
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Organization tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Organization tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to list organization members:", err);
-    return NextResponse.json(
-      { error: "Failed to list members" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list members" }, { status: 500 });
   }
 }
 
@@ -71,10 +62,7 @@ export async function GET(
 // POST — add member
 // ---------------------------------------------------------------------------
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const admin = await resolveAdmin(request);
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -92,10 +80,7 @@ export async function POST(
   const { userId } = body as { userId?: string };
 
   if (!userId || typeof userId !== "string") {
-    return NextResponse.json(
-      { error: "userId is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
 
   const dbRead = await getDbRead();
@@ -122,7 +107,7 @@ export async function POST(
     if (existing) {
       return NextResponse.json(
         { error: "User is already a member of this organization" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -133,7 +118,7 @@ export async function POST(
     await dbWrite.execute(
       `INSERT INTO organization_members (id, org_id, user_id, joined_at)
        VALUES (?, ?, ?, ?)`,
-      [id, orgId, userId, now]
+      [id, orgId, userId, now],
     );
 
     return NextResponse.json(
@@ -150,20 +135,14 @@ export async function POST(
           slug: user.slug,
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
-      return NextResponse.json(
-        { error: "Organization tables not yet migrated" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Organization tables not yet migrated" }, { status: 503 });
     }
     console.error("Failed to add organization member:", err);
-    return NextResponse.json(
-      { error: "Failed to add member" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to add member" }, { status: 500 });
   }
 }

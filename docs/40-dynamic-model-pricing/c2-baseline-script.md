@@ -44,6 +44,7 @@ bun run sync-prices --fixture <dir>        # read JSON from local dir instead of
 ```
 
 Exit codes:
+
 - `0` success.
 - `1` network/parse error severe enough that no entries were produced.
 - `2` schema/regression failure (output would lose a model present in the prior baseline).
@@ -53,9 +54,9 @@ Internal shape:
 ```typescript
 interface SyncOptions {
   dryRun: boolean;
-  fixtureDir: string | null;   // when set, read openrouter.json + models-dev.json from this dir
-  outputPath: string;          // defaults to packages/worker-read/src/data/model-prices.json
-  now: string;                 // ISO-8601, injected for determinism in tests
+  fixtureDir: string | null; // when set, read openrouter.json + models-dev.json from this dir
+  outputPath: string; // defaults to packages/worker-read/src/data/model-prices.json
+  now: string; // ISO-8601, injected for determinism in tests
 }
 
 interface SyncResult {
@@ -101,12 +102,12 @@ Initial content for this commit:
 ### `scripts/__tests__/sync-prices.test.ts`
 
 ```typescript
-test('fixture mode produces deterministic output')
-test('dry-run does not write file')
-test('regression check fails when prior baseline has model that fixture lacks')
-test('--allow-removals lets removals through and prints REMOVED: lines')
-test('first-run (no prior baseline) writes successfully')
-test('warnings from parsers propagate into SyncResult')
+test("fixture mode produces deterministic output");
+test("dry-run does not write file");
+test("regression check fails when prior baseline has model that fixture lacks");
+test("--allow-removals lets removals through and prints REMOVED: lines");
+test("first-run (no prior baseline) writes successfully");
+test("warnings from parsers propagate into SyncResult");
 ```
 
 Network is never exercised — every test passes `fixtureDir`. Live-fetch path is covered manually + by a separate (non-CI) smoke task.
@@ -116,10 +117,10 @@ Network is never exercised — every test passes `fixtureDir`. Live-fetch path i
 Pure data validation, no I/O beyond reading the JSON file:
 
 ```typescript
-test('every legacy model in LEGACY_DEFAULT_MODEL_PRICES is present with identical pricing')
-test('every entry conforms to DynamicPricingEntry schema')
-test('entries are sorted by [provider, model]')
-test('no duplicate model IDs')
+test("every legacy model in LEGACY_DEFAULT_MODEL_PRICES is present with identical pricing");
+test("every entry conforms to DynamicPricingEntry schema");
+test("entries are sorted by [provider, model]");
+test("no duplicate model IDs");
 ```
 
 The first test uses a **local** `LEGACY_DEFAULT_MODEL_PRICES` constant defined inside this test file (a frozen copy of the 14 entries currently in `packages/web/src/lib/pricing.ts`). It deliberately does **not** import from `web/src/lib/pricing.ts` — C5 will delete that table, and a guard that depends on the thing it's guarding would self-destruct on the cutover. The frozen copy stays as the long-term regression floor: any future edit that drops one of these 14 model IDs (or changes their per-million prices) fails the test, regardless of whether `DEFAULT_MODEL_PRICES` still exists.

@@ -38,7 +38,7 @@ function claudeLine(ts: string, input: number, output: number): string {
 
 /** Create a Pi usage JSONL */
 function piSession(ts: string, input: number, output: number): string {
- return `${JSON.stringify({ type: "message", timestamp:ts, message: {role:"assistant",model:"pi-model",usage:{input,output,cacheRead:0,cacheWrite:0}}})}\n`;
+  return `${JSON.stringify({ type: "message", timestamp: ts, message: { role: "assistant", model: "pi-model", usage: { input, output, cacheRead: 0, cacheWrite: 0 } } })}\n`;
 }
 
 /** Create an OpenCode message JSON */
@@ -116,7 +116,10 @@ describe("CLI E2E: sync pipeline", () => {
 
     // Verify queue file on disk
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l));
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
     expect(records).toHaveLength(1);
     expect(records[0].source).toBe("claude-code");
     expect(records[0].model).toBe("glm-5");
@@ -152,10 +155,7 @@ describe("CLI E2E: sync pipeline", () => {
     // OpenCode
     const ocDir = join(dataDir, "opencode", "message", "ses_e2e");
     await mkdir(ocDir, { recursive: true });
-    await writeFile(
-      join(ocDir, "msg_e2e_001.json"),
-      opencodeMsg(1771120749059, 14967, 437),
-    );
+    await writeFile(join(ocDir, "msg_e2e_001.json"), opencodeMsg(1771120749059, 14967, 437));
 
     // OpenClaw
     const ocwDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
@@ -181,7 +181,10 @@ describe("CLI E2E: sync pipeline", () => {
 
     // All 4 sources in queue
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l));
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
     const sources = new Set(records.map((r: any) => r.source));
     expect(sources.has("claude-code")).toBe(true);
     expect(sources.has("pi")).toBe(true);
@@ -413,7 +416,10 @@ describe("CLI E2E: queue record schema validation", () => {
     });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l));
+    const records = queueRaw
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
     expect(records.length).toBeGreaterThan(0);
 
     for (const record of records) {
@@ -438,9 +444,7 @@ describe("CLI E2E: queue record schema validation", () => {
       expect(typeof record.total_tokens).toBe("number");
 
       // Valid source value
-      expect(["claude-code", "pi", "opencode", "openclaw"]).toContain(
-        record.source,
-      );
+      expect(["claude-code", "pi", "opencode", "openclaw"]).toContain(record.source);
 
       // Non-negative tokens
       expect(record.input_tokens).toBeGreaterThanOrEqual(0);
@@ -466,9 +470,14 @@ describe("CLI E2E: queue record schema validation", () => {
 
       // No extra unexpected fields
       const expectedKeys = new Set([
-        "source", "model", "hour_start",
-        "input_tokens", "cached_input_tokens", "output_tokens",
-        "reasoning_output_tokens", "total_tokens",
+        "source",
+        "model",
+        "hour_start",
+        "input_tokens",
+        "cached_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens",
+        "total_tokens",
       ]);
       for (const key of Object.keys(record)) {
         expect(expectedKeys.has(key)).toBe(true);

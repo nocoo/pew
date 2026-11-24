@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  executeStatus,
-  type SourceDirs,
-} from "../commands/status.js";
+import { executeStatus, type SourceDirs } from "../commands/status.js";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import type { QueueRecord } from "@pew/core";
@@ -83,7 +80,11 @@ describe("executeStatus", () => {
     await cursorStore.save({
       files: {
         "/home/.gemini/tmp/proj/chats/session.json": {
-          type: "gemini", messages: {}, inode: 1, size: 100, mtimeMs: 1000,
+          type: "gemini",
+          messages: {},
+          inode: 1,
+          size: 100,
+          mtimeMs: 1000,
         },
       },
       antigravity: { dbCount: 2, updatedAt: "2026-10-09T00:00:00.000Z" },
@@ -97,7 +98,8 @@ describe("executeStatus", () => {
 
   it("should omit Antigravity from tracked sources when its validated snapshot contains no databases", async () => {
     await new CursorStore(stateDir).save({
-      files: {}, antigravity: { dbCount: 0, updatedAt: "2026-10-09T00:00:00.000Z" },
+      files: {},
+      antigravity: { dbCount: 0, updatedAt: "2026-10-09T00:00:00.000Z" },
       updatedAt: "2026-10-09T00:00:00.000Z",
     });
     const result = await executeStatus({ stateDir, sourceDirs: defaultDirs });

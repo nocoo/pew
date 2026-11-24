@@ -1,14 +1,7 @@
 "use client";
 
 import { CHART_ANIMATION } from "@/lib/chart-animation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
 import { fmtHour } from "@/lib/date-helpers";
 import { chartAxis, modelColor } from "@/lib/palette";
@@ -47,7 +40,12 @@ function ModelTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  return <ChartSeriesTooltip title={typeof label === "number" ? fmtHour(label) : label} entries={payload} />;
+  return (
+    <ChartSeriesTooltip
+      title={typeof label === "number" ? fmtHour(label) : label}
+      entries={payload}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -59,11 +57,7 @@ function ModelTooltip({
  * X-axis is hours 0-23, Y-axis is tokens, bars are stacked by model.
  * Shows the selected models plus "Other", independently of the shorter legend.
  */
-export function HourlyModelChart({
-  data,
-  className,
-  compact = false,
-}: HourlyModelChartProps) {
+export function HourlyModelChart({ data, className, compact = false }: HourlyModelChartProps) {
   if (!data.length || data.every((d) => Object.keys(d.models).length === 0)) {
     return (
       <div
@@ -100,7 +94,12 @@ export function HourlyModelChart({
         className,
       )}
     >
-      <div className={cn("flex flex-wrap items-center justify-between gap-2", compact ? "mb-2" : "mb-4")}>
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-2",
+          compact ? "mb-2" : "mb-4",
+        )}
+      >
         <p className="text-xs md:text-sm text-basalt-muted-foreground">
           {compact ? "By Model" : "Hourly By Model"}
         </p>
@@ -108,26 +107,26 @@ export function HourlyModelChart({
           <div className="flex flex-wrap items-center gap-3">
             {legendItems.map(({ key, label, color }) => (
               <div key={key} className="flex items-center gap-1.5">
-                <div
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: color }}
-                />
+                <div className="h-2 w-2 rounded-full" style={{ background: color }} />
                 <span className="text-xs text-basalt-muted-foreground truncate max-w-[100px]">
                   {label}
                 </span>
               </div>
             ))}
-            <ChartLegendMore items={modelKeys.map((model) => ({ key: model, label: model, color: modelColor(model).color }))} />
+            <ChartLegendMore
+              items={modelKeys.map((model) => ({
+                key: model,
+                label: model,
+                color: modelColor(model).color,
+              }))}
+            />
           </div>
         )}
       </div>
 
       <div style={{ height: compact ? 160 : 280 }}>
         <DashboardResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-          >
+          <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={chartAxis}
@@ -149,10 +148,7 @@ export function HourlyModelChart({
               tickLine={false}
               width={compact ? 40 : 50}
             />
-            <Tooltip
-              content={<ModelTooltip />}
-              isAnimationActive={false}
-            />
+            <Tooltip content={<ModelTooltip />} isAnimationActive={false} />
             {modelKeys.map((model, i) => (
               <Bar
                 {...CHART_ANIMATION}

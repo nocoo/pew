@@ -64,7 +64,7 @@ describe("GET /api/usage", () => {
         makeGetRequest("/api/usage", {
           from: "2026-03-01",
           to: "2026-03-07",
-        })
+        }),
       );
 
       expect(res.status).toBe(200);

@@ -13,11 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SCRIPT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "snapshot-node-modules.sh",
-);
+const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "..", "snapshot-node-modules.sh");
 
 function write(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -67,9 +63,7 @@ describe("snapshot-node-modules.sh", () => {
 
     const scope = join(snap, "node_modules", "@pew");
     expect(lstatSync(scope).isDirectory()).toBe(true);
-    expect(realpathSync(join(scope, "core"))).toBe(
-      realpathSync(join(snap, "packages", "core")),
-    );
+    expect(realpathSync(join(scope, "core"))).toBe(realpathSync(join(snap, "packages", "core")));
     expect(realpathSync(join(snap, "packages", "web", "node_modules", "@pew", "core"))).toBe(
       realpathSync(join(snap, "packages", "core")),
     );
@@ -98,8 +92,8 @@ describe("snapshot-node-modules.sh", () => {
     const { repo, snap } = buildFixture(root);
     const r = spawnSync("sh", [SCRIPT, repo, snap], { encoding: "utf-8" });
     expect(r.status).toBe(0);
-    expect(
-      readFileSync(join(snap, "packages", "core", "package.json"), "utf-8"),
-    ).toContain("@pew/core");
+    expect(readFileSync(join(snap, "packages", "core", "package.json"), "utf-8")).toContain(
+      "@pew/core",
+    );
   });
 });

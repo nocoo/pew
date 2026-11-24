@@ -77,18 +77,21 @@ export function findPricingEntriesForModel(
       bareMatches.push(entry);
     } else if (candidates.some((c) => normalizeForMatch(c) === needleNorm)) {
       fuzzyMatches.push(entry);
-    } else if (candidates.some((c) => stripVariantSuffix(normalizeForMatch(c)) === needleStripped)) {
+    } else if (
+      candidates.some((c) => stripVariantSuffix(normalizeForMatch(c)) === needleStripped)
+    ) {
       suffixMatches.push(entry);
     }
   }
 
-  const matches = exactMatches.length > 0
-    ? exactMatches
-    : bareMatches.length > 0
-      ? bareMatches
-      : fuzzyMatches.length > 0
-        ? fuzzyMatches
-        : suffixMatches;
+  const matches =
+    exactMatches.length > 0
+      ? exactMatches
+      : bareMatches.length > 0
+        ? bareMatches
+        : fuzzyMatches.length > 0
+          ? fuzzyMatches
+          : suffixMatches;
 
   // Dedup by (model, provider, origin)
   const seen = new Set<string>();
@@ -124,9 +127,7 @@ export function formatPerMillion(value: number | null | undefined): string {
 }
 
 /** Format a context window value (e.g. 200000 → "200K"). */
-export function formatContextWindow(
-  value: number | null | undefined,
-): string | null {
+export function formatContextWindow(value: number | null | undefined): string | null {
   if (value == null || value <= 0) return null;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
   if (value >= 1_000) return `${Math.round(value / 1_000)}K`;

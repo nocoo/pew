@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  parseOpenCodeFile,
-  normalizeOpenCodeTokens,
-} from "../parsers/opencode.js";
+import { parseOpenCodeFile, normalizeOpenCodeTokens } from "../parsers/opencode.js";
 import { coerceEpochMs } from "../utils/time.js";
 
 /** Helper: create an OpenCode message JSON */
@@ -146,12 +143,15 @@ describe("parseOpenCodeFile", () => {
 
   it("should return null delta for user messages", async () => {
     const filePath = join(tempDir, "msg_user.json");
-    await writeFile(filePath, JSON.stringify({
-      id: "msg_user1",
-      sessionID: "ses_001",
-      role: "user",
-      time: { created: 1771120749059 },
-    }));
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        id: "msg_user1",
+        sessionID: "ses_001",
+        role: "user",
+        time: { created: 1771120749059 },
+      }),
+    );
 
     const result = await parseOpenCodeFile({ filePath, lastTotals: null });
     expect(result.delta).toBeNull();

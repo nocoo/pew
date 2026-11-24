@@ -70,10 +70,7 @@ export type WorkingHoursDay = {
  * @param tzOffset — minutes offset from UTC (positive = west of UTC, e.g. 480 for PST).
  *                   From `new Date().getTimezoneOffset()`. Defaults to 0 (UTC).
  */
-export function toWorkingHoursGrid(
-  records: SessionRow[],
-  tzOffset = 0,
-): WorkingHoursDay[] {
+export function toWorkingHoursGrid(records: SessionRow[], tzOffset = 0): WorkingHoursDay[] {
   // Initialize 7x24 grid of zeroes
   const grid: WorkingHoursDay[] = DAY_NAMES.map((day) => ({
     day,

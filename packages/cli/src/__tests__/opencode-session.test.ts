@@ -71,10 +71,7 @@ describe("collectOpenCodeSessions", () => {
   it("should collect a session from multiple message files", async () => {
     const dir = join(tmpDir, "ses_001");
     await mkdir(dir);
-    await writeFile(
-      join(dir, "msg_user_001.json"),
-      userMsg({ time: { created: 1771120700.0 } }),
-    );
+    await writeFile(join(dir, "msg_user_001.json"), userMsg({ time: { created: 1771120700.0 } }));
     await writeFile(
       join(dir, "msg_001.json"),
       opencodeMsg({ time: { created: 1771120749.0, completed: 1771120822.0 } }),
@@ -168,7 +165,7 @@ describe("collectOpenCodeSessions", () => {
 
     const result = await collectOpenCodeSessions(dir);
     expect(result).toHaveLength(1);
-    expect(s => s.startedAt).toBeDefined();
+    expect((s) => s.startedAt).toBeDefined();
   });
 
   it("should skip malformed JSON files gracefully", async () => {
@@ -191,10 +188,7 @@ describe("collectOpenCodeSessions", () => {
   it("should count all roles in totalMessages", async () => {
     const dir = join(tmpDir, "ses_005");
     await mkdir(dir);
-    await writeFile(
-      join(dir, "msg_001.json"),
-      userMsg({ time: { created: 1771120700.0 } }),
-    );
+    await writeFile(join(dir, "msg_001.json"), userMsg({ time: { created: 1771120700.0 } }));
     await writeFile(
       join(dir, "msg_002.json"),
       opencodeMsg({
@@ -222,9 +216,12 @@ describe("collectOpenCodeSessions", () => {
   it("should ignore non-json files in directory", async () => {
     const dir = join(tmpDir, "ses_006");
     await mkdir(dir);
-    await writeFile(join(dir, "msg_001.json"), opencodeMsg({
-      time: { created: 1771120700.0 },
-    }));
+    await writeFile(
+      join(dir, "msg_001.json"),
+      opencodeMsg({
+        time: { created: 1771120700.0 },
+      }),
+    );
     await writeFile(join(dir, "README.md"), "ignore me");
     await writeFile(join(dir, ".DS_Store"), "ignore me too");
 

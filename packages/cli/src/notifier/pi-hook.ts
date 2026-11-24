@@ -50,9 +50,7 @@ export default function (pi: ExtensionAPI) {
 `;
 }
 
-export async function installPiHook(
-  opts: PiHookOptions,
-): Promise<NotifierOperationResult> {
+export async function installPiHook(opts: PiHookOptions): Promise<NotifierOperationResult> {
   const fs = opts.fs ?? { readFile, writeFile, mkdir, unlink };
   const content = buildExtensionContent(opts.notifyPath);
 
@@ -88,9 +86,7 @@ export async function installPiHook(
   };
 }
 
-export async function uninstallPiHook(
-  opts: PiHookOptions,
-): Promise<NotifierOperationResult> {
+export async function uninstallPiHook(opts: PiHookOptions): Promise<NotifierOperationResult> {
   const fs = opts.fs ?? { readFile, writeFile, mkdir, unlink };
 
   let existing: string;
@@ -128,9 +124,7 @@ export async function uninstallPiHook(
   };
 }
 
-export async function getPiHookStatus(
-  opts: PiHookOptions,
-): Promise<NotifierStatus> {
+export async function getPiHookStatus(opts: PiHookOptions): Promise<NotifierStatus> {
   const fs = opts.fs ?? { readFile, writeFile, mkdir, unlink };
 
   try {

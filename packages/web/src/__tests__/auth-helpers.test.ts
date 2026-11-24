@@ -13,17 +13,13 @@ vi.mock("@/lib/db", () => ({
   resetDb: vi.fn(),
 }));
 
-const { auth } = await import("@/auth") as unknown as {
+const { auth } = (await import("@/auth")) as unknown as {
   auth: ReturnType<typeof vi.fn>;
 };
-const { getDbRead } = await import("@/lib/db") as unknown as {
+const { getDbRead } = (await import("@/lib/db")) as unknown as {
   getDbRead: ReturnType<typeof vi.fn>;
 };
-const {
-  resolveUser,
-  E2E_TEST_USER_ID,
-  E2E_TEST_USER_EMAIL,
-} = await import("@/lib/auth-helpers");
+const { resolveUser, E2E_TEST_USER_ID, E2E_TEST_USER_EMAIL } = await import("@/lib/auth-helpers");
 
 import { createMockClient } from "./test-utils";
 
@@ -154,7 +150,9 @@ describe("resolveUser", () => {
     });
 
     it("rejects a saved session after account deletion without using another bearer identity", async () => {
-      auth.mockResolvedValueOnce({ user: { id: "deleted", email: "admin@example.com" } } as Session);
+      auth.mockResolvedValueOnce({
+        user: { id: "deleted", email: "admin@example.com" },
+      } as Session);
       const db = createMockClient();
       db.getUserById.mockResolvedValueOnce(null);
       getDbRead.mockResolvedValueOnce(db);
@@ -172,16 +170,20 @@ describe("resolveUser", () => {
 
     it("blocks an admin settings write when the saved session's user no longer exists", async () => {
       vi.stubEnv("ADMIN_EMAILS", "admin@example.com");
-      auth.mockResolvedValueOnce({ user: { id: "deleted", email: "admin@example.com" } } as Session);
+      auth.mockResolvedValueOnce({
+        user: { id: "deleted", email: "admin@example.com" },
+      } as Session);
       const db = createMockClient();
       db.getUserById.mockResolvedValueOnce(null);
       getDbRead.mockResolvedValueOnce(db);
       const { PUT } = await import("@/app/api/admin/settings/route");
       const { getDbWrite } = await import("@/lib/db");
-      const response = await PUT(new Request("http://localhost/api/admin/settings", {
-        method: "PUT",
-        body: JSON.stringify({ key: "audit_fixture", value: "changed" }),
-      }));
+      const response = await PUT(
+        new Request("http://localhost/api/admin/settings", {
+          method: "PUT",
+          body: JSON.stringify({ key: "audit_fixture", value: "changed" }),
+        }),
+      );
       expect(response.status).toBe(403);
       expect(getDbWrite).not.toHaveBeenCalled();
     });

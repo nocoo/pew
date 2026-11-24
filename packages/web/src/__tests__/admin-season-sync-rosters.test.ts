@@ -29,9 +29,7 @@ const { resolveAdmin } = (await import("@/lib/admin")) as unknown as {
   resolveAdmin: ReturnType<typeof vi.fn>;
 };
 
-const { syncAllRostersForSeason } = (await import(
-  "@/lib/season-roster"
-)) as unknown as {
+const { syncAllRostersForSeason } = (await import("@/lib/season-roster")) as unknown as {
   syncAllRostersForSeason: ReturnType<typeof vi.fn>;
 };
 
@@ -40,10 +38,9 @@ const { syncAllRostersForSeason } = (await import(
 // ---------------------------------------------------------------------------
 
 function makeRequest(): Request {
-  return new Request(
-    "http://localhost:7020/api/admin/seasons/season-1/sync-rosters",
-    { method: "POST" },
-  );
+  return new Request("http://localhost:7020/api/admin/seasons/season-1/sync-rosters", {
+    method: "POST",
+  });
 }
 
 const ADMIN = { userId: "admin-1", email: "admin@test.com" };
@@ -127,18 +124,12 @@ describe("POST /api/admin/seasons/[seasonId]/sync-rosters", () => {
     const body = await res.json();
     expect(body.synced_teams).toBe(3);
 
-    expect(syncAllRostersForSeason).toHaveBeenCalledWith(
-      mockDbRead,
-      mockDbWrite,
-      "season-1",
-    );
+    expect(syncAllRostersForSeason).toHaveBeenCalledWith(mockDbRead, mockDbWrite, "season-1");
   });
 
   it("should return 503 when season tables not migrated", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.getSeasonById.mockRejectedValueOnce(
-      new Error("no such table: seasons"),
-    );
+    mockDbRead.getSeasonById.mockRejectedValueOnce(new Error("no such table: seasons"));
 
     const res = await POST(makeRequest(), { params: seasonParams });
     expect(res.status).toBe(503);

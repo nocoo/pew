@@ -209,9 +209,7 @@ describe("GET /api/teams/[teamId]", () => {
 
   it("should return 503 when teams table does not exist", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockDbRead.getTeamMembership.mockRejectedValueOnce(
-      new Error("no such table: team_members"),
-    );
+    mockDbRead.getTeamMembership.mockRejectedValueOnce(new Error("no such table: team_members"));
 
     const res = await GET(makeRequest("GET"), makeParams());
 
@@ -304,7 +302,9 @@ describe("GET /api/teams/[teamId]", () => {
       auto_register_season: null,
     });
     mockDbRead.getTeamMembers.mockResolvedValueOnce([]);
-    mockDbRead.getTeamSeasonRegistrations.mockRejectedValueOnce(new Error("no such table: season_teams"));
+    mockDbRead.getTeamSeasonRegistrations.mockRejectedValueOnce(
+      new Error("no such table: season_teams"),
+    );
 
     const res = await GET(makeRequest("GET"), makeParams());
     const body = await res.json();
@@ -375,7 +375,9 @@ describe("DELETE /api/teams/[teamId]", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u2" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("member"); // not owner
     mockDbRead.countTeamMembers.mockResolvedValueOnce(3); // 3 members
-    mockDbWrite.batch.mockResolvedValue([{ results: [{ user_id: "u2" }], meta: { changes: 1, duration: 0 } }]);
+    mockDbWrite.batch.mockResolvedValue([
+      { results: [{ user_id: "u2" }], meta: { changes: 1, duration: 0 } },
+    ]);
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
     const body = await res.json();
@@ -393,7 +395,15 @@ describe("DELETE /api/teams/[teamId]", () => {
     mockDbRead.countTeamMembers.mockResolvedValueOnce(1); // last member
     mockDbRead.getTeamLogoUrl.mockResolvedValueOnce(null);
     mockDbWrite.execute.mockResolvedValue({ changes: 1 });
-    mockDbWrite.batch.mockResolvedValue([{ results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [{ logo_url: "https://r2.example.com/logo.png" }], meta: { changes: 1, duration: 0 } }]);
+    mockDbWrite.batch.mockResolvedValue([
+      { results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } },
+      { results: [], meta: { changes: 0, duration: 0 } },
+      { results: [], meta: { changes: 0, duration: 0 } },
+      {
+        results: [{ logo_url: "https://r2.example.com/logo.png" }],
+        meta: { changes: 1, duration: 0 },
+      },
+    ]);
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
 
@@ -405,7 +415,9 @@ describe("DELETE /api/teams/[teamId]", () => {
     expect(batchCalls.some((s) => s.sql.includes("DELETE FROM season_teams"))).toBe(true);
     expect(batchCalls.some((s) => s.sql.includes("DELETE FROM teams"))).toBe(true);
     // Should NOT delete season_roster_snapshots (historical data)
-    expect(batchCalls.some((s) => s.sql.includes("DELETE FROM season_roster_snapshots"))).toBe(false);
+    expect(batchCalls.some((s) => s.sql.includes("DELETE FROM season_roster_snapshots"))).toBe(
+      false,
+    );
   });
 
   it("should delete team logo when last member leaves and logo exists", async () => {
@@ -417,7 +429,15 @@ describe("DELETE /api/teams/[teamId]", () => {
     mockDbRead.countTeamMembers.mockResolvedValueOnce(1);
     mockDbRead.getTeamLogoUrl.mockResolvedValueOnce("https://r2.example.com/logo.png");
     mockDbWrite.execute.mockResolvedValue({ changes: 1 });
-    mockDbWrite.batch.mockResolvedValue([{ results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [{ logo_url: "https://r2.example.com/logo.png" }], meta: { changes: 1, duration: 0 } }]);
+    mockDbWrite.batch.mockResolvedValue([
+      { results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } },
+      { results: [], meta: { changes: 0, duration: 0 } },
+      { results: [], meta: { changes: 0, duration: 0 } },
+      {
+        results: [{ logo_url: "https://r2.example.com/logo.png" }],
+        meta: { changes: 1, duration: 0 },
+      },
+    ]);
     deleteTeamLogoByUrl.mockResolvedValueOnce(undefined);
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
@@ -435,7 +455,15 @@ describe("DELETE /api/teams/[teamId]", () => {
     mockDbRead.countTeamMembers.mockResolvedValueOnce(1);
     mockDbRead.getTeamLogoUrl.mockResolvedValueOnce("https://r2.example.com/logo.png");
     mockDbWrite.execute.mockResolvedValue({ changes: 1 });
-    mockDbWrite.batch.mockResolvedValue([{ results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [{ logo_url: "https://r2.example.com/logo.png" }], meta: { changes: 1, duration: 0 } }]);
+    mockDbWrite.batch.mockResolvedValue([
+      { results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } },
+      { results: [], meta: { changes: 0, duration: 0 } },
+      { results: [], meta: { changes: 0, duration: 0 } },
+      {
+        results: [{ logo_url: "https://r2.example.com/logo.png" }],
+        meta: { changes: 1, duration: 0 },
+      },
+    ]);
     deleteTeamLogoByUrl.mockRejectedValueOnce(new Error("R2 unavailable"));
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
@@ -445,9 +473,7 @@ describe("DELETE /api/teams/[teamId]", () => {
 
   it("should return 503 when teams table does not exist (DELETE)", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockDbRead.getTeamMembership.mockRejectedValueOnce(
-      new Error("no such table: team_members"),
-    );
+    mockDbRead.getTeamMembership.mockRejectedValueOnce(new Error("no such table: team_members"));
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
 
@@ -463,8 +489,13 @@ describe("DELETE /api/teams/[teamId]", () => {
     expect(res.status).toBe(500);
   });
   it.each([
-    ["active", 0, 409], ["active", 1, 200], ["upcoming", 0, 200], ["ended", 1, 409],
-    ["concurrent-member", 1, 409], ["late-failure", 1, 500], ["closing-minute", 1, 200],
+    ["active", 0, 409],
+    ["active", 1, 200],
+    ["upcoming", 0, 200],
+    ["ended", 1, 409],
+    ["concurrent-member", 1, 409],
+    ["late-failure", 1, 500],
+    ["closing-minute", 1, 200],
   ] as const)("enforces %s withdrawal=%s atomically", async (status, withdrawal, expected) => {
     const sqlite = new DatabaseSync(":memory:");
     sqlite.exec(`
@@ -478,37 +509,53 @@ describe("DELETE /api/teams/[teamId]", () => {
       INSERT INTO team_members VALUES ('t1', 'u1', 'owner');
     `);
     const start = status === "upcoming" ? "2999-01-01T00:00:00Z" : "2000-01-01T00:00:00Z";
-    const end = status === "closing-minute" ? new Date(Date.now() - 30_000).toISOString() : status === "ended" ? "2001-01-01T00:00:00Z" : "2999-12-31T00:00:00Z";
+    const end =
+      status === "closing-minute"
+        ? new Date(Date.now() - 30_000).toISOString()
+        : status === "ended"
+          ? "2001-01-01T00:00:00Z"
+          : "2999-12-31T00:00:00Z";
     sqlite.prepare("INSERT INTO seasons VALUES ('s1', ?, ?, ?, 0)").run(start, end, withdrawal);
-    sqlite.exec("INSERT INTO season_teams VALUES ('t1', 's1'); INSERT INTO season_team_members VALUES ('t1', 's1', 'u1');");
-    if (status === "concurrent-member") sqlite.exec("INSERT INTO team_members VALUES ('t1', 'u2', 'member')");
-    if (status === "late-failure") sqlite.exec("CREATE TABLE retained (team_id TEXT REFERENCES teams(id)); INSERT INTO retained VALUES ('t1')");
+    sqlite.exec(
+      "INSERT INTO season_teams VALUES ('t1', 's1'); INSERT INTO season_team_members VALUES ('t1', 's1', 'u1');",
+    );
+    if (status === "concurrent-member")
+      sqlite.exec("INSERT INTO team_members VALUES ('t1', 'u2', 'member')");
+    if (status === "late-failure")
+      sqlite.exec(
+        "CREATE TABLE retained (team_id TEXT REFERENCES teams(id)); INSERT INTO retained VALUES ('t1')",
+      );
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbRead.countTeamMembers.mockResolvedValueOnce(1);
-    mockDbWrite.batch.mockImplementation(async (statements: Array<{ sql: string; params?: unknown[] }>) => {
-      sqlite.exec("BEGIN");
-      try {
-        const results = statements.map(({ sql, params }) => ({
-          results: sqlite.prepare(sql).all(...(params ?? []) as Array<string | number | null>),
-          meta: { changes: 0, duration: 0 },
-        }));
-        sqlite.exec("COMMIT");
-        return results;
-      } catch (error) {
-        sqlite.exec("ROLLBACK");
-        throw error;
-      }
-    });
+    mockDbWrite.batch.mockImplementation(
+      async (statements: Array<{ sql: string; params?: unknown[] }>) => {
+        sqlite.exec("BEGIN");
+        try {
+          const results = statements.map(({ sql, params }) => ({
+            results: sqlite.prepare(sql).all(...((params ?? []) as Array<string | number | null>)),
+            meta: { changes: 0, duration: 0 },
+          }));
+          sqlite.exec("COMMIT");
+          return results;
+        } catch (error) {
+          sqlite.exec("ROLLBACK");
+          throw error;
+        }
+      },
+    );
     try {
       const res = await DELETE(makeRequest("DELETE"), makeParams());
       expect(res.status).toBe(expected);
       for (const table of ["teams", "team_members", "season_teams", "season_team_members"]) {
-        expect(sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get()!.n).toBe(expected === 200 ? 0 : table === "team_members" && status === "concurrent-member" ? 2 : 1);
+        expect(sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get()!.n).toBe(
+          expected === 200 ? 0 : table === "team_members" && status === "concurrent-member" ? 2 : 1,
+        );
       }
-    } finally { sqlite.close(); }
+    } finally {
+      sqlite.close();
+    }
   });
-
 });
 
 // ---------------------------------------------------------------------------
@@ -544,20 +591,14 @@ describe("PATCH /api/teams/[teamId]", () => {
 
   it("should return 400 for name exceeding 64 characters", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    const res = await PATCH(
-      makeRequest("PATCH", { name: "A".repeat(65) }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { name: "A".repeat(65) }), makeParams());
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("max 64 characters");
   });
 
   it("should return 400 for empty name after trim", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    const res = await PATCH(
-      makeRequest("PATCH", { name: "   " }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { name: "   " }), makeParams());
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("max 64 characters");
   });
@@ -566,10 +607,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce(null);
 
-    const res = await PATCH(
-      makeRequest("PATCH", { name: "Test" }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { name: "Test" }), makeParams());
     expect(res.status).toBe(403);
     expect((await res.json()).error).toContain("Not a member");
   });
@@ -577,10 +615,7 @@ describe("PATCH /api/teams/[teamId]", () => {
   it("should reject unauthenticated with 401", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce(null);
 
-    const res = await PATCH(
-      makeRequest("PATCH", { auto_register_season: true }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { auto_register_season: true }), makeParams());
 
     expect(res.status).toBe(401);
   });
@@ -589,10 +624,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u2" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("member"); // not owner
 
-    const res = await PATCH(
-      makeRequest("PATCH", { auto_register_season: true }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { auto_register_season: true }), makeParams());
 
     expect(res.status).toBe(403);
     expect((await res.json()).error).toContain("Only the team owner");
@@ -603,10 +635,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await PATCH(
-      makeRequest("PATCH", { auto_register_season: true }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { auto_register_season: true }), makeParams());
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -623,10 +652,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await PATCH(
-      makeRequest("PATCH", { auto_register_season: false }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { auto_register_season: false }), makeParams());
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -639,10 +665,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await PATCH(
-      makeRequest("PATCH", { name: "New Name" }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { name: "New Name" }), makeParams());
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -677,10 +700,7 @@ describe("PATCH /api/teams/[teamId]", () => {
   it("should return 400 when no valid fields provided", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
-    const res = await PATCH(
-      makeRequest("PATCH", { foo: "bar" }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { foo: "bar" }), makeParams());
 
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("No valid fields");
@@ -690,14 +710,9 @@ describe("PATCH /api/teams/[teamId]", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     // UPDATE fails because column doesn't exist yet
-    mockDbWrite.execute.mockRejectedValueOnce(
-      new Error("no such column: auto_register_season"),
-    );
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("no such column: auto_register_season"));
 
-    const res = await PATCH(
-      makeRequest("PATCH", { auto_register_season: true }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { auto_register_season: true }), makeParams());
     const body = await res.json();
 
     expect(res.status).toBe(503);
@@ -709,10 +724,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await PATCH(
-      makeRequest("PATCH", { name: "New Name" }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { name: "New Name" }), makeParams());
     const body = await res.json();
 
     // Name-only update doesn't touch the new column, should succeed
@@ -727,10 +739,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     // UPDATE fails with unexpected error
     mockDbWrite.execute.mockRejectedValueOnce(new Error("D1 connection timeout"));
 
-    const res = await PATCH(
-      makeRequest("PATCH", { name: "New Name" }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { name: "New Name" }), makeParams());
 
     expect(res.status).toBe(500);
     expect((await res.json()).error).toContain("Failed to rename");
@@ -741,10 +750,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
-    const res = await PATCH(
-      makeRequest("PATCH", { regenerate_invite_code: true }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { regenerate_invite_code: true }), makeParams());
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -785,10 +791,7 @@ describe("PATCH /api/teams/[teamId]", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u2" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("member"); // not owner
 
-    const res = await PATCH(
-      makeRequest("PATCH", { regenerate_invite_code: true }),
-      makeParams(),
-    );
+    const res = await PATCH(makeRequest("PATCH", { regenerate_invite_code: true }), makeParams());
 
     expect(res.status).toBe(403);
     expect((await res.json()).error).toContain("Only the team owner");

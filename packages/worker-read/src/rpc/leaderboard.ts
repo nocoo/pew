@@ -7,9 +7,12 @@
 import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
 import { getLeaderboardRevision, getLeaderboardSnapshot } from "../leaderboard-snapshot";
 import type {
-  GetTeamLeaderboardRequest, GetTeamRankRequest,
-  GetUserLeaderboardRequest, GetUserRankRequest,
-  LeaderboardEntryRow, LeaderboardRpcRequest,
+  GetTeamLeaderboardRequest,
+  GetTeamRankRequest,
+  GetUserLeaderboardRequest,
+  GetUserRankRequest,
+  LeaderboardEntryRow,
+  LeaderboardRpcRequest,
   TeamLeaderboardEntryRow,
 } from "./leaderboard-types";
 export type * from "./leaderboard-types";
@@ -20,7 +23,7 @@ export type * from "./leaderboard-types";
 
 async function handleGetUserLeaderboard(
   req: GetUserLeaderboardRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId) {
     return Response.json({ error: "seasonId is required" }, { status: 400 });
@@ -53,7 +56,7 @@ async function handleGetUserLeaderboard(
 
 async function handleGetTeamLeaderboard(
   req: GetTeamLeaderboardRequest,
-  db: D1Database
+  db: D1Database,
 ): Promise<Response> {
   if (!req.seasonId) {
     return Response.json({ error: "seasonId is required" }, { status: 400 });
@@ -85,15 +88,9 @@ async function handleGetTeamLeaderboard(
   return Response.json({ result: results.results });
 }
 
-async function handleGetUserRank(
-  req: GetUserRankRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetUserRank(req: GetUserRankRequest, db: D1Database): Promise<Response> {
   if (!req.seasonId || !req.userId) {
-    return Response.json(
-      { error: "seasonId and userId are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "seasonId and userId are required" }, { status: 400 });
   }
 
   const sql = `
@@ -116,15 +113,9 @@ async function handleGetUserRank(
   return Response.json({ result: result });
 }
 
-async function handleGetTeamRank(
-  req: GetTeamRankRequest,
-  db: D1Database
-): Promise<Response> {
+async function handleGetTeamRank(req: GetTeamRankRequest, db: D1Database): Promise<Response> {
   if (!req.seasonId || !req.teamId) {
-    return Response.json(
-      { error: "seasonId and teamId are required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "seasonId and teamId are required" }, { status: 400 });
   }
 
   const sql = `
@@ -161,7 +152,7 @@ async function handleGetTeamRank(
 export async function handleLeaderboardRpc(
   request: LeaderboardRpcRequest,
   db: D1Database,
-  kv: KVNamespace
+  kv: KVNamespace,
 ): Promise<Response> {
   switch (request.method) {
     case "leaderboard.getUsers":
@@ -179,7 +170,7 @@ export async function handleLeaderboardRpc(
     default:
       return Response.json(
         { error: `Unknown leaderboard method: ${(request as { method: string }).method}` },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }

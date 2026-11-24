@@ -5,11 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "@nocoo/basalt/icons";
 import { Button } from "@nocoo/basalt/components/button";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
-import {
-  BADGE_CARD_SHADOW,
-  PassHeader,
-  PassPerforation,
-} from "@/components/brand/badge-card";
+import { BADGE_CARD_SHADOW, PassHeader, PassPerforation } from "@/components/brand/badge-card";
 import { SOURCES } from "@pew/core";
 import { agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/lib/usage-transforms";
@@ -20,8 +16,7 @@ const AGENTS = SOURCES;
 
 const INSTALL_CMD = "npm install -g @nocoo/pew";
 
-const NO_HOOK_NOTE =
-  "Some agents have no session-end hook — they sync on the next pew sync.";
+const NO_HOOK_NOTE = "Some agents have no session-end hook — they sync on the next pew sync.";
 
 // ---------------------------------------------------------------------------
 
@@ -85,11 +80,7 @@ function SpaceshipIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         opacity="0.35"
       />
-      <path
-        d="M10 4 L14 8.5 L14 11.5 L10 16 L8 12.5 L8 7.5 Z"
-        fill="currentColor"
-        opacity="0.55"
-      />
+      <path d="M10 4 L14 8.5 L14 11.5 L10 16 L8 12.5 L8 7.5 Z" fill="currentColor" opacity="0.55" />
       <path
         d="M12 7.5 C16 5.5 24 5 30 7.2 C33 8.2 35.5 9.2 37 10 C35.5 10.8 33 11.8 30 12.8 C24 15 16 14.5 12 12.5 C11 12 10.5 11 10.5 10 C10.5 9 11 8 12 7.5 Z"
         fill="currentColor"
@@ -248,7 +239,9 @@ function BoardingCoupon() {
         </li>
       </ol>
 
-      <p className="mt-2 text-[10px] leading-snug text-basalt-muted-foreground/60">{NO_HOOK_NOTE}</p>
+      <p className="mt-2 text-[10px] leading-snug text-basalt-muted-foreground/60">
+        {NO_HOOK_NOTE}
+      </p>
 
       <Button asChild className="mt-auto w-full">
         <Link href="/login">
@@ -299,10 +292,7 @@ export function LandingContent() {
         className="animate-fade-up overflow-hidden rounded-2xl bg-basalt-card ring-1 ring-black/[0.08] dark:ring-white/[0.06]"
         style={{ boxShadow: BADGE_CARD_SHADOW, animationDelay: "40ms" }}
       >
-        <PassHeader
-          badge="BOARDING PASS"
-          meta="LOCAL-FIRST · READ-ONLY · TOKENS ONLY"
-        />
+        <PassHeader badge="BOARDING PASS" meta="LOCAL-FIRST · READ-ONLY · TOKENS ONLY" />
 
         {/*
           Long 4-coupon pass:

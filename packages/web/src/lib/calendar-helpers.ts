@@ -59,10 +59,7 @@ export function getYearWeeks(year: number): Date[][] {
  *
  * Returns an empty array when `sortedValues` is empty.
  */
-export function computePercentileBoundaries(
-  sortedValues: number[],
-  levels: number,
-): number[] {
+export function computePercentileBoundaries(sortedValues: number[], levels: number): number[] {
   if (sortedValues.length === 0 || levels <= 0) return [];
 
   const boundaries: number[] = [];

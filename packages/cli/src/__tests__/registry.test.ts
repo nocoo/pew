@@ -89,7 +89,9 @@ describe("notifier registry", () => {
     expect(statuses["claude-code"]).toBe("not-installed");
   });
 
-  it("installAll catches driver.install errors and returns skip result", { timeout: 15_000 }, async () => {
+  it("installAll catches driver.install errors and returns skip result", {
+    timeout: 15_000,
+  }, async () => {
     // Mock the claude-hook install to throw
     const claudeHook = await import("../notifier/claude-hook.js");
     const spy = vi
@@ -165,9 +167,7 @@ describe("notifier registry", () => {
 
   it("installAll uses String(error) for non-Error throws", { timeout: 15_000 }, async () => {
     const claudeHook = await import("../notifier/claude-hook.js");
-    const spy = vi
-      .spyOn(claudeHook, "installClaudeHook")
-      .mockRejectedValue("string error");
+    const spy = vi.spyOn(claudeHook, "installClaudeHook").mockRejectedValue("string error");
 
     try {
       const results = await installAll(paths);
@@ -187,9 +187,7 @@ describe("notifier registry", () => {
     await installAll(paths, { spawn });
 
     const claudeHook = await import("../notifier/claude-hook.js");
-    const spy = vi
-      .spyOn(claudeHook, "uninstallClaudeHook")
-      .mockRejectedValue(42);
+    const spy = vi.spyOn(claudeHook, "uninstallClaudeHook").mockRejectedValue(42);
 
     try {
       const results = await uninstallAll(paths, { spawn });

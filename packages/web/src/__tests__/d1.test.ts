@@ -12,15 +12,26 @@ const TEST_CONFIG = {
 };
 
 describe("local D1 transport safety", () => {
-  const config = { accountId: "pew-local-test", databaseId: "pew-local-test", apiToken: "synthetic" };
-  const env = { NODE_ENV: "development", RESOURCE_ENV: "test", E2E_SKIP_AUTH: "true", PEW_LOCAL_D1_URL: "http://127.0.0.1:12345" };
+  const config = {
+    accountId: "pew-local-test",
+    databaseId: "pew-local-test",
+    apiToken: "synthetic",
+  };
+  const env = {
+    NODE_ENV: "development",
+    RESOURCE_ENV: "test",
+    E2E_SKIP_AUTH: "true",
+    PEW_LOCAL_D1_URL: "http://127.0.0.1:12345",
+  };
   it("keeps production API selection when no local override exists", () => {
     expect(localD1BaseUrl(TEST_CONFIG, {})).toBeUndefined();
     expect(localD1BaseUrl(config, env)).toBe(env.PEW_LOCAL_D1_URL);
   });
   it.each([
-    { NODE_ENV: "production" }, { RAILWAY_ENVIRONMENT: "production" },
-    { RESOURCE_ENV: "production" }, { E2E_SKIP_AUTH: "false" },
+    { NODE_ENV: "production" },
+    { RAILWAY_ENVIRONMENT: "production" },
+    { RESOURCE_ENV: "production" },
+    { E2E_SKIP_AUTH: "false" },
     { PEW_LOCAL_D1_URL: "https://127.0.0.1:12345" },
     { PEW_LOCAL_D1_URL: "http://example.com:12345" },
     { PEW_LOCAL_D1_URL: "http://127.0.0.1" },
@@ -66,36 +77,32 @@ describe("D1Client", () => {
     });
 
     it("should throw if accountId is empty", () => {
-      expect(
-        () => new D1Client({ ...TEST_CONFIG, accountId: "" })
-      ).toThrow("accountId is required");
+      expect(() => new D1Client({ ...TEST_CONFIG, accountId: "" })).toThrow(
+        "accountId is required",
+      );
     });
 
     it("should throw if databaseId is empty", () => {
-      expect(
-        () => new D1Client({ ...TEST_CONFIG, databaseId: "" })
-      ).toThrow("databaseId is required");
+      expect(() => new D1Client({ ...TEST_CONFIG, databaseId: "" })).toThrow(
+        "databaseId is required",
+      );
     });
 
     it("should throw if apiToken is empty", () => {
-      expect(
-        () => new D1Client({ ...TEST_CONFIG, apiToken: "" })
-      ).toThrow("apiToken is required");
+      expect(() => new D1Client({ ...TEST_CONFIG, apiToken: "" })).toThrow("apiToken is required");
     });
   });
 
   describe("query()", () => {
     it("should send correct HTTP request", async () => {
-      mockFetch.mockResolvedValueOnce(
-        mockD1Response([{ id: 1, name: "test" }])
-      );
+      mockFetch.mockResolvedValueOnce(mockD1Response([{ id: 1, name: "test" }]));
 
       await client.query("SELECT * FROM users WHERE id = ?", [1]);
 
       expect(mockFetch).toHaveBeenCalledOnce();
       const [url, opts] = mockFetch.mock.calls[0]!;
       expect(url).toBe(
-        "https://api.cloudflare.com/client/v4/accounts/test-account-id/d1/database/test-database-id/query"
+        "https://api.cloudflare.com/client/v4/accounts/test-account-id/d1/database/test-database-id/query",
       );
       expect(opts.method).toBe("POST");
       expect(opts.headers).toEqual({
@@ -115,9 +122,7 @@ describe("D1Client", () => {
       ];
       mockFetch.mockResolvedValueOnce(mockD1Response(rows));
 
-      const result = await client.query<{ id: number; email: string }>(
-        "SELECT * FROM users"
-      );
+      const result = await client.query<{ id: number; email: string }>("SELECT * FROM users");
 
       expect(result.results).toEqual(rows);
       expect(result.meta.duration).toBe(0.1);
@@ -126,9 +131,7 @@ describe("D1Client", () => {
     it("should handle empty results", async () => {
       mockFetch.mockResolvedValueOnce(mockD1Response([]));
 
-      const result = await client.query("SELECT * FROM users WHERE id = ?", [
-        999,
-      ]);
+      const result = await client.query("SELECT * FROM users WHERE id = ?", [999]);
 
       expect(result.results).toEqual([]);
     });
@@ -154,9 +157,7 @@ describe("D1Client", () => {
       };
       mockFetch.mockResolvedValueOnce(errorResponse);
 
-      const err = await client
-        .query("SELECT * FROM users")
-        .catch((e: unknown) => e);
+      const err = await client.query("SELECT * FROM users").catch((e: unknown) => e);
 
       expect(err).toBeInstanceOf(D1Error);
       expect((err as D1Error).message).toBe("database not found");
@@ -166,22 +167,16 @@ describe("D1Client", () => {
     it("should throw D1Error on network failure", async () => {
       mockFetch.mockRejectedValueOnce(new Error("fetch failed"));
 
-      await expect(
-        client.query("SELECT * FROM users")
-      ).rejects.toThrow(D1Error);
+      await expect(client.query("SELECT * FROM users")).rejects.toThrow(D1Error);
     });
 
     it("should include message when fetch rejects with non-Error value", async () => {
       mockFetch.mockRejectedValueOnce("string rejection");
 
-      const err = await client
-        .query("SELECT 1")
-        .catch((e: unknown) => e);
+      const err = await client.query("SELECT 1").catch((e: unknown) => e);
 
       expect(err).toBeInstanceOf(D1Error);
-      expect((err as D1Error).message).toBe(
-        "D1 network error: string rejection",
-      );
+      expect((err as D1Error).message).toBe("D1 network error: string rejection");
     });
 
     it("should fallback to D1 HTTP status when errors array is empty", async () => {
@@ -195,9 +190,7 @@ describe("D1Client", () => {
           }),
       });
 
-      const err = await client
-        .query("SELECT 1")
-        .catch((e: unknown) => e);
+      const err = await client.query("SELECT 1").catch((e: unknown) => e);
 
       expect(err).toBeInstanceOf(D1Error);
       expect((err as D1Error).message).toBe("D1 HTTP 403");
@@ -231,10 +224,10 @@ describe("D1Client", () => {
           }),
       });
 
-      const meta = await client.execute(
-        "INSERT INTO users (id, email) VALUES (?, ?)",
-        ["u1", "a@b.com"]
-      );
+      const meta = await client.execute("INSERT INTO users (id, email) VALUES (?, ?)", [
+        "u1",
+        "a@b.com",
+      ]);
 
       expect(meta.changes).toBe(1);
     });
@@ -244,10 +237,13 @@ describe("D1Client", () => {
     it("submits every statement in one native D1 batch", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, result: [
-          { results: [{ id: 1 }], meta: { changes: 0, duration: 0.1 } },
-          { results: [], meta: { changes: 1, duration: 0.02 } },
-        ] }),
+        json: async () => ({
+          success: true,
+          result: [
+            { results: [{ id: 1 }], meta: { changes: 0, duration: 0.1 } },
+            { results: [], meta: { changes: 1, duration: 0.02 } },
+          ],
+        }),
       });
       const statements = [
         { sql: "SELECT * FROM users WHERE id = ?", params: [1] },
@@ -263,14 +259,24 @@ describe("D1Client", () => {
 
     it("propagates a batch failure without retrying statements separately", async () => {
       mockFetch.mockResolvedValueOnce(mockD1Response([], false));
-      await expect(client.batch([{ sql: "DELETE FROM team_members" }, { sql: "DELETE FROM teams" }])).rejects.toThrow("D1 error");
+      await expect(
+        client.batch([{ sql: "DELETE FROM team_members" }, { sql: "DELETE FROM teams" }]),
+      ).rejects.toThrow("D1 error");
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    it.each([undefined, [], [{ success: false }]])("rejects incomplete or failed batch results (%j)", async (result) => {
-      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, result }) });
-      await expect(client.batch([{ sql: "SELECT 1" }])).rejects.toThrow("Invalid D1 batch result");
-    });
+    it.each([undefined, [], [{ success: false }]])(
+      "rejects incomplete or failed batch results (%j)",
+      async (result) => {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true, result }),
+        });
+        await expect(client.batch([{ sql: "SELECT 1" }])).rejects.toThrow(
+          "Invalid D1 batch result",
+        );
+      },
+    );
 
     it("should return empty array for empty batch", async () => {
       const results = await client.batch([]);
@@ -291,13 +297,11 @@ describe("D1Client", () => {
 
   describe("firstOrNull()", () => {
     it("should return first row when results exist", async () => {
-      mockFetch.mockResolvedValueOnce(
-        mockD1Response([{ id: 1, name: "Alice" }])
-      );
+      mockFetch.mockResolvedValueOnce(mockD1Response([{ id: 1, name: "Alice" }]));
 
       const row = await client.firstOrNull<{ id: number; name: string }>(
         "SELECT * FROM users WHERE id = ?",
-        [1]
+        [1],
       );
 
       expect(row).toEqual({ id: 1, name: "Alice" });
@@ -306,10 +310,7 @@ describe("D1Client", () => {
     it("should return null when no results", async () => {
       mockFetch.mockResolvedValueOnce(mockD1Response([]));
 
-      const row = await client.firstOrNull(
-        "SELECT * FROM users WHERE id = ?",
-        [999]
-      );
+      const row = await client.firstOrNull("SELECT * FROM users WHERE id = ?", [999]);
 
       expect(row).toBeNull();
     });

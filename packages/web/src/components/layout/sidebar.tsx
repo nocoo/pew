@@ -40,11 +40,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import type { ElementType } from "react";
 import { useAdmin } from "@/hooks/use-admin";
-import {
-  ADMIN_NAV_GROUP,
-  BASE_NAV_GROUPS,
-  type NavGroupDef,
-} from "@/lib/navigation";
+import { ADMIN_NAV_GROUP, BASE_NAV_GROUPS, type NavGroupDef } from "@/lib/navigation";
 import { APP_VERSION } from "@/lib/version";
 
 const ICON_MAP: Record<string, ElementType> = {
@@ -168,7 +164,11 @@ export function Sidebar({ resizable = true, onDismiss }: SidebarProps) {
               )),
             )
           : navGroups.map((group) => (
-              <SidebarGroup key={group.label} label={group.label} defaultOpen={group.defaultOpen ?? true}>
+              <SidebarGroup
+                key={group.label}
+                label={group.label}
+                defaultOpen={group.defaultOpen ?? true}
+              >
                 {group.items.map((item) => (
                   <SidebarItem
                     key={item.href}
