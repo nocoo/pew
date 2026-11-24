@@ -3,11 +3,10 @@
 #
 # Materialises the staged tree into a temp snapshot (checkout-index),
 # regenerates staged prerequisites inside it, reuses worktree
-# dependencies read-only, and runs the sequential gate there:
+# dependencies read-only, and runs S2, S1, and L1 lanes in parallel:
+#   S2  biome check --error-on-warnings + AST gates (dynamic-delete + @ts-expect-error)
+#   S1  packages/core build + next typegen + scripts/parallel-typecheck.sh
 #   L1  vitest run --coverage (95% x4 floors, exit-enforced)
-#   G1a scripts/parallel-typecheck.sh (5 packages, strict tsc)
-#   G1b biome check --error-on-warnings
-#   G1c AST gates: dynamic-delete + @ts-expect-error
 # No result caches, no extension fast paths: every commit runs the full
 # gate, so a staged bug fails even when the worktree holds an unstaged
 # fix. The worktree and index are never mutated; all generated output
@@ -19,9 +18,31 @@ command -v git >/dev/null 2>&1 || { echo "pre-commit: git is required" >&2; exit
 command -v bun >/dev/null 2>&1 || { echo "pre-commit: bun is required" >&2; exit 1; }
 
 snapshot=
+lane_pids=
+watchdog_pid=
+
+kill_tree() {
+  pid=$1
+  [ -n "$pid" ] || return 0
+  if command -v pkill >/dev/null 2>&1; then
+    pkill -TERM -P "$pid" >/dev/null 2>&1 || :
+  fi
+  kill -TERM "$pid" >/dev/null 2>&1 || :
+}
+
 cleanup() {
   status=$?
   trap - EXIT INT TERM HUP
+  if [ -n "$watchdog_pid" ]; then
+    kill_tree "$watchdog_pid"
+    watchdog_pid=
+  fi
+  for pid in $lane_pids; do
+    kill_tree "$pid"
+  done
+  for pid in $lane_pids; do
+    wait "$pid" >/dev/null 2>&1 || :
+  done
   if [ -n "$snapshot" ]; then
     rm -rf "$snapshot" || :
     snapshot=
@@ -70,6 +91,11 @@ rm -rf "$snapshot/node_modules"
 sh "$snapshot/scripts/snapshot-node-modules.sh" "$repo" "$snapshot"
 mkdir -p "$snapshot/node_modules/.cache"
 
+if [ ! -d "$snapshot/node_modules/next" ] && [ ! -d "$snapshot/packages/web/node_modules/next" ]; then
+  echo "pre-commit: next is not installed — run 'bun install' and commit the result" >&2
+  exit 1
+fi
+
 # Checks read staged configs via `bun run` with cwd=snapshot. Strip Git's
 # hook environment so nested git usage cannot touch the real index/worktree.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
@@ -79,27 +105,70 @@ export XDG_STATE_HOME="$snapshot/node_modules/.cache/xdg"
 PATH="$snapshot/node_modules/.bin:$PATH"
 cd "$snapshot"
 
-# Staged prerequisites, generated inside the snapshot before any reader:
-# tsc of dependents resolves @pew/core via the workspace link to
-# packages/core/dist, and packages/web/next-env.d.ts imports .next/types
-# route declarations. Both derive from staged sources, never the worktree.
-bun run --cwd packages/core build
-if [ ! -d node_modules/next ] && [ ! -d packages/web/node_modules/next ]; then
-  echo "pre-commit: next is not installed — run 'bun install' and commit the result" >&2
+timeout_sec=${PEW_L1_TIMEOUT_SEC:-180}
+logs_dir="$snapshot/.pew-hook-logs"
+mkdir -p "$logs_dir"
+
+(
+  set -e
+  biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 .
+  bun run gate:dynamic-delete
+  bun run gate:ts-expect-error
+) >"$logs_dir/s2.log" 2>&1 &
+s2_pid=$!
+
+(
+  set -e
+  bun run --cwd packages/core build
+  (cd packages/web && bun x next typegen)
+  bash scripts/parallel-typecheck.sh
+) >"$logs_dir/s1.log" 2>&1 &
+s1_pid=$!
+
+(
+  set -e
+  # Invoke vitest with --coverage directly so a staged package.json script cannot
+  # drop coverage collection while still passing thresholds in vitest.config.ts.
+  bun x vitest run --coverage
+  if [ ! -d coverage ] || [ ! -f coverage/index.html ] || [ ! -f coverage/coverage-summary.json ]; then
+    echo "pre-commit: coverage output is missing after vitest — coverage must run on the index snapshot" >&2
+    exit 1
+  fi
+) >"$logs_dir/l1.log" 2>&1 &
+l1_pid=$!
+
+lane_pids="$s2_pid $s1_pid $l1_pid"
+
+if [ "$timeout_sec" -gt 0 ] 2>/dev/null; then
+  parent_pid=$$
+  (
+    sleep "$timeout_sec"
+    echo "pre-commit: exceeded ${timeout_sec}s timeout" >&2
+    kill -TERM "$parent_pid" >/dev/null 2>&1 || :
+  ) &
+  watchdog_pid=$!
+fi
+
+set +e
+wait "$s2_pid"; s2_rc=$?
+wait "$s1_pid"; s1_rc=$?
+wait "$l1_pid"; l1_rc=$?
+set -e
+lane_pids=
+
+if [ -n "$watchdog_pid" ]; then
+  kill_tree "$watchdog_pid"
+  wait "$watchdog_pid" >/dev/null 2>&1 || :
+  watchdog_pid=
+fi
+
+for lane in s2 s1 l1; do
+  cat "$logs_dir/${lane}.log"
+done
+
+if [ "$s2_rc" -ne 0 ] || [ "$s1_rc" -ne 0 ] || [ "$l1_rc" -ne 0 ]; then
+  echo "pre-commit: failed (s2=$s2_rc s1=$s1_rc l1=$l1_rc)" >&2
   exit 1
 fi
-(cd packages/web && bun x next typegen)
 
-# Invoke vitest with --coverage directly so a staged package.json script cannot
-# drop coverage collection while still passing thresholds in vitest.config.ts.
-bun x vitest run --coverage
-if [ ! -d coverage ] || [ ! -f coverage/index.html ] || [ ! -f coverage/coverage-summary.json ]; then
-  echo "pre-commit: coverage output is missing after vitest — coverage must run on the index snapshot" >&2
-  exit 1
-fi
-bash scripts/parallel-typecheck.sh
-biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 .
-bun run gate:dynamic-delete
-bun run gate:ts-expect-error
-
-echo "✅ pre-commit passed: L1 coverage ≥95% (statements/branches/functions/lines) + G1 strict statics on the index snapshot"
+echo "✅ pre-commit passed: L1 coverage ≥95% (statements/branches/functions/lines) + S1/S2 strict statics on the index snapshot"

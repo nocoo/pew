@@ -187,13 +187,15 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 		baseline.test,
 	);
 	const isolated = runHook(wt);
-	const reachedBiome = (isolated.stdout + isolated.stderr).includes("Checked");
+	const isolatedOut = isolated.stdout + isolated.stderr;
+	const sawStagedTestFailure =
+		isolatedOut.includes("l1-probe.test.ts") || isolatedOut.includes("FAIL");
 	push(
 		"index-bad-worktree-good",
 		true,
 		isolated,
-		!reachedBiome,
-		`checkout-index biome_ran=${reachedBiome}`,
+		sawStagedTestFailure,
+		`checkout-index staged_test_failed=${sawStagedTestFailure}`,
 	);
 	resetProbe(wt, baseline);
 
