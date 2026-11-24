@@ -15,7 +15,7 @@ import {
   discoverCopilotCliFiles,
   discoverCopilotOtelFiles,
 } from "../../discovery/sources.js";
-import { parseCopilotCliFile } from "../../parsers/copilot-cli.js";
+import { parseCopilotCliFile, type CopilotCliFileResult } from "../../parsers/copilot-cli.js";
 import { parseCopilotOtelFile } from "../../parsers/copilot-otel.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
 import type {
@@ -28,11 +28,18 @@ import type {
   ByteOffsetResumeState,
 } from "../types.js";
 
-interface CopilotCliParseResult extends TokenParseResult {
-  endOffset: number;
+interface CopilotCliCursor extends ByteOffsetCursor {
+  seenApiCallIds?: string[];
 }
 
-export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
+interface CopilotCliParseResult extends TokenParseResult {
+  endOffset: number;
+  apiCallIds?: string[];
+}
+
+const MAX_SEEN_API_CALL_IDS = 4096;
+
+export const copilotCliTokenDriver: FileTokenDriver<CopilotCliCursor> = {
   kind: "file",
   source: "copilot-cli",
 
@@ -48,14 +55,23 @@ export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     // extension — a valid `copilot-otel.out` would otherwise be handed to the
     // process-log parser and silently yield nothing.
     ctx.copilotOtelPaths = new Set(otelFiles);
+    ctx.seenCopilotApiCallIds ??= new Set();
     return [...new Set([...processLogs, ...otelFiles])].sort();
   },
 
-  shouldSkip(cursor: ByteOffsetCursor | undefined, fingerprint: FileFingerprint): boolean {
+  preload(cursors, ctx): void {
+    ctx.seenCopilotApiCallIds ??= new Set();
+    for (const cursor of Object.values(cursors)) {
+      const ids = (cursor as CopilotCliCursor).seenApiCallIds;
+      if (ids) for (const id of ids) ctx.seenCopilotApiCallIds.add(id);
+    }
+  },
+
+  shouldSkip(cursor: CopilotCliCursor | undefined, fingerprint: FileFingerprint): boolean {
     return fileUnchanged(cursor, fingerprint);
   },
 
-  resumeState(cursor: ByteOffsetCursor | undefined, fingerprint: FileFingerprint): ByteOffsetResumeState {
+  resumeState(cursor: CopilotCliCursor | undefined, fingerprint: FileFingerprint): ByteOffsetResumeState {
     const startOffset =
       cursor && cursor.inode === fingerprint.inode ? (cursor.offset ?? 0) : 0;
     return { kind: "byte-offset", startOffset };
@@ -73,22 +89,31 @@ export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
           filePath,
           startOffset: r.startOffset,
           endBound: r.endBound,
+          seenApiCallIds: ctx.seenCopilotApiCallIds,
         });
-    return { deltas: result.deltas, endOffset: result.endOffset };
+    return {
+      deltas: result.deltas,
+      endOffset: result.endOffset,
+      ...(!ctx.copilotOtelPaths?.has(filePath)
+        ? { apiCallIds: (result as CopilotCliFileResult).apiCallIds }
+        : {}),
+    };
   },
 
   buildCursor(
     fingerprint: FileFingerprint,
     result: TokenParseResult,
-    _prev?: ByteOffsetCursor,
-  ): ByteOffsetCursor {
+    prev?: CopilotCliCursor,
+  ): CopilotCliCursor {
     const r = result as CopilotCliParseResult;
+    const seen = [...new Set([...(prev?.seenApiCallIds ?? []), ...(r.apiCallIds ?? [])])];
     return {
       inode: fingerprint.inode,
       mtimeMs: fingerprint.mtimeMs,
       size: fingerprint.size,
       offset: r.endOffset,
       updatedAt: new Date().toISOString(),
+      ...(seen.length ? { seenApiCallIds: seen.slice(-MAX_SEEN_API_CALL_IDS) } : {}),
     };
   },
 };

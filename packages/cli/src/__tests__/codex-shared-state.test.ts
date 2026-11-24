@@ -91,4 +91,13 @@ describe("snapshotJsonlSharedState / restoreJsonlSharedState", () => {
     restoreJsonlSharedState(ctx, snapshot);
     expect([...(ctx.seenClaudeMessageIds ?? [])]).toEqual([]);
   });
+
+  it("rolls back Copilot API-call IDs mutated during a discarded parse", () => {
+    const ctx: SyncContext = { seenCopilotApiCallIds: new Set(["keep"]) };
+    const snapshot = snapshotJsonlSharedState(ctx, "/unused/events.jsonl");
+    ctx.seenCopilotApiCallIds!.add("from-discarded-file");
+    restoreJsonlSharedState(ctx, snapshot);
+    expect([...ctx.seenCopilotApiCallIds!]).toEqual(["keep"]);
+  });
+
 });

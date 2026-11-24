@@ -3,7 +3,7 @@ import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import { isRetiredCursorPath } from "../utils/retired-sources.js";
-import { relative, isAbsolute } from "node:path";
+import { relative, isAbsolute, dirname, join } from "node:path";
 
 /** Resolved source directory paths used for file classification */
 export interface SourceDirs {
@@ -55,6 +55,8 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
   if (filePath.startsWith(dirs.grokHome)) return "grok";
 
   if (filePath.startsWith(dirs.copilotCliLogsDir)) return "copilot-cli";
+  const copilotSessionStateDir = join(dirname(dirs.copilotCliLogsDir), "session-state");
+  if (filePath.startsWith(copilotSessionStateDir)) return "copilot-cli";
   for (const path of dirs.copilotCliOtelPaths) {
     const child = relative(path, filePath);
     if (!isAbsolute(child) && child !== ".." && !child.startsWith("../") && !child.startsWith("..\\")) return "copilot-cli";
