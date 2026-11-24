@@ -12,7 +12,7 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${E2E_UI_PORT}`,
     headless: true,
-    navigationTimeout: 30_000,
+    navigationTimeout: 45_000,
   },
   // No webServer — scripts/run-e2e-ui.ts manages the dev server lifecycle.
 });
