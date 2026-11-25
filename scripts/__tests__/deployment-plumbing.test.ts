@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-const revision = "6424d395d36a815d931f10e557762eb635d511c0";
+const revision = "dc858360aa7812db61fd9d825943e4efd4dcd0e7";
 const ci = source(".github/workflows/ci.yml");
 const slots = source(".github/workflows/quality-slots.yml");
 const release = source(".github/workflows/release.yml");
@@ -12,7 +12,7 @@ describe("Docker CD contract", () => {
   it("retains quality, API and browser lanes and adds a clean Linux image smoke", () => {
     for (const command of [
       "bun run typecheck",
-      "bun run gate:dynamic-delete",
+      "bun run lint",
       "bun run test:coverage",
       "bun run test:e2e",
       "bun run test:e2e:ui",

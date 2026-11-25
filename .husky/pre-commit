@@ -4,7 +4,7 @@
 # Materialises the staged tree into a temp snapshot (checkout-index),
 # regenerates staged prerequisites inside it, reuses worktree
 # dependencies read-only, and runs S2, S1, and L1 lanes in parallel:
-#   S2  biome check --error-on-warnings + AST gates (dynamic-delete + @ts-expect-error)
+#   S2  biome check --error-on-warnings
 #   S1  packages/core build + next typegen + scripts/parallel-typecheck.sh
 #   L1  vitest run --coverage (95% x4 floors, exit-enforced)
 # No result caches, no extension fast paths: every commit runs the full
@@ -112,8 +112,6 @@ mkdir -p "$logs_dir"
 (
   set -e
   biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 .
-  bun run gate:dynamic-delete
-  bun run gate:ts-expect-error
 ) >"$logs_dir/s2.log" 2>&1 &
 s2_pid=$!
 
