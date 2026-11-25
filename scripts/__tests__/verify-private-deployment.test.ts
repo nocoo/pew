@@ -105,6 +105,110 @@ function run(code: string, scenario: string) {
   });
 }
 
+type ScenarioResult = { status: number; stdout: string; stderr: string };
+
+const batchDriver = `
+import contextlib, io, json, os, subprocess, sys, time, urllib.request
+scenarios = json.loads(sys.argv[1])
+code = sys.stdin.read()
+harness = ${JSON.stringify(fixture)}
+base_env = os.environ.copy()
+orig_check_output = subprocess.check_output
+orig_sleep = time.sleep
+orig_build_opener = urllib.request.build_opener
+orig_argv = list(sys.argv)
+results = {}
+for scenario in scenarios:
+    os.environ.clear()
+    os.environ.update(base_env)
+    sys.argv = ['private-deployment-verifier', scenario]
+    out, err = io.StringIO(), io.StringIO()
+    status = 0
+    ns = {'__name__': '__main__'}
+    def run_scenario():
+        ns_code = code
+        old_stdin = sys.stdin
+        sys.stdin = io.StringIO(ns_code)
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                exec(compile(harness, 'fixture-harness', 'exec'), ns)
+        finally:
+            sys.stdin = old_stdin
+    try:
+        run_scenario()
+    except SystemExit as e:
+        if e.code is None:
+            status = 0
+        elif isinstance(e.code, int):
+            status = e.code
+        else:
+            status = 1
+            err.write(str(e.code))
+    except Exception as e:
+        status = 1
+        err.write(repr(e))
+    finally:
+        subprocess.check_output = orig_check_output
+        time.sleep = orig_sleep
+        urllib.request.build_opener = orig_build_opener
+        sys.argv = orig_argv
+    results[scenario] = {'status': status, 'stdout': out.getvalue(), 'stderr': err.getvalue()}
+os.environ.clear()
+os.environ.update(base_env)
+print(json.dumps(results))
+`;
+
+const SCENARIOS = [
+  "valid",
+  "manifest",
+  "service",
+  "source",
+  "mutable",
+  "empty",
+  "malformed",
+  "sha",
+  "digest",
+  "id",
+  "repo-digest",
+  "revision",
+  "source-label",
+  "stopped",
+  "e2e-env",
+  "e2e-empty",
+  "node-options",
+  "package",
+  "redirect",
+  "json",
+  "timeout",
+  "version",
+  "component",
+  "health",
+  "database",
+  "cache",
+  "status",
+  "page",
+  "asset",
+  "leaderboard",
+  "private",
+  "write",
+] as const;
+
+let batchCache: Map<string, ScenarioResult> | null = null;
+
+function runBatch(code: string, scenarios: readonly string[]): Map<string, ScenarioResult> {
+  if (batchCache) return batchCache;
+  const res = spawnSync("python3", ["-c", batchDriver, JSON.stringify(scenarios)], {
+    input: code,
+    encoding: "utf8",
+    timeout: 15_000,
+  });
+  expect(res.error).toBeUndefined();
+  expect(res.status, res.stderr).toBe(0);
+  const parsed = JSON.parse(res.stdout) as Record<string, ScenarioResult>;
+  batchCache = new Map(Object.entries(parsed));
+  return batchCache;
+}
+
 describe("private deployment verifier behavior", () => {
   it("detects a weakened redirect policy with a positive mutation control", () => {
     const weakened = verifier.replace("return None", "return req");
@@ -115,44 +219,15 @@ describe("private deployment verifier behavior", () => {
     expect(result.stdout).toContain("Private Pew acceptance passed");
   });
 
-  it.each([
-    "valid",
-    "manifest",
-    "service",
-    "source",
-    "mutable",
-    "empty",
-    "malformed",
-    "sha",
-    "digest",
-    "id",
-    "repo-digest",
-    "revision",
-    "source-label",
-    "stopped",
-    "e2e-env",
-    "e2e-empty",
-    "node-options",
-    "package",
-    "redirect",
-    "json",
-    "timeout",
-    "version",
-    "component",
-    "health",
-    "database",
-    "cache",
-    "status",
-    "page",
-    "asset",
-    "leaderboard",
-    "private",
-    "write",
-  ])("fails closed for %s unless every private-origin check passes", (scenario) => {
-    const result = run(verifier, scenario);
-    expect(result.error).toBeUndefined();
-    expect(result.status === 0).toBe(scenario === "valid");
-    expect(result.stdout.includes("Private Pew acceptance passed")).toBe(scenario === "valid");
-    expect(result.stdout + result.stderr).not.toContain("sensitive fixture body or env");
+  it.each(SCENARIOS)("fails closed for %s unless every private-origin check passes", (scenario) => {
+    const result = runBatch(verifier, SCENARIOS).get(scenario);
+    expect(result).toBeDefined();
+    expect(result?.status === 0).toBe(scenario === "valid");
+    expect(Boolean(result?.stdout.includes("Private Pew acceptance passed"))).toBe(
+      scenario === "valid",
+    );
+    expect((result?.stdout ?? "") + (result?.stderr ?? "")).not.toContain(
+      "sensitive fixture body or env",
+    );
   });
 });

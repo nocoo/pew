@@ -166,6 +166,21 @@ function literal(n: Node | undefined): string | null {
   return null;
 }
 
+const parsedAstCache = new Map<string, { text: string; nodes: Node[]; hasErrors: boolean }>();
+
+function parseAstNodes(path: string, text: string): { nodes: Node[]; hasErrors: boolean } {
+  const cached = parsedAstCache.get(path);
+  if (cached && cached.text === text) {
+    return { nodes: cached.nodes, hasErrors: cached.hasErrors };
+  }
+  const result = parseSync(path, text);
+  const nodes: Node[] = [];
+  visit(result.program, (node) => nodes.push(node));
+  const entry = { text, nodes, hasErrors: result.errors.length > 0 };
+  parsedAstCache.set(path, entry);
+  return { nodes: entry.nodes, hasErrors: entry.hasErrors };
+}
+
 export function auditPew(files: ReadonlyMap<string, string>, db: AuditDatabase) {
   const findings: { id: string; severity: "error"; stage: Stage; path: string; message: string }[] =
     [];
@@ -182,8 +197,8 @@ export function auditPew(files: ReadonlyMap<string, string>, db: AuditDatabase) 
   const ast = new Map<string, Node[]>();
   for (const [path, text] of [...files].sort(([a], [b]) => a.localeCompare(b, "en"))) {
     if (!/\.(?:tsx?|mts|cts)$/.test(path)) continue;
-    const result = parseSync(path, text);
-    if (result.errors.length)
+    const parsed = parseAstNodes(path, text);
+    if (parsed.hasErrors)
       check(
         "source.parseable",
         "parser",
@@ -191,9 +206,7 @@ export function auditPew(files: ReadonlyMap<string, string>, db: AuditDatabase) 
         path,
         "Source AST could not be parsed; details withheld.",
       );
-    const nodes: Node[] = [];
-    visit(result.program, (node) => nodes.push(node));
-    ast.set(path, nodes);
+    ast.set(path, parsed.nodes);
   }
   const nodes = (path: string) => ast.get(path) ?? [];
   const literals = (path: string) =>

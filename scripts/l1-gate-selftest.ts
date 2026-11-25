@@ -8,7 +8,7 @@
  *   bun scripts/l1-gate-selftest.ts --measure # add cold/warm pre-commit timing
  */
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -55,6 +55,15 @@ function bunDir(): string {
   return dirname(which);
 }
 
+type HookRunResult = {
+  status: number | null;
+  signal: NodeJS.Signals | null;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  error?: Error;
+};
+
 function runHook(
   cwd: string,
   env: NodeJS.ProcessEnv = {},
@@ -69,6 +78,54 @@ function runHook(
     },
     encoding: "utf8",
     timeout: timeoutMs,
+  });
+}
+
+function runHookAsync(
+  cwd: string,
+  env: NodeJS.ProcessEnv = {},
+  timeoutMs?: number,
+): Promise<HookRunResult> {
+  return new Promise((resolvePromise) => {
+    const child = spawn("/bin/sh", ["-e", hook], {
+      cwd,
+      env: {
+        ...process.env,
+        PATH: `${bunDir()}:${repoRoot}/node_modules/.bin:${process.env.PATH ?? ""}`,
+        ...env,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
+    child.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    const timer =
+      timeoutMs !== undefined
+        ? setTimeout(() => {
+            timedOut = true;
+            child.kill("SIGTERM");
+            killTimer = setTimeout(() => {
+              child.kill("SIGKILL");
+            }, 200);
+          }, timeoutMs)
+        : undefined;
+    child.once("error", (error) => {
+      if (timer) clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+      resolvePromise({ status: null, signal: null, stdout, stderr, timedOut, error });
+    });
+    child.once("close", (status, signal) => {
+      if (timer) clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+      resolvePromise({ status, signal, stdout, stderr, timedOut });
+    });
   });
 }
 
@@ -129,71 +186,96 @@ function setupWorktree(): { wt: string; cleanup: () => void } {
   };
 }
 
-function runProbes(wt: string, baseline: { source: string; test: string }): ProbeResult[] {
-  const results: ProbeResult[] = [];
-  const push = (
+async function runProbes(
+  wt1: string,
+  wt2: string,
+  baseline: { source: string; test: string },
+): Promise<ProbeResult[]> {
+  const toResult = (
     id: string,
     expectReject: boolean,
-    run: ReturnType<typeof runHook>,
+    run: Pick<HookRunResult, "status" | "signal">,
     extraOk = true,
     detail = "",
-  ) => {
-    results.push({
-      id,
-      expectReject,
-      status: run.status,
-      signal: run.signal,
-      ok: probePassed(expectReject, run.status, run.signal, extraOk),
-      detail,
-    });
+  ): ProbeResult => ({
+    id,
+    expectReject,
+    status: run.status,
+    signal: run.signal,
+    ok: probePassed(expectReject, run.status, run.signal, extraOk),
+    detail,
+  });
+
+  const runWorktree1Probes = async () => {
+    const pkgGood = readFileSync(join(repoRoot, "package.json"), "utf8");
+    stageIndexOnlyGoodWorktree(wt1, "package.json", `${pkgGood}\n`, pkgGood);
+    const stagedManifest = toResult(
+      "staged-manifest-drift",
+      true,
+      await runHookAsync(wt1),
+      true,
+      "manifest guard",
+    );
+    git(["reset", "HEAD", "--", "package.json"], wt1);
+    git(["checkout", "--", "package.json"], wt1);
+
+    stageFile(
+      wt1,
+      PROBE_REL_TEST,
+      baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
+    );
+    const missingBun = toResult(
+      "missing-bun",
+      true,
+      await runHookAsync(wt1, { PATH: "/usr/bin:/bin" }),
+      true,
+      "PATH without bun",
+    );
+    resetProbe(wt1, baseline);
+
+    stageIndexOnlyGoodWorktree(
+      wt1,
+      PROBE_REL_TEST,
+      baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
+      baseline.test,
+    );
+    const isolated = await runHookAsync(wt1);
+    const isolatedOut = isolated.stdout + isolated.stderr;
+    const sawStagedTestFailure =
+      isolatedOut.includes("l1-probe.test.ts") || isolatedOut.includes("FAIL");
+    const indexBadWorktreeGood = toResult(
+      "index-bad-worktree-good",
+      true,
+      isolated,
+      sawStagedTestFailure,
+      `checkout-index staged_test_failed=${sawStagedTestFailure}`,
+    );
+    resetProbe(wt1, baseline);
+
+    return { stagedManifest, missingBun, indexBadWorktreeGood };
   };
 
-  const pkgGood = readFileSync(join(repoRoot, "package.json"), "utf8");
-  stageIndexOnlyGoodWorktree(wt, "package.json", `${pkgGood}\n`, pkgGood);
-  push("staged-manifest-drift", true, runHook(wt), true, "manifest guard");
-  git(["reset", "HEAD", "--", "package.json"], wt);
-  git(["checkout", "--", "package.json"], wt);
+  const runTimeoutProbe = async () => {
+    const interrupted = await runHookAsync(wt2, {}, 3_000);
+    return toResult(
+      "timeout-interrupt",
+      true,
+      interrupted,
+      interrupted.status !== 0 || interrupted.signal === "SIGTERM" || interrupted.timedOut,
+      interrupted.error?.message ??
+        (interrupted.timedOut ? "spawn /bin/sh ETIMEDOUT" : null) ??
+        interrupted.signal ??
+        String(interrupted.status),
+    );
+  };
 
-  stageFile(
-    wt,
-    PROBE_REL_TEST,
-    baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
-  );
-  push("missing-bun", true, runHook(wt, { PATH: "/usr/bin:/bin" }), true, "PATH without bun");
-  resetProbe(wt, baseline);
-
-  const interrupted = runHook(wt, {}, 3_000);
-  push(
-    "timeout-interrupt",
-    true,
-    interrupted,
-    interrupted.status !== 0 ||
-      interrupted.signal === "SIGTERM" ||
-      interrupted.error?.message.includes("ETIMEDOUT") === true,
-    interrupted.error?.message ?? interrupted.signal ?? String(interrupted.status),
-  );
-  resetProbe(wt, baseline);
-
-  stageIndexOnlyGoodWorktree(
-    wt,
-    PROBE_REL_TEST,
-    baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
-    baseline.test,
-  );
-  const isolated = runHook(wt);
-  const isolatedOut = isolated.stdout + isolated.stderr;
-  const sawStagedTestFailure =
-    isolatedOut.includes("l1-probe.test.ts") || isolatedOut.includes("FAIL");
-  push(
-    "index-bad-worktree-good",
-    true,
-    isolated,
-    sawStagedTestFailure,
-    `checkout-index staged_test_failed=${sawStagedTestFailure}`,
-  );
-  resetProbe(wt, baseline);
-
-  return results;
+  const [wt1Results, timeoutResult] = await Promise.all([runWorktree1Probes(), runTimeoutProbe()]);
+  return [
+    wt1Results.stagedManifest,
+    wt1Results.missingBun,
+    timeoutResult,
+    wt1Results.indexBadWorktreeGood,
+  ];
 }
 
 function clearRunnerCaches(): void {
@@ -222,15 +304,17 @@ function measurePreCommit(): MeasureResult {
   };
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const measure = process.argv.includes("--measure");
   const baseline = readProbeBaseline();
-  const { wt, cleanup } = setupWorktree();
+  const worktree1 = setupWorktree();
+  const worktree2 = setupWorktree();
   let probeResults: ProbeResult[] = [];
   try {
-    probeResults = runProbes(wt, baseline);
+    probeResults = await runProbes(worktree1.wt, worktree2.wt, baseline);
   } finally {
-    cleanup();
+    worktree1.cleanup();
+    worktree2.cleanup();
   }
 
   const failures = probeResults.filter((p) => !p.ok);
@@ -251,4 +335,4 @@ function main(): void {
   }
 }
 
-main();
+await main();

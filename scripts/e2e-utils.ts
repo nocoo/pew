@@ -127,7 +127,7 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
     tests?.kill();
   };
   abort.signal.addEventListener("abort", killChildren);
-  const dist = tier === "api" ? ".next-e2e" : ".next-e2e-ui";
+  const dist = process.env.PEW_E2E_DIST_DIR || (tier === "api" ? ".next-e2e" : ".next-e2e-ui");
   try {
     local = await startLocalBindings(abort.signal, undefined, tier === "ui");
     abort.signal.throwIfAborted();

@@ -171,21 +171,29 @@ describe("E2E process isolation", () => {
       child.stderr.on("data", (data) => {
         stderr += data;
       });
-      const code = await new Promise((done) => child.once("exit", done));
+      const code = await new Promise((done) => child.once("close", done));
       expect(code).not.toBe(0);
       expect(stderr).toContain("refuses local environment files");
     } finally {
       rmSync(root, { recursive: true });
     }
   });
+});
 
+describe.concurrent("E2E subprocess cleanup", () => {
   it("cleans migrated state when interrupted before binding startup", async () => {
     const root = mkdtempSync(join(tmpdir(), "pew-signal-test-"));
     const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], {
-      env: { PATH: process.env.PATH, HOME: root, TMPDIR: root, E2E_PORT: "37020" },
+      env: {
+        PATH: process.env.PATH,
+        HOME: root,
+        TMPDIR: root,
+        E2E_PORT: "37020",
+        PEW_E2E_DIST_DIR: ".next-e2e-signal-test",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
-    const exited = new Promise<number | null>((done) => child.once("exit", done));
+    const exited = new Promise<number | null>((done) => child.once("close", done));
     try {
       let output = "";
       child.stdout.on("data", (data) => {
@@ -219,10 +227,16 @@ describe("E2E process isolation", () => {
   it("cleans D1 and the listener after a started server is interrupted", async () => {
     const root = mkdtempSync(join(tmpdir(), "pew-started-test-"));
     const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], {
-      env: { PATH: process.env.PATH, HOME: root, TMPDIR: root, E2E_PORT: "37021" },
+      env: {
+        PATH: process.env.PATH,
+        HOME: root,
+        TMPDIR: root,
+        E2E_PORT: "37021",
+        PEW_E2E_DIST_DIR: ".next-e2e-started-test",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
-    const exited = new Promise<number | null>((done) => child.once("exit", done));
+    const exited = new Promise<number | null>((done) => child.once("close", done));
     let output = "";
     child.stdout.on("data", (data) => {
       output += data;
@@ -263,10 +277,16 @@ describe("E2E process isolation", () => {
       { mode: 0o755 },
     );
     const child = spawn("bun", ["--no-env-file", "scripts/run-e2e.ts"], {
-      env: { PATH: `${bin}:${process.env.PATH}`, HOME: root, TMPDIR: root, E2E_PORT: "37022" },
+      env: {
+        PATH: `${bin}:${process.env.PATH}`,
+        HOME: root,
+        TMPDIR: root,
+        E2E_PORT: "37022",
+        PEW_E2E_DIST_DIR: ".next-e2e-fail-test",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
-    const exited = new Promise<number | null>((done) => child.once("exit", done));
+    const exited = new Promise<number | null>((done) => child.once("close", done));
     let output = "";
     child.stdout.on("data", (data) => {
       output += data;

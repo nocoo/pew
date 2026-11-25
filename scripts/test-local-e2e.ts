@@ -6,6 +6,52 @@ import type { D1Database } from "../packages/worker/node_modules/@cloudflare/wor
 import { localIsolatedEnv, verifyLocalMarker } from "./local-e2e-bindings";
 import { seedAccountingHistory, HISTORY_ROWS } from "./accounting-history-fixture";
 
+async function verifyCorruptedCleanup(): Promise<void> {
+  const corrupted = await localIsolatedEnv();
+  const mutation = await fetch(`${corrupted.env.PEW_LOCAL_D1_URL}/query`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${corrupted.env.CF_D1_API_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ sql: "UPDATE _test_marker SET value='another-run' WHERE key='run'" }),
+  });
+  assert.equal(mutation.status, 200);
+  await assert.rejects(corrupted.dispose(), /cleanup failed/);
+  assert.equal(existsSync(corrupted.state), true);
+  await assert.rejects(fetch(`${corrupted.env.PEW_LOCAL_D1_URL}/api/live`));
+  const { getPlatformProxy } = await import("../packages/worker/node_modules/wrangler");
+  const repair = await getPlatformProxy<{ DB: D1Database }>({
+    configPath: join(corrupted.state, "wrangler.json"),
+    envFiles: [],
+    persist: { path: join(corrupted.state, "v3") },
+    remoteBindings: false,
+  });
+  try {
+    await repair.env.DB.prepare("UPDATE _test_marker SET value=? WHERE key='run'")
+      .bind(corrupted.env.PEW_TEST_RUN_ID)
+      .run();
+    const marker = await repair.env.DB.prepare(
+      "SELECT value FROM _test_marker WHERE key='run'",
+    ).first<{ value: string }>();
+    assert.equal(marker?.value, corrupted.env.PEW_TEST_RUN_ID);
+  } finally {
+    await repair.dispose();
+  }
+  rmSync(corrupted.state, { recursive: true });
+}
+
+if (process.argv.includes("--corrupted-only")) {
+  await verifyCorruptedCleanup();
+  process.exit(0);
+}
+
+// Run corrupted-marker verification concurrently in a child process (localIsolatedEnv mutates process.env).
+const corruptedChild = Bun.spawn(
+  [process.execPath, "--no-env-file", import.meta.filename, "--corrupted-only"],
+  { stdout: "pipe", stderr: "pipe", env: process.env },
+);
+
 const local = await localIsolatedEnv();
 const query = async (sql: string, params: unknown[] = []) => {
   const response = await fetch(`${local.env.PEW_LOCAL_D1_URL}/query`, {
@@ -207,36 +253,10 @@ try {
 assert.equal(existsSync(local.state), false);
 await assert.rejects(fetch(`${local.env.PEW_LOCAL_D1_URL}/api/live`));
 await local.dispose();
-const corrupted = await localIsolatedEnv();
-const mutation = await fetch(`${corrupted.env.PEW_LOCAL_D1_URL}/query`, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${corrupted.env.CF_D1_API_TOKEN}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ sql: "UPDATE _test_marker SET value='another-run' WHERE key='run'" }),
-});
-assert.equal(mutation.status, 200);
-await assert.rejects(corrupted.dispose(), /cleanup failed/);
-assert.equal(existsSync(corrupted.state), true);
-await assert.rejects(fetch(`${corrupted.env.PEW_LOCAL_D1_URL}/api/live`));
-const { getPlatformProxy } = await import("../packages/worker/node_modules/wrangler");
-const repair = await getPlatformProxy<{ DB: D1Database }>({
-  configPath: join(corrupted.state, "wrangler.json"),
-  envFiles: [],
-  persist: { path: join(corrupted.state, "v3") },
-  remoteBindings: false,
-});
-try {
-  await repair.env.DB.prepare("UPDATE _test_marker SET value=? WHERE key='run'")
-    .bind(corrupted.env.PEW_TEST_RUN_ID)
-    .run();
-  const marker = await repair.env.DB.prepare(
-    "SELECT value FROM _test_marker WHERE key='run'",
-  ).first<{ value: string }>();
-  assert.equal(marker?.value, corrupted.env.PEW_TEST_RUN_ID);
-} finally {
-  await repair.dispose();
-}
-rmSync(corrupted.state, { recursive: true });
+const [corruptedExit, corruptedOut, corruptedErr] = await Promise.all([
+  corruptedChild.exited,
+  new Response(corruptedChild.stdout).text(),
+  new Response(corruptedChild.stderr).text(),
+]);
+assert.equal(corruptedExit, 0, `${corruptedOut}\n${corruptedErr}`);
 console.log("Real D1 schema, marker, Worker RPC and failure cleanup verified");

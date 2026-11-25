@@ -2,8 +2,48 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { localIsolatedEnv, verifyLocalMarker } from "../local-e2e-bindings";
+
+function spawnAsync(
+  command: string,
+  args: string[],
+  options: { env: NodeJS.ProcessEnv; timeoutMs: number },
+): Promise<{ status: number | null; stdout: string; stderr: string }> {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(command, args, {
+      env: options.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    child.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, options.timeoutMs);
+    child.once("error", (err) => {
+      clearTimeout(timer);
+      rejectPromise(err);
+    });
+    child.once("close", (code) => {
+      clearTimeout(timer);
+      if (timedOut) {
+        rejectPromise(
+          new Error(`${command} ${args.join(" ")} timed out after ${options.timeoutMs}ms`),
+        );
+        return;
+      }
+      resolvePromise({ status: code, stdout, stderr });
+    });
+  });
+}
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -94,11 +134,12 @@ describe("real D1 lifecycle", () => {
       vi.unstubAllEnvs();
     }
   });
+});
 
-  it("preserves full fresh schema, native Worker RPC and failure cleanup", () => {
-    const result = spawnSync("bun", ["--no-env-file", "scripts/test-local-e2e.ts"], {
-      encoding: "utf8",
-      timeout: 120_000,
+describe.concurrent("real D1 subprocess lifecycle", () => {
+  it("preserves full fresh schema, native Worker RPC and failure cleanup", async () => {
+    const result = await spawnAsync("bun", ["--no-env-file", "scripts/test-local-e2e.ts"], {
+      timeoutMs: 120_000,
       env: { ...process.env, CI: "true", PEW_SYNTHETIC_PARENT_SECRET: "must-not-forward" },
     });
     expect(result.status, result.stdout + result.stderr).toBe(0);
@@ -108,12 +149,12 @@ describe("real D1 lifecycle", () => {
     "CREATE TABLE duplicate(id TEXT); CREATE TABLE duplicate(id TEXT);",
   ])(
     "fails invalid or duplicate SQL and cleans only fresh state: %s",
-    (sql) => {
-      const migrations = mkdtempSync(join(tmpdir(), "pew-invalid-migration-"));
-      const before = new Set(readdirSync(tmpdir()).filter((name) => name.startsWith("pew-e2e-")));
+    async (sql) => {
+      const isolatedTmp = mkdtempSync(join(tmpdir(), "pew-invalid-tmp-"));
+      const migrations = mkdtempSync(join(isolatedTmp, "migrations-"));
       try {
         writeFileSync(join(migrations, "0001.sql"), sql);
-        const result = spawnSync(
+        const result = await spawnAsync(
           "bun",
           [
             "--no-env-file",
@@ -121,16 +162,14 @@ describe("real D1 lifecycle", () => {
             'import {localIsolatedEnv} from "./scripts/local-e2e-bindings.ts"; await localIsolatedEnv(process.argv[1]);',
             migrations,
           ],
-          { encoding: "utf8", timeout: 30_000 },
+          { timeoutMs: 30_000, env: { ...process.env, TMPDIR: isolatedTmp } },
         );
         expect(result.status).not.toBe(0);
         expect(result.stderr).toContain("migrations failed");
-        expect(
-          new Set(readdirSync(tmpdir()).filter((name) => name.startsWith("pew-e2e-"))),
-        ).toEqual(before);
+        expect(readdirSync(isolatedTmp).filter((name) => name.startsWith("pew-e2e-"))).toEqual([]);
         expect(existsSync(migrations)).toBe(true);
       } finally {
-        rmSync(migrations, { recursive: true });
+        rmSync(isolatedTmp, { recursive: true, force: true });
       }
     },
     30_000,
