@@ -51,10 +51,11 @@ sh scripts/ponytail-audit.sh      # read-only accounting/complexity JSON audit
 Follows `system1-quality`; CI slot definitions and pinned `base-ci` revision live in `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main` and by `release.yml`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
 
 - **Exceptions / gaps**: `L2 Runtime` is `N/A` (API/Worker HTTP runs in `L3 Integration`, CLI pipeline in `test:e2e:cli`); `@nocoo/pew` npm publish check is `manual` (`P1: Package` runs Linux container smoke in CI).
+- **CI build reuse & L4 scope**: `B1: Build` uploads `core-dist` (`packages/core/dist`), downloaded by `L3: Integration` and `L4: E2E` (`needs: [b1-build]`). `L4: E2E` runs 5 core Desktop Chromium smoke specs in `packages/web/e2e/bdd/` (`workers: 4` in CI).
 - **Coverage boundary**: `L1` enforces >=80% x4; `vitest.config.ts` excludes `.tsx` views, client hooks, thin auth/proxy/R2/RPC adapters, and CLI orchestrators.
 - **Extra CI checks**: `P1: Package` runs inside `quality-slots.yml` gated by `Z1: Gate`; `admission-primitive.yml` tests cross-OS `wx` lock atomicity.
 - **Pre-commit hook**: installed via `bun run prepare` (`.husky/`). Checks staged index snapshot (`L1`/`S1`/`S2`); `G1` runs in `pre-push` and CI; cold full hook exceeds the 30s target.
-- **Pre-push hook**: rejects local `.env*` files, then runs `L2` API E2E (`:17020`), `L4` Playwright E2E (`:27020`), and `G1`/`G2` (`test:security`) in parallel; runs on tag pushes too (never bypass).
+- **Pre-push hook**: rejects local `.env*` files, then runs `L3` API E2E (`:17020`), `L4` Playwright E2E (`:27020`), and `G1`/`G2` (`test:security`) in parallel; runs on tag pushes too (never bypass).
 
 ## Resources & Isolation
 

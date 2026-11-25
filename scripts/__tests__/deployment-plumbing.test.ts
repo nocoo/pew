@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-const revision = "dc858360aa7812db61fd9d825943e4efd4dcd0e7";
+const revision = "bfaac83b5a4d5c7ed26320bb5b09f3ca0a01932c";
 const ci = source(".github/workflows/ci.yml");
 const slots = source(".github/workflows/quality-slots.yml");
 const release = source(".github/workflows/release.yml");
@@ -29,6 +29,10 @@ describe("Docker CD contract", () => {
     expect(slots).not.toContain("l1-pre-commit-selftest:");
     expect(slots).not.toContain('name: "L1: Unit (Pre-commit Gate)"');
     expect(slots).not.toContain("bun run test:l1-gate");
+    expect(slots).toContain(`nocoo/base-ci/.github/actions/setup-playwright@${revision}`);
+    expect(slots).toContain(`nocoo/base-ci/.github/actions/z1-gate@${revision}`);
+    expect(slots).toContain("core-dist");
+    expect(slots).toContain("needs: [b1-build]");
     expect(slots).toContain("l3-integration:");
     expect(slots).toContain("l4-e2e:");
     expect(slots).toContain("p1-package:");

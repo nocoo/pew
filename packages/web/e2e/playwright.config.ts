@@ -1,4 +1,4 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 const E2E_UI_PORT = process.env.E2E_UI_PORT || "27020";
 
@@ -8,7 +8,13 @@ export default defineConfig({
   // Development compilation and chart hydration can exceed the default 5 seconds.
   expect: { timeout: 15_000 },
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : 1,
+  workers: process.env.CI ? 4 : 2,
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chromium"] },
+    },
+  ],
   use: {
     baseURL: `http://localhost:${E2E_UI_PORT}`,
     headless: true,
