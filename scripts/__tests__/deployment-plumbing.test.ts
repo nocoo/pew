@@ -19,15 +19,19 @@ describe("Docker CD contract", () => {
     ]) {
       expect(slots).toContain(command);
     }
-    const smoke = ci.split("  container-smoke:\n")[1];
-    expect(smoke).toContain(`uses: nocoo/base-ci/.github/workflows/test-job.yml@${revision}`);
-    expect(smoke).toContain('runtime: "none"');
+    const smoke = slots.split("  p1-package:\n")[1]?.split("\n  z1-gate:")[0] ?? "";
+    expect(smoke).toContain('name: "P1: Package"');
     expect(smoke).toContain("docker build --platform linux/amd64 --tag pew-ci:");
     expect(smoke).toContain("node scripts/smoke-container.mjs pew-ci:");
     expect(smoke).not.toMatch(/secrets:|build-arg|env-file/);
     expect(ci).toContain("uses: ./.github/workflows/quality-slots.yml");
+    expect(ci).not.toContain("test-job.yml");
+    expect(slots).toContain("l1-pre-commit-selftest:");
+    expect(slots).toContain('name: "L1: Unit (Pre-commit Gate)"');
+    expect(slots).toContain("bun run test:l1-gate");
     expect(slots).toContain("l2-runtime:");
     expect(slots).toContain("l4-e2e:");
+    expect(slots).toContain("p1-package:");
     expect(slots).toContain("z1-gate:");
   });
 

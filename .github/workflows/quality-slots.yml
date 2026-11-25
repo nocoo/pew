@@ -157,12 +157,37 @@ jobs:
         run: bunx playwright install chromium --with-deps
       - run: bun run build && bun run test:e2e:ui
 
+  l1-pre-commit-selftest:
+    name: "L1: Unit (Pre-commit Gate)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: nocoo/base-ci/.github/actions/setup-js@6424d395d36a815d931f10e557762eb635d511c0 # v2026.16
+        with:
+          package-manager: bun
+          runtime-version: ${{ env.BUN_VERSION }}
+          node-version: ${{ env.NODE_VERSION }}
+          install-policy: blocked
+      - run: bun run build
+      - run: bun run test:l1-gate
+
   p1-package:
     name: "P1: Package"
-    if: ${{ vars.ENABLE_P1_PACKAGE == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - run: echo "N/A - Private monorepo root"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: |
+          docker build --platform linux/amd64 --tag pew-ci:${{ github.sha }} .
+          node scripts/smoke-container.mjs pew-ci:${{ github.sha }}
 
   z1-gate:
     name: "Z1: Gate"
@@ -175,6 +200,7 @@ jobs:
       - g2-dependencies
       - b1-build
       - l1-unit
+      - l1-pre-commit-selftest
       - l2-runtime
       - l3-integration
       - l4-e2e
@@ -193,16 +219,17 @@ jobs:
             "${{ needs.g2-dependencies.result }}" \
             "${{ needs.b1-build.result }}" \
             "${{ needs.l1-unit.result }}" \
+            "${{ needs.l1-pre-commit-selftest.result }}" \
             "${{ needs.l2-runtime.result }}" \
-            "${{ needs.l4-e2e.result }}"; do
+            "${{ needs.l4-e2e.result }}" \
+            "${{ needs.p1-package.result }}"; do
             if [ "$r" != "success" ]; then
               echo "Required slot failed or was skipped: $r"
               exit 1
             fi
           done
           for r in \
-            "${{ needs.l3-integration.result }}" \
-            "${{ needs.p1-package.result }}"; do
+            "${{ needs.l3-integration.result }}"; do
             if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
               echo "Optional slot failed: $r"
               exit 1

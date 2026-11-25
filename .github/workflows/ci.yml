@@ -15,28 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  l1-pre-commit-selftest:
-    name: "L1 Pre-commit Gate Self-test"
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@6424d395d36a815d931f10e557762eb635d511c0 # v2026.16
-    with:
-      runtime-version: "1.4.0"
-      install-policy: blocked
-      timeout-minutes: 90
-      pre-command: bun run build
-      command: bun run test:l1-gate
-
   quality:
     name: quality
     uses: ./.github/workflows/quality-slots.yml
-
-  container-smoke:
-    name: "Linux Image Native and Startup Smoke"
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@6424d395d36a815d931f10e557762eb635d511c0 # v2026.16
-    with:
-      runtime: "none"
-      node-version: "26.13.1"
-      timeout-minutes: 25
-      command: |
-        docker build --platform linux/amd64 --tag pew-ci:${{ github.sha }} .
-        node scripts/smoke-container.mjs pew-ci:${{ github.sha }}
