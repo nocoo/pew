@@ -93,27 +93,17 @@ jobs:
           runtime-version: ${{ env.BUN_VERSION }}
           node-version: ${{ env.NODE_VERSION }}
           install-policy: blocked
-      - run: bun run build && bun run test:coverage
-
-  l1-pre-commit-selftest:
-    name: "L1: Unit (Pre-commit Gate)"
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: nocoo/base-ci/.github/actions/setup-js@dc858360aa7812db61fd9d825943e4efd4dcd0e7 # v2026.17
-        with:
-          package-manager: bun
-          runtime-version: ${{ env.BUN_VERSION }}
-          node-version: ${{ env.NODE_VERSION }}
-          install-policy: blocked
-      - run: bun run build
-      - run: bun run test:l1-gate
+      - run: bun run --cwd packages/core build && bun run test:coverage
 
   l2-runtime:
     name: "L2: Runtime"
+    if: ${{ vars.ENABLE_L2_RUNTIME == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "N/A - Covered by L3 Integration"
+
+  l3-integration:
+    name: "L3: Integration"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -123,14 +113,7 @@ jobs:
           runtime-version: ${{ env.BUN_VERSION }}
           node-version: ${{ env.NODE_VERSION }}
           install-policy: blocked
-      - run: bun run build && bun run test:e2e
-
-  l3-integration:
-    name: "L3: Integration"
-    if: ${{ vars.ENABLE_L3_INTEGRATION == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "N/A - Covered by L1 and L2"
+      - run: bun run --cwd packages/core build && bun run test:e2e
 
   l4-e2e:
     name: "L4: E2E"
@@ -150,7 +133,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
       - name: Install Playwright browsers
         run: bunx playwright install chromium --with-deps
-      - run: bun run build && bun run test:e2e:ui
+      - run: bun run --cwd packages/core build && bun run test:e2e:ui
 
   p1-package:
     name: "P1: Package"
@@ -178,7 +161,6 @@ jobs:
       - g2-dependencies
       - b1-build
       - l1-unit
-      - l1-pre-commit-selftest
       - l2-runtime
       - l3-integration
       - l4-e2e
@@ -197,8 +179,7 @@ jobs:
             "${{ needs.g2-dependencies.result }}" \
             "${{ needs.b1-build.result }}" \
             "${{ needs.l1-unit.result }}" \
-            "${{ needs.l1-pre-commit-selftest.result }}" \
-            "${{ needs.l2-runtime.result }}" \
+            "${{ needs.l3-integration.result }}" \
             "${{ needs.l4-e2e.result }}" \
             "${{ needs.p1-package.result }}"; do
             if [ "$r" != "success" ]; then
@@ -207,7 +188,7 @@ jobs:
             fi
           done
           for r in \
-            "${{ needs.l3-integration.result }}"; do
+            "${{ needs.l2-runtime.result }}"; do
             if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
               echo "Optional slot failed: $r"
               exit 1

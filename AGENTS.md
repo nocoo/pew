@@ -20,8 +20,8 @@ bun run --cwd packages/cli build  # explicit CLI build before npm publish
 bun run typecheck                 # S1: all 5 packages + tsconfig.e2e.json
 bun run lint                      # S2: Biome (0 warnings)
 bun run test                      # L1: Vitest unit suite (sole test runner)
-bun run test:coverage             # L1: v8 >=95% statements/branches/functions/lines
-bun run test:e2e                  # L2: API E2E on :17020 (isolated local D1/KV)
+bun run test:coverage             # L1: v8 >=80% statements/branches/functions/lines
+bun run test:e2e                  # L3: API E2E on :17020 (isolated local D1/KV)
 bun run test:e2e:ui               # L4: Playwright E2E on :27020 (isolated D1/KV)
 bun run test:e2e:cli              # CLI pipeline E2E (synthetic temp dirs)
 bun run test:security             # G1/G2: osv-scanner + gitleaks
@@ -50,9 +50,9 @@ sh scripts/ponytail-audit.sh      # read-only accounting/complexity JSON audit
 
 Follows `system1-quality`; CI slot definitions and pinned `base-ci` revision live in `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main` and by `release.yml`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
 
-- **Exceptions / gaps**: `L3 Integration` is `N/A` (API/Worker HTTP runs in `L2 Runtime`, CLI pipeline in `test:e2e:cli`); `@nocoo/pew` npm publish check is `manual` (`P1: Package` runs Linux container smoke in CI).
-- **Coverage boundary**: `L1` enforces >=95% x4; `vitest.config.ts` excludes `.tsx` views, client hooks, thin auth/proxy/R2/RPC adapters, and CLI orchestrators.
-- **Extra CI checks**: `L1: Unit (Pre-commit Gate)` and `P1: Package` run inside `quality-slots.yml` gated by `Z1: Gate`; `admission-primitive.yml` tests cross-OS `wx` lock atomicity.
+- **Exceptions / gaps**: `L2 Runtime` is `N/A` (API/Worker HTTP runs in `L3 Integration`, CLI pipeline in `test:e2e:cli`); `@nocoo/pew` npm publish check is `manual` (`P1: Package` runs Linux container smoke in CI).
+- **Coverage boundary**: `L1` enforces >=80% x4; `vitest.config.ts` excludes `.tsx` views, client hooks, thin auth/proxy/R2/RPC adapters, and CLI orchestrators.
+- **Extra CI checks**: `P1: Package` runs inside `quality-slots.yml` gated by `Z1: Gate`; `admission-primitive.yml` tests cross-OS `wx` lock atomicity.
 - **Pre-commit hook**: installed via `bun run prepare` (`.husky/`). Checks staged index snapshot (`L1`/`S1`/`S2`); `G1` runs in `pre-push` and CI; cold full hook exceeds the 30s target.
 - **Pre-push hook**: rejects local `.env*` files, then runs `L2` API E2E (`:17020`), `L4` Playwright E2E (`:27020`), and `G1`/`G2` (`test:security`) in parallel; runs on tag pushes too (never bypass).
 

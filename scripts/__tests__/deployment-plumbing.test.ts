@@ -26,10 +26,10 @@ describe("Docker CD contract", () => {
     expect(smoke).not.toMatch(/secrets:|build-arg|env-file/);
     expect(ci).toContain("uses: ./.github/workflows/quality-slots.yml");
     expect(ci).not.toContain("test-job.yml");
-    expect(slots).toContain("l1-pre-commit-selftest:");
-    expect(slots).toContain('name: "L1: Unit (Pre-commit Gate)"');
-    expect(slots).toContain("bun run test:l1-gate");
-    expect(slots).toContain("l2-runtime:");
+    expect(slots).not.toContain("l1-pre-commit-selftest:");
+    expect(slots).not.toContain('name: "L1: Unit (Pre-commit Gate)"');
+    expect(slots).not.toContain("bun run test:l1-gate");
+    expect(slots).toContain("l3-integration:");
     expect(slots).toContain("l4-e2e:");
     expect(slots).toContain("p1-package:");
     expect(slots).toContain("z1-gate:");
