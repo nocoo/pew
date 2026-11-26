@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-const revision = "bfaac83b5a4d5c7ed26320bb5b09f3ca0a01932c";
+const revision = "98fc023423f82b010f17e0ebbc9dd580fe68736a";
 const ci = source(".github/workflows/ci.yml");
 const slots = source(".github/workflows/quality-slots.yml");
 const release = source(".github/workflows/release.yml");
