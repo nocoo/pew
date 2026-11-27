@@ -37,7 +37,6 @@ describe("Docker CD contract", () => {
     expect(slots).toContain(`nocoo/base-ci/.github/actions/setup-playwright@${revision}`);
     expect(slots).toContain(`nocoo/base-ci/.github/actions/z1-gate@${revision}`);
     expect(slots).toContain("core-dist");
-    expect(slots).toContain("needs: [b1-build]");
     expect(slots).toContain("l3-integration:");
     expect(slots).toContain("l4-e2e-1:");
     expect(slots).toContain("l4-e2e-2:");

@@ -153,7 +153,6 @@ jobs:
 
   l3-integration:
     name: "L3: Integration"
-    needs: [b1-build]
     runs-on: ubuntu-latest
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
@@ -165,12 +164,7 @@ jobs:
           runtime-version: ${{ env.BUN_VERSION }}
           node-version: ${{ env.NODE_VERSION }}
           install-policy: blocked
-      - name: Download @pew/core dist
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: core-dist
-          path: packages/core/dist
-      - run: bun run test:e2e
+      - run: bun run --cwd packages/core build && bun run test:e2e
       - name: Record tested SHA
         id: record-sha
         if: always()
