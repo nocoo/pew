@@ -176,8 +176,8 @@ jobs:
         if: always()
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-  l4-e2e:
-    name: "L4: E2E"
+  l4-e2e-1:
+    name: "L4: E2E (1/2)"
     needs: [b1-build]
     runs-on: ubuntu-latest
     outputs:
@@ -199,7 +199,36 @@ jobs:
         with:
           package-manager: bun
           browsers: chromium
-      - run: bun run test:e2e:ui
+      - run: bun run test:e2e:ui --shard=1/2
+      - name: Record tested SHA
+        id: record-sha
+        if: always()
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  l4-e2e-2:
+    name: "L4: E2E (2/2)"
+    needs: [b1-build]
+    runs-on: ubuntu-latest
+    outputs:
+      tested-sha: ${{ steps.record-sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: nocoo/base-ci/.github/actions/setup-js@e5876a604547b1ddb0916f16dd841a4f832609a0 # v2026.20
+        with:
+          package-manager: bun
+          runtime-version: ${{ env.BUN_VERSION }}
+          node-version: ${{ env.NODE_VERSION }}
+          install-policy: blocked
+      - name: Download @pew/core dist
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: core-dist
+          path: packages/core/dist
+      - uses: nocoo/base-ci/.github/actions/setup-playwright@e5876a604547b1ddb0916f16dd841a4f832609a0 # v2026.20
+        with:
+          package-manager: bun
+          browsers: chromium
+      - run: bun run test:e2e:ui --shard=2/2
       - name: Record tested SHA
         id: record-sha
         if: always()
@@ -218,9 +247,17 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: |
-          docker build --platform linux/amd64 --tag pew-ci:${{ github.sha }} .
-          node scripts/smoke-container.mjs pew-ci:${{ github.sha }}
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64
+          tags: pew-ci:${{ github.sha }}
+          push: false
+          load: true
+          cache-from: type=gha,scope=pew-p1
+          cache-to: type=gha,mode=max,scope=pew-p1
+      - run: node scripts/smoke-container.mjs pew-ci:${{ github.sha }}
       - name: Record tested SHA
         id: record-sha
         if: always()
@@ -239,7 +276,8 @@ jobs:
       - l1-unit
       - l2-runtime
       - l3-integration
-      - l4-e2e
+      - l4-e2e-1
+      - l4-e2e-2
       - p1-package
     runs-on: ubuntu-latest
     outputs:
@@ -260,7 +298,8 @@ jobs:
             b1-build=B1: Build
             l1-unit=L1: Unit
             l3-integration=L3: Integration
-            l4-e2e=L4: E2E
+            l4-e2e-1=L4: E2E (1/2)
+            l4-e2e-2=L4: E2E (2/2)
             p1-package=P1: Package
           skipped-jobs: |
             l2-runtime=L2: Runtime

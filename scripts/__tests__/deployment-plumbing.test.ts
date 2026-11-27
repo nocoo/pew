@@ -21,7 +21,12 @@ describe("Docker CD contract", () => {
     }
     const smoke = slots.split("  p1-package:\n")[1]?.split("\n  z1-gate:")[0] ?? "";
     expect(smoke).toContain('name: "P1: Package"');
-    expect(smoke).toContain("docker build --platform linux/amd64 --tag pew-ci:");
+    expect(smoke).toContain("docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e");
+    expect(smoke).toContain("docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a");
+    expect(smoke).toContain("platforms: linux/amd64");
+    expect(smoke).toContain("tags: pew-ci:");
+    expect(smoke).toContain("load: true");
+    expect(smoke).toContain("cache-from: type=gha,scope=pew-p1");
     expect(smoke).toContain("node scripts/smoke-container.mjs pew-ci:");
     expect(smoke).not.toMatch(/secrets:|build-arg|env-file/);
     expect(ci).toContain("uses: ./.github/workflows/quality-slots.yml");
@@ -34,7 +39,8 @@ describe("Docker CD contract", () => {
     expect(slots).toContain("core-dist");
     expect(slots).toContain("needs: [b1-build]");
     expect(slots).toContain("l3-integration:");
-    expect(slots).toContain("l4-e2e:");
+    expect(slots).toContain("l4-e2e-1:");
+    expect(slots).toContain("l4-e2e-2:");
     expect(slots).toContain("p1-package:");
     expect(slots).toContain("z1-gate:");
   });

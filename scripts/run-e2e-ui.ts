@@ -1,3 +1,4 @@
 import { runLocalE2e } from "./e2e-utils";
 
-process.exitCode = await runLocalE2e("ui", process.argv.slice(2));
+const args = process.argv.slice(2).filter((arg, index) => !(index === 0 && arg === "--"));
+process.exitCode = await runLocalE2e("ui", args);

@@ -270,9 +270,10 @@ const checks: Record<(typeof READINESS_PAGES)[number]["check"], (page: Page) => 
 };
 
 test.describe("Seeded page and module readiness (real APIs)", () => {
-  test("all readiness routes render cleanly", async ({ page }) => {
-    test.setTimeout(180_000);
-    for (const entry of READINESS_PAGES) {
+  test.describe.configure({ mode: "parallel" });
+
+  for (const entry of READINESS_PAGES) {
+    test(`${entry.route} renders cleanly`, async ({ page }) => {
       const health = watchPageReadiness(page);
       let path = resolveRoute(entry.route, entry.check === "profile");
       if (entry.check === "comparison")
@@ -292,8 +293,8 @@ test.describe("Seeded page and module readiness (real APIs)", () => {
       await expect(
         page.getByText(/Failed to load|Application error|Internal Server Error/),
       ).toHaveCount(0);
-    }
-  });
+    });
+  }
 
   test("retired routes redirect exactly; settings and empty comparison load their destinations", async ({
     page,
