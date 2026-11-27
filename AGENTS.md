@@ -42,13 +42,13 @@ sh scripts/ponytail-audit.sh      # read-only accounting/complexity JSON audit
 - **DateTime UI & ordering**: convert to local time in web UI (`tzOffset`, `toLocaleString()`); use `utcToLocalDatetimeValue()`/`localDatetimeValueToUtc()` for `datetime-local` (never append `Z`); compare by epoch ms.
 - **Build & strictness**: TS strict composite refs across all 5 packages; preserve standalone assets (`public/`, `.next/static`) and `scripts/fix-standalone-swc-helpers.ts`; ban `.skip`/`.only` (Biome error).
 - **Scoped releases**: root and `packages/web` share Web version; CLI/core/Workers version independently. Never use `bun run release` for scoped releases (it bumps every package/Worker and pushes without prompt).
-- **Production deploy**: `main` push triggers Docker CD (`.github/workflows/release.yml`) to `/opt/pew` on jp2; never use `railway up` or manual rebuilds. Worker/schema changes need `wrangler deploy` + live check.
+- **Production deploy**: `main` push triggers `.github/workflows/pipeline.yml` (`quality` gate -> `D1`–`D5` Docker CD via `deploy-docker.yml`, `pew-web` BuildKit cache shared between `P1` and `D2`) to `/opt/pew` on jp2; never use `railway up` or manual rebuilds. Worker/schema changes need `wrangler deploy` + live check.
 - **jp2 & Railway safety**: retain stopped Railway project/vars/rollback image; shared Caddy uses `SIGUSR1` hot reload (never restart). Full SOP: [agent operations](docs/49-agent-operations.md).
 - **Ponytail audit**: read `.agents/skills/ponytail-audit/SKILL.md` and run `sh scripts/ponytail-audit.sh` (deterministic stdout JSON only; never write reports or touch real logs, state, queues, or services).
 
 ## Quality & Local Gates
 
-Follows `system1-quality`; CI slot definitions and pinned `base-ci` revision live in `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main` and by `release.yml`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
+Follows `system1-quality`; CI/CD orchestration lives in [.github/workflows/pipeline.yml](.github/workflows/pipeline.yml) (`quality` -> `deploy`, `main` push or `workflow_dispatch` with `deploy: true`) and slot definitions + pinned `base-ci` revision live in [.github/workflows/quality-slots.yml](.github/workflows/quality-slots.yml) (`quality / Z1: Gate` required on `main`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
 
 - **Exceptions / gaps**: `L2 Runtime` is `N/A` (API/Worker HTTP runs in `L3 Integration`, CLI pipeline in `test:e2e:cli`); `@nocoo/pew` npm publish check is `manual` (`P1: Package` runs Linux container smoke in CI).
 - **CI build reuse & L4 scope**: `B1: Build` uploads `core-dist` (`packages/core/dist`); `L3: Integration` and `L4: E2E` (`1/2`, `2/2`) build `@pew/core` inline and run in parallel without waiting on `B1`. `L4: E2E` runs Desktop Chromium smoke specs in `packages/web/e2e/bdd/` (`workers: 4` in CI).

@@ -2,10 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-const revision = "e5876a604547b1ddb0916f16dd841a4f832609a0";
-const ci = source(".github/workflows/ci.yml");
+const revision = "3703a073693d598159e87f77f99587e586c14cfe";
+const pipeline = source(".github/workflows/pipeline.yml");
 const slots = source(".github/workflows/quality-slots.yml");
-const release = source(".github/workflows/release.yml");
 const compose = source("deploy/compose.yaml");
 
 describe("Docker CD contract", () => {
@@ -26,11 +25,12 @@ describe("Docker CD contract", () => {
     expect(smoke).toContain("platforms: linux/amd64");
     expect(smoke).toContain("tags: pew-ci:");
     expect(smoke).toContain("load: true");
-    expect(smoke).toContain("cache-from: type=gha,scope=pew-p1");
+    expect(smoke).toContain("cache-from: type=gha,scope=pew-web");
+    expect(smoke).toContain("cache-to: type=gha,mode=max,scope=pew-web");
     expect(smoke).toContain("node scripts/smoke-container.mjs pew-ci:");
     expect(smoke).not.toMatch(/secrets:|build-arg|env-file/);
-    expect(ci).toContain("uses: ./.github/workflows/quality-slots.yml");
-    expect(ci).not.toContain("test-job.yml");
+    expect(pipeline).toContain("uses: ./.github/workflows/quality-slots.yml");
+    expect(pipeline).not.toContain("test-job.yml");
     expect(slots).not.toContain("l1-pre-commit-selftest:");
     expect(slots).not.toContain('name: "L1: Unit (Pre-commit Gate)"');
     expect(slots).not.toContain("bun run test:l1-gate");
@@ -44,30 +44,31 @@ describe("Docker CD contract", () => {
     expect(slots).toContain("z1-gate:");
   });
 
-  it("uses only the pinned existing release chain and exact CI provenance", () => {
-    expect(release).toContain(
+  it("uses only the pinned unified pipeline and same-run quality gate", () => {
+    expect(pipeline).toContain("name: Pipeline");
+    expect(pipeline).toContain(
       `uses: nocoo/base-ci/.github/workflows/deploy-docker.yml@${revision}`,
     );
-    expect(release).toContain("workflow_run:");
-    expect(release).toContain("- CI");
-    expect(release).toContain("github.event.workflow_run.conclusion == 'success'");
-    expect(release).toContain("github.event.workflow_run.head_branch == 'main'");
-    expect(release).toContain(
-      `source-run-id: \${{ github.event_name == 'workflow_run' && format('{0}', github.event.workflow_run.id) || inputs.ci-run-id }}`,
+    expect(pipeline).toContain("needs: [quality]");
+    expect(pipeline).toContain(
+      "if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.deploy == true)",
     );
-    expect(release).toContain("tailscale: true");
-    expect(release).toContain("environment: pew / production");
-    expect(release).toMatch(/TS_OAUTH_CLIENT_ID: \$\{\{ secrets\.TS_OAUTH_CLIENT_ID \}\}/);
-    expect(release).toMatch(/TS_AUDIENCE: \$\{\{ secrets\.TS_AUDIENCE \}\}/);
-    expect(release).toContain("id-token: write");
-    expect(release).toContain("deploy-directory: /opt/pew");
-    expect(release).toContain('images: \'[{"image":"ghcr.io/nocoo/pew","service":"web"}]\'');
-    expect(release).not.toMatch(/build-args|BUILD_ARGS|secrets: inherit|railway|lizheng|firefly/i);
+    expect(pipeline).not.toContain("workflow_run:");
+    expect(pipeline).not.toContain("source-run-id:");
+    expect(pipeline).not.toContain("required-quality-check:");
+    expect(pipeline).toContain("tailscale: true");
+    expect(pipeline).toContain("environment: pew / production");
+    expect(pipeline).toMatch(/TS_OAUTH_CLIENT_ID: \$\{\{ secrets\.TS_OAUTH_CLIENT_ID \}\}/);
+    expect(pipeline).toMatch(/TS_AUDIENCE: \$\{\{ secrets\.TS_AUDIENCE \}\}/);
+    expect(pipeline).toContain("id-token: write");
+    expect(pipeline).toContain("deploy-directory: /opt/pew");
+    expect(pipeline).toContain('images: \'[{"image":"ghcr.io/nocoo/pew","service":"web"}]\'');
+    expect(pipeline).not.toMatch(/build-args|BUILD_ARGS|secrets: inherit|railway|lizheng|firefly/i);
     for (const variable of ["DEPLOY_PHASE", "DEPLOY_URL", "DEPLOY_ORIGIN_MARKER"]) {
-      expect(release).toContain(`toJSON(vars.${variable})`);
+      expect(pipeline).toContain(`toJSON(vars.${variable})`);
     }
-    expect(release).toContain("sourceSha: process.env.SOURCE_SHA");
-    expect(release).toContain("imageManifest: process.env.RELEASE_IMAGES");
+    expect(pipeline).toContain("sourceSha: process.env.SOURCE_SHA");
+    expect(pipeline).toContain("imageManifest: process.env.RELEASE_IMAGES");
   });
 
   it("preserves raw runtime values, exact Railway byte limit and loopback-only exposure", () => {

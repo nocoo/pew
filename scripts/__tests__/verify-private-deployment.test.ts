@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(
-  new URL("../../.github/workflows/release.yml", import.meta.url),
+  new URL("../../.github/workflows/pipeline.yml", import.meta.url),
   "utf8",
 );
 const block = workflow.match(/ {8}python3 - <<'PY'\n([\s\S]*?)\n {8}PY/);
