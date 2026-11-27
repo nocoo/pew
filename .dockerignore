@@ -11,6 +11,14 @@
 **/dist
 **/.wrangler
 **/coverage
+**/playwright-report
+**/test-results
+**/__tests__
+**/__test-helpers__
+**/e2e
+**/*.test.*
+**/*.spec.*
+**/*.md
 **/*.tsbuildinfo
 **/.DS_Store
 **/.env*
