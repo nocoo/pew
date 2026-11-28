@@ -1,12 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RunLogEntry, SyncCycleResult, SyncTrigger } from "@pew/core";
-import { coordinatedSync } from "../notifier/coordinator.js";
-import type { FsOps } from "../notifier/coordinator.js";
+import { coordinatedSync, type FsOps } from "../notifier/coordinator.js";
 import type { ProcessOps } from "../notifier/lockfile.js";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 interface FakeFsState {
   signalSize: number;
@@ -14,9 +9,7 @@ interface FakeFsState {
   truncateCalls: number;
   mkdirCalls: number;
   signalExists: boolean;
-  /** Simulate lockfile: null = no lockfile, string = lockfile content */
   lockContent: string | null;
-  /** Simulate last-success.json: null = no file, string = ISO timestamp */
   lastSuccessAt: string | null;
 }
 
@@ -25,30 +18,10 @@ function createTrigger(): SyncTrigger {
 }
 
 function createFakeProcess(pid = 9999): ProcessOps {
-  return {
-    pid,
-    kill: (_pid: number, _signal: number) => true,
-  };
+  return { pid, kill: () => true };
 }
 
-/**
- * Create a fake fs for coordinator tests.
- *
- * The `lockContent` state simulates the lockfile:
- * - `null` means no lockfile on disk (acquireLock will succeed)
- * - A string means a lockfile exists (acquireLock will EEXIST)
- *
- * The `onLockAcquired` callback is invoked when a lock is "acquired"
- * (i.e. writeFile with flag="wx" succeeds), allowing tests to simulate
- * concurrent behavior.
- */
-function createFakeFs(
-  state?: Partial<FakeFsState>,
-  opts?: {
-    onLockAcquired?: () => void;
-    statOverride?: () => Promise<{ size: number }>;
-  },
-) {
+function createFakeFs(state?: Partial<FakeFsState>) {
   const fakeState: FakeFsState = {
     signalSize: 0,
     appendCalls: 0,
@@ -60,62 +33,39 @@ function createFakeFs(
     ...state,
   };
 
+  const enoent = () => Object.assign(new Error("ENOENT"), { code: "ENOENT" });
   const fs: FsOps = {
-    stat:
-      opts?.statOverride ??
-      vi.fn(async () => {
-        if (!fakeState.signalExists) {
-          const err = new Error("missing") as NodeJS.ErrnoException;
-          err.code = "ENOENT";
-          throw err;
-        }
-        return { size: fakeState.signalSize };
-      }),
-
+    stat: vi.fn(async () => {
+      if (!fakeState.signalExists) throw enoent();
+      return { size: fakeState.signalSize };
+    }),
     appendFile: vi.fn(async (_path: string, content: string) => {
       fakeState.signalExists = true;
       fakeState.appendCalls += 1;
       fakeState.signalSize += Buffer.byteLength(content);
     }),
-
     writeFile: vi.fn(async (_path: string, content: string, options?: { flag?: string }) => {
       if (options?.flag === "wx") {
-        // O_EXCL lockfile creation
-        if (fakeState.lockContent !== null) {
-          const err = new Error("EEXIST") as NodeJS.ErrnoException;
-          err.code = "EEXIST";
-          throw err;
-        }
+        if (fakeState.lockContent !== null)
+          throw Object.assign(new Error("EEXIST"), { code: "EEXIST" });
         fakeState.lockContent = content;
-        opts?.onLockAcquired?.();
         return;
       }
-      // Regular writeFile — signal truncation or run log
       fakeState.signalExists = true;
       fakeState.truncateCalls += 1;
       fakeState.signalSize = Buffer.byteLength(content);
     }),
-
     readFile: vi.fn(async (path: string) => {
       if (path.endsWith("sync.lock")) {
-        if (fakeState.lockContent === null) {
-          const err = new Error("ENOENT") as NodeJS.ErrnoException;
-          err.code = "ENOENT";
-          throw err;
-        }
+        if (fakeState.lockContent === null) throw enoent();
         return fakeState.lockContent;
       }
       if (path.endsWith("last-success.json")) {
-        if (fakeState.lastSuccessAt === null) {
-          const err = new Error("ENOENT") as NodeJS.ErrnoException;
-          err.code = "ENOENT";
-          throw err;
-        }
+        if (fakeState.lastSuccessAt === null) throw enoent();
         return fakeState.lastSuccessAt;
       }
       throw new Error(`readFile: unexpected path ${path}`);
     }),
-
     unlink: vi.fn(async (path: string) => {
       if (path.endsWith("sync.lock")) {
         fakeState.lockContent = null;
@@ -123,7 +73,6 @@ function createFakeFs(
       }
       throw new Error(`unlink: unexpected path ${path}`);
     }),
-
     mkdir: vi.fn(async () => {
       fakeState.mkdirCalls += 1;
     }),
@@ -132,7 +81,49 @@ function createFakeFs(
   return { state: fakeState, fs };
 }
 
-/** Extract the RunLogEntry written to last-run.json from the fake fs writeFile calls */
+function createContendedFs(opts: {
+  consumeSignalOnRelease?: boolean;
+  deleteSignalAfterWait?: boolean;
+}) {
+  const holderLock = JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" });
+  const fake = createFakeFs({
+    lockContent: holderLock,
+    signalSize: opts.consumeSignalOnRelease ? 0 : 1,
+  });
+  let wxCallCount = 0;
+  const fs: FsOps = {
+    ...fake.fs,
+    stat: vi.fn(async (path: string) => {
+      if (opts.deleteSignalAfterWait && path.endsWith("notify.signal")) {
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      }
+      return fake.fs.stat(path);
+    }),
+    writeFile: vi.fn(async (path: string, content: string, options?: { flag?: string }) => {
+      if (options?.flag === "wx") {
+        wxCallCount++;
+        if (wxCallCount <= 1) throw Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+        fake.state.lockContent = content;
+        if (opts.consumeSignalOnRelease) fake.state.signalSize = 0;
+        return;
+      }
+      return fake.fs.writeFile(path, content, options);
+    }),
+    readFile: vi.fn(async (path: string) => {
+      if (path.endsWith("sync.lock")) {
+        if (wxCallCount <= 1) return holderLock;
+        if (fake.state.lockContent) return fake.state.lockContent;
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      }
+      return fake.fs.readFile(path);
+    }),
+    unlink: vi.fn(async () => {
+      fake.state.lockContent = null;
+    }),
+  };
+  return { state: fake.state, fs };
+}
+
 function extractRunLog(fs: FsOps): RunLogEntry | undefined {
   const calls = (fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
     string,
@@ -143,372 +134,8 @@ function extractRunLog(fs: FsOps): RunLogEntry | undefined {
   return logCall ? JSON.parse(logCall[1]) : undefined;
 }
 
-// ---------------------------------------------------------------------------
-// coordinatedSync — lock acquisition
-// ---------------------------------------------------------------------------
-
 describe("coordinatedSync", () => {
-  it("runs a single sync when the lock is immediately available", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => Date.parse("2026-03-09T10:00:00.000Z"),
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.waitedForLock).toBe(false);
-    expect(result.skippedSync).toBe(false);
-    expect(result.runId).toMatch(/^2026-03-09T10:00:00\.000Z-[a-z0-9]+$/);
-    expect(result.cycles).toHaveLength(1);
-    expect(result.cycles[0]).toEqual({});
-    expect(result.followUpCount).toBe(0);
-    expect(result.degradedToUnlocked).toBe(false);
-  });
-
-  it("waits for the lock and runs sync after the holder releases", async () => {
-    // Lock held by another process initially
-    const fake = createFakeFs({
-      lockContent: JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" }),
-      signalSize: 1,
-    });
-    const proc = createFakeProcess(9999);
-
-    // Simulate: after first sleep, the holder releases the lock
-    let pollCount = 0;
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: {
-        ...fake.fs,
-        // Intercept unlink to track, but also need to simulate lock release
-        writeFile: vi.fn(async (path: string, content: string, options?: { flag?: string }) => {
-          if (options?.flag === "wx") {
-            pollCount++;
-            if (pollCount <= 1) {
-              // First attempt: lock still held
-              const err = new Error("EEXIST") as NodeJS.ErrnoException;
-              err.code = "EEXIST";
-              throw err;
-            }
-            // Second attempt: lock acquired
-            fake.state.lockContent = content;
-            return;
-          }
-          return fake.fs.writeFile(path, content, options);
-        }),
-        readFile: vi.fn(async (path: string) => {
-          if (path.endsWith("sync.lock")) {
-            if (pollCount === 0) {
-              return JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" });
-            }
-            // After first poll the holder is gone
-            const err = new Error("ENOENT") as NodeJS.ErrnoException;
-            err.code = "ENOENT";
-            throw err;
-          }
-          return fake.fs.readFile(path);
-        }),
-        unlink: vi.fn(async () => {}),
-      } satisfies FsOps,
-      process: proc,
-      lockTimeoutMs: 10000,
-    });
-
-    expect(fake.state.appendCalls).toBe(1);
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.waitedForLock).toBe(true);
-    expect(result.skippedSync).toBe(false);
-    expect(result.cycles).toHaveLength(1);
-    expect(result.degradedToUnlocked).toBe(false);
-  });
-
-  it("skips sync for a waiter when a previous follow-up already consumed the signal", async () => {
-    // Lock held by another process initially
-    const fake = createFakeFs({
-      lockContent: JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" }),
-      signalSize: 0,
-    });
-
-    // Simulate: lock becomes available after one poll, but the holder's
-    // follow-up already consumed the signal (size resets to 0).
-    let wxCallCount = 0;
-    const overrideFs: FsOps = {
-      ...fake.fs,
-      writeFile: vi.fn(async (path: string, content: string, options?: { flag?: string }) => {
-        if (options?.flag === "wx") {
-          wxCallCount++;
-          if (wxCallCount <= 1) {
-            const err = new Error("EEXIST") as NodeJS.ErrnoException;
-            err.code = "EEXIST";
-            throw err;
-          }
-          fake.state.lockContent = content;
-          // Simulate: the previous holder's follow-up consumed the signal
-          fake.state.signalSize = 0;
-          return;
-        }
-        return fake.fs.writeFile(path, content, options);
-      }),
-      readFile: vi.fn(async (path: string) => {
-        if (path.endsWith("sync.lock")) {
-          if (wxCallCount <= 1) {
-            return JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" });
-          }
-          if (fake.state.lockContent) return fake.state.lockContent;
-          const err = new Error("ENOENT") as NodeJS.ErrnoException;
-          err.code = "ENOENT";
-          throw err;
-        }
-        return fake.fs.readFile(path);
-      }),
-      unlink: vi.fn(async () => {
-        fake.state.lockContent = null;
-      }),
-    };
-
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: overrideFs,
-      process: createFakeProcess(9999),
-      lockTimeoutMs: 10000,
-    });
-
-    expect(executeSyncFn).not.toHaveBeenCalled();
-    expect(result.waitedForLock).toBe(true);
-    expect(result.skippedSync).toBe(true);
-    expect(result.cycles).toHaveLength(0);
-  });
-
-  it("skips sync for a waiter when signal file is missing (ENOENT)", async () => {
-    // Same scenario as "skips sync for a waiter when a previous follow-up
-    // already consumed the signal", but the signal file was *deleted* rather
-    // than truncated to 0 bytes — readSignalSize must return 0 via ENOENT.
-    const fake = createFakeFs({
-      lockContent: JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" }),
-      signalSize: 0,
-    });
-
-    let wxCallCount = 0;
-    const overrideFs: FsOps = {
-      ...fake.fs,
-      stat: vi.fn(async (path: string) => {
-        if (path.endsWith("notify.signal")) {
-          // After lock holder's follow-up, signal file no longer exists
-          const err = new Error("ENOENT") as NodeJS.ErrnoException;
-          err.code = "ENOENT";
-          throw err;
-        }
-        return fake.fs.stat(path);
-      }),
-      writeFile: vi.fn(async (path: string, content: string, options?: { flag?: string }) => {
-        if (options?.flag === "wx") {
-          wxCallCount++;
-          if (wxCallCount <= 1) {
-            const err = new Error("EEXIST") as NodeJS.ErrnoException;
-            err.code = "EEXIST";
-            throw err;
-          }
-          fake.state.lockContent = content;
-          return;
-        }
-        return fake.fs.writeFile(path, content, options);
-      }),
-      readFile: vi.fn(async (path: string) => {
-        if (path.endsWith("sync.lock")) {
-          if (wxCallCount <= 1) {
-            return JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" });
-          }
-          if (fake.state.lockContent) return fake.state.lockContent;
-          const err = new Error("ENOENT") as NodeJS.ErrnoException;
-          err.code = "ENOENT";
-          throw err;
-        }
-        return fake.fs.readFile(path);
-      }),
-      unlink: vi.fn(async () => {
-        fake.state.lockContent = null;
-      }),
-    };
-
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: overrideFs,
-      process: createFakeProcess(9999),
-      lockTimeoutMs: 10000,
-    });
-
-    // readSignalSize returns 0 for ENOENT → waiter skips sync
-    expect(executeSyncFn).not.toHaveBeenCalled();
-    expect(result.waitedForLock).toBe(true);
-    expect(result.skippedSync).toBe(true);
-  });
-
-  it("runs a dirty follow-up when signal bytes appear during sync", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const executeSyncFn = vi.fn(async () => {
-      if (executeSyncFn.mock.calls.length === 1) {
-        fake.state.signalSize = 1;
-      }
-      return {};
-    });
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(2);
-    expect(result.hadFollowUp).toBe(true);
-    expect(result.followUpCount).toBe(1);
-    expect(result.cycles).toHaveLength(2);
-  });
-
-  it("stops follow-up runs at the configured cap", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const executeSyncFn = vi.fn(async () => {
-      fake.state.signalSize = 1;
-      return {};
-    });
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      maxFollowUps: 2,
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(3);
-    expect(result.cycles).toHaveLength(3);
-    expect(result.followUpCount).toBe(2);
-  });
-
-  it("keeps checking dirty state after a sync failure", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const executeSyncFn = vi
-      .fn<(_triggers: SyncTrigger[]) => Promise<SyncCycleResult>>()
-      .mockImplementationOnce(async () => {
-        fake.state.signalSize = 1;
-        throw new Error("boom");
-      })
-      .mockImplementationOnce(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(2);
-    expect(result.error).toContain("boom");
-    expect(result.hadFollowUp).toBe(true);
-    expect(result.cycles).toHaveLength(2);
-  });
-
-  it("fails closed when lockfile write throws unexpected error (not EEXIST)", async () => {
-    const fake = createFakeFs({ lockContent: null });
-    // Override writeFile to throw EACCES on O_EXCL
-    const overrideFs: FsOps = {
-      ...fake.fs,
-      writeFile: vi.fn(async (_path: string, _content: string, options?: { flag?: string }) => {
-        if (options?.flag === "wx") {
-          const err = new Error("EACCES") as NodeJS.ErrnoException;
-          err.code = "EACCES";
-          throw err;
-        }
-        return fake.fs.writeFile(_path, _content, options);
-      }),
-    };
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: overrideFs,
-      process: createFakeProcess(),
-    });
-
-    // Fail-closed: no sync executed, error reported, skippedSync is true
-    expect(executeSyncFn).not.toHaveBeenCalled();
-    expect(result.error).toContain("EACCES");
-    expect(result.skippedSync).toBe(true);
-    expect(result.degradedToUnlocked).toBe(false);
-    expect(result.cycles).toHaveLength(0);
-  });
-
-  it("treats a missing signal file as size zero", async () => {
-    const fake = createFakeFs({ lockContent: null, signalExists: false });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.hadFollowUp).toBe(false);
-  });
-
-  it("captures unexpected signal stat errors and writes error run log", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const statFn = vi.fn(async () => {
-      throw Object.assign(new Error("denied"), { code: "EACCES" });
-    });
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => ({})),
-      version: "0.8.0",
-      fs: { ...fake.fs, stat: statFn },
-      process: createFakeProcess(),
-    });
-
-    expect(result.error).toContain("denied");
-    expect(result.cycles).toHaveLength(0);
-  });
-
-  it("returns lock timeout error when lock cannot be acquired in time", async () => {
-    // Lock held by alive process — will never release
-    const fake = createFakeFs({
-      lockContent: JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" }),
-      signalSize: 1,
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(9999),
-      lockTimeoutMs: 10,
-      // Use a near-instant now to simulate time passing via waitForLock's internal sleep
-    });
-
-    expect(executeSyncFn).not.toHaveBeenCalled();
-    expect(result.skippedSync).toBe(true);
-    expect(result.error).toContain("lock timeout");
-    expect(result.cycles).toHaveLength(0);
-  });
-
-  it("stores a full SyncCycleResult in cycles[0]", async () => {
+  it("runs a single sync immediately, writes run log & runs dir, and releases lock", async () => {
     const fake = createFakeFs({ lockContent: null, signalSize: 0 });
     const fullCycle: SyncCycleResult = {
       tokenSync: {
@@ -536,22 +163,96 @@ describe("coordinatedSync", () => {
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
       executeSyncFn,
+      version: "0.8.0",
       fs: fake.fs,
       process: createFakeProcess(),
+      now: () => Date.parse("2026-03-10T12:00:00.000Z"),
     });
 
-    expect(result.cycles).toHaveLength(1);
-    expect(result.cycles[0]).toEqual(fullCycle);
-    expect(result.cycles[0].tokenSync?.totalDeltas).toBe(10);
-    expect(result.cycles[0].sessionSync?.totalSnapshots).toBe(2);
+    expect(executeSyncFn).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      waitedForLock: false,
+      skippedSync: false,
+      followUpCount: 0,
+      degradedToUnlocked: false,
+    });
+    expect(result.runId).toMatch(/^2026-03-10T12:00:00\.000Z-[a-z0-9]+$/);
+    expect(result.cycles).toEqual([fullCycle]);
+    expect(fake.state.lockContent).toBeNull();
+
+    const mkdirCalls = (fake.fs.mkdir as ReturnType<typeof vi.fn>).mock.calls as unknown as [
+      string,
+      { recursive: boolean },
+    ][];
+    expect(mkdirCalls.find(([p]) => p.endsWith("/runs"))?.[1]).toEqual({ recursive: true });
+
+    const log = extractRunLog(fake.fs)!;
+    expect(log).toMatchObject({
+      runId: result.runId,
+      version: "0.8.0",
+      triggers: [createTrigger()],
+      startedAt: "2026-03-10T12:00:00.000Z",
+      completedAt: "2026-03-10T12:00:00.000Z",
+      durationMs: 0,
+      status: "success",
+    });
+    expect(log.coordination).toMatchObject({
+      waitedForLock: false,
+      skippedSync: false,
+      hadFollowUp: false,
+      followUpCount: 0,
+      degradedToUnlocked: false,
+    });
   });
 
-  it("collects multiple cycles during follow-ups", async () => {
+  it("waits for the lock and runs sync after the holder releases", async () => {
+    const { state, fs } = createContendedFs({});
+    const executeSyncFn = vi.fn(async () => ({}));
+    const result = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      fs,
+      process: createFakeProcess(),
+      lockTimeoutMs: 10000,
+    });
+    expect(state.appendCalls).toBe(1);
+    expect(executeSyncFn).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      waitedForLock: true,
+      skippedSync: false,
+      degradedToUnlocked: false,
+    });
+  });
+
+  it.each([
+    { label: "signal consumed", opts: { consumeSignalOnRelease: true } },
+    { label: "signal missing ENOENT", opts: { deleteSignalAfterWait: true } },
+  ])("skips sync for waiter when $label and logs status 'skipped'", async ({ opts }) => {
+    const { fs } = createContendedFs(opts);
+    const executeSyncFn = vi.fn(async () => ({}));
+    const result = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      version: "0.8.0",
+      fs,
+      process: createFakeProcess(),
+      lockTimeoutMs: 10000,
+    });
+    expect(executeSyncFn).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ waitedForLock: true, skippedSync: true, cycles: [] });
+    expect(extractRunLog(fs)).toMatchObject({
+      status: "skipped",
+      coordination: { skippedSync: true },
+    });
+  });
+
+  it("runs dirty follow-ups up to maxFollowUps, keeps checking after failure, and logs cycles", async () => {
     const fake = createFakeFs({ lockContent: null, signalSize: 0 });
     let callCount = 0;
     const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => {
       callCount += 1;
-      if (callCount <= 2) fake.state.signalSize = 1;
+      fake.state.signalSize = 1;
+      if (callCount === 1) throw new Error("boom");
       return {
         tokenSync: {
           filesScanned: { claude: callCount },
@@ -565,39 +266,89 @@ describe("coordinatedSync", () => {
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
       executeSyncFn,
+      version: "0.8.0",
       fs: fake.fs,
       process: createFakeProcess(),
-      maxFollowUps: 3,
+      maxFollowUps: 2,
     });
 
     expect(executeSyncFn).toHaveBeenCalledTimes(3);
+    expect(result).toMatchObject({ hadFollowUp: true, followUpCount: 2 });
+    expect(result.error).toContain("boom");
     expect(result.cycles).toHaveLength(3);
-    expect(result.followUpCount).toBe(2);
-    expect(result.cycles[0].tokenSync?.totalDeltas).toBe(1);
-    expect(result.cycles[1].tokenSync?.totalDeltas).toBe(2);
-    expect(result.cycles[2].tokenSync?.totalDeltas).toBe(3);
+    expect(result.cycles[0]).toEqual({});
+    expect(result.cycles[1]?.tokenSync?.totalDeltas).toBe(2);
+    expect(extractRunLog(fake.fs)?.cycles).toHaveLength(3);
   });
 
-  it("records an empty cycle when executeSyncFn throws unexpectedly", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const executeSyncFn = vi.fn(async () => {
-      throw new Error("unexpected crash");
-    });
-
-    const result = await coordinatedSync(createTrigger(), {
+  it("fails closed on unexpected lock error, captures signal stat error, and handles lock timeout", async () => {
+    // 1) EACCES on O_EXCL lockfile
+    const fakeAcc = createFakeFs({ lockContent: null });
+    const eaccesFs: FsOps = {
+      ...fakeAcc.fs,
+      writeFile: vi.fn(async (p: string, c: string, o?: { flag?: string }) => {
+        if (o?.flag === "wx") throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+        return fakeAcc.fs.writeFile(p, c, o);
+      }),
+    };
+    const rAcc = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
+      executeSyncFn: vi.fn(async () => ({})),
+      fs: eaccesFs,
       process: createFakeProcess(),
     });
+    expect(rAcc).toMatchObject({ skippedSync: true, degradedToUnlocked: false, cycles: [] });
+    expect(rAcc.error).toContain("EACCES");
 
-    expect(result.cycles).toHaveLength(1);
-    expect(result.cycles[0]).toEqual({});
-    expect(result.error).toContain("unexpected crash");
+    // 2) Signal stat error
+    const fakeStat = createFakeFs({ lockContent: null });
+    const rStat = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn: vi.fn(async () => ({})),
+      fs: {
+        ...fakeStat.fs,
+        stat: vi.fn(async () => {
+          throw Object.assign(new Error("denied"), { code: "EACCES" });
+        }),
+      },
+      process: createFakeProcess(),
+    });
+    expect(rStat.error).toContain("denied");
+    expect(extractRunLog(fakeStat.fs)?.status).toBe("error");
+
+    // 3) Lock timeout
+    const fakeTimeout = createFakeFs({
+      lockContent: JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" }),
+      signalSize: 1,
+    });
+    const rTo = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn: vi.fn(async () => ({})),
+      fs: fakeTimeout.fs,
+      process: createFakeProcess(),
+      lockTimeoutMs: 10,
+    });
+    expect(rTo).toMatchObject({ skippedSync: true, cycles: [] });
+    expect(rTo.error).toContain("lock timeout");
+    expect(extractRunLog(fakeTimeout.fs)).toMatchObject({
+      status: "skipped",
+      error: expect.stringContaining("lock timeout"),
+    });
   });
 
-  it("preserves a partial success cycle (tokenSync present, sessionSyncError present)", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
+  it("treats missing signal file as size zero and handles partial/error/missing-version/failed run logs", async () => {
+    const fakeMissing = createFakeFs({ lockContent: null, signalExists: false });
+    const rMissing = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn: vi.fn(async () => ({})),
+      fs: fakeMissing.fs,
+      process: createFakeProcess(),
+    });
+    expect(rMissing.hadFollowUp).toBe(false);
+    expect(extractRunLog(fakeMissing.fs)?.version).toBe("unknown");
+
+    // Partial cycle
+    const fakePartial = createFakeFs({ lockContent: null, signalSize: 0 });
     const partialCycle: SyncCycleResult = {
       tokenSync: {
         filesScanned: { gemini: 5 },
@@ -607,450 +358,45 @@ describe("coordinatedSync", () => {
       },
       sessionSyncError: "session db locked",
     };
-    const executeSyncFn = vi.fn(async () => partialCycle);
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    expect(result.cycles).toHaveLength(1);
-    expect(result.cycles[0].tokenSync?.totalDeltas).toBe(3);
-    expect(result.cycles[0].sessionSyncError).toBe("session db locked");
-    expect(result.cycles[0].sessionSync).toBeUndefined();
-    expect(result.error).toBeUndefined();
-  });
-
-  it("releases lockfile after successful run", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => ({})),
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    // Lock should be released (unlinked)
-    expect(fake.state.lockContent).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Run log writing
-// ---------------------------------------------------------------------------
-
-describe("run log writing", () => {
-  it("writes run log to runs/<runId>.json and last-run.json with correct schema", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      version: "0.8.0",
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => Date.parse("2026-03-10T12:00:00.000Z"),
-    });
-
-    const lastRun = extractRunLog(fake.fs);
-    expect(lastRun).toBeDefined();
-
-    expect(lastRun!.runId).toBe(result.runId);
-    expect(lastRun!.version).toBe("0.8.0");
-    expect(lastRun!.triggers).toEqual([createTrigger()]);
-    expect(lastRun!.startedAt).toBe("2026-03-10T12:00:00.000Z");
-    expect(lastRun!.completedAt).toBe("2026-03-10T12:00:00.000Z");
-    expect(lastRun!.durationMs).toBe(0);
-    expect(lastRun!.coordination.waitedForLock).toBe(false);
-    expect(lastRun!.coordination.skippedSync).toBe(false);
-    expect(lastRun!.coordination.hadFollowUp).toBe(false);
-    expect(lastRun!.coordination.followUpCount).toBe(0);
-    expect(lastRun!.coordination.degradedToUnlocked).toBe(false);
-    expect(lastRun!.cycles).toHaveLength(1);
-    expect(lastRun!.status).toBe("success");
-    expect(lastRun!.error).toBeUndefined();
-  });
-
-  it("creates runs/ directory via fs.mkdir", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => ({})),
-      version: "0.8.0",
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    const mkdirCalls = (fake.fs.mkdir as ReturnType<typeof vi.fn>).mock.calls as unknown as [
-      string,
-      { recursive: boolean },
-    ][];
-    const runsDirCall = mkdirCalls.find(([path]) => path.endsWith("/runs"));
-    expect(runsDirCall).toBeDefined();
-    expect(runsDirCall![1]).toEqual({ recursive: true });
-  });
-
-  it("writes status 'skipped' when sync is skipped (waiter dedup)", async () => {
-    // Simulate: lock held, waiter acquires, but signal is empty (consumed by follow-up)
-    const fake = createFakeFs({
-      lockContent: JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" }),
-      signalSize: 0,
-    });
-
-    let wxCallCount = 0;
-    const overrideFs: FsOps = {
-      ...fake.fs,
-      writeFile: vi.fn(async (path: string, content: string, options?: { flag?: string }) => {
-        if (options?.flag === "wx") {
-          wxCallCount++;
-          if (wxCallCount <= 1) {
-            const err = new Error("EEXIST") as NodeJS.ErrnoException;
-            err.code = "EEXIST";
-            throw err;
-          }
-          fake.state.lockContent = content;
-          // Simulate: the previous holder's follow-up consumed the signal
-          fake.state.signalSize = 0;
-          return;
-        }
-        return fake.fs.writeFile(path, content, options);
-      }),
-      readFile: vi.fn(async (path: string) => {
-        if (path.endsWith("sync.lock")) {
-          if (wxCallCount <= 1)
-            return JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" });
-          if (fake.state.lockContent) return fake.state.lockContent;
-          const err = new Error("ENOENT") as NodeJS.ErrnoException;
-          err.code = "ENOENT";
-          throw err;
-        }
-        return fake.fs.readFile(path);
-      }),
-      unlink: vi.fn(async () => {
-        fake.state.lockContent = null;
-      }),
-    };
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => ({})),
-      version: "0.8.0",
-      fs: overrideFs,
-      process: createFakeProcess(9999),
-      lockTimeoutMs: 10000,
-    });
-
-    const log = extractRunLog(overrideFs);
-    expect(log).toBeDefined();
-    expect(log!.status).toBe("skipped");
-    expect(log!.coordination.skippedSync).toBe(true);
-  });
-
-  it("writes status 'error' when sync throws", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => {
-        throw new Error("db gone");
-      }),
-      version: "0.8.0",
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    const log = extractRunLog(fake.fs);
-    expect(log).toBeDefined();
-    expect(log!.status).toBe("error");
-    expect(log!.error).toContain("db gone");
-  });
-
-  it("writes status 'skipped' with error on lock timeout", async () => {
-    const fake = createFakeFs({
-      lockContent: JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" }),
-      signalSize: 1,
-    });
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => ({})),
-      version: "0.8.0",
-      fs: fake.fs,
-      process: createFakeProcess(9999),
-      lockTimeoutMs: 10,
-    });
-
-    const log = extractRunLog(fake.fs);
-    expect(log).toBeDefined();
-    expect(log!.status).toBe("skipped");
-    expect(log!.error).toContain("lock timeout");
-    expect(log!.coordination.skippedSync).toBe(true);
-  });
-
-  it("writes multiple cycles in run log on follow-up", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const executeSyncFn = vi.fn(async () => {
-      if (executeSyncFn.mock.calls.length === 1) {
-        fake.state.signalSize = 1;
-      }
-      return {};
-    });
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      version: "0.8.0",
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    const log = extractRunLog(fake.fs);
-    expect(log).toBeDefined();
-    expect(log!.cycles).toHaveLength(2);
-    expect(log!.coordination.hadFollowUp).toBe(true);
-    expect(log!.coordination.followUpCount).toBe(1);
-  });
-
-  it("writes status 'partial' for partial success cycle", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const partialCycle: SyncCycleResult = {
-      tokenSync: { filesScanned: { claude: 2 }, totalDeltas: 1, totalRecords: 1, sources: {} },
-      sessionSyncError: "session db locked",
-    };
-
-    await coordinatedSync(createTrigger(), {
+    const rPartial = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
       executeSyncFn: vi.fn(async () => partialCycle),
       version: "0.8.0",
-      fs: fake.fs,
+      fs: fakePartial.fs,
       process: createFakeProcess(),
     });
+    expect(rPartial.error).toBeUndefined();
+    expect(extractRunLog(fakePartial.fs)).toMatchObject({ status: "partial" });
 
-    const log = extractRunLog(fake.fs);
-    expect(log).toBeDefined();
-    expect(log!.status).toBe("partial");
-    expect(log!.cycles[0].tokenSync?.totalDeltas).toBe(1);
-    expect(log!.cycles[0].sessionSyncError).toBe("session db locked");
-  });
-
-  it("returns normally when run log write fails (non-fatal)", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-    const originalWriteFile = fake.fs.writeFile;
-    fake.fs.writeFile = vi.fn(
-      async (path: string, content: string, options?: { flag?: string }) => {
-        if (options?.flag === "wx") {
-          // Let lock acquisition through
-          return originalWriteFile(path, content, options);
-        }
-        // Let signal truncation through but fail on run log writes
-        if (path.endsWith(".json")) {
-          throw new Error("disk full");
-        }
-        return originalWriteFile(path, content, options);
-      },
-    );
-
-    const result = await coordinatedSync(createTrigger(), {
+    // Non-fatal run log write failure
+    const fakeLogFail = createFakeFs({ lockContent: null, signalSize: 0 });
+    const origWrite = fakeLogFail.fs.writeFile;
+    fakeLogFail.fs.writeFile = vi.fn(async (p: string, c: string, o?: { flag?: string }) => {
+      if (o?.flag !== "wx" && p.endsWith(".json")) throw new Error("disk full");
+      return origWrite(p, c, o);
+    });
+    const rLogFail = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
       executeSyncFn: vi.fn(async () => ({})),
-      version: "0.8.0",
-      fs: fake.fs,
+      fs: fakeLogFail.fs,
       process: createFakeProcess(),
     });
-
-    expect(result.runId).toBeDefined();
-    expect(result.cycles).toHaveLength(1);
-    expect(result.error).toBeUndefined();
-  });
-
-  it("uses 'unknown' as version when not provided", async () => {
-    const fake = createFakeFs({ lockContent: null, signalSize: 0 });
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => ({})),
-      fs: fake.fs,
-      process: createFakeProcess(),
-    });
-
-    const log = extractRunLog(fake.fs);
-    expect(log).toBeDefined();
-    expect(log!.version).toBe("unknown");
+    expect(rLogFail.error).toBeUndefined();
+    expect(rLogFail.cycles).toHaveLength(1);
   });
 });
 
-// ---------------------------------------------------------------------------
-// Cooldown
-// ---------------------------------------------------------------------------
-
 describe("cooldown", () => {
-  it("skips sync when last successful run is within cooldown window", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-    const LAST_SUCCESS = "2026-03-10T12:03:00.000Z"; // 2 min ago
+  const NOW = Date.parse("2026-03-10T12:05:00.000Z");
 
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 1,
-      lastSuccessAt: LAST_SUCCESS,
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      cooldownMs: 300_000, // 5 min
-    });
-
-    expect(executeSyncFn).not.toHaveBeenCalled();
-    expect(result.skippedSync).toBe(true);
-    expect(result.skippedReason).toBe("cooldown");
-    expect(result.cooldownRemainingMs).toBe(180_000); // 5min - 2min = 3min
-    expect(result.cycles).toHaveLength(0);
-  });
-
-  it("runs sync when cooldown has expired", async () => {
-    const NOW = Date.parse("2026-03-10T12:10:00.000Z");
-    const LAST_SUCCESS = "2026-03-10T12:03:00.000Z"; // 7 min ago
-
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 0,
-      lastSuccessAt: LAST_SUCCESS,
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      cooldownMs: 300_000,
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.skippedSync).toBe(false);
-    expect(result.skippedReason).toBeUndefined();
-    expect(result.cooldownRemainingMs).toBeUndefined();
-  });
-
-  it("runs sync when no last-success.json exists (first run ever)", async () => {
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 0,
-      lastSuccessAt: null, // no file
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      cooldownMs: 300_000,
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.skippedSync).toBe(false);
-  });
-
-  it("runs sync when last-success.json is corrupted", async () => {
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 0,
-      lastSuccessAt: "not a valid ISO date {{{",
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      cooldownMs: 300_000,
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.skippedSync).toBe(false);
-  });
-
-  it("always runs when cooldownMs is 0 (disabled)", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-    const LAST_SUCCESS = "2026-03-10T12:04:59.000Z"; // 1 second ago
-
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 0,
-      lastSuccessAt: LAST_SUCCESS,
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      cooldownMs: 0,
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.skippedSync).toBe(false);
-  });
-
-  it("preserves signal file on cooldown skip (does not truncate)", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-    const LAST_SUCCESS = "2026-03-10T12:03:00.000Z";
-
+  it("skips within cooldown window without truncating signal or overwriting last-success.json", async () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 5,
-      lastSuccessAt: LAST_SUCCESS,
+      lastSuccessAt: "2026-03-10T12:03:00.000Z",
     });
     const executeSyncFn = vi.fn(async () => ({}));
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      cooldownMs: 300_000,
-    });
-
-    // Signal truncation writes empty string to notify.signal.
-    // Verify it was never called — only run log writes should have happened.
-    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
-      string,
-      string,
-      unknown?,
-    ][];
-    const signalTruncateCalls = writeCalls.filter(
-      ([path, content]) => path.endsWith("notify.signal") && content === "",
-    );
-    expect(signalTruncateCalls).toHaveLength(0);
-  });
-
-  it("writes run log with skippedReason 'cooldown' on cooldown skip", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-    const LAST_SUCCESS = "2026-03-10T12:03:00.000Z";
-
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 1,
-      lastSuccessAt: LAST_SUCCESS,
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    await coordinatedSync(createTrigger(), {
+    const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
       executeSyncFn,
       version: "0.9.0",
@@ -1060,99 +406,62 @@ describe("cooldown", () => {
       cooldownMs: 300_000,
     });
 
-    const log = extractRunLog(fake.fs);
-    expect(log).toBeDefined();
-    expect(log!.status).toBe("skipped");
-    expect(log!.coordination.skippedSync).toBe(true);
-    expect(log!.coordination.skippedReason).toBe("cooldown");
-  });
-
-  it("does not apply cooldown when cooldownMs is not set (defaults to no cooldown)", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-    const LAST_SUCCESS = "2026-03-10T12:04:59.000Z"; // 1 second ago
-
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 0,
-      lastSuccessAt: LAST_SUCCESS,
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      // cooldownMs not set — should default to no cooldown
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.skippedSync).toBe(false);
-  });
-
-  it("successful run writes last-success.json for future cooldown checks", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 0,
-      lastSuccessAt: null,
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      cooldownMs: 300_000,
-    });
-
-    // Verify last-success.json was written
-    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
-      string,
-      string,
-      unknown?,
-    ][];
-    const successWrites = writeCalls.filter(([path]) => path.endsWith("last-success.json"));
-    expect(successWrites).toHaveLength(1);
-    // Content should be an ISO timestamp
-    const content = successWrites[0][1];
-    expect(new Date(content).getTime()).toBe(NOW);
-  });
-
-  it("skipped run does NOT overwrite last-success.json", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-    const LAST_SUCCESS = "2026-03-10T12:03:00.000Z";
-
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 1,
-      lastSuccessAt: LAST_SUCCESS,
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      cooldownMs: 300_000,
-    });
-
-    // Should be cooldown-skipped
     expect(executeSyncFn).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      skippedSync: true,
+      skippedReason: "cooldown",
+      cooldownRemainingMs: 180_000,
+      cycles: [],
+    });
+    expect(extractRunLog(fake.fs)).toMatchObject({
+      status: "skipped",
+      coordination: { skippedSync: true, skippedReason: "cooldown" },
+    });
 
-    // Verify last-success.json was NOT written
-    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
-      string,
-      string,
-      unknown?,
-    ][];
-    const successWrites = writeCalls.filter(([path]) => path.endsWith("last-success.json"));
-    expect(successWrites).toHaveLength(0);
+    const writes = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [string, string][];
+    expect(writes.some(([p, c]) => p.endsWith("notify.signal") && c === "")).toBe(false);
+    expect(writes.some(([p]) => p.endsWith("last-success.json"))).toBe(false);
   });
+
+  it.each([
+    { label: "expired", lastSuccessAt: "2026-03-10T11:58:00.000Z", cooldownMs: 300_000 },
+    { label: "first run (missing file)", lastSuccessAt: null, cooldownMs: 300_000 },
+    {
+      label: "corrupted timestamp",
+      lastSuccessAt: "not a valid ISO date {{{",
+      cooldownMs: 300_000,
+    },
+    { label: "cooldownMs=0", lastSuccessAt: "2026-03-10T12:04:59.000Z", cooldownMs: 0 },
+    {
+      label: "cooldownMs omitted",
+      lastSuccessAt: "2026-03-10T12:04:59.000Z",
+      cooldownMs: undefined,
+    },
+  ])(
+    "runs sync and writes last-success.json when $label",
+    async ({ lastSuccessAt, cooldownMs }) => {
+      const fake = createFakeFs({ lockContent: null, signalSize: 0, lastSuccessAt });
+      const executeSyncFn = vi.fn(async () => ({}));
+      const result = await coordinatedSync(createTrigger(), {
+        stateDir: "/tmp/pew",
+        executeSyncFn,
+        fs: fake.fs,
+        process: createFakeProcess(),
+        now: () => NOW,
+        ...(cooldownMs !== undefined ? { cooldownMs } : {}),
+      });
+
+      expect(executeSyncFn).toHaveBeenCalledTimes(1);
+      expect(result.skippedSync).toBe(false);
+      expect(result.skippedReason).toBeUndefined();
+      const writes = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [
+        string,
+        string,
+      ][];
+      const successWrite = writes.find(([p]) => p.endsWith("last-success.json"));
+      if (cooldownMs && cooldownMs > 0) {
+        expect(new Date(successWrite![1]).getTime()).toBe(NOW);
+      }
+    },
+  );
 });

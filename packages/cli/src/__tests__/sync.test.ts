@@ -1,16 +1,29 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile, mkdir, readFile, symlink, chmod, stat } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  appendFile,
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { executeSync } from "../commands/sync.js";
+import { executeSync, type SyncProgressEvent } from "../commands/sync.js";
+import { CursorStore } from "../storage/cursor-store.js";
+import { LocalQueue } from "../storage/local-queue.js";
 import type { QueueRecord } from "@pew/core";
 
-/** Helper: create Claude JSONL content */
-function claudeLine(ts: string, input: number, output: number): string {
+function claudeLine(ts: string, input: number, output: number, id?: string): string {
   return JSON.stringify({
     type: "assistant",
     timestamp: ts,
     message: {
+      ...(id ? { id } : {}),
       model: "glm-5",
       stop_reason: "end_turn",
       usage: {
@@ -23,12 +36,10 @@ function claudeLine(ts: string, input: number, output: number): string {
   });
 }
 
-/** Helper: create Pi usage JSONL */
 function piSession(ts: string, input: number, output: number): string {
   return `${JSON.stringify({ type: "message", timestamp: ts, message: { role: "assistant", model: "pi-model", usage: { input, output, cacheRead: 0, cacheWrite: 0 } } })}\n`;
 }
 
-/** Helper: create OpenCode message JSON */
 function opencodeMsg(ts: number, input: number, output: number): string {
   return JSON.stringify({
     id: "msg_001",
@@ -36,63 +47,144 @@ function opencodeMsg(ts: number, input: number, output: number): string {
     role: "assistant",
     modelID: "claude-opus-4.6",
     time: { created: ts, completed: ts + 1000 },
-    tokens: {
-      total: input + output,
-      input,
-      output,
-      reasoning: 0,
-      cache: { read: 0, write: 0 },
-    },
+    tokens: { total: input + output, input, output, reasoning: 0, cache: { read: 0, write: 0 } },
   });
 }
 
-/** Helper: create OpenClaw JSONL line */
 function openclawLine(ts: string, input: number, output: number): string {
   return JSON.stringify({
     type: "message",
     timestamp: ts,
     message: {
       model: "claude-sonnet-4",
-      usage: {
-        input,
-        cacheRead: 0,
-        cacheWrite: 0,
-        output,
-        totalTokens: input + output,
-      },
+      usage: { input, cacheRead: 0, cacheWrite: 0, output, totalTokens: input + output },
     },
   });
 }
 
-/** Helper: create Codex CLI JSONL content (session_meta + turn_context + token_count) */
 function codexLines(ts: string, input: number, output: number): string {
-  const meta = JSON.stringify({
-    timestamp: ts,
-    type: "session_meta",
-    payload: { id: "ses-codex-001", cwd: "/tmp/project", model: "gpt-5.4" },
-  });
-  const ctx = JSON.stringify({
-    timestamp: ts,
-    type: "turn_context",
-    payload: { model: "gpt-5.4", cwd: "/tmp/project" },
-  });
-  const tok = JSON.stringify({
-    timestamp: ts,
-    type: "event_msg",
-    payload: {
-      type: "token_count",
-      info: {
-        total_token_usage: {
-          input_tokens: input,
-          cached_input_tokens: 0,
-          output_tokens: output,
-          reasoning_output_tokens: 0,
-          total_tokens: input + output,
+  return [
+    JSON.stringify({
+      timestamp: ts,
+      type: "session_meta",
+      payload: { id: "ses-codex-001", cwd: "/tmp/project", model: "gpt-5.4" },
+    }),
+    JSON.stringify({
+      timestamp: ts,
+      type: "turn_context",
+      payload: { model: "gpt-5.4", cwd: "/tmp/project" },
+    }),
+    JSON.stringify({
+      timestamp: ts,
+      type: "event_msg",
+      payload: {
+        type: "token_count",
+        info: {
+          total_token_usage: {
+            input_tokens: input,
+            cached_input_tokens: 0,
+            output_tokens: output,
+            reasoning_output_tokens: 0,
+            total_tokens: input + output,
+          },
         },
       },
-    },
+    }),
+  ].join("\n");
+}
+
+function sqliteRowData(opts: {
+  role: string;
+  input?: number;
+  output?: number;
+  timeCreated?: number;
+}): string {
+  const created = opts.timeCreated ?? 1739600000000;
+  return JSON.stringify({
+    role: opts.role,
+    modelID: "claude-sonnet-4-20250514",
+    time: { created, completed: created + 5000 },
+    tokens:
+      opts.role === "assistant"
+        ? {
+            total: (opts.input ?? 100) + (opts.output ?? 50),
+            input: opts.input ?? 100,
+            output: opts.output ?? 50,
+            reasoning: 0,
+            cache: { read: 0, write: 0 },
+          }
+        : null,
   });
-  return [meta, ctx, tok].join("\n");
+}
+
+function mockOpenMessageDb(
+  rows: Array<{
+    id: string;
+    session_id: string;
+    time_created: number;
+    role?: string | null;
+    data: string;
+  }>,
+) {
+  const enriched = rows.map((r) => ({
+    ...r,
+    role:
+      r.role !== undefined
+        ? r.role
+        : (((JSON.parse(r.data) as Record<string, unknown>).role as string) ?? null),
+  }));
+  return (_dbPath: string) => ({
+    queryMessages: (lastTimeCreated: number) =>
+      enriched.filter((r) => r.time_created >= lastTimeCreated),
+    close: () => {},
+  });
+}
+
+function mockOpenHermesDb(
+  rows: Array<{
+    id: string;
+    model: string | null;
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_tokens: number;
+    cache_write_tokens: number;
+    reasoning_tokens: number;
+    started_at: number;
+  }>,
+) {
+  return (_dbPath: string) => ({ querySessions: () => rows, close: () => {} });
+}
+
+function hermesRow(
+  id: string,
+  input: number,
+  output: number,
+  extra: { cacheRead?: number; cacheWrite?: number } = {},
+) {
+  return {
+    id,
+    model: "claude-sonnet-4",
+    input_tokens: input,
+    output_tokens: output,
+    cache_read_tokens: extra.cacheRead ?? 0,
+    cache_write_tokens: extra.cacheWrite ?? 0,
+    reasoning_tokens: 0,
+    started_at: 1775210400,
+  };
+}
+
+async function readQueue(stateDir: string): Promise<QueueRecord[]> {
+  const raw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+  return raw
+    .split("\n")
+    .filter((l) => l.trim().length > 0)
+    .map((l) => JSON.parse(l) as QueueRecord);
+}
+
+async function writeFileEnsured(filePath: string, content: string): Promise<string> {
+  await mkdir(join(filePath, ".."), { recursive: true });
+  await writeFile(filePath, content);
+  return filePath;
 }
 
 describe("executeSync", () => {
@@ -110,811 +202,633 @@ describe("executeSync", () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  it("should sync Claude data files to queue", async () => {
-    // Set up Claude data
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-
-    const result = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    expect(result.totalDeltas).toBe(1);
-    expect(result.totalRecords).toBe(1);
-    expect(result.sources.claude).toBe(1);
-    expect(result.filesScanned.claude).toBe(1);
-
-    // Verify queue file was created
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records).toHaveLength(1);
-    expect(records[0].source).toBe("claude-code");
-    expect(records[0].model).toBe("glm-5");
-    expect(records[0].input_tokens).toBe(5000);
-    expect(records[0].output_tokens).toBe(800);
-    expect(records[0].hour_start).toBe("2026-03-07T10:00:00.000Z");
-  });
-
-  it("should sync Pi data files to queue", async () => {
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-b");
-    await mkdir(piDir, { recursive: true });
-    await writeFile(
-      join(piDir, "session-2026-03-07.jsonl"),
-      piSession("2026-03-07T10:15:00.000Z", 3000, 200),
-    );
-
-    const result = await executeSync({
-      stateDir,
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-    });
-
-    expect(result.totalDeltas).toBe(1);
-    expect(result.sources.pi).toBe(1);
-    expect(result.filesScanned.pi).toBe(1);
-  });
-
-  it("should sync OpenCode data files to queue", async () => {
-    const ocDir = join(dataDir, "opencode", "message", "ses_001");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
-
-    const result = await executeSync({
-      stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-
-    expect(result.totalDeltas).toBe(1);
-    expect(result.sources.opencode).toBe(1);
-    expect(result.filesScanned.opencode).toBe(1);
-  });
-
-  it("should sync OpenClaw data files to queue", async () => {
-    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
-    await mkdir(agentDir, { recursive: true });
-    await writeFile(
-      join(agentDir, "session.jsonl"),
-      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-
-    const result = await executeSync({
-      stateDir,
-      openclawDir: join(dataDir, ".openclaw"),
-    });
-
-    expect(result.totalDeltas).toBe(1);
-    expect(result.sources.openclaw).toBe(1);
-    expect(result.filesScanned.openclaw).toBe(1);
-  });
-
-  it("should be incremental (second sync produces no new records)", async () => {
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-
-    const r1 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-    expect(r1.totalDeltas).toBe(1);
-
-    // Second sync: no new data
-    const r2 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-    expect(r2.totalDeltas).toBe(0);
-    expect(r2.totalRecords).toBe(0);
-  });
-
-  it("should aggregate multiple deltas into one bucket record", async () => {
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    // Two events in the same half-hour bucket, same model
-    const content = `${[
-      claudeLine("2026-03-07T10:05:00.000Z", 1000, 100),
-      claudeLine("2026-03-07T10:20:00.000Z", 2000, 200),
-    ].join("\n")}\n`;
-    await writeFile(join(claudeDir, "session.jsonl"), content);
-
-    const result = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    expect(result.totalDeltas).toBe(2);
-    expect(result.totalRecords).toBe(1); // aggregated into one bucket
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records).toHaveLength(1);
-    expect(records[0].input_tokens).toBe(3000); // 1000 + 2000
-    expect(records[0].output_tokens).toBe(300); // 100 + 200
-  });
-
-  it("should handle no data directories at all", async () => {
+  it("handles no data directories at all", async () => {
     const result = await executeSync({ stateDir });
     expect(result.totalDeltas).toBe(0);
     expect(result.totalRecords).toBe(0);
   });
 
-  it("should sync multiple sources in one run", async () => {
-    // Claude
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
+  it("syncs all five file sources simultaneously and fires progress events for all phases", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-a/session.jsonl"),
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
-    // Pi
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-b");
-    await mkdir(piDir, { recursive: true });
-    await writeFile(
-      join(piDir, "session-2026-03-07.jsonl"),
+    await writeFileEnsured(
+      join(dataDir, ".pi/agent/sessions/proj-b/session.jsonl"),
       piSession("2026-03-07T10:15:00.000Z", 2000, 200),
     );
-
-    const result = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-    });
-
-    expect(result.totalDeltas).toBe(2);
-    expect(result.sources.claude).toBe(1);
-    expect(result.sources.pi).toBe(1);
-  });
-
-  // ===== Codex CLI sync =====
-
-  it("should sync Codex data files to queue", async () => {
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(codexDir, { recursive: true });
-    await writeFile(
-      join(codexDir, "rollout-abc123.jsonl"),
-      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
+    await writeFileEnsured(
+      join(dataDir, "opencode/message/ses_001/msg_001.json"),
+      opencodeMsg(1771120749059, 14967, 437),
     );
-
-    const result = await executeSync({
-      stateDir,
-      codexSessionsDir: join(dataDir, ".codex", "sessions"),
-    });
-
-    expect(result.totalDeltas).toBe(1);
-    expect(result.totalRecords).toBe(1);
-    expect(result.sources.codex).toBe(1);
-    expect(result.filesScanned.codex).toBe(1);
-
-    // Verify queue file was created
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records).toHaveLength(1);
-    expect(records[0].source).toBe("codex");
-    expect(records[0].model).toBe("gpt-5.4");
-    expect(records[0].input_tokens).toBe(5000);
-    expect(records[0].output_tokens).toBe(800);
-  });
-
-  it("should be incremental for Codex (second sync with no changes produces no new data)", async () => {
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(codexDir, { recursive: true });
-    await writeFile(
-      join(codexDir, "rollout-abc123.jsonl"),
-      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-
-    const r1 = await executeSync({
-      stateDir,
-      codexSessionsDir: join(dataDir, ".codex", "sessions"),
-    });
-    expect(r1.totalDeltas).toBe(1);
-    expect(r1.sources.codex).toBe(1);
-
-    // Second sync: no new data
-    const r2 = await executeSync({
-      stateDir,
-      codexSessionsDir: join(dataDir, ".codex", "sessions"),
-    });
-    expect(r2.totalDeltas).toBe(0);
-    expect(r2.totalRecords).toBe(0);
-  });
-
-  it("should sync only new Codex lines appended after first sync", async () => {
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(codexDir, { recursive: true });
-    const filePath = join(codexDir, "rollout-abc123.jsonl");
-    await writeFile(filePath, `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`);
-
-    const r1 = await executeSync({
-      stateDir,
-      codexSessionsDir: join(dataDir, ".codex", "sessions"),
-    });
-    expect(r1.totalDeltas).toBe(1);
-
-    // Append a new token_count line (cumulative totals increase)
-    const existing = await readFile(filePath, "utf-8");
-    const newTokenLine = JSON.stringify({
-      timestamp: "2026-03-07T11:15:00.000Z",
-      type: "event_msg",
-      payload: {
-        type: "token_count",
-        info: {
-          total_token_usage: {
-            input_tokens: 8000,
-            cached_input_tokens: 0,
-            output_tokens: 1200,
-            reasoning_output_tokens: 0,
-            total_tokens: 9200,
-          },
-        },
-      },
-    });
-    await writeFile(filePath, `${existing + newTokenLine}\n`);
-
-    const r2 = await executeSync({
-      stateDir,
-      codexSessionsDir: join(dataDir, ".codex", "sessions"),
-    });
-    // Should get the diff: 8000-5000=3000 input, 1200-800=400 output
-    expect(r2.totalDeltas).toBe(1);
-    expect(r2.sources.codex).toBe(1);
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    // Second record should be the diff
-    const codexRecords = records.filter((r) => r.source === "codex");
-    expect(codexRecords).toHaveLength(2);
-    // The second record should have the diff tokens
-    expect(codexRecords[1].input_tokens).toBe(3000);
-    expect(codexRecords[1].output_tokens).toBe(400);
-  });
-
-  // ===== OpenCode incremental sync + triple-check skip =====
-
-  it("should be incremental for OpenCode (second sync with no file changes skips parsing)", async () => {
-    const ocDir = join(dataDir, "opencode", "message", "ses_001");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
-
-    const r1 = await executeSync({
-      stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-    expect(r1.totalDeltas).toBe(1);
-    expect(r1.sources.opencode).toBe(1);
-
-    // Second sync: file unchanged → triple-check (inode+size+mtime) should skip
-    const r2 = await executeSync({
-      stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-    expect(r2.totalDeltas).toBe(0);
-    expect(r2.totalRecords).toBe(0);
-    expect(r2.sources.opencode).toBe(0);
-  });
-
-  it("should detect new OpenCode file added to existing session directory", async () => {
-    // OpenCode message files are immutable — new messages create new files.
-    // Directory mtime changes when a new file is created, triggering re-scan.
-    const ocDir = join(dataDir, "opencode", "message", "ses_001");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 100, 50));
-
-    const r1 = await executeSync({
-      stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-    expect(r1.totalDeltas).toBe(1);
-
-    // Wait to ensure mtime differs, then add a NEW file (simulating a new message)
-    await new Promise((r) => setTimeout(r, 50));
-    await writeFile(join(ocDir, "msg_002.json"), opencodeMsg(1771120799059, 200, 100));
-
-    const r2 = await executeSync({
-      stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-    // New file in directory → directory mtime changed → re-scan → find new file
-    expect(r2.totalDeltas).toBe(1);
-    expect(r2.sources.opencode).toBe(1);
-  });
-
-  // ===== OpenClaw incremental sync =====
-
-  it("should be incremental for OpenClaw (second sync with no changes produces no new data)", async () => {
-    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
-    await mkdir(agentDir, { recursive: true });
-    await writeFile(
-      join(agentDir, "session.jsonl"),
+    await writeFileEnsured(
+      join(dataDir, ".openclaw/agents/a1/sessions/session.jsonl"),
       `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
-
-    const r1 = await executeSync({
-      stateDir,
-      openclawDir: join(dataDir, ".openclaw"),
-    });
-    expect(r1.totalDeltas).toBe(1);
-    expect(r1.sources.openclaw).toBe(1);
-
-    // Second sync: no new data
-    const r2 = await executeSync({
-      stateDir,
-      openclawDir: join(dataDir, ".openclaw"),
-    });
-    expect(r2.totalDeltas).toBe(0);
-    expect(r2.totalRecords).toBe(0);
-  });
-
-  it("should sync only new OpenClaw lines appended after first sync", async () => {
-    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
-    await mkdir(agentDir, { recursive: true });
-    const filePath = join(agentDir, "session.jsonl");
-    await writeFile(filePath, `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`);
-
-    const r1 = await executeSync({
-      stateDir,
-      openclawDir: join(dataDir, ".openclaw"),
-    });
-    expect(r1.totalDeltas).toBe(1);
-
-    // Append new line
-    const existing = await readFile(filePath, "utf-8");
-    await writeFile(
-      filePath,
-      `${existing + openclawLine("2026-03-07T11:15:00.000Z", 3000, 400)}\n`,
-    );
-
-    const r2 = await executeSync({
-      stateDir,
-      openclawDir: join(dataDir, ".openclaw"),
-    });
-    expect(r2.totalDeltas).toBe(1);
-    expect(r2.sources.openclaw).toBe(1);
-  });
-
-  // ===== Progress callback coverage =====
-
-  it("should fire progress events for all phases", async () => {
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
-
-    const events: Array<{ source: string; phase: string }> = [];
-
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      onProgress: (e) => events.push({ source: e.source, phase: e.phase }),
-    });
-
-    // Should have: discover, parse (announce), parse (per-file), aggregate, done
-    expect(events.some((e) => e.source === "claude-code" && e.phase === "discover")).toBe(true);
-    expect(events.some((e) => e.source === "claude-code" && e.phase === "parse")).toBe(true);
-    expect(events.some((e) => e.source === "all" && e.phase === "aggregate")).toBe(true);
-    expect(events.some((e) => e.source === "all" && e.phase === "done")).toBe(true);
-  });
-
-  it("should fire progress events for OpenCode sync including dir-level skip", async () => {
-    const ocDir = join(dataDir, "opencode", "message", "ses_001");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
-
-    // First sync to populate cursors and dirMtimes
-    await executeSync({
-      stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-
-    // Second sync: dir-level mtime skip means 0 files discovered in changed dirs
-    const events: Array<{
-      source: string;
-      phase: string;
-      current?: number;
-      total?: number;
-      message?: string;
-    }> = [];
-    await executeSync({
-      stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-      onProgress: (e) =>
-        events.push({
-          source: e.source,
-          phase: e.phase,
-          current: e.current,
-          total: e.total,
-          message: e.message,
-        }),
-    });
-
-    expect(events.some((e) => e.source === "opencode" && e.phase === "discover")).toBe(true);
-    expect(events.some((e) => e.source === "opencode" && e.phase === "parse")).toBe(true);
-    // With dir-level mtime optimization, total files should be 0 (entire dir skipped)
-    const parseEvent = events.find(
-      (e) => e.source === "opencode" && e.phase === "parse" && e.total !== undefined,
-    );
-    expect(parseEvent?.total).toBe(0);
-    expect(parseEvent?.message).toContain("1 dirs skipped");
-  });
-
-  // ===== All five sources in one run =====
-
-  it("should fire progress events for all five sources", async () => {
-    // Claude
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
-    // Pi
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-b");
-    await mkdir(piDir, { recursive: true });
-    await writeFile(
-      join(piDir, "session-2026-03-07.jsonl"),
-      piSession("2026-03-07T10:15:00.000Z", 2000, 200),
-    );
-    // OpenCode
-    const ocDir = join(dataDir, "opencode", "message", "ses_001");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
-    // OpenClaw
-    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
-    await mkdir(agentDir, { recursive: true });
-    await writeFile(
-      join(agentDir, "session.jsonl"),
-      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-    // Codex
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(codexDir, { recursive: true });
-    await writeFile(
-      join(codexDir, "rollout-abc123.jsonl"),
+    await writeFileEnsured(
+      join(dataDir, ".codex/sessions/2026/03/07/rollout-abc123.jsonl"),
       `${codexLines("2026-03-07T10:15:00.000Z", 3000, 500)}\n`,
     );
 
-    const events: Array<{ source: string; phase: string }> = [];
-
-    await executeSync({
+    const events: SyncProgressEvent[] = [];
+    const result = await executeSync({
       stateDir,
       claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
+      piSessionsDir: join(dataDir, ".pi/agent/sessions"),
+      openCodeMessageDir: join(dataDir, "opencode/message"),
       openclawDir: join(dataDir, ".openclaw"),
-      codexSessionsDir: join(dataDir, ".codex", "sessions"),
-      onProgress: (e) => events.push({ source: e.source, phase: e.phase }),
+      codexSessionsDir: join(dataDir, ".codex/sessions"),
+      onProgress: (e) => events.push(e),
     });
 
-    // Verify all five sources emit discover + parse events
-    expect(events.some((e) => e.source === "claude-code" && e.phase === "discover")).toBe(true);
-    expect(events.some((e) => e.source === "claude-code" && e.phase === "parse")).toBe(true);
-    expect(events.some((e) => e.source === "pi" && e.phase === "discover")).toBe(true);
-    expect(events.some((e) => e.source === "pi" && e.phase === "parse")).toBe(true);
-    expect(events.some((e) => e.source === "opencode" && e.phase === "discover")).toBe(true);
-    expect(events.some((e) => e.source === "opencode" && e.phase === "parse")).toBe(true);
-    expect(events.some((e) => e.source === "openclaw" && e.phase === "discover")).toBe(true);
-    expect(events.some((e) => e.source === "openclaw" && e.phase === "parse")).toBe(true);
-    expect(events.some((e) => e.source === "codex" && e.phase === "discover")).toBe(true);
-    expect(events.some((e) => e.source === "codex" && e.phase === "parse")).toBe(true);
+    expect(result.totalDeltas).toBe(5);
+    expect(result.sources).toMatchObject({ claude: 1, pi: 1, opencode: 1, openclaw: 1, codex: 1 });
+    expect(result.filesScanned).toMatchObject({
+      claude: 1,
+      pi: 1,
+      opencode: 1,
+      openclaw: 1,
+      codex: 1,
+    });
+
+    const records = await readQueue(stateDir);
+    expect(records.find((r) => r.source === "claude-code")).toMatchObject({
+      model: "glm-5",
+      input_tokens: 5000,
+      output_tokens: 800,
+      hour_start: "2026-03-07T10:00:00.000Z",
+    });
+    expect(records.find((r) => r.source === "codex")).toMatchObject({
+      model: "gpt-5.4",
+      input_tokens: 3000,
+      output_tokens: 500,
+    });
+
+    for (const src of ["claude-code", "pi", "opencode", "openclaw", "codex"]) {
+      expect(events.some((e) => e.source === src && e.phase === "discover")).toBe(true);
+      expect(events.some((e) => e.source === src && e.phase === "parse")).toBe(true);
+    }
     expect(events.some((e) => e.source === "all" && e.phase === "aggregate")).toBe(true);
     expect(events.some((e) => e.source === "all" && e.phase === "done")).toBe(true);
   });
 
-  // ===== Error isolation tests =====
-
-  it("should continue syncing other Claude files when one file's parser throws", async () => {
-    // Set up two Claude project dirs with one file each
-    const proj1 = join(dataDir, ".claude", "projects", "proj-good");
-    const proj2 = join(dataDir, ".claude", "projects", "proj-bad");
-    await mkdir(proj1, { recursive: true });
-    await mkdir(proj2, { recursive: true });
-
-    // Good file: valid JSONL
-    await writeFile(
-      join(proj1, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
+  it("aggregates multiple deltas into one bucket record and accumulates incremental syncs", async () => {
+    const filePath = await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-a/session.jsonl"),
+      `${[claudeLine("2026-03-07T10:05:00.000Z", 1000, 100), claudeLine("2026-03-07T10:20:00.000Z", 2000, 200)].join("\n")}\n`,
     );
 
-    // Bad file: starts with valid-looking content but will cause readline to
-    // emit a line that triggers an unhandled error deeper in the parser.
-    // We write binary content that createReadStream will read but cannot
-    // be processed by readline without error on certain Node versions.
-    // Instead, we use vi.spyOn to make the parser throw for one specific file.
-    await writeFile(
-      join(proj2, "bad.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 2000, 200)}\n`,
-    );
+    const r1 = await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
+    expect(r1.totalDeltas).toBe(2);
+    expect(r1.totalRecords).toBe(1);
 
-    // Spy on the parser module to throw for the bad file path
-    const claudeParser = await import("../parsers/claude.js");
-    const origParse = claudeParser.parseClaudeFile;
-    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockImplementation(async (opts) => {
-      if (opts.filePath.includes("proj-bad")) {
-        throw new Error("Simulated parser explosion");
-      }
-      return origParse(opts);
-    });
+    await appendFile(filePath, `${claudeLine("2026-03-07T10:25:00.000Z", 500, 50)}\n`);
+    await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
 
-    // Collect progress events to verify warning is emitted
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-
-    try {
-      const result = await executeSync({
-        stateDir,
-        claudeDir: join(dataDir, ".claude"),
-        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
-      });
-
-      // The good file's data should still be synced
-      expect(result.totalDeltas).toBe(1);
-      expect(result.sources.claude).toBe(1);
-
-      // Verify queue was written (not lost)
-      const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-      const records = queueRaw
-        .trim()
-        .split("\n")
-        .map((l) => JSON.parse(l) as QueueRecord);
-      expect(records).toHaveLength(1);
-      expect(records[0].input_tokens).toBe(1000);
-
-      // Verify a warning was emitted for the bad file
-      expect(events.some((e) => e.phase === "warn")).toBe(true);
-    } finally {
-      spy.mockRestore();
-    }
+    const records = await readQueue(stateDir);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ input_tokens: 3500, output_tokens: 350 });
   });
 
-  it("should continue syncing other sources when one source's parser throws", async () => {
-    // Claude: will have a file that throws
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
+  it("is incremental on second sync and handles appended Codex & OpenClaw lines", async () => {
+    const codexPath = await writeFileEnsured(
+      join(dataDir, ".codex/sessions/2026/03/07/rollout-abc123.jsonl"),
+      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
-
-    // OpenClaw: healthy data
-    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
-    await mkdir(agentDir, { recursive: true });
-    await writeFile(
-      join(agentDir, "session.jsonl"),
+    const clawPath = await writeFileEnsured(
+      join(dataDir, ".openclaw/agents/a1/sessions/session.jsonl"),
       `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
-    // Make ALL Claude parses throw
+    const opts = {
+      stateDir,
+      codexSessionsDir: join(dataDir, ".codex/sessions"),
+      openclawDir: join(dataDir, ".openclaw"),
+    };
+    expect((await executeSync(opts)).totalDeltas).toBe(2);
+    expect((await executeSync(opts)).totalDeltas).toBe(0);
+
+    await appendFile(
+      codexPath,
+      `${JSON.stringify({
+        timestamp: "2026-03-07T11:15:00.000Z",
+        type: "event_msg",
+        payload: {
+          type: "token_count",
+          info: {
+            total_token_usage: {
+              input_tokens: 8000,
+              cached_input_tokens: 0,
+              output_tokens: 1200,
+              reasoning_output_tokens: 0,
+              total_tokens: 9200,
+            },
+          },
+        },
+      })}\n`,
+    );
+    await appendFile(clawPath, `${openclawLine("2026-03-07T11:15:00.000Z", 3000, 400)}\n`);
+
+    const r3 = await executeSync(opts);
+    expect(r3.sources).toMatchObject({ codex: 1, openclaw: 1 });
+    const codexRecs = (await readQueue(stateDir)).filter((r) => r.source === "codex");
+    expect(codexRecs[1]).toMatchObject({ input_tokens: 3000, output_tokens: 400 });
+  });
+
+  it("handles OpenCode dir-level mtime skip, file-level skip, and new file detection with progress", async () => {
+    const ocDir = join(dataDir, "opencode/message/ses_001");
+    await writeFileEnsured(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 100, 50));
+    const msgDir = join(dataDir, "opencode/message");
+
+    await executeSync({ stateDir, openCodeMessageDir: msgDir });
+
+    const skipEvents: SyncProgressEvent[] = [];
+    const rSkip = await executeSync({
+      stateDir,
+      openCodeMessageDir: msgDir,
+      onProgress: (e) => skipEvents.push(e),
+    });
+    expect(rSkip.totalDeltas).toBe(0);
+    const dirSkipEvt = skipEvents.find(
+      (e) => e.source === "opencode" && e.phase === "parse" && e.total !== undefined,
+    );
+    expect(dirSkipEvt?.total).toBe(0);
+    expect(dirSkipEvt?.message).toContain("1 dirs skipped");
+
+    const future = new Date(Date.now() + 2000);
+    await writeFile(join(ocDir, "msg_002.json"), opencodeMsg(1771120799059, 200, 100));
+    await utimes(ocDir, future, future);
+
+    const fileEvents: SyncProgressEvent[] = [];
+    const rNew = await executeSync({
+      stateDir,
+      openCodeMessageDir: msgDir,
+      onProgress: (e) => fileEvents.push(e),
+    });
+    expect(rNew.sources.opencode).toBe(1);
+    expect(
+      fileEvents.filter(
+        (e) => e.source === "opencode" && e.phase === "parse" && e.current !== undefined,
+      ).length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("continues syncing other sources when one source's parser throws", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-a/session.jsonl"),
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
+    );
+    await writeFileEnsured(
+      join(dataDir, ".openclaw/agents/a1/sessions/session.jsonl"),
+      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
+    );
+
     const claudeParser = await import("../parsers/claude.js");
     const spy = vi
       .spyOn(claudeParser, "parseClaudeFile")
-      .mockRejectedValue(new Error("Claude parser crash"));
-
+      .mockRejectedValue(new Error("Claude crash"));
     try {
       const result = await executeSync({
         stateDir,
         claudeDir: join(dataDir, ".claude"),
         openclawDir: join(dataDir, ".openclaw"),
       });
-
-      // OpenClaw data should still be synced despite Claude failure
       expect(result.sources.openclaw).toBe(1);
-      expect(result.totalRecords).toBeGreaterThanOrEqual(1);
-
-      // Verify queue has the OpenClaw record
-      const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-      const records = queueRaw
-        .trim()
-        .split("\n")
-        .map((l) => JSON.parse(l) as QueueRecord);
-      expect(records.some((r) => r.source === "openclaw")).toBe(true);
+      expect((await readQueue(stateDir)).some((r) => r.source === "openclaw")).toBe(true);
     } finally {
       spy.mockRestore();
     }
   });
 
-  // ===== Write-order resilience tests (HIGH-2) =====
+  it.each([
+    {
+      label: "claude-code",
+      setup: async (d: string) => ({
+        good: await writeFileEnsured(
+          join(d, ".claude/projects/proj-good/session.jsonl"),
+          `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
+        ),
+        bad: await writeFileEnsured(
+          join(d, ".claude/projects/proj-bad/bad.jsonl"),
+          `${claudeLine("2026-03-07T10:15:00.000Z", 2000, 200)}\n`,
+        ),
+        opts: { claudeDir: join(d, ".claude") },
+        mod: () => import("../parsers/claude.js"),
+        fn: "parseClaudeFile" as const,
+        key: "claude" as const,
+      }),
+    },
+    {
+      label: "openclaw",
+      setup: async (d: string) => ({
+        good: await writeFileEnsured(
+          join(d, ".openclaw/agents/a1/sessions/good.jsonl"),
+          `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
+        ),
+        bad: await writeFileEnsured(
+          join(d, ".openclaw/agents/a2/sessions/bad.jsonl"),
+          `${openclawLine("2026-03-07T10:15:00.000Z", 3000, 400)}\n`,
+        ),
+        opts: { openclawDir: join(d, ".openclaw") },
+        mod: () => import("../parsers/openclaw.js"),
+        fn: "parseOpenClawFile" as const,
+        key: "openclaw" as const,
+      }),
+    },
+    {
+      label: "codex",
+      setup: async (d: string) => ({
+        good: await writeFileEnsured(
+          join(d, ".codex/sessions/2026/03/07/rollout-good.jsonl"),
+          `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
+        ),
+        bad: await writeFileEnsured(
+          join(d, ".codex/sessions/2026/03/07/rollout-bad.jsonl"),
+          `${codexLines("2026-03-07T10:16:00.000Z", 3000, 400)}\n`,
+        ),
+        opts: { codexSessionsDir: join(d, ".codex/sessions") },
+        mod: () => import("../parsers/codex.js"),
+        fn: "parseCodexFile" as const,
+        key: "codex" as const,
+      }),
+    },
+    {
+      label: "pi",
+      setup: async (d: string) => ({
+        good: await writeFileEnsured(
+          join(d, ".pi/agent/sessions/p/good.jsonl"),
+          piSession("2026-03-07T11:00:00.000Z", 2000, 200),
+        ),
+        bad: await writeFileEnsured(
+          join(d, ".pi/agent/sessions/p/bad.jsonl"),
+          piSession("2026-03-07T12:00:00.000Z", 3000, 300),
+        ),
+        opts: { piSessionsDir: join(d, ".pi/agent/sessions") },
+        mod: () => import("../parsers/pi.js"),
+        fn: "parsePiFile" as const,
+        key: "pi" as const,
+      }),
+    },
+    {
+      label: "opencode",
+      setup: async (d: string) => ({
+        good: await writeFileEnsured(
+          join(d, "opencode-err/message/ses_good/msg_001.json"),
+          opencodeMsg(1741320000000, 100, 50),
+        ),
+        bad: await writeFileEnsured(
+          join(d, "opencode-err/message/ses_bad/msg_001.json"),
+          opencodeMsg(1741321000000, 200, 100),
+        ),
+        opts: { openCodeMessageDir: join(d, "opencode-err/message") },
+        mod: () => import("../parsers/opencode.js"),
+        fn: "parseOpenCodeFile" as const,
+        key: "opencode" as const,
+      }),
+    },
+  ])(
+    "emits warning and continues syncing good files when $label parser throws",
+    async ({ label, setup }) => {
+      const cfg = await setup(dataDir);
+      const mod = (await cfg.mod()) as Record<
+        string,
+        (opts: { filePath: string }) => Promise<unknown>
+      >;
+      const orig = mod[cfg.fn];
+      const spy = vi.spyOn(mod, cfg.fn).mockImplementation(async (opts: { filePath: string }) => {
+        if (opts.filePath === cfg.bad) throw new Error(`Simulated ${label} crash`);
+        return orig(opts);
+      });
+      const events: SyncProgressEvent[] = [];
+      try {
+        const result = await executeSync({
+          stateDir,
+          ...cfg.opts,
+          onProgress: (e) => events.push(e),
+        });
+        expect(result.sources[cfg.key]).toBe(1);
+        const warns = events.filter((e) => e.source === label && e.phase === "warn");
+        expect(warns).toHaveLength(1);
+        expect(warns[0]?.message).toContain(`Simulated ${label} crash`);
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
 
-  it("should save cursors AFTER queue (cursor-after-queue write order)", async () => {
-    // This test verifies that cursors are persisted AFTER the queue,
-    // so if the process crashes after queue overwrite but before cursor save,
-    // the next sync will re-scan from the old cursor position (producing a
-    // superset). This is the correct trade-off: slight over-count on crash
-    // is better than N× inflation on cursor reset.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
+  it("saves cursors AFTER queue overwrite and recovers cleanly on next sync", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-a/session.jsonl"),
       `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
-
-    // Import the LocalQueue module to spy on overwrite
-    const localQueueModule = await import("../storage/local-queue.js");
-
-    // Let overwrite succeed but then throw BEFORE cursor save
-    // We achieve this by spying on overwrite to record that it was called,
-    // then spying on CursorStore.save to throw
-    let overwriteCalled = false;
-    const overwriteSpy = vi
-      .spyOn(localQueueModule.LocalQueue.prototype, "overwrite")
-      .mockImplementation(async function (this: InstanceType<typeof localQueueModule.LocalQueue>) {
-        overwriteCalled = true;
-        // Don't actually write — we just want to verify the call order
-        throw new Error("Simulated crash after queue write");
-      });
-
+    const spy = vi
+      .spyOn(LocalQueue.prototype, "overwrite")
+      .mockRejectedValue(new Error("Simulated queue write crash"));
     try {
-      await executeSync({
-        stateDir,
-        claudeDir: join(dataDir, ".claude"),
-      }).catch(() => {
-        // Expected to throw due to queue write failure
-      });
+      await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") }).catch(() => {});
     } finally {
-      overwriteSpy.mockRestore();
+      spy.mockRestore();
     }
 
-    expect(overwriteCalled).toBe(true);
-
-    // Cursors should NOT be saved (queue crash prevents cursor save)
-    const { CursorStore } = await import("../storage/cursor-store.js");
-    const cursorStore = new CursorStore(stateDir);
-    const cursors = await cursorStore.load();
+    const cursors = await new CursorStore(stateDir).load();
     expect(Object.keys(cursors.files)).toHaveLength(0);
 
-    // Next sync recovers the absolute commit before parsing source bytes
-    const result = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    expect(result.totalDeltas).toBe(0);
-    expect(result.totalRecords).toBe(0);
-    const recovered = JSON.parse((await readFile(join(stateDir, "queue.jsonl"), "utf8")).trim());
-    expect(recovered.total_tokens).toBe(1100);
+    const recovered = await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
+    expect(recovered.totalDeltas).toBe(0);
+    expect((await readQueue(stateDir))[0]?.total_tokens).toBe(1100);
   });
 
-  it("should sync all five sources simultaneously", async () => {
-    // Claude
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
+  it("does not inflate queue on cursor reset (full-scan overwrite)", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-inflate/session.jsonl"),
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
+    );
+    await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
+    await rm(join(stateDir, "cursors.json"), { force: true });
+    await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
+
+    const records = await readQueue(stateDir);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ input_tokens: 5000, output_tokens: 800 });
+  });
+
+  it.skipIf(!!process.env.CI)(
+    "does not inflate and emits progress when a file inode changes across multiple sources",
+    async () => {
+      const claudeContent = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
+      const claudePath = await writeFileEnsured(
+        join(dataDir, ".claude/projects/proj-multi/session.jsonl"),
+        claudeContent,
+      );
+      await writeFileEnsured(
+        join(dataDir, ".pi/agent/sessions/proj-multi/session.jsonl"),
+        piSession("2026-03-07T10:15:00.000Z", 2000, 200),
+      );
+
+      const opts = {
+        stateDir,
+        deviceId: "dev-1",
+        claudeDir: join(dataDir, ".claude"),
+        piSessionsDir: join(dataDir, ".pi/agent/sessions"),
+      };
+      await executeSync(opts);
+      const inodeBefore = (await stat(claudePath)).ino;
+
+      await rm(claudePath);
+      await new Promise((r) => setTimeout(r, 20));
+      await writeFile(claudePath, claudeContent);
+
+      const events: SyncProgressEvent[] = [];
+      await executeSync({ ...opts, onProgress: (e) => events.push(e) });
+
+      const records = await readQueue(stateDir);
+      expect(records.find((r) => r.source === "claude-code")?.input_tokens).toBe(3000);
+      expect(records.find((r) => r.source === "pi")?.input_tokens).toBe(2000);
+      if ((await stat(claudePath)).ino !== inodeBefore) {
+        expect(
+          events.some((e) => e.phase === "warn" && e.message?.includes("File inode changed")),
+        ).toBe(true);
+      }
+    },
+  );
+
+  it("detects single missing file cursor, emits replay warnings, and avoids inflation", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-loss/session.jsonl"),
       `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
-    // Pi
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-b");
-    await mkdir(piDir, { recursive: true });
-    await writeFile(
-      join(piDir, "session-2026-03-07.jsonl"),
+    await writeFileEnsured(
+      join(dataDir, ".pi/agent/sessions/proj-loss/session.jsonl"),
       piSession("2026-03-07T10:15:00.000Z", 2000, 200),
     );
-    // OpenCode
-    const ocDir = join(dataDir, "opencode", "message", "ses_001");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 14967, 437));
-    // OpenClaw
-    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
-    await mkdir(agentDir, { recursive: true });
-    await writeFile(
-      join(agentDir, "session.jsonl"),
-      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-    // Codex
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(codexDir, { recursive: true });
-    await writeFile(
-      join(codexDir, "rollout-abc123.jsonl"),
-      `${codexLines("2026-03-07T10:15:00.000Z", 3000, 500)}\n`,
-    );
-
-    const result = await executeSync({
+    const opts = {
       stateDir,
+      deviceId: "dev-1",
       claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-      openclawDir: join(dataDir, ".openclaw"),
-      codexSessionsDir: join(dataDir, ".codex", "sessions"),
-    });
+      piSessionsDir: join(dataDir, ".pi/agent/sessions"),
+    };
+    await executeSync(opts);
 
-    expect(result.totalDeltas).toBe(5);
-    expect(result.sources.claude).toBe(1);
-    expect(result.sources.pi).toBe(1);
-    expect(result.sources.opencode).toBe(1);
-    expect(result.sources.openclaw).toBe(1);
-    expect(result.sources.codex).toBe(1);
-    expect(result.filesScanned.claude).toBe(1);
-    expect(result.filesScanned.pi).toBe(1);
-    expect(result.filesScanned.opencode).toBe(1);
-    expect(result.filesScanned.openclaw).toBe(1);
-    expect(result.filesScanned.codex).toBe(1);
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    cursorsData.files = Object.fromEntries(
+      Object.entries(cursorsData.files).filter(([k]) => !k.includes(".claude")),
+    );
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    const events: SyncProgressEvent[] = [];
+    const r2 = await executeSync({ ...opts, onProgress: (e) => events.push(e) });
+    expect(r2.totalDeltas).toBe(2);
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("Cursor entry lost"))).toBe(
+      true,
+    );
+    expect(
+      events.some((e) => e.phase === "warn" && e.message?.includes("Replay condition detected")),
+    ).toBe(true);
+    const records = await readQueue(stateDir);
+    expect(records.find((r) => r.source === "claude-code")?.input_tokens).toBe(1000);
+    expect(records.find((r) => r.source === "pi")?.input_tokens).toBe(2000);
   });
 
-  // ===== OpenCode SQLite integration =====
+  it("triggers one-time full rescan when knownFilePaths or accountingSchemaVersion is missing", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-up/session.jsonl"),
+      `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`,
+    );
+    await executeSync({ stateDir, deviceId: "dev-1", claudeDir: join(dataDir, ".claude") });
+    const cursorsPath = join(stateDir, "cursors.json");
 
-  /**
-   * Helper: create a mock openMessageDb factory that returns rows from an in-memory array.
-   * Simulates the bun:sqlite adapter without requiring the actual runtime.
-   */
-  function mockOpenMessageDb(
-    rows: Array<{
-      id: string;
-      session_id: string;
-      time_created: number;
-      role?: string | null;
-      data: string;
-    }>,
-  ) {
-    // Auto-populate role from data JSON if not explicitly provided
-    const enrichedRows = rows.map((r) => ({
-      ...r,
-      role:
-        r.role !== undefined
-          ? r.role
-          : (() => {
-              try {
-                return ((JSON.parse(r.data) as Record<string, unknown>).role as string) ?? null;
-              } catch {
-                return null;
-              }
-            })(),
-    }));
-    return (_dbPath: string) => ({
-      queryMessages: (lastTimeCreated: number) =>
-        enrichedRows.filter((r) => r.time_created >= lastTimeCreated),
-      close: () => {},
+    // Case 1: missing knownFilePaths
+    const c1 = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete c1.knownFilePaths;
+    await writeFile(cursorsPath, JSON.stringify(c1));
+    const ev1: SyncProgressEvent[] = [];
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      onProgress: (e) => ev1.push(e),
     });
-  }
+    expect(ev1.some((e) => e.phase === "warn" && e.message?.includes("one-time full rescan"))).toBe(
+      true,
+    );
+    const c1After = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(Object.keys(c1After.knownFilePaths).length).toBeGreaterThan(0);
 
-  /** Helper: build a SQLite message row JSON data blob */
-  function sqliteRowData(opts: {
-    role: string;
-    modelID?: string;
-    input?: number;
-    output?: number;
-    timeCreated?: number;
-    timeCompleted?: number;
-  }): string {
-    return JSON.stringify({
-      role: opts.role,
-      modelID: opts.modelID ?? "claude-sonnet-4-20250514",
-      time: {
-        created: opts.timeCreated ?? 1739600000000,
-        completed: opts.timeCompleted ?? (opts.timeCreated ?? 1739600000000) + 5000,
-      },
-      tokens:
-        opts.role === "assistant"
-          ? {
-              total: (opts.input ?? 100) + (opts.output ?? 50),
-              input: opts.input ?? 100,
-              output: opts.output ?? 50,
-              reasoning: 0,
-              cache: { read: 0, write: 0 },
-            }
-          : null,
+    // Case 2: missing accountingSchemaVersion
+    delete c1After.accountingSchemaVersion;
+    await writeFile(cursorsPath, JSON.stringify(c1After));
+    const ev2: SyncProgressEvent[] = [];
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      onProgress: (e) => ev2.push(e),
     });
-  }
+    expect(
+      ev2.some((e) => e.phase === "warn" && e.message?.includes("Token accounting schema")),
+    ).toBe(true);
+    expect((await readQueue(stateDir))[0]?.input_tokens).toBe(3000);
+    expect(JSON.parse(await readFile(cursorsPath, "utf-8")).accountingSchemaVersion).toBe(2);
+  });
 
-  it("should sync OpenCode SQLite data to queue", async () => {
+  it("tombstones removed codex buckets on accounting rescan, never non-codex", async () => {
+    const claudePath = await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-keep/session.jsonl"),
+      `${claudeLine("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
+    );
+    const codexSessionsDir = join(dataDir, ".codex/sessions");
+    const gonePath = await writeFileEnsured(
+      join(codexSessionsDir, "2026/03/07/rollout-gone.jsonl"),
+      `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
+    );
+
+    const opts = {
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      codexSessionsDir,
+    };
+    await executeSync(opts);
+
+    const cursorsPath = join(stateDir, "cursors.json");
+    const c = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete c.accountingSchemaVersion;
+    await writeFile(cursorsPath, JSON.stringify(c));
+    await rm(claudePath);
+    await rm(gonePath);
+    await writeFileEnsured(
+      join(codexSessionsDir, "2026/03/07/rollout-survivor.jsonl"),
+      `${codexLines("2026-03-07T12:15:00.000Z", 100, 10)}\n`,
+    );
+
+    await executeSync(opts);
+    const records = await readQueue(stateDir);
+    expect(
+      records.find((r) => r.source === "codex" && r.hour_start.startsWith("2026-03-07T11")),
+    ).toMatchObject({ total_tokens: 0 });
+    expect(records.some((r) => r.source === "claude-code")).toBe(false);
+  });
+
+  it("never tombstones codex when dir is missing, rollout parse fails, or dir is unreadable", async () => {
+    const codexSessionsDir = join(dataDir, ".codex/sessions");
+    const keptPath = await writeFileEnsured(
+      join(codexSessionsDir, "2026/03/07/rollout-a.jsonl"),
+      `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
+    );
+    const blockedDir = join(codexSessionsDir, "2026/03/08");
+    await writeFileEnsured(
+      join(blockedDir, "rollout-b.jsonl"),
+      `${codexLines("2026-03-08T11:15:00.000Z", 100, 10)}\n`,
+    );
+    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
+
+    const dropSchemaVersion = async () => {
+      const p = join(stateDir, "cursors.json");
+      const d = JSON.parse(await readFile(p, "utf-8"));
+      delete d.accountingSchemaVersion;
+      await writeFile(p, JSON.stringify(d));
+    };
+
+    // 1) Unreadable day directory
+    await dropSchemaVersion();
+    await chmod(blockedDir, 0o000);
+    try {
+      await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
+    } finally {
+      await chmod(blockedDir, 0o755);
+    }
+    expect((await readQueue(stateDir)).some((r) => r.total_tokens === 0)).toBe(false);
+
+    // 2) Rollout parse error
+    await dropSchemaVersion();
+    await rm(keptPath);
+    const codexParser = await import("../parsers/codex.js");
+    const spy = vi.spyOn(codexParser, "parseCodexFile").mockRejectedValue(new Error("unreadable"));
+    try {
+      await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await readQueue(stateDir)).some((r) => r.total_tokens === 0)).toBe(false);
+
+    // 3) Whole sessions dir missing
+    await dropSchemaVersion();
+    await rm(codexSessionsDir, { recursive: true });
+    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
+    expect((await readQueue(stateDir)).some((r) => r.total_tokens === 0)).toBe(false);
+  });
+
+  it("allows genuinely new files without triggering rescan", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-new/session.jsonl"),
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
+    );
+    await executeSync({ stateDir, deviceId: "dev-1", claudeDir: join(dataDir, ".claude") });
+
+    await writeFileEnsured(
+      join(dataDir, ".pi/agent/sessions/proj-new/session.jsonl"),
+      piSession("2026-03-07T10:15:00.000Z", 2000, 200),
+    );
+    const r2 = await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      piSessionsDir: join(dataDir, ".pi/agent/sessions"),
+    });
+
+    expect(r2.totalDeltas).toBe(1);
+    expect(r2.sources).toMatchObject({ pi: 1, claude: 0 });
+    const records = await readQueue(stateDir);
+    expect(records.find((r) => r.source === "claude-code")?.input_tokens).toBe(1000);
+    expect(records.find((r) => r.source === "pi")?.input_tokens).toBe(2000);
+  });
+
+  it("sets queue offset to 0 on sync, preserves offset on no-op sync, and tracks dirtyKeys", async () => {
+    const filePath = await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-dk/session.jsonl"),
+      `${[claudeLine("2026-03-07T10:15:00.000Z", 1000, 100), claudeLine("2026-03-07T11:15:00.000Z", 2000, 200)].join("\n")}\n`,
+    );
+    const opts = { stateDir, deviceId: "dev-dk", claudeDir: join(dataDir, ".claude") };
+    await executeSync(opts);
+
+    const queue = new LocalQueue(stateDir);
+    expect(await queue.loadOffset()).toBe(0);
+    expect((await queue.loadDirtyKeys())?.sort()).toEqual([
+      "claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk",
+      "claude-code|glm-5|2026-03-07T11:00:00.000Z|dev-dk",
+    ]);
+
+    // Simulate upload: advance offset and clear dirtyKeys
+    const { newOffset } = await queue.readFromOffset(0);
+    await queue.saveOffset(newOffset);
+    await queue.saveDirtyKeys([]);
+
+    // No-op sync: preserves offset and empty dirtyKeys
+    const rNoop = await executeSync(opts);
+    expect(rNoop.totalRecords).toBe(0);
+    expect(await queue.loadOffset()).toBe(newOffset);
+    expect(await queue.loadDirtyKeys()).toEqual([]);
+
+    // Incremental data in same bucket (10:00) + new bucket (12:00) without clearing dirtyKeys
+    await appendFile(filePath, `${claudeLine("2026-03-07T10:25:00.000Z", 500, 50)}\n`);
+    await executeSync(opts);
+    expect(await queue.loadDirtyKeys()).toEqual([
+      "claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk",
+    ]);
+
+    await appendFile(filePath, `${claudeLine("2026-03-07T12:15:00.000Z", 3000, 300)}\n`);
+    await executeSync(opts);
+    expect((await queue.loadDirtyKeys())?.sort()).toEqual([
+      "claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk",
+      "claude-code|glm-5|2026-03-07T12:00:00.000Z|dev-dk",
+    ]);
+  });
+
+  // ===== OpenCode SQLite =====
+
+  it("syncs OpenCode SQLite data, stays incremental, and emits progress", async () => {
+    const dbPath = await writeFileEnsured(join(dataDir, "opencode/opencode.db"), "dummy");
     const rows = [
       {
         id: "msg_001",
@@ -933,2691 +847,353 @@ describe("executeSync", () => {
         time_created: 1739600010000,
         data: sqliteRowData({ role: "user", timeCreated: 1739600010000 }),
       },
-      {
-        id: "msg_003",
-        session_id: "ses_001",
-        time_created: 1739600020000,
-        data: sqliteRowData({
-          role: "assistant",
-          input: 3000,
-          output: 200,
-          timeCreated: 1739600020000,
-        }),
-      },
     ];
-
-    // Create a dummy DB file so stat() succeeds
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    const result = await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(rows),
-    });
-
-    // 2 assistant messages with tokens → 2 deltas
-    expect(result.totalDeltas).toBe(2);
-    expect(result.sources.opencode).toBe(2);
-    expect(result.totalRecords).toBeGreaterThanOrEqual(1);
-  });
-
-  it("should be incremental for OpenCode SQLite (second sync with no new rows)", async () => {
-    const rows = [
-      {
-        id: "msg_001",
-        session_id: "ses_001",
-        time_created: 1739600000000,
-        data: sqliteRowData({
-          role: "assistant",
-          input: 5000,
-          output: 800,
-          timeCreated: 1739600000000,
-        }),
-      },
-    ];
-
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
+    const events: SyncProgressEvent[] = [];
     const r1 = await executeSync({
       stateDir,
       openCodeDbPath: dbPath,
       openMessageDb: mockOpenMessageDb(rows),
+      onProgress: (e) => events.push(e),
     });
-    expect(r1.totalDeltas).toBe(1);
+    expect(r1.sources.opencode).toBe(1);
+    expect(events.some((e) => e.source === "opencode" && e.phase === "discover")).toBe(true);
+    expect(
+      events.some(
+        (e) => e.source === "opencode" && e.phase === "parse" && e.message?.includes("Parsed"),
+      ),
+    ).toBe(true);
 
-    // Second sync: cursor has advanced, no new rows
     const r2 = await executeSync({
       stateDir,
       openCodeDbPath: dbPath,
       openMessageDb: mockOpenMessageDb(rows),
     });
     expect(r2.totalDeltas).toBe(0);
-    expect(r2.totalRecords).toBe(0);
   });
 
-  it("should dedup SQLite rows against JSON messageKeys during overlap window", async () => {
-    // Simulate overlap: same message exists in both JSON file and SQLite
+  it("dedups OpenCode SQLite rows against JSON messageKeys and handles same-ms boundary", async () => {
+    const ts = 1739600000000;
+    await writeFileEnsured(
+      join(dataDir, "opencode/message/ses_001/msg_001.json"),
+      opencodeMsg(ts, 14967, 437),
+    );
+    await executeSync({ stateDir, openCodeMessageDir: join(dataDir, "opencode/message") });
 
-    // Step 1: sync the JSON file first
-    const ocDir = join(dataDir, "opencode", "message", "ses_001");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1739600000000, 14967, 437));
-
-    const r1 = await executeSync({
-      stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-    expect(r1.totalDeltas).toBe(1);
-    expect(r1.sources.opencode).toBe(1);
-
-    // Step 2: now sync with SQLite containing the SAME message + a new one
-    const dbDir = join(dataDir, "opencode");
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    const sqliteRows = [
-      // Same message as JSON — should be deduped
+    const dbPath = await writeFileEnsured(join(dataDir, "opencode/opencode.db"), "dummy");
+    const batch1 = [
       {
         id: "msg_001",
         session_id: "ses_001",
-        time_created: 1739600000000,
-        data: sqliteRowData({
-          role: "assistant",
-          input: 14967,
-          output: 437,
-          timeCreated: 1739600000000,
-        }),
+        time_created: ts,
+        data: sqliteRowData({ role: "assistant", input: 14967, output: 437, timeCreated: ts }),
       },
-      // New message — should be included
       {
-        id: "msg_002",
+        id: "msg_A",
         session_id: "ses_001",
-        time_created: 1739600020000,
-        data: sqliteRowData({
-          role: "assistant",
-          input: 3000,
-          output: 200,
-          timeCreated: 1739600020000,
-        }),
+        time_created: ts,
+        data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: ts }),
       },
     ];
-
     const r2 = await executeSync({
       stateDir,
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
+      openCodeMessageDir: join(dataDir, "opencode/message"),
       openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(sqliteRows),
+      openMessageDb: mockOpenMessageDb(batch1),
     });
+    expect(r2.sources.opencode).toBe(1); // msg_001 deduped, msg_A new
 
-    // JSON file unchanged (triple-check skip) → 0 from JSON
-    // SQLite: msg_001 deduped, msg_002 is new → 1 from SQLite
-    expect(r2.sources.opencode).toBe(1);
-    expect(r2.totalDeltas).toBe(1);
+    // Same-ms repeat is deduped, new msg_B at exact same ms is processed
+    const r3 = await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(batch1),
+    });
+    expect(r3.totalDeltas).toBe(0);
+
+    const batch2 = [
+      ...batch1,
+      {
+        id: "msg_B",
+        session_id: "ses_001",
+        time_created: ts,
+        data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: ts }),
+      },
+    ];
+    const r4 = await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(batch2),
+    });
+    expect(r4.totalDeltas).toBe(1);
   });
 
-  it("should gracefully skip when SQLite DB file does not exist", async () => {
-    const result = await executeSync({
+  it("handles missing OpenCode DB, empty query, missing adapter, and null openMessageDb", async () => {
+    const rMissing = await executeSync({
       stateDir,
       openCodeDbPath: "/nonexistent/opencode.db",
       openMessageDb: mockOpenMessageDb([]),
     });
+    expect(rMissing.sources.opencode).toBe(0);
 
-    expect(result.totalDeltas).toBe(0);
-    expect(result.sources.opencode).toBe(0);
-  });
-
-  it("should gracefully handle when openMessageDb returns null", async () => {
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    const result = await executeSync({
+    const dbPath = await writeFileEnsured(join(dataDir, "opencode/opencode.db"), "dummy");
+    const rEmpty = await executeSync({
       stateDir,
       openCodeDbPath: dbPath,
-      openMessageDb: () => null,
+      openMessageDb: mockOpenMessageDb([]),
     });
+    expect(rEmpty.sources.opencode).toBe(0);
 
-    expect(result.totalDeltas).toBe(0);
-    expect(result.sources.opencode).toBe(0);
-  });
-
-  it("should not lose same-millisecond rows at the cursor boundary", async () => {
-    // Two assistant messages at the exact same time_created.
-    // After first sync processes both, the cursor should track
-    // their IDs so the second sync doesn't re-process them.
-    const sameMs = 1739600000000;
-    const rows = [
-      {
-        id: "msg_A",
-        session_id: "ses_001",
-        time_created: sameMs,
-        data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: sameMs }),
-      },
-      {
-        id: "msg_B",
-        session_id: "ses_001",
-        time_created: sameMs,
-        data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: sameMs }),
-      },
-    ];
-
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    // First sync: both rows are new → 2 deltas
-    const r1 = await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(rows),
-    });
-    expect(r1.totalDeltas).toBe(2);
-    expect(r1.sources.opencode).toBe(2);
-
-    // Second sync: cursor's lastTimeCreated == sameMs, lastProcessedIds == [msg_A, msg_B]
-    // The >= query returns both rows again, but they're filtered out by prevProcessedIds
-    const r2 = await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(rows),
-    });
-    expect(r2.totalDeltas).toBe(0);
-    expect(r2.totalRecords).toBe(0);
-  });
-
-  it("should process a new row at the same millisecond as the cursor boundary", async () => {
-    const sameMs = 1739600000000;
-    const rowsBatch1 = [
-      {
-        id: "msg_A",
-        session_id: "ses_001",
-        time_created: sameMs,
-        data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: sameMs }),
-      },
-    ];
-
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    // First sync: msg_A processed
-    const r1 = await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(rowsBatch1),
-    });
-    expect(r1.totalDeltas).toBe(1);
-
-    // A new row arrives at the same millisecond (rare but possible)
-    const rowsBatch2 = [
-      ...rowsBatch1,
-      {
-        id: "msg_B",
-        session_id: "ses_001",
-        time_created: sameMs,
-        data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: sameMs }),
-      },
-    ];
-
-    // Second sync: msg_A deduped, msg_B is new → 1 delta
-    const r2 = await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(rowsBatch2),
-    });
-    expect(r2.totalDeltas).toBe(1);
-    expect(r2.sources.opencode).toBe(1);
-  });
-
-  it("should emit warning when DB exists but openMessageDb adapter is missing", async () => {
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-
-    await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      // openMessageDb intentionally NOT provided
-      onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
-    });
-
-    const warnEvent = events.find((e) => e.source === "opencode-sqlite" && e.phase === "warn");
-    expect(warnEvent).toBeDefined();
-    expect(warnEvent!.message).toContain("SQLite is not available");
-  });
-
-  it("should emit warning when openMessageDb returns null (DB can't be opened)", async () => {
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-
-    await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      openMessageDb: () => null,
-      onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
-    });
-
-    const warnEvent = events.find((e) => e.source === "opencode-sqlite" && e.phase === "warn");
-    expect(warnEvent).toBeDefined();
-    expect(warnEvent!.message).toContain("Failed to open");
-  });
-
-  // ===== OpenClaw parse error branch (lines 446-454) =====
-
-  it("should emit warning and continue when OpenClaw parser throws", async () => {
-    // Good OpenClaw file
-    const goodDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
-    await mkdir(goodDir, { recursive: true });
-    await writeFile(
-      join(goodDir, "session-good.jsonl"),
-      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-
-    // Bad OpenClaw file
-    const badDir = join(dataDir, ".openclaw", "agents", "a2", "sessions");
-    await mkdir(badDir, { recursive: true });
-    await writeFile(
-      join(badDir, "session-bad.jsonl"),
-      `${openclawLine("2026-03-07T10:15:00.000Z", 3000, 400)}\n`,
-    );
-
-    // Spy on the parser to throw for the bad file
-    const openclawParser = await import("../parsers/openclaw.js");
-    const origParse = openclawParser.parseOpenClawFile;
-    const spy = vi.spyOn(openclawParser, "parseOpenClawFile").mockImplementation(async (opts) => {
-      if (opts.filePath.includes("session-bad")) {
-        throw new Error("Simulated openclaw parser crash");
-      }
-      return origParse(opts);
-    });
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-
-    try {
-      const result = await executeSync({
-        stateDir,
-        openclawDir: join(dataDir, ".openclaw"),
-        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
-      });
-
-      // Good file data should still be synced
-      expect(result.sources.openclaw).toBe(1);
-
-      // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter((e) => e.source === "openclaw" && e.phase === "warn");
-      expect(warnEvents).toHaveLength(1);
-      expect(warnEvents[0].message).toContain("Simulated openclaw parser crash");
-    } finally {
-      spy.mockRestore();
-    }
-  });
-
-  // ===== Codex parse error branch (lines 510-517) =====
-
-  it("should emit warning and continue when Codex parser throws", async () => {
-    // Good Codex file
-    const goodDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(goodDir, { recursive: true });
-    await writeFile(
-      join(goodDir, "rollout-good.jsonl"),
-      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-
-    // Bad Codex file
-    await writeFile(
-      join(goodDir, "rollout-bad.jsonl"),
-      `${codexLines("2026-03-07T10:16:00.000Z", 3000, 400)}\n`,
-    );
-
-    // Spy on the parser to throw for the bad file
-    const codexParser = await import("../parsers/codex.js");
-    const origParse = codexParser.parseCodexFile;
-    const spy = vi.spyOn(codexParser, "parseCodexFile").mockImplementation(async (opts) => {
-      if (opts.filePath.includes("rollout-bad")) {
-        throw new Error("Simulated codex parser crash");
-      }
-      return origParse(opts);
-    });
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-
-    try {
-      const result = await executeSync({
-        stateDir,
-        codexSessionsDir: join(dataDir, ".codex", "sessions"),
-        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
-      });
-
-      // Good file data should still be synced
-      expect(result.sources.codex).toBe(1);
-
-      // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter((e) => e.source === "codex" && e.phase === "warn");
-      expect(warnEvents).toHaveLength(1);
-      expect(warnEvents[0].message).toContain("Simulated codex parser crash");
-    } finally {
-      spy.mockRestore();
-    }
-  });
-
-  // ===== Gemini parse error branch with onProgress (lines 198-203) =====
-
-  it("should emit warning and continue when Pi parser throws", async () => {
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-gem-err");
-    await mkdir(piDir, { recursive: true });
-
-    // Good file
-    await writeFile(
-      join(piDir, "session-good.jsonl"),
-      piSession("2026-03-07T11:00:00.000Z", 2000, 200),
-    );
-
-    // Bad file — will be forced to throw via spy
-    await writeFile(
-      join(piDir, "session-bad.jsonl"),
-      piSession("2026-03-07T12:00:00.000Z", 3000, 300),
-    );
-
-    const piParser = await import("../parsers/pi.js");
-    const origParse = piParser.parsePiFile;
-    const spy = vi.spyOn(piParser, "parsePiFile").mockImplementation(async (opts) => {
-      if (opts.filePath.includes("session-bad")) {
-        throw new Error("Simulated pi parser crash");
-      }
-      return origParse(opts);
-    });
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-
-    try {
-      const result = await executeSync({
-        stateDir,
-        piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
-      });
-
-      // Good file data should still be synced
-      expect(result.sources.pi).toBe(1);
-
-      // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter((e) => e.source === "pi" && e.phase === "warn");
-      expect(warnEvents).toHaveLength(1);
-      expect(warnEvents[0].message).toContain("Simulated pi parser crash");
-    } finally {
-      spy.mockRestore();
-    }
-  });
-
-  // ===== OpenCode parse error branch with onProgress (lines 277-283) =====
-
-  it("should emit warning and continue when OpenCode parser throws", async () => {
-    const msgDir = join(dataDir, "opencode-err", "message");
-
-    // Good file in a session dir
-    const sesDir1 = join(msgDir, "ses_good");
-    await mkdir(sesDir1, { recursive: true });
-    await writeFile(join(sesDir1, "msg_001.json"), opencodeMsg(1741320000000, 100, 50));
-
-    // Bad file in another session dir — will be forced to throw via spy
-    const sesDir2 = join(msgDir, "ses_bad");
-    await mkdir(sesDir2, { recursive: true });
-    await writeFile(join(sesDir2, "msg_001.json"), opencodeMsg(1741321000000, 200, 100));
-
-    const ocParser = await import("../parsers/opencode.js");
-    const origParse = ocParser.parseOpenCodeFile;
-    const spy = vi.spyOn(ocParser, "parseOpenCodeFile").mockImplementation(async (opts) => {
-      if (opts.filePath.includes("ses_bad")) {
-        throw new Error("Simulated opencode parser crash");
-      }
-      return origParse(opts);
-    });
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-
-    try {
-      const result = await executeSync({
-        stateDir,
-        openCodeMessageDir: msgDir,
-        onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
-      });
-
-      // Good file data should still be synced
-      expect(result.sources.opencode).toBeGreaterThanOrEqual(1);
-
-      // Verify a warning was emitted for the bad file
-      const warnEvents = events.filter((e) => e.source === "opencode" && e.phase === "warn");
-      expect(warnEvents).toHaveLength(1);
-      expect(warnEvents[0].message).toContain("Simulated opencode parser crash");
-    } finally {
-      spy.mockRestore();
-    }
-  });
-
-  // ===== OpenCode file-level skip with onProgress (lines 264-268) =====
-
-  it("should emit parse progress for OpenCode file-level skip on unchanged file", async () => {
-    const msgDir = join(dataDir, "opencode-fskip", "message");
-    const sesDir = join(msgDir, "ses_fskip");
-    await mkdir(sesDir, { recursive: true });
-    await writeFile(join(sesDir, "msg_001.json"), opencodeMsg(1741320000000, 100, 50));
-
-    // First sync without onProgress to establish cursors
-    await executeSync({
-      stateDir,
-      openCodeMessageDir: msgDir,
-    });
-
-    // Add a new file to the session dir to change dir mtime (but keep msg_001 unchanged)
-    await new Promise((r) => setTimeout(r, 50));
-    await writeFile(join(sesDir, "msg_002.json"), opencodeMsg(1741320300000, 150, 75));
-
-    // Second sync with onProgress — dir mtime changed, so dir is scanned.
-    // msg_001 has same inode+mtime+size → file-level skip path fires.
-    const events: Array<{ source: string; phase: string; current?: number; total?: number }> = [];
-    const result = await executeSync({
-      stateDir,
-      openCodeMessageDir: msgDir,
-      onProgress: (e) =>
-        events.push({
-          source: e.source,
-          phase: e.phase,
-          current: e.current,
-          total: e.total,
-        }),
-    });
-
-    // msg_002 is new, so at least 1 delta from it
-    expect(result.sources.opencode).toBeGreaterThanOrEqual(1);
-
-    // Verify parse progress events were fired (both for skipped and parsed files)
-    const parseEvents = events.filter(
-      (e) => e.source === "opencode" && e.phase === "parse" && e.current !== undefined,
-    );
-    expect(parseEvents.length).toBeGreaterThanOrEqual(2); // at least 2 files
-  });
-
-  // ===== OpenCode SQLite onProgress for parse detail (lines 381-384) =====
-
-  it("should emit parse progress for OpenCode SQLite data with onProgress", async () => {
-    const dbDir = join(dataDir, "opencode-sqlprog");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-
-    await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      openMessageDb: (_p: string) => ({
-        queryMessages: (_lastTs: number) => [
-          {
-            id: "msg_sql_001",
-            session_id: "ses_sql_001",
-            role: "assistant",
-            time_created: 1741320000000,
-            data: JSON.stringify({
-              role: "assistant",
-              modelID: "claude-opus-4.6",
-              time: { created: 1741320000000, completed: 1741320001000 },
-              tokens: {
-                total: 150,
-                input: 100,
-                output: 50,
-                reasoning: 0,
-                cache: { read: 0, write: 0 },
-              },
-            }),
-          },
-        ],
-        close: () => {},
-      }),
-      onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
-    });
-
-    // Verify SQLite discover event
-    const discoverEvents = events.filter((e) => e.source === "opencode" && e.phase === "discover");
-    expect(discoverEvents).toHaveLength(1);
-
-    // Verify SQLite parse progress event with delta details
-    const parseEvents = events.filter((e) => e.source === "opencode" && e.phase === "parse");
-    expect(parseEvents).toHaveLength(1);
-    expect(parseEvents[0].message).toContain("Parsed");
-    expect(parseEvents[0].message).toContain("deltas");
-  });
-
-  // ===== OpenCode SQLite with no rows at all (line 395: rawRows empty fallback) =====
-
-  it("should handle empty SQLite queryMessages result gracefully", async () => {
-    const dbDir = join(dataDir, "opencode-sqlempty");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy");
-
-    const result = await executeSync({
-      stateDir,
-      openCodeDbPath: dbPath,
-      openMessageDb: (_p: string) => ({
-        queryMessages: (_lastTs: number) => [],
-        close: () => {},
-      }),
-    });
-
-    expect(result.totalDeltas).toBe(0);
-    expect(result.sources.opencode).toBe(0);
-  });
-
-  // ===== Token inflation fix tests (Step 1 — overwrite + cursor-after-queue) =====
-
-  it("should not inflate queue on cursor reset (full-scan overwrite)", async () => {
-    // Scenario: sync once → delete cursors → sync again → queue should have
-    // the same values as the first sync (not 2x).
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-inflate");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
-    );
-
-    // First sync
-    const r1 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-    expect(r1.totalRecords).toBe(1);
-
-    // Read queue to check initial values
-    const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records1).toHaveLength(1);
-    expect(records1[0].input_tokens).toBe(5000);
-    expect(records1[0].output_tokens).toBe(800);
-
-    // Delete cursors (simulate cursor reset)
-    const { rm: rmFile } = await import("node:fs/promises");
-    await rmFile(join(stateDir, "cursors.json"), { force: true });
-
-    // Second sync — full-scan branch should overwrite, not accumulate
-    const r2 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-    expect(r2.totalRecords).toBe(1);
-
-    // Queue should have the SAME values (not 2x)
-    const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records2).toHaveLength(1);
-    expect(records2[0].input_tokens).toBe(5000); // NOT 10000
-    expect(records2[0].output_tokens).toBe(800); // NOT 1600
-  });
-
-  it("should accumulate incremental syncs correctly (SUM branch)", async () => {
-    // Scenario: two incremental syncs without upload → queue should
-    // contain the SUM of both syncs' deltas.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-incr");
-    await mkdir(claudeDir, { recursive: true });
-    const filePath = join(claudeDir, "session.jsonl");
-    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
-
-    // First sync
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // Append more data to the same file (same half-hour bucket)
-    const existing = await readFile(filePath, "utf-8");
-    await writeFile(filePath, `${existing + claudeLine("2026-03-07T10:20:00.000Z", 2000, 200)}\n`);
-
-    // Second sync — incremental branch should SUM old + new
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    // Should be aggregated into one record with SUM
-    const claudeRecs = records.filter((r) => r.source === "claude-code");
-    expect(claudeRecs).toHaveLength(1);
-    expect(claudeRecs[0].input_tokens).toBe(3000); // 1000 + 2000
-    expect(claudeRecs[0].output_tokens).toBe(300); // 100 + 200
-  });
-
-  it("should not inflate on upload failure + cursor reset", async () => {
-    // Scenario: sync → upload fails (offset not advanced) → cursor reset → sync again
-    // Queue should have the fresh full-scan values, not accumulated garbage.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-upfail");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 4000, 600)}\n`,
-    );
-
-    // First sync
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // Simulate upload failure: don't advance offset, so queue still has data
-
-    // Delete cursors
-    const { rm: rmFile } = await import("node:fs/promises");
-    await rmFile(join(stateDir, "cursors.json"), { force: true });
-
-    // Second sync — full-scan should overwrite the stale queue
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records).toHaveLength(1);
-    expect(records[0].input_tokens).toBe(4000); // NOT 8000
-    expect(records[0].output_tokens).toBe(600); // NOT 1200
-  });
-
-  it("should preserve cursor-after-queue write order (queue written before cursors)", async () => {
-    // Verify the new write order: if queue.overwrite throws, cursors should
-    // NOT be saved — so the next sync re-processes everything.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-order");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
-
-    // Spy on LocalQueue.overwrite to throw (simulating crash during queue write)
-    const localQueueModule = await import("../storage/local-queue.js");
-    const spy = vi
-      .spyOn(localQueueModule.LocalQueue.prototype, "overwrite")
-      .mockRejectedValue(new Error("Simulated queue write crash"));
-
-    try {
-      await executeSync({
-        stateDir,
-        claudeDir: join(dataDir, ".claude"),
-      }).catch(() => {
-        // Expected — queue write failed
-      });
-    } finally {
-      spy.mockRestore();
-    }
-
-    // Cursors should NOT be saved (cursor-after-queue means queue crash
-    // prevents cursor save)
-    const { CursorStore } = await import("../storage/cursor-store.js");
-    const cursorStore = new CursorStore(stateDir);
-    const cursors = await cursorStore.load();
-    expect(Object.keys(cursors.files)).toHaveLength(0);
-
-    // Normal sync recovers the committed records exactly once
-    const result = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-    expect(result.totalDeltas).toBe(0);
-    expect(result.totalRecords).toBe(0);
-    const recovered = JSON.parse((await readFile(join(stateDir, "queue.jsonl"), "utf8")).trim());
-    expect(recovered.total_tokens).toBe(1100);
-  });
-
-  // ===== Bug A: Partial replay inflation (inode change on single file) =====
-
-  it.skipIf(!!process.env.CI)(
-    "should not inflate when a single file's inode changes (partial replay)",
-    async () => {
-      // Scenario: sync Claude file → file gets replaced (new inode, same content)
-      // → sync again → queue should have same values (not 2x).
-      // This tests the bug where a single driver's inode reset causes
-      // partial replay that gets SUM'd with the existing queue.
-      const claudeDir = join(dataDir, ".claude", "projects", "proj-inode");
-      await mkdir(claudeDir, { recursive: true });
-      const filePath = join(claudeDir, "session.jsonl");
-      const content = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
-      await writeFile(filePath, content);
-
-      // First sync
-      await executeSync({
-        stateDir,
-        deviceId: "dev-1",
-        claudeDir: join(dataDir, ".claude"),
-      });
-
-      const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-      const records1 = queueRaw1
-        .trim()
-        .split("\n")
-        .map((l) => JSON.parse(l) as QueueRecord);
-      expect(records1).toHaveLength(1);
-      expect(records1[0].input_tokens).toBe(3000);
-
-      // Simulate inode change: delete and recreate file with same content
-      // (On most filesystems, rm + create = new inode)
-      const { rm: rmFile } = await import("node:fs/promises");
-      await rmFile(filePath);
-      await new Promise((r) => setTimeout(r, 50)); // ensure different mtime
-      await writeFile(filePath, content);
-
-      // Second sync — inode changed, driver will replay from offset 0
-      // With the fix, sync should detect inode change → full rescan → overwrite
-      await executeSync({
-        stateDir,
-        deviceId: "dev-1",
-        claudeDir: join(dataDir, ".claude"),
-      });
-
-      const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-      const records2 = queueRaw2
-        .trim()
-        .split("\n")
-        .map((l) => JSON.parse(l) as QueueRecord);
-      expect(records2).toHaveLength(1);
-      expect(records2[0].input_tokens).toBe(3000); // NOT 6000
-      expect(records2[0].output_tokens).toBe(300); // NOT 600
-    },
-  );
-
-  it.skipIf(!!process.env.CI)(
-    "should not inflate when inode changes with multiple sources active",
-    async () => {
-      // Scenario: Claude + Pi both synced. Claude file inode changes.
-      // Queue should reflect correct values for BOTH sources.
-      const claudeDir = join(dataDir, ".claude", "projects", "proj-multi");
-      await mkdir(claudeDir, { recursive: true });
-      const claudePath = join(claudeDir, "session.jsonl");
-      const claudeContent = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
-      await writeFile(claudePath, claudeContent);
-
-      const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-multi");
-      await mkdir(piDir, { recursive: true });
-      await writeFile(
-        join(piDir, "session-2026-03-07.jsonl"),
-        piSession("2026-03-07T10:15:00.000Z", 2000, 200),
-      );
-
-      // First sync — both sources
-      await executeSync({
-        stateDir,
-        deviceId: "dev-1",
-        claudeDir: join(dataDir, ".claude"),
-        piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-      });
-
-      // Simulate Claude file inode change
-      const { rm: rmFile } = await import("node:fs/promises");
-      await rmFile(claudePath);
-      await new Promise((r) => setTimeout(r, 50));
-      await writeFile(claudePath, claudeContent);
-
-      // Second sync
-      await executeSync({
-        stateDir,
-        deviceId: "dev-1",
-        claudeDir: join(dataDir, ".claude"),
-        piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-      });
-
-      const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-      const records = queueRaw
-        .trim()
-        .split("\n")
-        .map((l) => JSON.parse(l) as QueueRecord);
-      const claude = records.find((r) => r.source === "claude-code");
-      const pi = records.find((r) => r.source === "pi");
-      expect(claude).toBeDefined();
-      expect(pi).toBeDefined();
-      expect(claude!.input_tokens).toBe(3000); // NOT 6000
-      expect(pi!.input_tokens).toBe(2000); // Preserved, not lost
-    },
-  );
-
-  // ===== Bug A2: Partial replay inflation (single cursor entry missing/corrupted) =====
-
-  it("should not inflate when a single file's cursor entry is missing", async () => {
-    // Scenario: sync Claude + Pi → manually delete Claude cursor entry →
-    // sync again → Claude driver replays from offset 0 (full file content)
-    // In the old code, this runs through the incremental SUM branch → 2× inflation.
-    // With the fix, sync should detect the missing cursor → full rescan → overwrite.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-cursor-miss");
-    await mkdir(claudeDir, { recursive: true });
-    const claudePath = join(claudeDir, "session.jsonl");
-    await writeFile(claudePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
-
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-cursor-miss");
-    await mkdir(piDir, { recursive: true });
-    await writeFile(
-      join(piDir, "session-2026-03-07.jsonl"),
-      piSession("2026-03-07T10:15:00.000Z", 2000, 200),
-    );
-
-    // First sync — both sources
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-    });
-
-    // Verify initial queue state
-    const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const claude1 = records1.find((r) => r.source === "claude-code");
-    const pi1 = records1.find((r) => r.source === "pi");
-    expect(claude1!.input_tokens).toBe(1000);
-    expect(pi1!.input_tokens).toBe(2000);
-
-    // Tamper with cursors.json: delete only the Claude file cursor entry
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    cursorsData.files = Object.fromEntries(
-      Object.entries(cursorsData.files).filter(
-        ([key]) => !(key.includes("proj-cursor-miss") && key.includes(".claude")),
-      ),
-    );
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // Second sync — Claude cursor is missing, Pi cursor exists
-    // Without fix: Claude replays from 0 → incremental SUM → 2000/200 (2×)
-    // With fix: detects missing cursor → full rescan → overwrite → 1000/100
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-    });
-
-    const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const claude2 = records2.find((r) => r.source === "claude-code");
-    const pi2 = records2.find((r) => r.source === "pi");
-    expect(claude2).toBeDefined();
-    expect(pi2).toBeDefined();
-    expect(claude2!.input_tokens).toBe(1000); // NOT 2000
-    expect(claude2!.output_tokens).toBe(100); // NOT 200
-    expect(pi2!.input_tokens).toBe(2000); // Preserved
-    expect(pi2!.output_tokens).toBe(200); // Preserved
-  });
-
-  it("should trigger one-time full rescan when upgrading from old cursors.json without knownFilePaths", async () => {
-    // Scenario: existing cursors.json from pre-v1.6.0 lacks knownFilePaths.
-    // First sync after upgrade should detect this and restart as full scan,
-    // then populate knownFilePaths for future use.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-upgrade");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 500)}\n`,
-    );
-
-    // First sync — establishes cursors normally
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // Simulate old cursors.json: remove knownFilePaths field
-    // Keep accountingSchemaVersion so that check doesn't fire first.
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(cursorsData.knownFilePaths).toBeDefined();
-    delete cursorsData.knownFilePaths;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // Second sync — should detect missing knownFilePaths → full rescan
-    // Queue should still have correct values (not inflated)
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records).toHaveLength(1);
-    expect(records[0].input_tokens).toBe(5000); // NOT 10000
-
-    // Verify knownFilePaths was populated after the rescan
-    const updatedCursors = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(updatedCursors.knownFilePaths).toBeDefined();
-    expect(Object.keys(updatedCursors.knownFilePaths).length).toBeGreaterThan(0);
-  });
-
-  it("should trigger one-time full rescan when accountingSchemaVersion is missing", async () => {
-    // Covers codex/copilot-cli/grok inclusive→disjoint migration: one global
-    // schema stamp forces a full overwrite so historical buckets are not
-    // SUM-mixed with new disjoint deltas.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-acct-schema");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`,
-    );
-
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(cursorsData.accountingSchemaVersion).toBeDefined();
-    delete cursorsData.accountingSchemaVersion;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    const events: Array<{ phase: string; message?: string }> = [];
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      onProgress: (e) => events.push(e),
-    });
-
+    const evNoAdapter: SyncProgressEvent[] = [];
+    await executeSync({ stateDir, openCodeDbPath: dbPath, onProgress: (e) => evNoAdapter.push(e) });
     expect(
-      events.some((e) => e.phase === "warn" && e.message?.includes("Token accounting schema")),
+      evNoAdapter.some(
+        (e) =>
+          e.source === "opencode-sqlite" &&
+          e.phase === "warn" &&
+          e.message?.includes("SQLite is not available"),
+      ),
     ).toBe(true);
 
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records).toHaveLength(1);
-    expect(records[0]!.input_tokens).toBe(3000); // not doubled
-
-    const updated = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(updated.accountingSchemaVersion).toBe(2);
-  });
-
-  it("should tombstone codex buckets removed by an accounting schema rescan", async () => {
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    const rolloutPath = join(codexDir, "rollout-acct-tombstone.jsonl");
-    await mkdir(codexDir, { recursive: true });
-    await writeFile(rolloutPath, `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`);
-    const codexSessionsDir = join(dataDir, ".codex", "sessions");
-
-    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
-
-    // Upgrade accounting semantics. The rollout that produced the bucket is
-    // gone, but other rollouts remain, so the codex rescan is still complete.
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    delete cursorsData.accountingSchemaVersion;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-    await rm(rolloutPath);
-    await writeFile(
-      join(codexDir, "rollout-acct-survivor.jsonl"),
-      `${codexLines("2026-03-07T12:15:00.000Z", 100, 10)}\n`,
-    );
-
-    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const tombstone = records.find((r) => r.hour_start.startsWith("2026-03-07T11"));
-    expect(tombstone).toMatchObject({
-      source: "codex",
-      device_id: "dev-1",
-      input_tokens: 0,
-      cached_input_tokens: 0,
-      output_tokens: 0,
-      reasoning_output_tokens: 0,
-      total_tokens: 0,
+    const evNull: SyncProgressEvent[] = [];
+    await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openMessageDb: () => null,
+      onProgress: (e) => evNull.push(e),
     });
+    expect(
+      evNull.some(
+        (e) =>
+          e.source === "opencode-sqlite" &&
+          e.phase === "warn" &&
+          e.message?.includes("Failed to open"),
+      ),
+    ).toBe(true);
   });
 
-  it("should never tombstone non-codex buckets on an accounting rescan", async () => {
-    // v2 corrects Codex accounting only. A Claude project whose raw logs the
-    // user has since rotated away must keep its already-uploaded history —
-    // "absent from this scan" is not "this history is wrong".
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-acct-keep");
-    const sessionPath = join(claudeDir, "session.jsonl");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(sessionPath, `${claudeLine("2026-03-07T11:15:00.000Z", 4000, 400)}\n`);
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(codexDir, { recursive: true });
-    await writeFile(
-      join(codexDir, "rollout-acct-keep.jsonl"),
-      `${codexLines("2026-03-07T12:15:00.000Z", 100, 10)}\n`,
+  it("handles openCodeSqlite cursor loss, knownDbSources backfill, and missing knownDbSources upgrade paths", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-db/session.jsonl"),
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
-
-    const dirs = {
+    const dbPath = await writeFileEnsured(join(dataDir, "opencode/opencode.db"), "dummy");
+    const rows = [
+      {
+        id: "msg_001",
+        session_id: "ses_001",
+        time_created: 1739600000000,
+        data: sqliteRowData({ role: "assistant", input: 500, output: 200 }),
+      },
+    ];
+    const opts = {
+      stateDir,
+      deviceId: "dev-1",
       claudeDir: join(dataDir, ".claude"),
-      codexSessionsDir: join(dataDir, ".codex", "sessions"),
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(rows),
     };
-    await executeSync({ stateDir, deviceId: "dev-1", ...dirs });
-
     const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    delete cursorsData.accountingSchemaVersion;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-    await rm(sessionPath);
 
-    await executeSync({ stateDir, deviceId: "dev-1", ...dirs });
+    await executeSync(opts);
 
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records.some((r) => r.source === "claude-code")).toBe(false);
-  });
-
-  it("should not tombstone when codex discovered nothing (dir missing or unmounted)", async () => {
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(codexDir, { recursive: true });
-    await writeFile(
-      join(codexDir, "rollout-acct-gone.jsonl"),
-      `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
-    );
-    const codexSessionsDir = join(dataDir, ".codex", "sessions");
-
-    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
-
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    delete cursorsData.accountingSchemaVersion;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-    // Whole sessions tree unavailable — zero rollouts discovered.
-    await rm(codexSessionsDir, { recursive: true });
-
-    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .split("\n")
-      .filter((l) => l.trim().length > 0)
-      .map((l) => JSON.parse(l) as QueueRecord);
-    // No zero-value tombstone is emitted, so the already-uploaded server row
-    // for that hour survives the migration.
-    expect(records.some((r) => r.total_tokens === 0)).toBe(false);
-  });
-
-  it("should not tombstone when a codex rollout failed to parse", async () => {
-    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
-    await mkdir(codexDir, { recursive: true });
-    const gonePath = join(codexDir, "rollout-acct-fail-a.jsonl");
-    await writeFile(gonePath, `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`);
-    const codexSessionsDir = join(dataDir, ".codex", "sessions");
-
-    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
-
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    delete cursorsData.accountingSchemaVersion;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // The rollout that produced the bucket is gone and the one that remains
-    // cannot be read. A partial rescan must not be mistaken for evidence that
-    // the missing hour should be deleted.
-    await rm(gonePath);
-    await writeFile(
-      join(codexDir, "rollout-acct-fail-b.jsonl"),
-      `${codexLines("2026-03-07T12:15:00.000Z", 100, 10)}\n`,
+    // 1) Cursor lost while knownDbSources present
+    const c1 = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(c1.knownDbSources.openCodeSqlite).toBe(true);
+    delete c1.openCodeSqlite;
+    await writeFile(cursorsPath, JSON.stringify(c1));
+    await executeSync(opts);
+    expect((await readQueue(stateDir)).find((r) => r.source === "opencode")?.input_tokens).toBe(
+      500,
     );
 
-    // Dynamic import: vi.spyOn needs the live module namespace object, which a
-    // static named import does not provide.
-    const codexParser = await import("../parsers/codex.js");
-    const spy = vi
-      .spyOn(codexParser, "parseCodexFile")
-      .mockRejectedValue(new Error("Simulated unreadable rollout"));
-
-    try {
-      await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
-    } finally {
-      spy.mockRestore();
-    }
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .split("\n")
-      .filter((l) => l.trim().length > 0)
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records.some((r) => r.total_tokens === 0)).toBe(false);
-  });
-
-  it("should not tombstone when a codex directory could not be read", async () => {
-    // Directory-walk errors are swallowed by design (one bad subtree must not
-    // fail a sync), so an unreadable day directory looks exactly like "those
-    // rollouts are gone". Zeroing on that would destroy valid history.
-    const sessionsDir = join(dataDir, ".codex", "sessions");
-    const keptDir = join(sessionsDir, "2026", "03", "07");
-    const blockedDir = join(sessionsDir, "2026", "03", "08");
-    await mkdir(keptDir, { recursive: true });
-    await mkdir(blockedDir, { recursive: true });
-    await writeFile(
-      join(keptDir, "rollout-acct-readable.jsonl"),
-      `${codexLines("2026-03-07T11:15:00.000Z", 100, 10)}\n`,
+    // 2) Upgrade backfill when knownDbSources missing but openCodeSqlite exists
+    const c2 = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete c2.knownDbSources;
+    await writeFile(cursorsPath, JSON.stringify(c2));
+    await executeSync(opts);
+    expect(JSON.parse(await readFile(cursorsPath, "utf-8")).knownDbSources.openCodeSqlite).toBe(
+      true,
     );
-    await writeFile(
-      join(blockedDir, "rollout-acct-blocked.jsonl"),
-      `${codexLines("2026-03-08T11:15:00.000Z", 4000, 400)}\n`,
+    expect((await readQueue(stateDir)).find((r) => r.source === "opencode")?.input_tokens).toBe(
+      500,
     );
 
-    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir: sessionsDir });
-
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    delete cursorsData.accountingSchemaVersion;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    await chmod(blockedDir, 0o000);
-    try {
-      await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir: sessionsDir });
-    } finally {
-      await chmod(blockedDir, 0o755);
-    }
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .split("\n")
-      .filter((l) => l.trim().length > 0)
-      .map((l) => JSON.parse(l) as QueueRecord);
-    // The hour behind the unreadable directory keeps its server row.
-    expect(records.some((r) => r.total_tokens === 0)).toBe(false);
-  });
-
-  it("should allow genuinely new files without triggering rescan", async () => {
-    // Scenario: sync Claude → add a new Pi file → sync again.
-    // The new Pi file should be picked up in incremental mode (SUM),
-    // NOT trigger a full rescan, because it's not in knownFilePaths.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-newfile");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
+    // 3) Upgrade edge case: knownDbSources missing AND openCodeSqlite already lost -> full rescan
+    const c3 = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete c3.knownDbSources;
+    delete c3.openCodeSqlite;
+    await writeFile(cursorsPath, JSON.stringify(c3));
+    const msgs: string[] = [];
+    await executeSync({ ...opts, onProgress: (e) => msgs.push(e.message) });
+    expect(msgs.some((m) => m.includes("full rescan"))).toBe(true);
+    expect((await readQueue(stateDir)).find((r) => r.source === "opencode")?.input_tokens).toBe(
+      500,
     );
+  });
 
-    // First sync — only Claude
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
+  // ===== Hermes SQLite =====
 
-    const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    expect(records1).toHaveLength(1);
-    expect(records1[0].source).toBe("claude-code");
-    expect(records1[0].input_tokens).toBe(1000);
-
-    // Add a genuinely new Pi file
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-newfile");
-    await mkdir(piDir, { recursive: true });
-    await writeFile(
-      join(piDir, "session-2026-03-07.jsonl"),
-      piSession("2026-03-07T10:15:00.000Z", 2000, 200),
+  it("syncs Hermes default & profile DBs, stays incremental, and emits display name", async () => {
+    const dbPath = await writeFileEnsured(join(dataDir, "hermes/state.db"), "dummy");
+    const profileDb = await writeFileEnsured(
+      join(dataDir, "hermes/profiles/tomato/state.db"),
+      "dummy",
     );
-
-    // Second sync — Claude + Pi, incremental
-    const r2 = await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-    });
-
-    // Should pick up only the new Pi delta (Claude skipped, unchanged)
-    expect(r2.totalDeltas).toBe(1);
-    expect(r2.sources.pi).toBe(1);
-    expect(r2.sources.claude).toBe(0);
-
-    // Queue should have both sources with correct values
-    const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const claude = records2.find((r) => r.source === "claude-code");
-    const pi = records2.find((r) => r.source === "pi");
-    expect(claude!.input_tokens).toBe(1000); // Preserved from first sync
-    expect(pi!.input_tokens).toBe(2000); // New file, correctly SUM'd
-  });
-
-  // ===== Bug A2b: SQLite cursor entry lost (DB-based driver cursor-loss detection) =====
-
-  it("should not inflate when openCodeSqlite cursor entry is lost but file cursors exist", async () => {
-    // Scenario: sync Claude + OpenCode SQLite → manually delete openCodeSqlite
-    // cursor entry → sync again → SQLite driver replays from rowId 0.
-    // Without fix: incremental SUM → 2× inflation.
-    // With fix: detects missing DB cursor via knownDbSources → full rescan → overwrite.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-dbcursor-loss");
-    await mkdir(claudeDir, { recursive: true });
-    const claudePath = join(claudeDir, "session.jsonl");
-    await writeFile(claudePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
-
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy-sqlite-db");
-
-    const sqliteRows = [
-      {
-        id: "msg_001",
-        session_id: "ses_001",
-        time_created: 1739600000000,
-        data: sqliteRowData({
-          role: "assistant",
-          input: 500,
-          output: 200,
-          timeCreated: 1739600000000,
-        }),
-      },
-    ];
-
-    // First sync — both Claude (file) + OpenCode SQLite (DB)
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(sqliteRows),
-    });
-
-    // Verify initial queue state
-    const queueRaw1 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records1 = queueRaw1
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const claude1 = records1.find((r) => r.source === "claude-code");
-    const oc1 = records1.find((r) => r.source === "opencode");
-    expect(claude1!.input_tokens).toBe(1000);
-    expect(oc1!.input_tokens).toBe(500);
-
-    // Verify knownDbSources was populated
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(cursorsData.knownDbSources).toBeDefined();
-    expect(cursorsData.knownDbSources.openCodeSqlite).toBe(true);
-
-    // Tamper: delete only the openCodeSqlite cursor entry (keep file cursors)
-    delete cursorsData.openCodeSqlite;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // Second sync — SQLite cursor is missing, file cursors still exist
-    // Without fix: SQLite replays from 0 → SUM → 1000/400 (2×)
-    // With fix: detects missing DB cursor → full rescan → overwrite → 500/200
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(sqliteRows),
-    });
-
-    const queueRaw2 = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records2 = queueRaw2
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const claude2 = records2.find((r) => r.source === "claude-code");
-    const oc2 = records2.find((r) => r.source === "opencode");
-    expect(claude2).toBeDefined();
-    expect(oc2).toBeDefined();
-    expect(oc2!.input_tokens).toBe(500); // NOT 1000
-    expect(oc2!.output_tokens).toBe(200); // NOT 400
-    expect(claude2!.input_tokens).toBe(1000); // Preserved
-    expect(claude2!.output_tokens).toBe(100); // Preserved
-  });
-
-  it("should backfill knownDbSources from existing openCodeSqlite cursor on upgrade", async () => {
-    // Scenario: cursors.json has knownFilePaths (v1.6.0) but NOT knownDbSources
-    // (pre-fix). If openCodeSqlite cursor exists, knownDbSources should be
-    // backfilled without triggering a full rescan.
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy-sqlite-db");
-
-    const sqliteRows = [
-      {
-        id: "msg_001",
-        session_id: "ses_001",
-        time_created: 1739600000000,
-        data: sqliteRowData({
-          role: "assistant",
-          input: 500,
-          output: 200,
-          timeCreated: 1739600000000,
-        }),
-      },
-    ];
-
-    // First sync — establishes cursor with knownDbSources
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(sqliteRows),
-    });
-
-    // Simulate v1.6.0 cursors: has knownFilePaths but NOT knownDbSources
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(cursorsData.knownDbSources).toBeDefined();
-    delete cursorsData.knownDbSources;
-    // Ensure knownFilePaths exists (v1.6.0+)
-    if (!cursorsData.knownFilePaths) cursorsData.knownFilePaths = {};
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // Second sync — should backfill knownDbSources, not inflate
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(sqliteRows),
-    });
-
-    // Verify knownDbSources was backfilled
-    const updatedCursors = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(updatedCursors.knownDbSources).toBeDefined();
-    expect(updatedCursors.knownDbSources.openCodeSqlite).toBe(true);
-
-    // Verify no inflation
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const oc = records.find((r) => r.source === "opencode");
-    expect(oc!.input_tokens).toBe(500); // NOT 1000
-  });
-
-  it("should trigger full rescan when knownDbSources is missing AND openCodeSqlite cursor already lost (upgrade edge case)", async () => {
-    // Edge case: cursors.json has knownFilePaths (v1.6.0+) but NOT
-    // knownDbSources, AND the openCodeSqlite cursor is already gone.
-    // Without a full rescan, the SQLite driver replays from rowId 0 and
-    // the incremental SUM branch doubles the totals.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-edge");
-    await mkdir(claudeDir, { recursive: true });
-    const claudePath = join(claudeDir, "session.jsonl");
-    await writeFile(claudePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
-
-    const dbDir = join(dataDir, "opencode");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "opencode.db");
-    await writeFile(dbPath, "dummy-sqlite-db");
-
-    const sqliteRows = [
-      {
-        id: "msg_001",
-        session_id: "ses_001",
-        time_created: 1739600000000,
-        data: sqliteRowData({
-          role: "assistant",
-          input: 500,
-          output: 200,
-          timeCreated: 1739600000000,
-        }),
-      },
-    ];
-
-    // First sync — both Claude + OpenCode SQLite
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(sqliteRows),
-    });
-
-    // Simulate intermediate cursor state:
-    //   - knownFilePaths present (v1.6.0+)
-    //   - knownDbSources absent (pre-fix)
-    //   - openCodeSqlite cursor already deleted (lost)
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    delete cursorsData.knownDbSources;
-    delete cursorsData.openCodeSqlite;
-    if (!cursorsData.knownFilePaths) cursorsData.knownFilePaths = {};
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // Collect progress messages to verify full rescan was triggered
-    const progressMessages: string[] = [];
-
-    // Second sync — detects upgrade with lost DB cursor → full rescan
-    // The rescan clears all cursors, so both Claude + SQLite are re-parsed
-    // from scratch as a full scan (initialCursorEmpty = true).
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeDbPath: dbPath,
-      openMessageDb: mockOpenMessageDb(sqliteRows),
-      onProgress: (p) => progressMessages.push(p.message),
-    });
-
-    // Verify full rescan was triggered (not a silent backfill to {})
-    expect(progressMessages.some((m) => m.includes("full rescan"))).toBe(true);
-
-    // Verify no inflation — tokens should be exact, not doubled
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const oc = records.find((r) => r.source === "opencode");
-    expect(oc!.input_tokens).toBe(500); // NOT 1000 (inflated)
-    expect(oc!.output_tokens).toBe(200); // NOT 400 (inflated)
-
-    // Verify knownDbSources is now populated after the rescan
-    const updated = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(updated.knownDbSources).toBeDefined();
-    expect(updated.knownDbSources.openCodeSqlite).toBe(true);
-  });
-
-  // ===== Bug B: No-op sync re-marking history as unread =====
-
-  it("should not re-mark uploaded records as unread on no-op sync", async () => {
-    // Scenario: sync → upload (advances offset) → sync again (no new data)
-    // → queue offset should stay advanced (not reset to 0)
-    // This tests the bug where a no-op sync overwrites queue and resets
-    // offset to 0, causing the next upload to re-send everything.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-noop");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1100, 110)}\n`,
-    );
-
-    // First sync
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // Simulate successful upload: advance offset to end of queue file
-    const { LocalQueue } = await import("../storage/local-queue.js");
-    const queue = new LocalQueue(stateDir);
-    const { newOffset } = await queue.readFromOffset(0);
-    await queue.saveOffset(newOffset);
-
-    // Verify offset is now > 0
-    const offsetAfterUpload = await queue.loadOffset();
-    expect(offsetAfterUpload).toBeGreaterThan(0);
-
-    // Second sync — no new data
-    const r2 = await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
-    expect(r2.totalDeltas).toBe(0);
-    expect(r2.totalRecords).toBe(0);
-
-    // Queue offset should NOT be reset to 0
-    const offsetAfterNoop = await queue.loadOffset();
-    expect(offsetAfterNoop).toBe(offsetAfterUpload);
-
-    // Verify queue content is still there (not wiped)
-    const { records } = await queue.readFromOffset(0);
-    expect(records).toHaveLength(1);
-    expect(records[0].input_tokens).toBe(1100);
-  });
-
-  it("should set queue offset to 0 after sync (ready for full upload read)", async () => {
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-offset");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
-
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // Verify queue offset is 0
-    const { LocalQueue } = await import("../storage/local-queue.js");
-    const queue = new LocalQueue(stateDir);
-    const offset = await queue.loadOffset();
-    expect(offset).toBe(0);
-  });
-
-  // ===== Dirty-key tracking (doc 24) =====
-
-  it("should populate dirtyKeys with all bucket keys on full scan", async () => {
-    // Full scan (empty cursors) → dirtyKeys should contain every bucket key
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-dk-full");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${[
-        claudeLine("2026-03-07T10:15:00.000Z", 1000, 100),
-        claudeLine("2026-03-07T11:15:00.000Z", 2000, 200),
-      ].join("\n")}\n`,
-    );
-
-    await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const { LocalQueue } = await import("../storage/local-queue.js");
-    const queue = new LocalQueue(stateDir);
-    const dirtyKeys = await queue.loadDirtyKeys();
-
-    // Should be an array (not undefined — we're past legacy)
-    expect(dirtyKeys).toBeDefined();
-    expect(dirtyKeys).toBeInstanceOf(Array);
-    // Two distinct hour buckets → two dirty keys
-    expect(dirtyKeys!.sort()).toEqual([
-      "claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk",
-      "claude-code|glm-5|2026-03-07T11:00:00.000Z|dev-dk",
-    ]);
-  });
-
-  it("should track only new bucket keys on incremental sync", async () => {
-    // First sync → populates cursors; second sync with new data in a
-    // different hour bucket → dirtyKeys should contain only the new bucket.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-dk-incr");
-    await mkdir(claudeDir, { recursive: true });
-    const filePath = join(claudeDir, "session.jsonl");
-    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
-
-    // First sync (full scan)
-    await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // Simulate successful upload: clear dirtyKeys
-    const { LocalQueue } = await import("../storage/local-queue.js");
-    const queue = new LocalQueue(stateDir);
-    await queue.saveDirtyKeys([]);
-
-    // Append new data in a DIFFERENT hour bucket
-    const existing = await readFile(filePath, "utf-8");
-    await writeFile(filePath, `${existing + claudeLine("2026-03-07T12:15:00.000Z", 3000, 300)}\n`);
-
-    // Second sync — incremental
-    await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const dirtyKeys = await queue.loadDirtyKeys();
-    expect(dirtyKeys).toBeDefined();
-    // Only the NEW bucket key should be dirty (not the old 10:00 one)
-    expect(dirtyKeys!).toEqual(["claude-code|glm-5|2026-03-07T12:00:00.000Z|dev-dk"]);
-  });
-
-  it("should union new dirty keys with existing ones on incremental sync", async () => {
-    // If dirtyKeys already has entries (e.g., upload hasn't run yet), a new
-    // incremental sync should union (not replace) new keys into the set.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-dk-union");
-    await mkdir(claudeDir, { recursive: true });
-    const filePath = join(claudeDir, "session.jsonl");
-    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
-
-    // First sync (full scan)
-    await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // DON'T clear dirtyKeys — simulate no upload yet
-    // dirtyKeys should have the 10:00 bucket from full scan
-
-    // Append data in a NEW hour bucket
-    const existing = await readFile(filePath, "utf-8");
-    await writeFile(filePath, `${existing + claudeLine("2026-03-07T13:15:00.000Z", 4000, 400)}\n`);
-
-    // Second sync — incremental, dirtyKeys not cleared
-    await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const { LocalQueue } = await import("../storage/local-queue.js");
-    const queue = new LocalQueue(stateDir);
-    const dirtyKeys = await queue.loadDirtyKeys();
-    expect(dirtyKeys).toBeDefined();
-    // Both the old and new bucket should be dirty
-    expect(dirtyKeys!.sort()).toEqual([
-      "claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk",
-      "claude-code|glm-5|2026-03-07T13:00:00.000Z|dev-dk",
-    ]);
-  });
-
-  it("should not modify dirtyKeys on no-op sync (no new data)", async () => {
-    // Sync with no changes → skip queue write entirely → dirtyKeys unchanged
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-dk-noop");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
-
-    // First sync
-    await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // Simulate upload cleared dirtyKeys
-    const { LocalQueue } = await import("../storage/local-queue.js");
-    const queue = new LocalQueue(stateDir);
-    await queue.saveDirtyKeys([]);
-
-    // Second sync — no new data
-    const r2 = await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-    expect(r2.totalRecords).toBe(0);
-
-    // dirtyKeys should still be [] (not modified)
-    const dirtyKeys = await queue.loadDirtyKeys();
-    expect(dirtyKeys).toEqual([]);
-  });
-
-  it("should include existing-bucket key when incremental data lands in same bucket", async () => {
-    // Incremental data in the SAME hour bucket as existing → that key must
-    // appear in dirtyKeys even though the bucket already existed in the queue.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-dk-same");
-    await mkdir(claudeDir, { recursive: true });
-    const filePath = join(claudeDir, "session.jsonl");
-    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`);
-
-    // First sync
-    await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    // Simulate upload
-    const { LocalQueue } = await import("../storage/local-queue.js");
-    const queue = new LocalQueue(stateDir);
-    await queue.saveDirtyKeys([]);
-
-    // Append more data in the SAME hour bucket
-    const existing = await readFile(filePath, "utf-8");
-    await writeFile(filePath, `${existing + claudeLine("2026-03-07T10:25:00.000Z", 2000, 200)}\n`);
-
-    // Second sync — incremental, same bucket
-    await executeSync({
-      stateDir,
-      deviceId: "dev-dk",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const dirtyKeys = await queue.loadDirtyKeys();
-    expect(dirtyKeys).toBeDefined();
-    // The existing bucket is dirty because its values changed
-    expect(dirtyKeys!).toEqual(["claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk"]);
-  });
-
-  // ===== Hermes SQLite integration =====
-
-  // Fixed timestamp for deterministic tests (2026-04-03T10:00:00Z)
-  const hermesTestStartedAt = 1775210400;
-
-  /**
-   * Helper: create a mock openHermesDb factory that returns rows from an in-memory array.
-   */
-  function mockOpenHermesDb(
-    rows: Array<{
-      id: string;
-      model: string | null;
-      input_tokens: number;
-      output_tokens: number;
-      cache_read_tokens: number;
-      cache_write_tokens: number;
-      reasoning_tokens: number;
-      started_at: number;
-    }>,
-  ) {
-    return (_dbPath: string) => ({
-      querySessions: () => rows,
-      close: () => {},
-    });
-  }
-
-  it("should sync Hermes SQLite data to queue", async () => {
-    const rows = [
-      {
-        id: "ses-h1",
-        model: "claude-sonnet-4",
-        input_tokens: 5000,
-        output_tokens: 800,
-        cache_read_tokens: 100,
-        cache_write_tokens: 50,
-        reasoning_tokens: 0,
-        started_at: hermesTestStartedAt,
-      },
-    ];
-
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    const result = await executeSync({
-      stateDir,
-      hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
-    });
-
-    expect(result.totalDeltas).toBe(1);
-    expect(result.sources.hermes).toBe(1);
-    expect(result.totalRecords).toBeGreaterThanOrEqual(1);
-  });
-
-  it("should be incremental for Hermes SQLite (second sync with same data)", async () => {
-    const rows = [
-      {
-        id: "ses-h1",
-        model: "claude-sonnet-4",
-        input_tokens: 5000,
-        output_tokens: 800,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        reasoning_tokens: 0,
-        started_at: hermesTestStartedAt,
-      },
-    ];
-
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
+    const events: SyncProgressEvent[] = [];
 
     const r1 = await executeSync({
       stateDir,
       hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
+      hermesProfileDbPaths: [{ dbPath: profileDb, dbKey: "profiles/tomato" }],
+      openHermesDb: mockOpenHermesDb([
+        hermesRow("ses-h1", 5000, 800, { cacheRead: 100, cacheWrite: 50 }),
+      ]),
+      onProgress: (e) => events.push(e),
     });
-    expect(r1.totalDeltas).toBe(1);
+    expect(r1.sources.hermes).toBe(2);
+    expect(events.some((e) => e.message?.includes("Hermes SQLite"))).toBe(true);
 
-    // Second sync — same rows, no new deltas
     const r2 = await executeSync({
       stateDir,
       hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
+      hermesProfileDbPaths: [{ dbPath: profileDb, dbKey: "profiles/tomato" }],
+      openHermesDb: mockOpenHermesDb([
+        hermesRow("ses-h1", 5000, 800, { cacheRead: 100, cacheWrite: 50 }),
+      ]),
     });
     expect(r2.totalDeltas).toBe(0);
   });
 
-  it("should warn when Hermes DB exists but openHermesDb is not provided", async () => {
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    const result = await executeSync({
-      stateDir,
-      hermesDbPath: dbPath,
-      // openHermesDb is NOT provided
-      onProgress: (e) => events.push(e),
-    });
-
-    expect(result.sources.hermes).toBe(0);
-    expect(
-      events.some(
-        (e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("not available"),
-      ),
-    ).toBe(true);
-  });
-
-  it("should warn when Hermes openHermesDb returns null (failed to open)", async () => {
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    const result = await executeSync({
-      stateDir,
-      hermesDbPath: dbPath,
-      openHermesDb: () => null, // factory returns null
-      onProgress: (e) => events.push(e),
-    });
-
-    expect(result.sources.hermes).toBe(0);
-    expect(
-      events.some(
-        (e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("Failed to open"),
-      ),
-    ).toBe(true);
-  });
-
-  it("should handle Hermes DB driver error gracefully (catch branch)", async () => {
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    const result = await executeSync({
-      stateDir,
-      hermesDbPath: dbPath,
+  it.each([
+    { label: "missing adapter", openHermesDb: undefined, expectedWarn: "not available" },
+    { label: "returns null", openHermesDb: () => null, expectedWarn: "Failed to open" },
+    {
+      label: "querySessions throws",
       openHermesDb: () => ({
         querySessions: () => {
           throw new Error("DB corrupted");
         },
         close: () => {},
       }),
+      expectedWarn: "Skipping",
+    },
+  ])("warns gracefully for Hermes DB when $label", async ({ openHermesDb, expectedWarn }) => {
+    const dbPath = await writeFileEnsured(join(dataDir, "hermes/state.db"), "dummy");
+    const events: SyncProgressEvent[] = [];
+    const result = await executeSync({
+      stateDir,
+      hermesDbPath: dbPath,
+      openHermesDb,
       onProgress: (e) => events.push(e),
     });
-
     expect(result.sources.hermes).toBe(0);
     expect(
       events.some(
-        (e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("Skipping"),
+        (e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes(expectedWarn),
       ),
     ).toBe(true);
   });
 
-  it("should detect Hermes DB cursor loss and restart full scan", async () => {
-    const rows = [
-      {
-        id: "ses-h1",
-        model: "claude-sonnet-4",
-        input_tokens: 5000,
-        output_tokens: 800,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        reasoning_tokens: 0,
-        started_at: hermesTestStartedAt,
-      },
-    ];
-
-    // Need a file-based source to make initialCursorEmpty = false after cursor corruption
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-loss");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
+  it("handles Hermes cursor loss, inode change, and flat cursor migration", async () => {
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-h/session.jsonl"),
       `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
-
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    // First sync to establish cursor with both sources
-    const r1 = await executeSync({
+    const dbPath = await writeFileEnsured(join(dataDir, "hermes/state.db"), "dummy");
+    const opts = {
       stateDir,
       claudeDir: join(dataDir, ".claude"),
       hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
-    });
-    expect(r1.totalDeltas).toBe(2); // 1 claude + 1 hermes
-
-    // Corrupt cursor: remove hermesSqlite but keep knownDbSources
-    const { CursorStore } = await import("../storage/cursor-store.js");
-    const cursorStore = new CursorStore(stateDir);
-    const cursors = await cursorStore.load();
-    delete (cursors as Record<string, unknown>).hermesSqlite;
-    await cursorStore.save(cursors);
-
-    // Second sync should detect cursor loss and restart
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    const r2 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
-      onProgress: (e) => events.push(e),
-    });
-
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("cursor entry lost"))).toBe(
-      true,
-    );
-    // After restart, should rescan all
-    expect(r2.totalDeltas).toBeGreaterThanOrEqual(1);
-  });
-
-  it("should detect Hermes DB inode change and restart full scan", async () => {
-    const rows = [
-      {
-        id: "ses-h1",
-        model: "claude-sonnet-4",
-        input_tokens: 5000,
-        output_tokens: 800,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        reasoning_tokens: 0,
-        started_at: hermesTestStartedAt,
-      },
-    ];
-
-    // Need a file-based source to make initialCursorEmpty = false
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-inode");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
-
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    // First sync
-    const r1 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
-    });
-    expect(r1.totalDeltas).toBe(2);
-
-    // Tamper cursor: change the hermesSqlite.default inode to force mismatch
-    const { CursorStore } = await import("../storage/cursor-store.js");
-    const cursorStore = new CursorStore(stateDir);
-    const cursors = await cursorStore.load();
-    const hermesCursors = (cursors as Record<string, unknown>).hermesSqlite as Record<
-      string,
-      Record<string, unknown>
-    >;
-    hermesCursors.default!.inode = 999999; // fake inode
-    await cursorStore.save(cursors);
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    const r2 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
-      onProgress: (e) => events.push(e),
-    });
-
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("inode changed"))).toBe(
-      true,
-    );
-    expect(r2.totalDeltas).toBeGreaterThanOrEqual(1);
-  });
-
-  it("should detect file cursor loss and trigger replay with progress events", async () => {
-    // Setup two sources
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-file-loss");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
-    );
-
-    const piDir = join(dataDir, ".pi", "agent", "sessions", "proj-fl");
-    await mkdir(piDir, { recursive: true });
-    await writeFile(
-      join(piDir, "session-fl.jsonl"),
-      piSession("2026-03-07T10:15:00.000Z", 2000, 200),
-    );
-
-    // First sync
-    const r1 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-    });
-    expect(r1.totalDeltas).toBe(2);
-
-    // Tamper: delete Claude file cursor but keep it in knownFilePaths
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    cursorsData.files = Object.fromEntries(
-      Object.entries(cursorsData.files).filter(
-        ([key]) => !(key.includes("proj-file-loss") && key.includes(".claude")),
-      ),
-    );
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // Second sync with onProgress — should capture cursor loss and replay events
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    const r2 = await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      piSessionsDir: join(dataDir, ".pi", "agent", "sessions"),
-      onProgress: (e) => events.push(e),
-    });
-
-    // Should detect cursor loss and restart
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("Cursor entry lost"))).toBe(
-      true,
-    );
-    expect(
-      events.some((e) => e.phase === "warn" && e.message?.includes("Replay condition detected")),
-    ).toBe(true);
-    // After restart, values should be correct (not inflated)
-    expect(r2.totalDeltas).toBe(2);
-  });
-
-  // ===== Coverage: hermes cursor migration (flat → Record) =====
-
-  it("should migrate old flat hermesSqlite cursor to multi-profile Record format", async () => {
-    const rows = [
-      {
-        id: "ses-m1",
-        model: "claude-sonnet-4",
-        input_tokens: 3000,
-        output_tokens: 300,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        reasoning_tokens: 0,
-        started_at: hermesTestStartedAt,
-      },
-    ];
-
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    // First sync to establish cursor
-    await executeSync({
-      stateDir,
-      hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
-    });
-
-    // Tamper cursors.json: convert hermesSqlite to old flat format (with sessionTotals at top level)
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    const defaultCursor = cursorsData.hermesSqlite?.default;
-    expect(defaultCursor).toBeDefined();
-    // Replace Record<dbKey, cursor> with flat cursor that has sessionTotals
-    cursorsData.hermesSqlite = {
-      ...defaultCursor,
-      sessionTotals: defaultCursor.sessionTotals ?? {},
+      openHermesDb: mockOpenHermesDb([hermesRow("ses-h1", 5000, 800)]),
     };
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+    await executeSync(opts);
 
-    // Second sync should detect old format and migrate
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    const r2 = await executeSync({
-      stateDir,
-      hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
-      onProgress: (e) => events.push(e),
-    });
-
-    expect(events.some((e) => e.phase === "warn" && e.message?.includes("multi-profile"))).toBe(
+    const store = new CursorStore(stateDir);
+    // 1) Cursor lost
+    const c1 = (await store.load()) as unknown as Record<string, unknown>;
+    delete c1.hermesSqlite;
+    await store.save(c1 as never);
+    const evLoss: SyncProgressEvent[] = [];
+    await executeSync({ ...opts, onProgress: (e) => evLoss.push(e) });
+    expect(evLoss.some((e) => e.phase === "warn" && e.message?.includes("cursor entry lost"))).toBe(
       true,
     );
-    expect(r2.totalDeltas).toBeGreaterThanOrEqual(0);
-  });
 
-  // ===== Coverage: knownFilePaths upgrade with onProgress =====
-
-  it("should emit progress event when upgrading from old cursors without knownFilePaths", async () => {
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-upgrade2");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 500)}\n`,
+    // 2) Inode change
+    const c2 = (await store.load()) as unknown as Record<
+      string,
+      Record<string, Record<string, unknown>>
+    >;
+    c2.hermesSqlite!.default!.inode = 999999;
+    await store.save(c2 as never);
+    const evInode: SyncProgressEvent[] = [];
+    await executeSync({ ...opts, onProgress: (e) => evInode.push(e) });
+    expect(evInode.some((e) => e.phase === "warn" && e.message?.includes("inode changed"))).toBe(
+      true,
     );
 
-    // First sync
-    await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
-
-    // Remove knownFilePaths from cursors (keep accountingSchemaVersion)
+    // 3) Flat cursor migration
     const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    delete cursorsData.knownFilePaths;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // Second sync with onProgress
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      onProgress: (e) => events.push(e),
-    });
-
-    expect(
-      events.some((e) => e.phase === "warn" && e.message?.includes("one-time full rescan")),
-    ).toBe(true);
-  });
-
-  // ===== Coverage: knownDbSources backfill (non-empty cursors, no DB cursors) =====
-
-  it("should trigger full rescan when knownDbSources missing and no DB cursors exist", async () => {
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-dbsrc");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:15:00.000Z", 4000, 400)}\n`,
+    const raw = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    raw.hermesSqlite = {
+      ...raw.hermesSqlite.default,
+      sessionTotals: raw.hermesSqlite.default.sessionTotals ?? {},
+    };
+    await writeFile(cursorsPath, JSON.stringify(raw));
+    const evMig: SyncProgressEvent[] = [];
+    await executeSync({ ...opts, onProgress: (e) => evMig.push(e) });
+    expect(evMig.some((e) => e.phase === "warn" && e.message?.includes("multi-profile"))).toBe(
+      true,
     );
-
-    // First sync
-    await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
-
-    // Remove knownDbSources from cursors (simulate pre-knownDbSources era)
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    delete cursorsData.knownDbSources;
-    // Also ensure no DB cursors exist
-    delete cursorsData.openCodeSqlite;
-    delete cursorsData.hermesSqlite;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    // Second sync with onProgress — should detect missing knownDbSources and rescan
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      onProgress: (e) => events.push(e),
-    });
-
-    expect(
-      events.some((e) => e.phase === "warn" && e.message?.includes("Upgrading cursor format (DB)")),
-    ).toBe(true);
   });
 
-  // ===== Coverage: file inode change with onProgress =====
+  // ===== Pruning, parse-throw isolation, and legacy Claude cursor =====
 
-  it.skipIf(!!process.env.CI)("should emit progress event on file inode change", async () => {
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-inode-prog");
-    await mkdir(claudeDir, { recursive: true });
-    const filePath = join(claudeDir, "session.jsonl");
-    const content = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
-    await writeFile(filePath, content);
-
-    // First sync
-    await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
-
-    const inodeBefore = (await stat(filePath)).ino;
-
-    // Simulate inode change
-    const { rm: rmFile } = await import("node:fs/promises");
-    await rmFile(filePath);
-    await new Promise((r) => setTimeout(r, 50));
-    await writeFile(filePath, content);
-
-    if ((await stat(filePath)).ino === inodeBefore) {
-      // Filesystem reused inode after replace; inode-only detection does not apply here.
-      return;
-    }
-
-    // Second sync with onProgress
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    await executeSync({
-      stateDir,
-      claudeDir: join(dataDir, ".claude"),
-      onProgress: (e) => events.push(e),
-    });
-
-    expect(
-      events.some((e) => e.phase === "warn" && e.message?.includes("File inode changed")),
-    ).toBe(true);
-  });
-
-  // ===== Coverage: hermesProfileDbPaths =====
-
-  it("should sync Hermes profile databases via hermesProfileDbPaths", async () => {
-    const rows = [
-      {
-        id: "ses-p1",
-        model: "claude-sonnet-4",
-        input_tokens: 2000,
-        output_tokens: 200,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        reasoning_tokens: 0,
-        started_at: hermesTestStartedAt,
-      },
-    ];
-
-    const dbDir = join(dataDir, "hermes", "profiles", "tomato");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    const result = await executeSync({
-      stateDir,
-      hermesProfileDbPaths: [{ dbPath, dbKey: "profiles/tomato" }],
-      openHermesDb: mockOpenHermesDb(rows),
-    });
-
-    expect(result.totalDeltas).toBe(1);
-  });
-
-  // ===== Coverage: displayName fallback "Hermes SQLite" when no dbKey =====
-
-  it("should use fallback display name when Hermes driver has no dbKey", async () => {
-    // This is tricky to test directly since all Hermes drivers should have dbKey.
-    // But we can verify the displayName logic by checking progress events from a
-    // normal Hermes sync (which will show "Hermes SQLite (default)").
-    const rows = [
-      {
-        id: "ses-dn1",
-        model: "claude-sonnet-4",
-        input_tokens: 1000,
-        output_tokens: 100,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        reasoning_tokens: 0,
-        started_at: hermesTestStartedAt,
-      },
-    ];
-
-    const dbDir = join(dataDir, "hermes");
-    await mkdir(dbDir, { recursive: true });
-    const dbPath = join(dbDir, "state.db");
-    await writeFile(dbPath, "dummy");
-
-    const events: Array<{ source: string; phase: string; message?: string }> = [];
-    await executeSync({
-      stateDir,
-      hermesDbPath: dbPath,
-      openHermesDb: mockOpenHermesDb(rows),
-      onProgress: (e) => events.push(e),
-    });
-
-    // Should see "Hermes SQLite (default)" in discover messages
-    expect(events.some((e) => e.message?.includes("Hermes SQLite"))).toBe(true);
-  });
-
-  // ===== Alias prune: Multica-style symlink path collapses to canonical =====
-
-  it("should prune cursor entries whose path is a symlink alias of a discovered file", async () => {
-    // Reproduce the post-#154 cleanup scenario. cursors.json arrives with
-    // two entries pointing at the same physical file via different paths;
-    // discovery now returns only the canonical path. The alias-prune step
-    // must drop the stale path AND its knownFilePaths companion.
-    const realDir = join(dataDir, "codex-sessions");
-    const aliasDir = join(dataDir, "multica/run-7/codex-home/sessions");
-    await mkdir(realDir, { recursive: true });
+  it("prunes symlink alias and deleted-file cursors while preserving OpenCode mtime-skipped cursors", async () => {
+    const realCodexDir = join(dataDir, "codex-sessions");
+    const aliasCodexDir = join(dataDir, "multica/run-7/codex-home/sessions");
+    const realCodexPath = await writeFileEnsured(
+      join(realCodexDir, "2026/03/07/rollout-canon.jsonl"),
+      `${codexLines("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
+    );
     await mkdir(join(dataDir, "multica/run-7/codex-home"), { recursive: true });
-    const realPath = join(realDir, "2026/03/07/rollout-canon.jsonl");
-    await mkdir(join(realDir, "2026/03/07"), { recursive: true });
-    await writeFile(
-      realPath,
-      `${JSON.stringify({
-        timestamp: "2026-03-07T10:15:00.000Z",
-        type: "token_count",
-        payload: {
-          info: {
-            model: "gpt-5",
-            total_token_usage: {
-              input_tokens: 1000,
-              cached_input_tokens: 0,
-              output_tokens: 100,
-              reasoning_output_tokens: 0,
-            },
-          },
-        },
-      })}\n`,
-    );
-    // The Multica codex-home/sessions/ symlink → real codex-sessions
-    await symlink(realDir, aliasDir);
-    const aliasPath = join(aliasDir, "2026/03/07/rollout-canon.jsonl");
+    await symlink(realCodexDir, aliasCodexDir);
+    const aliasCodexPath = join(aliasCodexDir, "2026/03/07/rollout-canon.jsonl");
 
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      codexSessionsDir: realDir,
-    });
-
-    // Inject the alias-path cursor that older versions would have written.
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    cursorsData.files[aliasPath] = { ...cursorsData.files[realPath] };
-    cursorsData.knownFilePaths[aliasPath] = true;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      codexSessionsDir: realDir,
-    });
-
-    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(after.files[realPath]).toBeDefined();
-    expect(after.files[aliasPath]).toBeUndefined();
-    expect(after.knownFilePaths[realPath]).toBe(true);
-    expect(after.knownFilePaths[aliasPath]).toBeUndefined();
-  });
-
-  // ===== Alias prune: must NOT break OpenCode mtime-skipped cursors =====
-
-  it("should not drop cursors for files in OpenCode mtime-skipped directories", async () => {
-    // Regression for the high-severity bug in the original prune attempt:
-    //   1. First sync establishes an OpenCode cursor.
-    //   2. Second sync (no file changes) sees the OpenCode session dir
-    //      mtime is unchanged, so discoverOpenCodeFiles skips the dir and
-    //      returns nothing for OpenCode. The cursor MUST survive.
-    //   3. Third sync adds a new message in that same dir. With cursors
-    //      intact, only the new message is counted as a delta. If the
-    //      cursor had been dropped, the original message would be replayed
-    //      and summed, inflating tokens.
-    //
-    // Claude is along for the ride so that initialCursorEmpty stays false
-    // and a hypothetical replay would actually hit the incremental SUM
-    // path — that's the corner the buggy version blew up on.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-companion");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
+    await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-c/session.jsonl"),
       `${claudeLine("2026-03-07T10:00:00.000Z", 50, 5)}\n`,
     );
-
-    const ocDir = join(dataDir, "opencode", "message", "ses_mtime_skip");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 100, 50));
-
-    // Sync 1: establish both cursors.
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-
-    // Sync 2: nothing changed. OpenCode dir mtime stable → discovery
-    // returns no OpenCode files. Cursor must NOT be pruned.
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-
-    const midCursors = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8"));
-    expect(midCursors.files[join(ocDir, "msg_001.json")]).toBeDefined();
-
-    // Sync 3: add a new message → driver discovers it incrementally,
-    // emits only the new delta. Totals should be 100+200=300 / 50+100=150.
-    await writeFile(join(ocDir, "msg_002.json"), opencodeMsg(1771120799059, 200, 100));
-
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const opencodeTotals = records
-      .filter((r) => r.source === "opencode")
-      .reduce(
-        (acc, r) => ({ input: acc.input + r.input_tokens, output: acc.output + r.output_tokens }),
-        { input: 0, output: 0 },
-      );
-    expect(opencodeTotals.input).toBe(300);
-    expect(opencodeTotals.output).toBe(150);
-  });
-
-  // ===== Missing prune: cursor for a deleted file is removed =====
-
-  it("should drop cursors and knownFilePaths entries for files that no longer exist on disk", async () => {
-    // PR #152's deleted-file bloat case. Heavy users accumulate
-    // cursors for hundreds of thousands of rotated/deleted files,
-    // pushing cursors.json into the hundreds of MB and making
-    // JSON.parse hang. Each sync's stat() identifies these and
-    // evicts them in lockstep from cursors.files and knownFilePaths.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-missing");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:00:00.000Z", 1, 1)}\n`,
+    const ocDir = join(dataDir, "opencode/message/ses_protect");
+    const realOcPath = await writeFileEnsured(
+      join(ocDir, "msg_001.json"),
+      opencodeMsg(1771120749059, 100, 50),
     );
 
-    await executeSync({
+    const opts = {
       stateDir,
       deviceId: "dev-1",
+      codexSessionsDir: realCodexDir,
       claudeDir: join(dataDir, ".claude"),
-    });
+      openCodeMessageDir: join(dataDir, "opencode/message"),
+    };
+    await executeSync(opts);
 
-    const ghostPath = join(dataDir, "vanished/session.jsonl");
     const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    cursorsData.files[ghostPath] = {
+    const c = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    const ghostPath = join(dataDir, "vanished/session.jsonl");
+    const protectedFake = join(ocDir, "msg_does_not_exist.json");
+    c.files[aliasCodexPath] = { ...c.files[realCodexPath] };
+    c.knownFilePaths[aliasCodexPath] = true;
+    c.files[ghostPath] = {
       inode: 7_777_777,
       mtimeMs: 0,
       size: 0,
       offset: 0,
       updatedAt: "2026-03-07T09:00:00.000Z",
     };
-    cursorsData.knownFilePaths[ghostPath] = true;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
-
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
-
-    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(after.files[ghostPath]).toBeUndefined();
-    expect(after.knownFilePaths[ghostPath]).toBeUndefined();
-    // The live cursor must still be present.
-    const livePath = join(claudeDir, "session.jsonl");
-    expect(after.files[livePath]).toBeDefined();
-    expect(after.knownFilePaths[livePath]).toBe(true);
-  });
-
-  // ===== Missing prune must not touch OpenCode mtime-skipped cursors =====
-
-  it("should not drop OpenCode cursors during the missing-prune pass when the file still exists", async () => {
-    // Double-check that adding the missing-prune branch did not regress
-    // the mtime-skip case. OpenCode dir mtime unchanged → discovery omits
-    // the file → stat() of the cursor path still succeeds (file is real)
-    // → no inode match in liveInodes → cursor MUST be kept. Then a new
-    // message in that dir produces only the incremental delta.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-keep-oc");
-    await mkdir(claudeDir, { recursive: true });
-    await writeFile(
-      join(claudeDir, "session.jsonl"),
-      `${claudeLine("2026-03-07T10:00:00.000Z", 50, 5)}\n`,
-    );
-    const ocDir = join(dataDir, "opencode", "message", "ses_mtime_skip2");
-    await mkdir(ocDir, { recursive: true });
-    await writeFile(join(ocDir, "msg_001.json"), opencodeMsg(1771120749059, 100, 50));
-
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-
-    await writeFile(join(ocDir, "msg_002.json"), opencodeMsg(1771120799059, 200, 100));
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const opencodeTotals = records
-      .filter((r) => r.source === "opencode")
-      .reduce(
-        (acc, r) => ({ input: acc.input + r.input_tokens, output: acc.output + r.output_tokens }),
-        { input: 0, output: 0 },
-      );
-    expect(opencodeTotals.input).toBe(300);
-    expect(opencodeTotals.output).toBe(150);
-  });
-
-  // ===== Parse-throw must NOT leak a known-only entry =====
-
-  it("should not record a knownFilePaths entry for a file whose parser throws", async () => {
-    // Reviewer's path: parse loop discovers a file, parser throws,
-    // cursor is NOT written but the path used to land in knownFilePaths.
-    // On the next sync, with the file still present and the parser still
-    // throwing, the discovery loop would see no cursor + known-path-set
-    // membership and trip cursor-loss → full rescan. We pin the new
-    // behaviour by asserting knownFilePaths NEVER carries the bad path,
-    // and that a third sync (parser now succeeds) takes the genuinely-
-    // new path instead of the full-rescan path.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-throw");
-    await mkdir(claudeDir, { recursive: true });
-    const goodPath = join(claudeDir, "good.jsonl");
-    const badPath = join(claudeDir, "bad.jsonl");
-    await writeFile(goodPath, `${claudeLine("2026-03-07T10:00:00.000Z", 1000, 100)}\n`);
-    await writeFile(badPath, `${claudeLine("2026-03-07T10:05:00.000Z", 2000, 200)}\n`);
-
-    const claudeParser = await import("../parsers/claude.js");
-    const origParse = claudeParser.parseClaudeFile;
-    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockImplementation(async (opts) => {
-      if (opts.filePath === badPath) {
-        throw new Error("Simulated parser explosion");
-      }
-      return origParse(opts);
-    });
-
-    try {
-      await executeSync({
-        stateDir,
-        deviceId: "dev-1",
-        claudeDir: join(dataDir, ".claude"),
-      });
-
-      const cursors1 = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8"));
-      expect(cursors1.files[goodPath]).toBeDefined();
-      expect(cursors1.files[badPath]).toBeUndefined();
-      expect(cursors1.knownFilePaths[goodPath]).toBe(true);
-      // The regression itself: bad path must NOT be in knownFilePaths.
-      expect(cursors1.knownFilePaths[badPath]).toBeUndefined();
-
-      // Capture progress events from the second sync (parser still
-      // broken). No "Cursor entry lost" warning should fire — that
-      // would prove we tripped the cursor-loss replay-detection branch
-      // and restarted as a full scan.
-      const events: Array<{ phase: string; message?: string }> = [];
-      await executeSync({
-        stateDir,
-        deviceId: "dev-1",
-        claudeDir: join(dataDir, ".claude"),
-        onProgress: (e) => events.push({ phase: e.phase, message: e.message }),
-      });
-      expect(events.some((e) => e.message?.includes("Cursor entry lost"))).toBe(false);
-
-      const cursors2 = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8"));
-      expect(cursors2.knownFilePaths[badPath]).toBeUndefined();
-    } finally {
-      spy.mockRestore();
-    }
-
-    // Third sync: parser is healthy. The previously-bad file is treated
-    // as a genuinely new file (incremental SUM), not a replay-detected
-    // full rescan. Concretely: total Claude deltas across all syncs add
-    // up to 1000 (good, first sync) + 2000 (bad, third sync) = 3000.
-    const r3 = await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
-    expect(r3.sources.claude).toBe(1);
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as QueueRecord);
-    const claudeTotal = records
-      .filter((r) => r.source === "claude-code")
-      .reduce((acc, r) => acc + r.input_tokens, 0);
-    expect(claudeTotal).toBe(3000);
-  });
-
-  it("should leave OpenCode cursors inside mtime-skipped session dirs unevaluated", async () => {
-    // Performance regression: without protectedPrefixes the prune pass
-    // would stat() every message file every empty sync, undoing the
-    // whole point of the OpenCode mtime-skip optimization (66K+ files
-    // on real installs).
-    //
-    // We prove "not evaluated" with a falsifiable construct: after the
-    // first sync establishes a real cursor for msg_a.json, we inject a
-    // FAKE cursor for a path inside the same session dir that does
-    // NOT exist on disk. If prune were to stat() entries inside the
-    // skipped dir, it would classify the fake path as missing and drop
-    // it. With protectedPrefixes in place, the fake entry survives —
-    // proving the prune pass never even called stat() on it.
-    const ocDir = join(dataDir, "opencode", "message", "ses_protect");
-    await mkdir(ocDir, { recursive: true });
-    const realPath = join(ocDir, "msg_a.json");
-    await writeFile(realPath, opencodeMsg(1771120749059, 10, 5));
-
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
-    });
-
-    const cursorsPath = join(stateDir, "cursors.json");
-    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    const fakePathInsideSkipped = join(ocDir, "msg_does_not_exist.json");
-    cursorsData.files[fakePathInsideSkipped] = {
+    c.knownFilePaths[ghostPath] = true;
+    c.files[protectedFake] = {
       inode: 12_345_678,
       mtimeMs: 0,
       size: 0,
@@ -3625,89 +1201,100 @@ describe("executeSync", () => {
       messageKey: null,
       updatedAt: "2026-03-07T09:00:00.000Z",
     };
-    cursorsData.knownFilePaths[fakePathInsideSkipped] = true;
-    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+    c.knownFilePaths[protectedFake] = true;
+    await writeFile(cursorsPath, JSON.stringify(c));
 
-    // Second sync: dir mtime unchanged → ses_protect is mtime-skipped →
-    // the fake cursor's path falls under a protectedPrefix → prune must
-    // not touch it.
-    await executeSync({
+    await executeSync(opts);
+    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(after.files[realCodexPath]).toBeDefined();
+    expect(after.files[aliasCodexPath]).toBeUndefined();
+    expect(after.knownFilePaths[aliasCodexPath]).toBeUndefined();
+    expect(after.files[ghostPath]).toBeUndefined();
+    expect(after.knownFilePaths[ghostPath]).toBeUndefined();
+    expect(after.files[realOcPath]).toBeDefined();
+    expect(after.files[protectedFake]).toBeDefined();
+
+    // Subsequent new OpenCode message produces only incremental delta (no double-count)
+    const future = new Date(Date.now() + 2000);
+    await writeFile(join(ocDir, "msg_002.json"), opencodeMsg(1771120799059, 200, 100));
+    await utimes(ocDir, future, future);
+    await executeSync(opts);
+    const ocTotals = (await readQueue(stateDir))
+      .filter((r) => r.source === "opencode")
+      .reduce((s, r) => s + r.input_tokens, 0);
+    expect(ocTotals).toBe(300);
+  });
+
+  it("does not record knownFilePaths for a file whose parser throws", async () => {
+    const goodPath = await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-throw/good.jsonl"),
+      `${claudeLine("2026-03-07T10:00:00.000Z", 1000, 100)}\n`,
+    );
+    const badPath = await writeFileEnsured(
+      join(dataDir, ".claude/projects/proj-throw/bad.jsonl"),
+      `${claudeLine("2026-03-07T10:05:00.000Z", 2000, 200)}\n`,
+    );
+
+    const claudeParser = await import("../parsers/claude.js");
+    const orig = claudeParser.parseClaudeFile;
+    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockImplementation(async (opts) => {
+      if (opts.filePath === badPath) throw new Error("Simulated parser explosion");
+      return orig(opts);
+    });
+    const events: SyncProgressEvent[] = [];
+    try {
+      await executeSync({ stateDir, deviceId: "dev-1", claudeDir: join(dataDir, ".claude") });
+      const c1 = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8"));
+      expect(c1.files[goodPath]).toBeDefined();
+      expect(c1.knownFilePaths[badPath]).toBeUndefined();
+
+      await executeSync({
+        stateDir,
+        deviceId: "dev-1",
+        claudeDir: join(dataDir, ".claude"),
+        onProgress: (e) => events.push(e),
+      });
+      expect(events.some((e) => e.message?.includes("Cursor entry lost"))).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+
+    const r3 = await executeSync({
       stateDir,
       deviceId: "dev-1",
-      openCodeMessageDir: join(dataDir, "opencode", "message"),
+      claudeDir: join(dataDir, ".claude"),
     });
-
-    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(after.files[fakePathInsideSkipped]).toBeDefined();
-    expect(after.knownFilePaths[fakePathInsideSkipped]).toBe(true);
-    // The real cursor is still there too.
-    expect(after.files[realPath]).toBeDefined();
+    expect(r3.sources.claude).toBe(1);
+    const claudeTotal = (await readQueue(stateDir))
+      .filter((r) => r.source === "claude-code")
+      .reduce((s, r) => s + r.input_tokens, 0);
+    expect(claudeTotal).toBe(3000);
   });
 
   describe("legacy Claude cursor upgrade path", () => {
-    // A cursor written by an older pew version is ByteOffsetCursor-shaped:
-    // it has `offset` but no `seenIds` field. If the driver silently rescans
-    // from offset 0 inside incremental mode, the parser re-emits every past
-    // usage row and executeSync's SUM branch doubles those buckets in the
-    // local queue. The fix is to route legacy cursors through the same
-    // full-rescan path the orchestrator already uses for inode changes and
-    // lost cursors — that clears cursors, restarts, and takes the
-    // overwrite-not-append branch.
-    it("does not double-count into queue when a legacy Claude cursor is encountered", async () => {
-      const claudeRoot = join(dataDir, ".claude");
-      const projDir = join(claudeRoot, "projects", "p1");
-      await mkdir(projDir, { recursive: true });
-      const sessionPath = join(projDir, "A.jsonl");
-
-      // Historical row: one assistant message, already recorded.
-      const row = (id: string, ts: string) =>
-        JSON.stringify({
-          type: "assistant",
-          timestamp: ts,
-          message: {
-            id,
-            model: "glm-5",
-            usage: {
-              input_tokens: 100,
-              cache_creation_input_tokens: 0,
-              cache_read_input_tokens: 0,
-              output_tokens: 50,
-            },
-          },
-        });
-      await writeFile(sessionPath, `${row("msg_A", "2026-06-01T10:00:00.000Z")}\n`);
-
-      // Preseed a LEGACY cursor (no seenIds field) that says the file has
-      // been fully parsed to its current size. Also preseed knownFilePaths
-      // + knownDbSources so no other upgrade-rescan path kicks in.
-      const { stat } = await import("node:fs/promises");
-      const st = await stat(sessionPath);
+    async function seedLegacyState(filePath: string) {
+      const st = await stat(filePath);
       await mkdir(stateDir, { recursive: true });
-      const cursorsPath = join(stateDir, "cursors.json");
       await writeFile(
-        cursorsPath,
+        join(stateDir, "cursors.json"),
         JSON.stringify({
           version: 1,
           files: {
-            [sessionPath]: {
+            [filePath]: {
               inode: st.ino,
               mtimeMs: st.mtimeMs,
               size: st.size,
               offset: st.size,
               updatedAt: "2026-06-01T10:01:00.000Z",
-              // no seenIds — legacy shape
             },
           },
-          knownFilePaths: { [sessionPath]: true },
+          knownFilePaths: { [filePath]: true },
           knownDbSources: {},
           updatedAt: "2026-06-01T10:01:00.000Z",
         }),
       );
-
-      // Preseed queue with the historical bucket (already uploaded state).
-      const queuePath = join(stateDir, "queue.jsonl");
       await writeFile(
-        queuePath,
+        join(stateDir, "queue.jsonl"),
         `${JSON.stringify({
           source: "claude-code",
           model: "glm-5",
@@ -3720,125 +1307,69 @@ describe("executeSync", () => {
           total_tokens: 150,
         })}\n`,
       );
+    }
 
-      // User upgrades. Then Claude Code appends a rewrite of msg_A past the
-      // recorded offset (streaming retry / resume — the id repeats, tokens
-      // are the same). This is where the bug bites.
-      const { appendFile } = await import("node:fs/promises");
-      await appendFile(sessionPath, `${row("msg_A", "2026-06-01T10:00:30.000Z")}\n`);
+    it("does not double-count on message rewrite or shared sibling message.id", async () => {
+      // Case A: rewrite in same file after legacy offset
+      const claudeRootA = join(dataDir, "case-a/.claude");
+      const fileA = await writeFileEnsured(
+        join(claudeRootA, "projects/p1/A.jsonl"),
+        `${claudeLine("2026-06-01T10:00:00.000Z", 100, 50, "msg_A")}\n`,
+      );
+      await seedLegacyState(fileA);
+      await appendFile(fileA, `${claudeLine("2026-06-01T10:00:30.000Z", 100, 50, "msg_A")}\n`);
+      await executeSync({ stateDir, deviceId: "dev-legacy", claudeDir: claudeRootA });
 
-      await executeSync({
-        stateDir,
-        deviceId: "dev-legacy",
-        claudeDir: claudeRoot,
+      expect((await readQueue(stateDir)).find((r) => r.source === "claude-code")).toMatchObject({
+        input_tokens: 100,
+        output_tokens: 50,
+        total_tokens: 150,
       });
+      expect(
+        JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8")).files[fileA].seenIds,
+      ).toBeDefined();
 
-      // Read the queue back. The bucket must still be 100/50, not 200/100.
-      const queueRaw = await readFile(queuePath, "utf-8");
-      const rows: QueueRecord[] = queueRaw
-        .split("\n")
-        .filter(Boolean)
-        .map((l) => JSON.parse(l));
-      const claudeRow = rows.find((r) => r.source === "claude-code");
-      expect(claudeRow).toBeDefined();
-      expect(claudeRow!.input_tokens).toBe(100);
-      expect(claudeRow!.output_tokens).toBe(50);
-      expect(claudeRow!.total_tokens).toBe(150);
-
-      // Cursor should have been rewritten with the modern shape (seenIds present).
-      const updatedCursors = JSON.parse(await readFile(cursorsPath, "utf-8"));
-      expect(updatedCursors.files[sessionPath].seenIds).toBeDefined();
-    });
-
-    it("does not double-count when a legacy cursor is unchanged and another file shares its message.id", async () => {
-      // Skip-order regression: the naive fix put needsReplay AFTER shouldSkip
-      // in the per-file loop. When A's bytes are unchanged, shouldSkip returns
-      // true and the legacy check is never reached. Then B (new file, same
-      // message.id) parses without A's seenIds in the context and re-emits,
-      // and executeSync's SUM branch doubles the queue bucket.
-      const claudeRoot = join(dataDir, ".claude");
-      const projDir = join(claudeRoot, "projects", "p1");
-      await mkdir(projDir, { recursive: true });
-      const A = join(projDir, "A.jsonl");
-      const B = join(projDir, "B.jsonl");
-      const row = (id: string, ts: string) =>
-        JSON.stringify({
-          type: "assistant",
-          timestamp: ts,
-          message: {
-            id,
-            model: "glm-5",
-            usage: {
-              input_tokens: 100,
-              cache_creation_input_tokens: 0,
-              cache_read_input_tokens: 0,
-              output_tokens: 50,
-            },
-          },
-        });
-      await writeFile(A, `${row("msg_cross", "2026-06-01T10:00:00.000Z")}\n`);
-
-      const { stat } = await import("node:fs/promises");
-      const stA = await stat(A);
-      await mkdir(stateDir, { recursive: true });
-      const cursorsPath = join(stateDir, "cursors.json");
+      // Case B: unchanged legacy file + new sibling file sharing same message.id
+      const stateDirB = join(tempDir, "state-b");
+      const claudeRootB = join(dataDir, "case-b/.claude");
+      const fileB1 = await writeFileEnsured(
+        join(claudeRootB, "projects/p1/A.jsonl"),
+        `${claudeLine("2026-06-01T10:00:00.000Z", 100, 50, "msg_cross")}\n`,
+      );
+      const stB1 = await stat(fileB1);
+      await mkdir(stateDirB, { recursive: true });
       await writeFile(
-        cursorsPath,
+        join(stateDirB, "cursors.json"),
         JSON.stringify({
           version: 1,
           files: {
-            [A]: {
-              inode: stA.ino,
-              mtimeMs: stA.mtimeMs,
-              size: stA.size,
-              offset: stA.size,
+            [fileB1]: {
+              inode: stB1.ino,
+              mtimeMs: stB1.mtimeMs,
+              size: stB1.size,
+              offset: stB1.size,
               updatedAt: "2026-06-01T10:01:00.000Z",
-              // no seenIds — legacy
             },
           },
-          knownFilePaths: { [A]: true },
+          knownFilePaths: { [fileB1]: true },
           knownDbSources: {},
           updatedAt: "2026-06-01T10:01:00.000Z",
         }),
       );
-      const queuePath = join(stateDir, "queue.jsonl");
       await writeFile(
-        queuePath,
-        `${JSON.stringify({
-          source: "claude-code",
-          model: "glm-5",
-          hour_start: "2026-06-01T10:00:00.000Z",
-          device_id: "dev-legacy",
-          input_tokens: 100,
-          cached_input_tokens: 0,
-          output_tokens: 50,
-          reasoning_output_tokens: 0,
-          total_tokens: 150,
-        })}\n`,
+        join(stateDirB, "queue.jsonl"),
+        `${JSON.stringify({ source: "claude-code", model: "glm-5", hour_start: "2026-06-01T10:00:00.000Z", device_id: "dev-legacy", input_tokens: 100, cached_input_tokens: 0, output_tokens: 50, reasoning_output_tokens: 0, total_tokens: 150 })}\n`,
       );
-
-      // A is unchanged. B is a new sibling file that carries the same
-      // message.id (subagent parent/child sharing).
-      await writeFile(B, `${row("msg_cross", "2026-06-01T10:00:30.000Z")}\n`);
-
-      await executeSync({
-        stateDir,
-        deviceId: "dev-legacy",
-        claudeDir: claudeRoot,
+      await writeFileEnsured(
+        join(claudeRootB, "projects/p1/B.jsonl"),
+        `${claudeLine("2026-06-01T10:00:30.000Z", 100, 50, "msg_cross")}\n`,
+      );
+      await executeSync({ stateDir: stateDirB, deviceId: "dev-legacy", claudeDir: claudeRootB });
+      expect((await readQueue(stateDirB)).find((r) => r.source === "claude-code")).toMatchObject({
+        input_tokens: 100,
+        output_tokens: 50,
+        total_tokens: 150,
       });
-
-      const queueRaw = await readFile(queuePath, "utf-8");
-      const rows: QueueRecord[] = queueRaw
-        .split("\n")
-        .filter(Boolean)
-        .map((l) => JSON.parse(l));
-      const claudeRow = rows.find((r) => r.source === "claude-code");
-      expect(claudeRow).toBeDefined();
-      expect(claudeRow!.input_tokens).toBe(100);
-      expect(claudeRow!.output_tokens).toBe(50);
-      expect(claudeRow!.total_tokens).toBe(150);
     });
   });
-
-  // ===== ZCode SQLite token driver integration =====
 });

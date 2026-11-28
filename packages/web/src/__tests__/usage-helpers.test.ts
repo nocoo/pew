@@ -1,24 +1,52 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  sourceLabel,
   toDailyPoints,
-  toSourceAggregates,
   toHeatmapData,
   toModelAggregates,
-  sourceLabel,
+  toSourceAggregates,
   type UsageRow,
 } from "@/hooks/use-usage-data";
+import { getDefaultPricingMap } from "@/lib/pricing";
 import {
-  toLocalDailyBuckets,
   compareWeekdayWeekend,
   computeMoMGrowth,
-  toSourceTrendPoints,
-  toDominantSourceTimeline,
   computeWoWGrowth,
-  toHourlyWeekdayWeekend,
   rankUsageByRecency,
+  toDominantSourceTimeline,
+  toHourlyWeekdayWeekend,
+  toLocalDailyBuckets,
+  toSourceTrendPoints,
 } from "@/lib/usage-helpers";
-import { getDefaultPricingMap } from "@/lib/pricing";
-import type { PricingMap } from "@/lib/pricing";
+
+const pricing = getDefaultPricingMap();
+
+function makeRow(overrides: Partial<UsageRow> = {}): UsageRow {
+  return {
+    source: "claude-code",
+    model: "claude-sonnet-4-20250514",
+    hour_start: "2026-03-07",
+    input_tokens: 1000,
+    cached_input_tokens: 200,
+    output_tokens: 500,
+    reasoning_output_tokens: 0,
+    total_tokens: 1700,
+    ...overrides,
+  };
+}
+
+function rowAt(hour_start: string, total: number, extra: Partial<UsageRow> = {}): UsageRow {
+  const input = Math.round(total * 0.8);
+  const output = total - input;
+  return makeRow({
+    hour_start,
+    total_tokens: total,
+    input_tokens: input,
+    output_tokens: output,
+    cached_input_tokens: Math.round(total * 0.1),
+    ...extra,
+  });
+}
 
 describe("rankUsageByRecency", () => {
   it("ranks usage in the latest seven calendar days first, then walks backwards by week", () => {
@@ -45,203 +73,100 @@ describe("rankUsageByRecency", () => {
     ];
     expect(rankUsageByRecency(samples)).toEqual(expected);
     expect(rankUsageByRecency([...samples].reverse())).toEqual(expected);
-  });
-
-  it("has no candidates without positive usage", () => {
     expect(rankUsageByRecency([])).toEqual([]);
     expect(rankUsageByRecency([{ id: "empty", date: "2026-09-15", value: 0 }])).toEqual([]);
   });
 });
 
-// ---------------------------------------------------------------------------
-// Test data factory
-// ---------------------------------------------------------------------------
-
-function makeRow(overrides: Partial<UsageRow> = {}): UsageRow {
-  return {
-    source: "claude-code",
-    model: "claude-sonnet-4-20250514",
-    hour_start: "2026-03-07",
-    input_tokens: 1000,
-    cached_input_tokens: 200,
-    output_tokens: 500,
-    reasoning_output_tokens: 0,
-    total_tokens: 1700,
-    ...overrides,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// toDailyPoints
-// ---------------------------------------------------------------------------
-
-describe("toDailyPoints", () => {
-  it("should return empty array for empty input", () => {
+describe("toDailyPoints & toHeatmapData", () => {
+  it("aggregates by date ascending, handles empty input, and converts to heatmap", () => {
     expect(toDailyPoints([])).toEqual([]);
-  });
+    expect(toHeatmapData([])).toEqual([]);
 
-  it("should aggregate records by date", () => {
-    const records: UsageRow[] = [
+    const daily = toDailyPoints([
       makeRow({
-        hour_start: "2026-03-07T00:00:00Z",
-        input_tokens: 100,
-        output_tokens: 50,
-        cached_input_tokens: 10,
-        reasoning_output_tokens: 0,
-        total_tokens: 160,
+        hour_start: "2026-03-08T00:00:00Z",
+        input_tokens: 300,
+        output_tokens: 150,
+        cached_input_tokens: 30,
+        total_tokens: 480,
       }),
       makeRow({
         hour_start: "2026-03-07T12:00:00Z",
         input_tokens: 200,
         output_tokens: 100,
         cached_input_tokens: 20,
-        reasoning_output_tokens: 0,
         total_tokens: 320,
       }),
       makeRow({
-        hour_start: "2026-03-08T00:00:00Z",
-        input_tokens: 300,
-        output_tokens: 150,
-        cached_input_tokens: 30,
-        reasoning_output_tokens: 0,
-        total_tokens: 480,
-      }),
-    ];
-
-    const daily = toDailyPoints(records);
-
-    expect(daily).toHaveLength(2);
-    expect(daily[0]!.date).toBe("2026-03-07");
-    expect(daily[0]!.input).toBe(300);
-    expect(daily[0]!.output).toBe(150);
-    expect(daily[0]!.cached).toBe(30);
-    expect(daily[1]!.date).toBe("2026-03-08");
-    expect(daily[1]!.input).toBe(300);
-  });
-
-  it("should sort by date ascending", () => {
-    const records = [
-      makeRow({ hour_start: "2026-03-09" }),
-      makeRow({ hour_start: "2026-03-07" }),
-      makeRow({ hour_start: "2026-03-08" }),
-    ];
-
-    const daily = toDailyPoints(records);
-
-    expect(daily.map((d) => d.date)).toEqual(["2026-03-07", "2026-03-08", "2026-03-09"]);
-  });
-
-  it("should shift records across midnight for positive tzOffset (UTC-8 PST)", () => {
-    // 2026-03-08T03:00Z → 2026-03-07T19:00 PST → local date 2026-03-07
-    const records = [
-      makeRow({
-        hour_start: "2026-03-07T20:00:00Z",
+        hour_start: "2026-03-07T00:00:00Z",
         input_tokens: 100,
         output_tokens: 50,
         cached_input_tokens: 10,
-        reasoning_output_tokens: 0,
         total_tokens: 160,
       }),
-      makeRow({
-        hour_start: "2026-03-08T03:00:00Z",
-        input_tokens: 200,
-        output_tokens: 100,
-        cached_input_tokens: 20,
-        reasoning_output_tokens: 0,
-        total_tokens: 320,
-      }),
-    ];
+    ]);
 
-    const daily = toDailyPoints(records, 480); // UTC-8
-
-    expect(daily).toHaveLength(1);
-    expect(daily[0]!.date).toBe("2026-03-07");
-    expect(daily[0]!.input).toBe(300);
-    expect(daily[0]!.total).toBe(480);
+    expect(daily).toHaveLength(2);
+    expect(daily[0]).toMatchObject({
+      date: "2026-03-07",
+      input: 300,
+      output: 150,
+      cached: 30,
+      total: 480,
+    });
+    expect(daily[1]).toMatchObject({ date: "2026-03-08", input: 300 });
+    expect(toHeatmapData(daily)).toEqual([
+      { date: "2026-03-07", value: 480 },
+      { date: "2026-03-08", value: 480 },
+    ]);
   });
 
-  it("should shift records across midnight for negative tzOffset (UTC+9 JST)", () => {
-    // 2026-03-07T20:00Z → 2026-03-08T05:00 JST → local date 2026-03-08
-    const records = [
-      makeRow({
-        hour_start: "2026-03-07T20:00:00Z",
-        input_tokens: 500,
-        output_tokens: 200,
-        cached_input_tokens: 50,
-        reasoning_output_tokens: 0,
-        total_tokens: 750,
-      }),
-    ];
-
-    const daily = toDailyPoints(records, -540); // UTC+9
-
-    expect(daily).toHaveLength(1);
-    expect(daily[0]!.date).toBe("2026-03-08");
-    expect(daily[0]!.total).toBe(750);
-  });
+  it.each([
+    {
+      tzOffset: 480,
+      hours: ["2026-03-07T20:00:00Z", "2026-03-08T03:00:00Z"],
+      expectedDate: "2026-03-07",
+      expectedTotal: 480,
+    },
+    {
+      tzOffset: -540,
+      hours: ["2026-03-07T20:00:00Z"],
+      expectedDate: "2026-03-08",
+      expectedTotal: 240,
+    },
+  ])(
+    "shifts records across midnight for tzOffset=$tzOffset",
+    ({ tzOffset, hours, expectedDate, expectedTotal }) => {
+      const daily = toDailyPoints(
+        hours.map((h) => rowAt(h, 240)),
+        tzOffset,
+      );
+      expect(daily).toHaveLength(1);
+      expect(daily[0]).toMatchObject({ date: expectedDate, total: expectedTotal });
+    },
+  );
 });
 
-// ---------------------------------------------------------------------------
-// toSourceAggregates
-// ---------------------------------------------------------------------------
-
-describe("toSourceAggregates", () => {
-  it("should return empty array for empty input", () => {
+describe("toSourceAggregates, toModelAggregates & sourceLabel", () => {
+  it("aggregates by source descending", () => {
     expect(toSourceAggregates([])).toEqual([]);
-  });
-
-  it("should aggregate by source and sort by total descending", () => {
-    const records = [
+    const res = toSourceAggregates([
       makeRow({ source: "claude-code", total_tokens: 1000 }),
       makeRow({ source: "gemini-cli", total_tokens: 3000 }),
       makeRow({ source: "claude-code", total_tokens: 2000 }),
       makeRow({ source: "opencode", total_tokens: 500 }),
-    ];
-
-    const result = toSourceAggregates(records);
-
-    expect(result).toHaveLength(3);
-    expect(result[0]).toEqual({ source: "claude-code", label: "claude-code", value: 3000 });
-    expect(result[1]).toEqual({ source: "gemini-cli", label: "gemini-cli", value: 3000 });
-    expect(result[2]).toEqual({ source: "opencode", label: "opencode", value: 500 });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// toHeatmapData
-// ---------------------------------------------------------------------------
-
-describe("toHeatmapData", () => {
-  it("should convert daily points to heatmap format", () => {
-    const daily = [
-      { date: "2026-03-07", input: 100, output: 50, cached: 10, reasoning: 0, total: 160 },
-      { date: "2026-03-08", input: 200, output: 100, cached: 20, reasoning: 0, total: 320 },
-    ];
-
-    const heatmap = toHeatmapData(daily);
-
-    expect(heatmap).toEqual([
-      { date: "2026-03-07", value: 160 },
-      { date: "2026-03-08", value: 320 },
+    ]);
+    expect(res).toEqual([
+      { source: "claude-code", label: "claude-code", value: 3000 },
+      { source: "gemini-cli", label: "gemini-cli", value: 3000 },
+      { source: "opencode", label: "opencode", value: 500 },
     ]);
   });
 
-  it("should return empty array for empty input", () => {
-    expect(toHeatmapData([])).toEqual([]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// toModelAggregates
-// ---------------------------------------------------------------------------
-
-describe("toModelAggregates", () => {
-  it("should return empty array for empty input", () => {
+  it("aggregates by source:model with reasoning and sorts descending", () => {
     expect(toModelAggregates([])).toEqual([]);
-  });
-
-  it("should aggregate by source:model key", () => {
-    const records = [
+    const res = toModelAggregates([
       makeRow({
         source: "claude-code",
         model: "sonnet-4",
@@ -266,25 +191,6 @@ describe("toModelAggregates", () => {
         cached_input_tokens: 50,
         total_tokens: 800,
       }),
-    ];
-
-    const result = toModelAggregates(records);
-
-    expect(result).toHaveLength(2);
-    // Sorted by total descending
-    expect(result[0]!.model).toBe("gpt-4.1");
-    expect(result[0]!.source).toBe("opencode");
-    expect(result[0]!.total).toBe(800);
-    expect(result[1]!.model).toBe("sonnet-4");
-    expect(result[1]!.total).toBe(480);
-    expect(result[1]!.input).toBe(300);
-    expect(result[1]!.output).toBe(150);
-    expect(result[1]!.cached).toBe(30);
-    expect(result[1]!.reasoning).toBe(0);
-  });
-
-  it("accumulates reasoning_output_tokens into reasoning", () => {
-    const records = [
       makeRow({
         source: "grok",
         model: "grok-4.5",
@@ -294,1078 +200,303 @@ describe("toModelAggregates", () => {
         reasoning_output_tokens: 50,
         total_tokens: 220,
       }),
-    ];
-    const result = toModelAggregates(records);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.reasoning).toBe(50);
-    expect(result[0]!.source).toBe("grok");
+    ]);
+    expect(res.map((r) => r.model)).toEqual(["gpt-4.1", "sonnet-4", "grok-4.5"]);
+    expect(res[1]).toMatchObject({ total: 480, input: 300, output: 150, cached: 30, reasoning: 0 });
+    expect(res[2]).toMatchObject({ source: "grok", reasoning: 50 });
   });
 
-  it("should sort by total tokens descending", () => {
-    const records = [
-      makeRow({ source: "a", model: "small", total_tokens: 100 }),
-      makeRow({ source: "b", model: "large", total_tokens: 5000 }),
-      makeRow({ source: "c", model: "medium", total_tokens: 1000 }),
-    ];
-
-    const result = toModelAggregates(records);
-    expect(result.map((r) => r.model)).toEqual(["large", "medium", "small"]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// sourceLabel
-// ---------------------------------------------------------------------------
-
-describe("sourceLabel", () => {
-  it("should return human-readable names for known sources", () => {
-    expect(sourceLabel("antigravity")).toBe("Antigravity");
-    expect(sourceLabel("claude-code")).toBe("Claude Code");
-    expect(sourceLabel("codex")).toBe("Codex");
-    expect(sourceLabel("gemini-cli")).toBe("Gemini CLI");
-    expect(sourceLabel("grok")).toBe("Grok");
-    expect(sourceLabel("opencode")).toBe("OpenCode");
-    expect(sourceLabel("openclaw")).toBe("OpenClaw");
-    expect(sourceLabel("pi")).toBe("Pi");
-    expect(sourceLabel("vscode-copilot")).toBe("VS Code Copilot");
-    expect(sourceLabel("copilot-cli")).toBe("GitHub Copilot CLI");
-    expect(sourceLabel("hermes")).toBe("Hermes Agent");
-  });
-
-  it("should return raw string for unknown sources", () => {
+  it("maps known source labels and falls back for unknown", () => {
+    const expected: Record<string, string> = {
+      antigravity: "Antigravity",
+      "claude-code": "Claude Code",
+      codex: "Codex",
+      "gemini-cli": "Gemini CLI",
+      grok: "Grok",
+      opencode: "OpenCode",
+      openclaw: "OpenClaw",
+      pi: "Pi",
+      "vscode-copilot": "VS Code Copilot",
+      "copilot-cli": "GitHub Copilot CLI",
+      hermes: "Hermes Agent",
+    };
+    for (const [k, v] of Object.entries(expected)) expect(sourceLabel(k)).toBe(v);
     expect(sourceLabel("something-else")).toBe("something-else");
   });
 });
 
-// ---------------------------------------------------------------------------
-// toLocalDailyBuckets
-// ---------------------------------------------------------------------------
-
 describe("toLocalDailyBuckets", () => {
-  it("should return empty array for empty input", () => {
+  it("buckets by UTC and local timezone across midnight", () => {
     expect(toLocalDailyBuckets([])).toEqual([]);
-  });
 
-  it("should bucket rows by UTC date when tzOffset is 0", () => {
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-07T10:00:00Z",
-        total_tokens: 100,
-        input_tokens: 80,
-        output_tokens: 20,
-        cached_input_tokens: 10,
-      }),
-      makeRow({
-        hour_start: "2026-03-07T22:00:00Z",
-        total_tokens: 200,
-        input_tokens: 160,
-        output_tokens: 40,
-        cached_input_tokens: 20,
-      }),
-      makeRow({
-        hour_start: "2026-03-08T05:00:00Z",
-        total_tokens: 300,
-        input_tokens: 240,
-        output_tokens: 60,
-        cached_input_tokens: 30,
-      }),
-    ];
+    const utc = toLocalDailyBuckets(
+      [
+        rowAt("2026-03-07T10:00:00Z", 100),
+        rowAt("2026-03-07T22:00:00Z", 200),
+        rowAt("2026-03-08T05:00:00Z", 300),
+      ],
+      0,
+    );
+    expect(utc.map((b) => [b.date, b.totalTokens])).toEqual([
+      ["2026-03-07", 300],
+      ["2026-03-08", 300],
+    ]);
 
-    const result = toLocalDailyBuckets(rows, 0);
+    const pst = toLocalDailyBuckets(
+      [rowAt("2026-03-07T18:00:00Z", 100), rowAt("2026-03-08T03:00:00Z", 200)],
+      480,
+    );
+    expect(pst).toHaveLength(1);
+    expect(pst[0]).toMatchObject({
+      date: "2026-03-07",
+      totalTokens: 300,
+      inputTokens: 240,
+      outputTokens: 60,
+      cachedTokens: 30,
+    });
 
-    expect(result).toHaveLength(2);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[0]!.totalTokens).toBe(300);
-    expect(result[1]!.date).toBe("2026-03-08");
-    expect(result[1]!.totalTokens).toBe(300);
-  });
-
-  it("should shift records across midnight for positive tzOffset (west of UTC)", () => {
-    // tzOffset=480 means UTC-8 (PST). A record at 2026-03-08T03:00Z is
-    // 2026-03-07T19:00 PST — should land in 2026-03-07 bucket.
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-08T03:00:00Z",
-        total_tokens: 500,
-        input_tokens: 400,
-        output_tokens: 100,
-        cached_input_tokens: 50,
-      }),
-    ];
-
-    const result = toLocalDailyBuckets(rows, 480);
-
-    expect(result).toHaveLength(1);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[0]!.totalTokens).toBe(500);
-  });
-
-  it("should shift records across midnight for negative tzOffset (east of UTC)", () => {
-    // tzOffset=-540 means UTC+9 (JST). A record at 2026-03-07T20:00Z is
-    // 2026-03-08T05:00 JST — should land in 2026-03-08 bucket.
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-07T20:00:00Z",
-        total_tokens: 700,
-        input_tokens: 560,
-        output_tokens: 140,
-        cached_input_tokens: 70,
-      }),
-    ];
-
-    const result = toLocalDailyBuckets(rows, -540);
-
-    expect(result).toHaveLength(1);
-    expect(result[0]!.date).toBe("2026-03-08");
-    expect(result[0]!.totalTokens).toBe(700);
-  });
-
-  it("should aggregate multiple rows into same local day", () => {
-    // Both are UTC-8, same local day 2026-03-07
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-07T18:00:00Z",
-        total_tokens: 100,
-        input_tokens: 80,
-        output_tokens: 20,
-        cached_input_tokens: 10,
-      }),
-      makeRow({
-        hour_start: "2026-03-08T02:00:00Z",
-        total_tokens: 200,
-        input_tokens: 160,
-        output_tokens: 40,
-        cached_input_tokens: 20,
-      }),
-    ];
-
-    const result = toLocalDailyBuckets(rows, 480);
-
-    expect(result).toHaveLength(1);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[0]!.totalTokens).toBe(300);
-    expect(result[0]!.inputTokens).toBe(240);
-    expect(result[0]!.outputTokens).toBe(60);
-    expect(result[0]!.cachedTokens).toBe(30);
+    const jst = toLocalDailyBuckets([rowAt("2026-03-07T20:00:00Z", 700)], -540);
+    expect(jst[0]).toMatchObject({ date: "2026-03-08", totalTokens: 700 });
   });
 });
-
-// ---------------------------------------------------------------------------
-// compareWeekdayWeekend
-// ---------------------------------------------------------------------------
 
 describe("compareWeekdayWeekend", () => {
-  function makePricingMap(): PricingMap {
-    return getDefaultPricingMap();
-  }
+  it("handles empty, weekday-only, weekend-only, mixed calendar fill, and tzOffset boundary", () => {
+    expect(
+      compareWeekdayWeekend([], { from: "2026-03-02", to: "2026-03-08" }, pricing),
+    ).toMatchObject({
+      weekday: { avgTokens: 0, avgCost: 0, totalDays: 5 },
+      weekend: { avgTokens: 0, avgCost: 0, totalDays: 2 },
+      ratio: 0,
+    });
 
-  it("should return zeros for empty input", () => {
-    const result = compareWeekdayWeekend(
-      [],
-      { from: "2026-03-02", to: "2026-03-08" }, // Mon-Sun = 5 weekdays + 2 weekend
-      makePricingMap(),
-    );
-
-    expect(result.weekday.avgTokens).toBe(0);
-    expect(result.weekday.avgCost).toBe(0);
-    expect(result.weekday.totalDays).toBe(5);
-    expect(result.weekend.avgTokens).toBe(0);
-    expect(result.weekend.avgCost).toBe(0);
-    expect(result.weekend.totalDays).toBe(2);
-    expect(result.ratio).toBe(0);
-  });
-
-  it("should compute averages for all-weekday data", () => {
-    // 2026-03-02 (Mon) to 2026-03-06 (Fri) = 5 weekdays, 0 weekend
-    // But range also has no weekend days, so weekend totalDays=0
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-02T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-      makeRow({
-        hour_start: "2026-03-04T14:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
-    ];
-
-    const result = compareWeekdayWeekend(
-      rows,
+    const weekdayOnly = compareWeekdayWeekend(
+      [rowAt("2026-03-02T10:00:00Z", 1000), rowAt("2026-03-04T14:00:00Z", 2000)],
       { from: "2026-03-02", to: "2026-03-06" },
-      makePricingMap(),
+      pricing,
     );
+    expect(weekdayOnly.weekday).toMatchObject({ avgTokens: 600, totalDays: 5 });
+    expect(weekdayOnly.weekend).toMatchObject({ avgTokens: 0, totalDays: 0 });
+    expect(weekdayOnly.ratio).toBe(0);
 
-    // 3000 total tokens across 5 weekdays = 600 avg
-    expect(result.weekday.avgTokens).toBe(600);
-    expect(result.weekday.totalDays).toBe(5);
-    expect(result.weekend.avgTokens).toBe(0);
-    expect(result.weekend.totalDays).toBe(0);
-    // ratio: weekday/weekend — weekend is 0, so Infinity clamped to 0 or special
-    expect(result.ratio).toBe(0); // 0 weekend → ratio=0
-  });
-
-  it("should compute averages for all-weekend data", () => {
-    // 2026-03-07 is Saturday, 2026-03-08 is Sunday
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-07T10:00:00Z",
-        total_tokens: 500,
-        input_tokens: 400,
-        output_tokens: 100,
-        cached_input_tokens: 50,
-      }),
-      makeRow({
-        hour_start: "2026-03-08T10:00:00Z",
-        total_tokens: 700,
-        input_tokens: 560,
-        output_tokens: 140,
-        cached_input_tokens: 70,
-      }),
-    ];
-
-    const result = compareWeekdayWeekend(
-      rows,
+    const weekendOnly = compareWeekdayWeekend(
+      [rowAt("2026-03-07T10:00:00Z", 500), rowAt("2026-03-08T10:00:00Z", 700)],
       { from: "2026-03-07", to: "2026-03-08" },
-      makePricingMap(),
+      pricing,
     );
+    expect(weekendOnly.weekday.totalDays).toBe(0);
+    expect(weekendOnly.weekend).toMatchObject({ avgTokens: 600, totalDays: 2 });
+    expect(weekendOnly.ratio).toBe(0);
 
-    expect(result.weekday.avgTokens).toBe(0);
-    expect(result.weekday.totalDays).toBe(0);
-    // 1200 tokens across 2 weekend days = 600 avg
-    expect(result.weekend.avgTokens).toBe(600);
-    expect(result.weekend.totalDays).toBe(2);
-    expect(result.ratio).toBe(0); // 0 weekday → ratio=0
-  });
-
-  it("should compute mixed weekday/weekend stats with calendar fill", () => {
-    // 2026-03-02 (Mon) to 2026-03-08 (Sun) = 5 weekdays + 2 weekend
-    // Data only on Mon and Sat — other days get zero-filled
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-02T10:00:00Z",
-        total_tokens: 5000,
-        input_tokens: 4000,
-        output_tokens: 1000,
-        cached_input_tokens: 500,
-      }),
-      makeRow({
-        hour_start: "2026-03-07T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
-    ];
-
-    const result = compareWeekdayWeekend(
-      rows,
+    const mixed = compareWeekdayWeekend(
+      [rowAt("2026-03-02T10:00:00Z", 5000), rowAt("2026-03-07T10:00:00Z", 2000)],
       { from: "2026-03-02", to: "2026-03-08" },
-      makePricingMap(),
+      pricing,
     );
+    expect(mixed.weekday.avgTokens).toBe(1000);
+    expect(mixed.weekend.avgTokens).toBe(1000);
+    expect(mixed.ratio).toBeCloseTo(1.0);
+    expect(mixed.weekday.avgCost).toBeGreaterThan(0);
+    expect(mixed.weekend.avgCost).toBeGreaterThan(0);
 
-    // Weekday: 5000 tokens / 5 days = 1000 avg
-    expect(result.weekday.avgTokens).toBe(1000);
-    expect(result.weekday.totalDays).toBe(5);
-    // Weekend: 2000 tokens / 2 days = 1000 avg
-    expect(result.weekend.avgTokens).toBe(1000);
-    expect(result.weekend.totalDays).toBe(2);
-    // ratio: 1000/1000 = 1.0
-    expect(result.ratio).toBeCloseTo(1.0);
-    // Cost should be > 0 for both
-    expect(result.weekday.avgCost).toBeGreaterThan(0);
-    expect(result.weekend.avgCost).toBeGreaterThan(0);
-  });
-
-  it("should handle midnight boundary with tzOffset", () => {
-    // 2026-03-08 is Sunday in UTC, but in PST (UTC-8), a record at
-    // 2026-03-08T03:00Z is actually 2026-03-07T19:00 PST = Saturday.
-    // Date range: 2026-03-07 (Sat) to 2026-03-07 (Sat) in local time
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-08T03:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-    ];
-
-    const result = compareWeekdayWeekend(
-      rows,
-      { from: "2026-03-07", to: "2026-03-07" }, // Saturday only
-      makePricingMap(),
-      480, // PST (UTC-8)
+    const shifted = compareWeekdayWeekend(
+      [rowAt("2026-03-08T03:00:00Z", 1000)],
+      { from: "2026-03-07", to: "2026-03-07" },
+      pricing,
+      480,
     );
-
-    // Saturday is weekend: 1000 tokens / 1 day = 1000
-    expect(result.weekend.avgTokens).toBe(1000);
-    expect(result.weekend.totalDays).toBe(1);
-    expect(result.weekday.avgTokens).toBe(0);
-    expect(result.weekday.totalDays).toBe(0);
+    expect(shifted.weekend).toMatchObject({ avgTokens: 1000, totalDays: 1 });
+    expect(shifted.weekday.totalDays).toBe(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// computeMoMGrowth
-// ---------------------------------------------------------------------------
 
 describe("computeMoMGrowth", () => {
-  function makePricingMap(): PricingMap {
-    return getDefaultPricingMap();
-  }
+  it("handles empty input, default now, and January year wrap", () => {
+    const empty = computeMoMGrowth([], pricing, new Date("2026-03-15"));
+    expect(empty).toMatchObject({
+      currentMonth: { tokens: 0, cost: 0, days: 0 },
+      previousMonth: { tokens: 0, cost: 0, days: 0 },
+      previousMonthSameDate: { tokens: 0, cost: 0, days: 0 },
+      tokenGrowth: 0,
+      costGrowth: 0,
+      sameDateTokenGrowth: 0,
+      sameDateCostGrowth: 0,
+    });
+    expect(computeMoMGrowth([], pricing).tokenGrowth).toBe(0);
 
-  it("should return zeros for empty input", () => {
-    const result = computeMoMGrowth([], makePricingMap(), new Date("2026-03-15"));
-
-    expect(result.currentMonth.tokens).toBe(0);
-    expect(result.currentMonth.cost).toBe(0);
-    expect(result.currentMonth.days).toBe(0);
-    expect(result.previousMonth.tokens).toBe(0);
-    expect(result.previousMonth.cost).toBe(0);
-    expect(result.previousMonth.days).toBe(0);
-    expect(result.previousMonthSameDate.tokens).toBe(0);
-    expect(result.previousMonthSameDate.cost).toBe(0);
-    expect(result.previousMonthSameDate.days).toBe(0);
-    expect(result.tokenGrowth).toBe(0);
-    expect(result.costGrowth).toBe(0);
-    expect(result.sameDateTokenGrowth).toBe(0);
-    expect(result.sameDateCostGrowth).toBe(0);
+    const janWrap = computeMoMGrowth(
+      [rowAt("2025-12-15T10:00:00Z", 100), rowAt("2026-01-05T10:00:00Z", 200)],
+      pricing,
+      new Date("2026-01-15T12:00:00Z"),
+    );
+    expect(janWrap.previousMonth.tokens).toBe(100);
+    expect(janWrap.currentMonth.tokens).toBe(200);
   });
 
-  it("should split rows into current and previous month", () => {
+  it("computes full-month, distinct-days, and same-date growth including boundary day", () => {
     const rows = [
-      // February (previous)
-      makeRow({
-        hour_start: "2026-02-10T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-      makeRow({
-        hour_start: "2026-02-20T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
-      // March (current)
-      makeRow({
-        hour_start: "2026-03-05T10:00:00Z",
-        total_tokens: 4000,
-        input_tokens: 3200,
-        output_tokens: 800,
-        cached_input_tokens: 400,
-      }),
-      makeRow({
-        hour_start: "2026-03-10T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
+      rowAt("2026-02-05T08:00:00Z", 500),
+      rowAt("2026-02-05T16:00:00Z", 500),
+      rowAt("2026-02-15T10:00:00Z", 1000), // == currentDay (15) -> included
+      rowAt("2026-02-20T10:00:00Z", 3000), // > 15 -> excluded from sameDate
+      rowAt("2026-03-05T10:00:00Z", 2000),
+      rowAt("2026-03-10T10:00:00Z", 2000),
     ];
-
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
-
-    expect(result.previousMonth.tokens).toBe(3000);
-    expect(result.previousMonth.days).toBe(2);
-    expect(result.currentMonth.tokens).toBe(6000);
-    expect(result.currentMonth.days).toBe(2);
-    // Growth: (6000 - 3000) / 3000 * 100 = 100%
-    expect(result.tokenGrowth).toBeCloseTo(100);
-    expect(result.currentMonth.cost).toBeGreaterThan(0);
-    expect(result.previousMonth.cost).toBeGreaterThan(0);
+    const res = computeMoMGrowth(rows, pricing, new Date("2026-03-15"));
+    expect(res.previousMonth).toMatchObject({ tokens: 5000, days: 3 });
+    expect(res.currentMonth).toMatchObject({ tokens: 4000, days: 2 });
+    expect(res.tokenGrowth).toBeCloseTo(-20);
+    expect(res.previousMonthSameDate).toMatchObject({ tokens: 2000, days: 2 });
+    expect(res.sameDateTokenGrowth).toBeCloseTo(100);
   });
 
-  it("should handle no previous month data (first month)", () => {
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-05T10:00:00Z",
-        total_tokens: 5000,
-        input_tokens: 4000,
-        output_tokens: 1000,
-        cached_input_tokens: 500,
-      }),
-    ];
+  it("handles missing previous/current/same-date subsets and tzOffset boundaries", () => {
+    const noPrev = computeMoMGrowth(
+      [rowAt("2026-03-05T10:00:00Z", 5000)],
+      pricing,
+      new Date("2026-03-15"),
+    );
+    expect(noPrev.tokenGrowth).toBe(0);
+    expect(noPrev.costGrowth).toBe(0);
 
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
+    const noCur = computeMoMGrowth(
+      [rowAt("2026-02-10T10:00:00Z", 3000)],
+      pricing,
+      new Date("2026-03-15"),
+    );
+    expect(noCur.tokenGrowth).toBeCloseTo(-100);
 
-    expect(result.currentMonth.tokens).toBe(5000);
-    expect(result.previousMonth.tokens).toBe(0);
-    // No previous data → growth = 0 (not Infinity)
-    expect(result.tokenGrowth).toBe(0);
-    expect(result.costGrowth).toBe(0);
-  });
+    const noSameDate = computeMoMGrowth(
+      [rowAt("2026-02-15T10:00:00Z", 3000), rowAt("2026-03-01T10:00:00Z", 1000)],
+      pricing,
+      new Date("2026-03-02"),
+    );
+    expect(noSameDate.previousMonthSameDate.tokens).toBe(0);
+    expect(noSameDate.sameDateTokenGrowth).toBe(0);
 
-  it("should handle no current month data", () => {
-    const rows = [
-      makeRow({
-        hour_start: "2026-02-10T10:00:00Z",
-        total_tokens: 3000,
-        input_tokens: 2400,
-        output_tokens: 600,
-        cached_input_tokens: 300,
-      }),
-    ];
-
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
-
-    expect(result.previousMonth.tokens).toBe(3000);
-    expect(result.currentMonth.tokens).toBe(0);
-    // Growth: (0 - 3000) / 3000 * 100 = -100%
-    expect(result.tokenGrowth).toBeCloseTo(-100);
-  });
-
-  it("should default now to current date", () => {
-    // Just verify it doesn't throw without the now param
-    const result = computeMoMGrowth([], makePricingMap());
-    expect(result.tokenGrowth).toBe(0);
-  });
-
-  it("should count distinct active days per month", () => {
-    const rows = [
-      // Same day in Feb — should count as 1 day
-      makeRow({
-        hour_start: "2026-02-10T08:00:00Z",
-        total_tokens: 500,
-        input_tokens: 400,
-        output_tokens: 100,
-        cached_input_tokens: 50,
-      }),
-      makeRow({
-        hour_start: "2026-02-10T16:00:00Z",
-        total_tokens: 500,
-        input_tokens: 400,
-        output_tokens: 100,
-        cached_input_tokens: 50,
-      }),
-      // Two days in March
-      makeRow({
-        hour_start: "2026-03-01T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-      makeRow({
-        hour_start: "2026-03-05T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-    ];
-
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
-
-    expect(result.previousMonth.days).toBe(1);
-    expect(result.currentMonth.days).toBe(2);
-  });
-
-  it("should compute same-date comparison (only previous month days <= current day)", () => {
-    // ref date = March 15 → only include Feb 1-15 for same-date comparison
-    const rows = [
-      // February: day 5 (included), day 10 (included), day 20 (excluded)
-      makeRow({
-        hour_start: "2026-02-05T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-      makeRow({
-        hour_start: "2026-02-10T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-      makeRow({
-        hour_start: "2026-02-20T10:00:00Z",
-        total_tokens: 3000,
-        input_tokens: 2400,
-        output_tokens: 600,
-        cached_input_tokens: 300,
-      }),
-      // March (current): day 5 and day 10
-      makeRow({
-        hour_start: "2026-03-05T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
-      makeRow({
-        hour_start: "2026-03-10T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
-    ];
-
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
-
-    // Full month: prev=5000, cur=4000 → tokenGrowth = -20%
-    expect(result.previousMonth.tokens).toBe(5000);
-    expect(result.currentMonth.tokens).toBe(4000);
-    expect(result.tokenGrowth).toBeCloseTo(-20);
-
-    // Same-date (Feb 1-15 only): prev=2000, cur=4000 → sameDateTokenGrowth = +100%
-    expect(result.previousMonthSameDate.tokens).toBe(2000);
-    expect(result.previousMonthSameDate.days).toBe(2);
-    expect(result.sameDateTokenGrowth).toBeCloseTo(100);
-  });
-
-  it("should include previous month day equal to current day in same-date subset", () => {
-    // ref date = March 15 → Feb 15 should be INCLUDED (d <= currentDay)
-    const rows = [
-      makeRow({
-        hour_start: "2026-02-15T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-      makeRow({
-        hour_start: "2026-03-10T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
-    ];
-
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
-
-    expect(result.previousMonthSameDate.tokens).toBe(1000);
-    expect(result.sameDateTokenGrowth).toBeCloseTo(100);
-  });
-
-  it("should return zero same-date growth when no previous same-date data", () => {
-    // ref date = March 2 → only Feb 1-2 for same-date; all Feb data is after day 2
-    const rows = [
-      makeRow({
-        hour_start: "2026-02-15T10:00:00Z",
-        total_tokens: 3000,
-        input_tokens: 2400,
-        output_tokens: 600,
-        cached_input_tokens: 300,
-      }),
-      makeRow({
-        hour_start: "2026-03-01T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-    ];
-
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-02"));
-
-    // Full month comparison still works
-    expect(result.previousMonth.tokens).toBe(3000);
-    expect(result.tokenGrowth).toBeCloseTo(-66.67, 1);
-
-    // Same-date: no Feb data in days 1-2 → growth = 0
-    expect(result.previousMonthSameDate.tokens).toBe(0);
-    expect(result.sameDateTokenGrowth).toBe(0);
-  });
-
-  it("should assign UTC midnight row to previous month for west-of-UTC timezone (tzOffset=480, PST)", () => {
-    // 2026-03-01T01:00:00Z → PST local = 2026-02-28T17:00:00 → February
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-01T01:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-    ];
-
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"), 480);
-
-    // Should be assigned to February (previous month), not March
-    expect(result.previousMonth.tokens).toBe(1000);
-    expect(result.currentMonth.tokens).toBe(0);
-  });
-
-  it("should keep row in current month for east-of-UTC timezone (tzOffset=-540, JST)", () => {
-    // 2026-02-28T20:00:00Z → JST local = 2026-03-01T05:00:00 → March
-    const rows = [
-      makeRow({
-        hour_start: "2026-02-28T20:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
-    ];
-
-    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"), -540);
-
-    // Should be assigned to March (current month), not February
-    expect(result.currentMonth.tokens).toBe(2000);
-    expect(result.previousMonth.tokens).toBe(0);
-  });
-
-  it("should match zero-offset behavior when tzOffset=0", () => {
-    const rows = [
-      makeRow({
-        hour_start: "2026-02-10T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-      makeRow({
-        hour_start: "2026-03-05T10:00:00Z",
-        total_tokens: 4000,
-        input_tokens: 3200,
-        output_tokens: 800,
-        cached_input_tokens: 400,
-      }),
-    ];
-
-    const withTz = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"), 0);
-    const without = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
-
-    expect(withTz.currentMonth.tokens).toBe(without.currentMonth.tokens);
-    expect(withTz.previousMonth.tokens).toBe(without.previousMonth.tokens);
+    expect(
+      computeMoMGrowth([rowAt("2026-03-01T01:00:00Z", 1000)], pricing, new Date("2026-03-15"), 480)
+        .previousMonth.tokens,
+    ).toBe(1000);
+    expect(
+      computeMoMGrowth([rowAt("2026-02-28T20:00:00Z", 2000)], pricing, new Date("2026-03-15"), -540)
+        .currentMonth.tokens,
+    ).toBe(2000);
   });
 });
 
-// ---------------------------------------------------------------------------
-// toSourceTrendPoints
-// ---------------------------------------------------------------------------
-
-describe("toSourceTrendPoints", () => {
-  it("should return empty array for empty input", () => {
+describe("toSourceTrendPoints & toDominantSourceTimeline", () => {
+  it("groups multi-source trends, zero-fills, sorts ascending, and shifts tzOffset", () => {
     expect(toSourceTrendPoints([])).toEqual([]);
-  });
-
-  it("should group single source by date", () => {
-    const rows = [
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T14:00:00Z", total_tokens: 2000 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-08T09:00:00Z", total_tokens: 500 }),
-    ];
-    const result = toSourceTrendPoints(rows);
-    expect(result).toHaveLength(2);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[0]!.sources["claude-code"]).toBe(3000);
-    expect(result[1]!.date).toBe("2026-03-08");
-    expect(result[1]!.sources["claude-code"]).toBe(500);
-  });
-
-  it("should handle multiple sources on the same dates", () => {
-    const rows = [
+    const res = toSourceTrendPoints([
+      makeRow({ source: "claude-code", hour_start: "2026-03-08T09:00:00Z", total_tokens: 300 }),
       makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 }),
       makeRow({ source: "gemini-cli", hour_start: "2026-03-07T12:00:00Z", total_tokens: 2000 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-08T09:00:00Z", total_tokens: 300 }),
-    ];
-    const result = toSourceTrendPoints(rows);
-    expect(result).toHaveLength(2);
-    // Day 1: both sources
-    expect(result[0]!.sources["claude-code"]).toBe(1000);
-    expect(result[0]!.sources["gemini-cli"]).toBe(2000);
-    // Day 2: only claude-code, gemini-cli should be 0 (zero-filled)
-    expect(result[1]!.sources["claude-code"]).toBe(300);
-    expect(result[1]!.sources["gemini-cli"]).toBe(0);
+    ]);
+    expect(res.map((p) => p.date)).toEqual(["2026-03-07", "2026-03-08"]);
+    expect(res[0]!.sources).toEqual({ "claude-code": 1000, "gemini-cli": 2000 });
+    expect(res[1]!.sources).toEqual({ "claude-code": 300, "gemini-cli": 0 });
+
+    expect(
+      toSourceTrendPoints(
+        [makeRow({ hour_start: "2026-03-08T03:00:00Z", total_tokens: 2000 })],
+        480,
+      )[0]!.date,
+    ).toBe("2026-03-07");
+    expect(
+      toSourceTrendPoints(
+        [makeRow({ hour_start: "2026-03-07T20:00:00Z", total_tokens: 2000 })],
+        -540,
+      )[0]!.date,
+    ).toBe("2026-03-08");
   });
 
-  it("should sort by date ascending", () => {
-    const rows = [
-      makeRow({ source: "claude-code", hour_start: "2026-03-09T10:00:00Z", total_tokens: 100 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 200 }),
-    ];
-    const result = toSourceTrendPoints(rows);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[1]!.date).toBe("2026-03-09");
-  });
-
-  it("should shift records across midnight with tzOffset (UTC-8)", () => {
-    // 2026-03-08T03:00Z → 2026-03-07T19:00 PST → local date 2026-03-07
-    const rows = [
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T20:00:00Z", total_tokens: 1000 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-08T03:00:00Z", total_tokens: 2000 }),
-    ];
-    const result = toSourceTrendPoints(rows, 480); // UTC-8
-
-    expect(result).toHaveLength(1);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[0]!.sources["claude-code"]).toBe(3000);
-  });
-
-  it("should shift records across midnight with tzOffset (UTC+9)", () => {
-    // 2026-03-07T20:00Z → 2026-03-08T05:00 JST → local date 2026-03-08
-    const rows = [
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T20:00:00Z", total_tokens: 2000 }),
-    ];
-    const result = toSourceTrendPoints(rows, -540); // UTC+9
-
-    expect(result).toHaveLength(2);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[0]!.sources["claude-code"]).toBe(1000);
-    expect(result[1]!.date).toBe("2026-03-08");
-    expect(result[1]!.sources["claude-code"]).toBe(2000);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// toDominantSourceTimeline
-// ---------------------------------------------------------------------------
-
-describe("toDominantSourceTimeline", () => {
-  it("should return empty array for empty input", () => {
+  it("identifies dominant source, alphabetical tie-break, zero-token days, and tzOffset", () => {
     expect(toDominantSourceTimeline([])).toEqual([]);
-  });
-
-  it("should identify clear dominant source per day", () => {
-    const rows = [
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 5000 }),
-      makeRow({ source: "gemini-cli", hour_start: "2026-03-07T14:00:00Z", total_tokens: 1000 }),
-      makeRow({ source: "opencode", hour_start: "2026-03-08T09:00:00Z", total_tokens: 3000 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-08T11:00:00Z", total_tokens: 1000 }),
-    ];
-    const result = toDominantSourceTimeline(rows);
-    expect(result).toHaveLength(2);
-
-    // Day 1: claude-code dominates with 5000/6000 = 83.3%
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[0]!.dominantSource).toBe("claude-code");
-    expect(result[0]!.dominantShare).toBeCloseTo(83.33, 0);
-    expect(result[0]!.sources["claude-code"]).toBe(5000);
-    expect(result[0]!.sources["gemini-cli"]).toBe(1000);
-
-    // Day 2: opencode dominates with 3000/4000 = 75%
-    expect(result[1]!.date).toBe("2026-03-08");
-    expect(result[1]!.dominantSource).toBe("opencode");
-    expect(result[1]!.dominantShare).toBeCloseTo(75, 0);
-  });
-
-  it("should pick first source alphabetically when tied", () => {
-    const rows = [
-      makeRow({ source: "opencode", hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T14:00:00Z", total_tokens: 2000 }),
-    ];
-    const result = toDominantSourceTimeline(rows);
-    expect(result).toHaveLength(1);
-    // Tied at 50% each — pick alphabetically first: "claude-code"
-    expect(result[0]!.dominantSource).toBe("claude-code");
-    expect(result[0]!.dominantShare).toBeCloseTo(50, 0);
-  });
-
-  it("should handle single source per day", () => {
-    const rows = [
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 3000 }),
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T14:00:00Z", total_tokens: 2000 }),
-    ];
-    const result = toDominantSourceTimeline(rows);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.dominantSource).toBe("claude-code");
-    expect(result[0]!.dominantShare).toBeCloseTo(100, 0);
-    expect(result[0]!.sources["claude-code"]).toBe(5000);
-  });
-
-  it("should sort by date ascending", () => {
-    const rows = [
-      makeRow({ source: "claude-code", hour_start: "2026-03-09T10:00:00Z", total_tokens: 1000 }),
-      makeRow({ source: "opencode", hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000 }),
-    ];
-    const result = toDominantSourceTimeline(rows);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[1]!.date).toBe("2026-03-09");
-  });
-
-  it("should shift records across midnight with tzOffset (UTC-8)", () => {
-    // 2026-03-08T03:00Z → 2026-03-07T19:00 PST → local date 2026-03-07
-    const rows = [
-      makeRow({ source: "claude-code", hour_start: "2026-03-07T20:00:00Z", total_tokens: 5000 }),
-      makeRow({ source: "gemini-cli", hour_start: "2026-03-08T03:00:00Z", total_tokens: 1000 }),
-    ];
-    const result = toDominantSourceTimeline(rows, 480); // UTC-8
-
-    expect(result).toHaveLength(1);
-    expect(result[0]!.date).toBe("2026-03-07");
-    expect(result[0]!.dominantSource).toBe("claude-code");
-    expect(result[0]!.sources["claude-code"]).toBe(5000);
-    expect(result[0]!.sources["gemini-cli"]).toBe(1000);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// computeWoWGrowth
-// ---------------------------------------------------------------------------
-
-describe("computeWoWGrowth", () => {
-  function makePricingMap(): PricingMap {
-    return getDefaultPricingMap();
-  }
-
-  it("should return zeros for empty input", () => {
-    const result = computeWoWGrowth([], makePricingMap(), new Date("2026-03-15"));
-
-    expect(result.currentWeek.tokens).toBe(0);
-    expect(result.currentWeek.cost).toBe(0);
-    expect(result.currentWeek.days).toBe(0);
-    expect(result.previousWeek.tokens).toBe(0);
-    expect(result.previousWeek.days).toBe(0);
-    expect(result.tokenGrowth).toBe(0);
-    expect(result.costGrowth).toBe(0);
-  });
-
-  it("should compute growth when both weeks have data", () => {
-    // ref = Mar 15 (Sunday), current week = Mar 15, previous week = Mar 8-14
-    const rows = [
+    const res = toDominantSourceTimeline([
       makeRow({
-        hour_start: "2026-03-08T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }), // prev week Sun
-      makeRow({
-        hour_start: "2026-03-15T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }), // current week Sun
-    ];
-
-    const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-15"));
-
-    expect(result.previousWeek.tokens).toBe(1000);
-    expect(result.currentWeek.tokens).toBe(2000);
-    expect(result.tokenGrowth).toBeCloseTo(100); // +100%
-  });
-
-  it("should return zero growth when previous week has no data", () => {
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-15T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }),
-    ];
-
-    const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-15"));
-
-    expect(result.currentWeek.tokens).toBe(2000);
-    expect(result.previousWeek.tokens).toBe(0);
-    expect(result.tokenGrowth).toBe(0);
-  });
-
-  it("should compute same-day growth (current week vs previous week up to same day-of-week)", () => {
-    // ref = Mar 18 (Wednesday), dow = 3
-    // Current week: Mar 15 (Sun) - Mar 18 (Wed)
-    // Previous week: Mar 8 (Sun) - Mar 14 (Sat)
-    // Same-day subset: Mar 8 (Sun) - Mar 11 (Wed)
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-08T10:00:00Z",
-        total_tokens: 500,
-        input_tokens: 400,
-        output_tokens: 100,
-        cached_input_tokens: 50,
-      }), // prev Sun
-      makeRow({
-        hour_start: "2026-03-11T10:00:00Z",
-        total_tokens: 500,
-        input_tokens: 400,
-        output_tokens: 100,
-        cached_input_tokens: 50,
-      }), // prev Wed (included in same-day)
-      makeRow({
-        hour_start: "2026-03-13T10:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }), // prev Fri (excluded from same-day)
-      makeRow({
-        hour_start: "2026-03-18T10:00:00Z",
-        total_tokens: 2000,
-        input_tokens: 1600,
-        output_tokens: 400,
-        cached_input_tokens: 200,
-      }), // current Wed
-    ];
-
-    const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-18"));
-
-    // Previous week total: 500 + 500 + 1000 = 2000
-    expect(result.previousWeek.tokens).toBe(2000);
-    // Previous week same-day (Sun-Wed): 500 + 500 = 1000
-    expect(result.previousWeekSameDay.tokens).toBe(1000);
-    // Current week: 2000
-    expect(result.currentWeek.tokens).toBe(2000);
-    // Same-day growth: (2000 - 1000) / 1000 * 100 = 100%
-    expect(result.sameDayTokenGrowth).toBeCloseTo(100);
-  });
-
-  it("should apply timezone offset correctly", () => {
-    // In PST (UTC-8), 2026-03-16T03:00Z → Mar 15 19:00 PST → should still be in current week
-    // Let's use a clearer example: Mar 15 is Sunday (week start)
-    // In PST, 2026-03-09T03:00Z → Mar 8 19:00 PST (Sunday) → previous week
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-09T03:00:00Z",
-        total_tokens: 1000,
-        input_tokens: 800,
-        output_tokens: 200,
-        cached_input_tokens: 100,
-      }),
-    ];
-
-    // ref = Mar 15 in UTC, but we'll use tzOffset=0 for simplicity
-    // Testing that the function respects the reference date
-    const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-15T12:00:00Z"), 0);
-
-    // Mar 9 is Monday in UTC, which is in the previous week (Mar 8-14)
-    expect(result.previousWeek.tokens).toBe(1000);
-    expect(result.currentWeek.tokens).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// toHourlyWeekdayWeekend
-// ---------------------------------------------------------------------------
-
-describe("toHourlyWeekdayWeekend", () => {
-  const defaultDateRange = { from: "2026-03-07", to: "2026-03-07" }; // Saturday
-
-  it("should return 24-hour structure for empty input", () => {
-    const result = toHourlyWeekdayWeekend([], defaultDateRange, 0);
-
-    expect(result).toHaveLength(24);
-    expect(result[0]!.hour).toBe(0);
-    expect(result[23]!.hour).toBe(23);
-    expect(result[0]!.weekday).toBe(0);
-    expect(result[0]!.weekend).toBe(0);
-  });
-
-  it("should separate weekday and weekend tokens by hour", () => {
-    // Mar 7, 2026 = Saturday (weekend)
-    // Mar 9, 2026 = Monday (weekday)
-    const dateRange = { from: "2026-03-07", to: "2026-03-09" };
-    const rows: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 }), // Saturday
-      makeRow({ hour_start: "2026-03-09T10:00:00Z", total_tokens: 2000 }), // Monday
-    ];
-
-    const result = toHourlyWeekdayWeekend(rows, dateRange, 0);
-
-    // dateRange: Mar 7 (Sat), Mar 8 (Sun), Mar 9 (Mon) → 2 weekend days, 1 weekday
-    // Hour 10: weekend = 1000/2 = 500, weekday = 2000/1 = 2000
-    expect(result[10]!.weekday).toBe(2000);
-    expect(result[10]!.weekend).toBe(500);
-  });
-
-  it("should compute daily averages over the date range", () => {
-    // Mar 9-10, 2026 = Mon-Tue (both weekdays)
-    const dateRange = { from: "2026-03-09", to: "2026-03-10" };
-    const rows: UsageRow[] = [
-      makeRow({ hour_start: "2026-03-09T14:00:00Z", total_tokens: 1000 }),
-      makeRow({ hour_start: "2026-03-10T14:00:00Z", total_tokens: 3000 }),
-    ];
-
-    const result = toHourlyWeekdayWeekend(rows, dateRange, 0);
-
-    // Hour 14: total 4000 tokens / 2 weekdays = 2000 average
-    expect(result[14]!.weekday).toBe(2000);
-    expect(result[14]!.weekend).toBe(0);
-  });
-
-  it("should shift hours with timezone offset (UTC-8)", () => {
-    // Mar 7 = Saturday
-    // 2026-03-07T18:00Z → PST local = 2026-03-07T10:00 → hour 10
-    const rows: UsageRow[] = [makeRow({ hour_start: "2026-03-07T18:00:00Z", total_tokens: 1000 })];
-
-    const result = toHourlyWeekdayWeekend(rows, defaultDateRange, 480);
-
-    // Should be in hour 10, not hour 18
-    expect(result[10]!.weekend).toBe(1000);
-    expect(result[18]!.weekend).toBe(0);
-  });
-
-  it("should zero-fill hours with no data", () => {
-    const rows: UsageRow[] = [makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 })];
-
-    const result = toHourlyWeekdayWeekend(rows, defaultDateRange, 0);
-
-    // Hour 0 should have zero tokens
-    expect(result[0]!.weekend).toBe(0);
-    expect(result[0]!.weekday).toBe(0);
-    // Hour 10 should have the actual tokens
-    expect(result[10]!.weekend).toBe(1000);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Defensive default-argument paths
-// ---------------------------------------------------------------------------
-
-describe("default `now` arguments", () => {
-  it("computeMoMGrowth handles January reference (previous month wraps to December of previous year)", () => {
-    const rows = [
-      // December 2025 (previous month when ref = Jan 2026)
-      makeRow({
-        hour_start: "2025-12-15T10:00:00Z",
-        total_tokens: 100,
-        input_tokens: 80,
-        output_tokens: 20,
-        cached_input_tokens: 10,
-      }),
-      // January 2026 (current)
-      makeRow({
-        hour_start: "2026-01-05T10:00:00Z",
-        total_tokens: 200,
-        input_tokens: 160,
-        output_tokens: 40,
-        cached_input_tokens: 20,
-      }),
-    ];
-    const ref = new Date("2026-01-15T12:00:00Z");
-    const result = computeMoMGrowth(rows, getDefaultPricingMap(), ref);
-    expect(result.currentMonth.tokens).toBe(200);
-    expect(result.previousMonth.tokens).toBe(100);
-  });
-
-  it("computeWoWGrowth uses current date when `now` argument is omitted", () => {
-    // Empty rows — just confirms the default branch executes without throwing.
-    const result = computeWoWGrowth([], getDefaultPricingMap());
-    expect(result.currentWeek.tokens).toBe(0);
-    expect(result.previousWeek.tokens).toBe(0);
-    expect(result.tokenGrowth).toBe(0);
-  });
-
-  it("toDominantSourceTimeline returns dominantShare=0 for a day with all-zero token rows", () => {
-    // A row with total_tokens=0 makes dayTotal=0, exercising the `dayTotal > 0 ? ... : 0` branch.
-    const rows = [
-      makeRow({
-        hour_start: "2026-03-10T10:00:00Z",
         source: "claude-code",
+        hour_start: "2026-03-09T10:00:00Z",
         total_tokens: 0,
         input_tokens: 0,
         output_tokens: 0,
         cached_input_tokens: 0,
       }),
-    ];
-    const out = toDominantSourceTimeline(rows);
-    expect(out).toHaveLength(1);
-    expect(out[0]!.dominantShare).toBe(0);
+      makeRow({ source: "opencode", hour_start: "2026-03-08T09:00:00Z", total_tokens: 2000 }),
+      makeRow({ source: "claude-code", hour_start: "2026-03-08T11:00:00Z", total_tokens: 2000 }),
+      makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 5000 }),
+      makeRow({ source: "gemini-cli", hour_start: "2026-03-07T14:00:00Z", total_tokens: 1000 }),
+    ]);
+    expect(res.map((p) => p.date)).toEqual(["2026-03-07", "2026-03-08", "2026-03-09"]);
+    expect(res[0]!.dominantSource).toBe("claude-code");
+    expect(res[0]!.dominantShare).toBeCloseTo(83.33, 0);
+    expect(res[1]!.dominantSource).toBe("claude-code"); // alphabetical tie-break at 50%
+    expect(res[1]!.dominantShare).toBeCloseTo(50, 0);
+    expect(res[2]!.dominantShare).toBe(0);
+
+    const shifted = toDominantSourceTimeline(
+      [makeRow({ source: "claude-code", hour_start: "2026-03-08T03:00:00Z", total_tokens: 1000 })],
+      480,
+    );
+    expect(shifted[0]!.date).toBe("2026-03-07");
+  });
+});
+
+describe("computeWoWGrowth & toHourlyWeekdayWeekend", () => {
+  it("computes WoW growth including same-day, missing prev week, and default now", () => {
+    expect(computeWoWGrowth([], pricing, new Date("2026-03-15"))).toMatchObject({
+      currentWeek: { tokens: 0, cost: 0, days: 0 },
+      previousWeek: { tokens: 0, days: 0 },
+      tokenGrowth: 0,
+      costGrowth: 0,
+    });
+    expect(computeWoWGrowth([], pricing).tokenGrowth).toBe(0);
+
+    expect(
+      computeWoWGrowth([rowAt("2026-03-15T10:00:00Z", 2000)], pricing, new Date("2026-03-15"))
+        .tokenGrowth,
+    ).toBe(0);
+
+    const wow = computeWoWGrowth(
+      [
+        rowAt("2026-03-08T10:00:00Z", 500),
+        rowAt("2026-03-11T10:00:00Z", 500),
+        rowAt("2026-03-13T10:00:00Z", 1000),
+        rowAt("2026-03-18T10:00:00Z", 2000),
+      ],
+      pricing,
+      new Date("2026-03-18"),
+    );
+    expect(wow.previousWeek.tokens).toBe(2000);
+    expect(wow.previousWeekSameDay.tokens).toBe(1000);
+    expect(wow.currentWeek.tokens).toBe(2000);
+    expect(wow.tokenGrowth).toBe(0);
+    expect(wow.sameDayTokenGrowth).toBeCloseTo(100);
+  });
+
+  it("computes 24-hour weekday/weekend averages with zero-fill and tzOffset", () => {
+    const empty = toHourlyWeekdayWeekend([], { from: "2026-03-07", to: "2026-03-07" }, 0);
+    expect(empty).toHaveLength(24);
+    expect(empty[0]).toEqual({ hour: 0, weekday: 0, weekend: 0 });
+
+    const mixed = toHourlyWeekdayWeekend(
+      [
+        makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 1000 }), // Sat
+        makeRow({ hour_start: "2026-03-09T10:00:00Z", total_tokens: 2000 }), // Mon
+        makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 4000 }), // Tue
+      ],
+      { from: "2026-03-07", to: "2026-03-10" },
+      0,
+    );
+    expect(mixed[10]).toEqual({ hour: 10, weekday: 3000, weekend: 500 });
+    expect(mixed[0]).toEqual({ hour: 0, weekday: 0, weekend: 0 });
+
+    const shifted = toHourlyWeekdayWeekend(
+      [makeRow({ hour_start: "2026-03-07T18:00:00Z", total_tokens: 1000 })],
+      { from: "2026-03-07", to: "2026-03-07" },
+      480,
+    );
+    expect(shifted[10]!.weekend).toBe(1000);
+    expect(shifted[18]!.weekend).toBe(0);
   });
 });
